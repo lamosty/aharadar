@@ -1,4 +1,4 @@
 // Minimal HTTP API entrypoint (optional MVP) will live here.
-export {};
+console.log("api: not implemented yet");
 
 

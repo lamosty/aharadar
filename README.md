@@ -30,7 +30,40 @@ The goal is “same stack locally and prod” via Docker Compose:
 - Postgres + pgvector
 - Redis (BullMQ)
 
-When the runtime code is scaffolded, the typical flow will be:
+## Install / run (dev)
+
+### Prereqs
+- Node.js (see `.nvmrc`)
+- pnpm
+- Docker Desktop
+
+### First-time setup
+1. Create env:
+   - `cp .env.example .env`
+2. Start DB + Redis:
+   - `./scripts/dev.sh`
+3. Apply migrations:
+   - `./scripts/migrate.sh`
+4. Install JS deps (once we start adding runtime deps):
+   - `pnpm install`
+
+### Day-to-day workflow
+- **You do not rebuild Docker for TypeScript code changes.**
+  - Docker is for Postgres/Redis.
+  - App code is run from the host during dev (fast iteration).
+- Re-run **migrations** when SQL changes:
+  - `./scripts/migrate.sh`
+- If you need a clean DB/Redis:
+  - `./scripts/reset.sh` (destroys local data)
+
+### Useful scripts
+- `./scripts/dev.sh`: start Postgres + Redis
+- `./scripts/migrate.sh`: apply SQL migrations
+- `./scripts/logs.sh [service]`: follow logs
+- `./scripts/down.sh`: stop services
+- `./scripts/reset.sh`: wipe volumes + restart + migrate
+
+When the runtime code is implemented, the typical flow will be:
 
 1. Copy env:
    - `cp .env.example .env`

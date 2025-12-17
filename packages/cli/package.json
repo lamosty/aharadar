@@ -6,7 +6,7 @@
   "types": "dist/main.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "dev": "echo \"cli: not implemented\"",
+    "dev": "node dist/main.js",
     "test": "echo \"cli: no tests yet\"",
     "lint": "echo \"cli: no lint yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"

@@ -6,6 +6,11 @@ docker compose up -d postgres
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATIONS_DIR="${ROOT_DIR}/packages/db/migrations"
 
+echo "Waiting for Postgres..."
+until docker compose exec -T postgres pg_isready -U aharadar -d aharadar >/dev/null 2>&1; do
+  sleep 0.5
+done
+
 echo "Applying SQL migrations (naive runner; re-runnable DDL)..."
 
 for f in "${MIGRATIONS_DIR}"/*.sql; do
