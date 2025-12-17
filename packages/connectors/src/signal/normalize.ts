@@ -48,7 +48,7 @@ function extractSnippets(resultsObj: Record<string, unknown>): string[] {
   if (Array.isArray(results)) {
     for (const entry of results) {
       const r = asRecord(entry);
-      const text = asString(r.text);
+      const text = asString(r.text_excerpt) ?? asString(r.text);
       if (text) out.push(text);
       if (out.length >= 5) break;
     }

@@ -52,6 +52,39 @@ function extractErrorDetail(response: unknown): string | null {
   return null;
 }
 
+function extractOpenAIContent(response: unknown): string | null {
+  const rec = asRecord(response);
+  const choices = rec.choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const first = asRecord(choices[0]);
+  const msg = asRecord(first.message);
+  const content = msg.content;
+  return typeof content === "string" && content.length > 0 ? content : null;
+}
+
+function tryParseJsonObject(text: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractStructuredErrorCode(response: unknown): { code: string; message: string | null } | null {
+  const content = extractOpenAIContent(response);
+  if (!content) return null;
+  const obj = tryParseJsonObject(content);
+  if (!obj) return null;
+  const err = obj.error;
+  if (!err || typeof err !== "object" || Array.isArray(err)) return null;
+  const code = (err as Record<string, unknown>).code;
+  const message = (err as Record<string, unknown>).message;
+  if (typeof code !== "string" || code.length === 0) return null;
+  return { code, message: typeof message === "string" && message.length > 0 ? message : null };
+}
+
 function responseSnippet(response: unknown): string | null {
   if (typeof response === "string") return truncateString(response, 800);
   try {
@@ -121,7 +154,7 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
         {
           role: "system",
           content:
-            "Return STRICT JSON only (no markdown, no prose). Schema: { results: Array<{ id: string|null, created_at: string|null, author: string|null, text_excerpt: string|null, urls: string[] }> }. Constraints: results.length <= limit; text_excerpt <= 200 chars; urls length <= 5; unknown fields => null."
+            "Return STRICT JSON only (no markdown, no prose). Schema: { results: Array<{ id: string|null, created_at: string|null, author: string|null, text_excerpt: string|null, urls: string[] }>, error?: { code: string, message?: string } }. Constraints: results.length <= limit; text_excerpt <= 200 chars; urls length <= 5; unknown fields => null. Never fabricate posts. If you cannot access live X/Twitter search results for this query, return results:[] and set error.code=\"no_live_x_access\"."
         },
         {
           role: "user",
@@ -161,6 +194,20 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     (err as unknown as Record<string, unknown>).responseSnippet = snippet;
     (err as unknown as Record<string, unknown>).requestId =
       res.headers.get("x-request-id") ?? res.headers.get("xai-request-id") ?? res.headers.get("cf-ray");
+    throw err;
+  }
+
+  // If the model returns a structured "no_live_x_access" error, treat as an error so we don't silently store empty signals.
+  const structured = extractStructuredErrorCode(response);
+  if (structured?.code === "no_live_x_access") {
+    const ms = endedAt - startedAt;
+    const err = new Error(
+      `Signal provider reported no_live_x_access after ${ms}ms${structured.message ? `: ${structured.message}` : ""}`
+    );
+    (err as unknown as Record<string, unknown>).statusCode = 403;
+    (err as unknown as Record<string, unknown>).endpoint = endpoint;
+    (err as unknown as Record<string, unknown>).model = model;
+    (err as unknown as Record<string, unknown>).responseSnippet = responseSnippet(response);
     throw err;
   }
 
