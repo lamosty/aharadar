@@ -1,3 +1,5 @@
+import type { ProviderCallDraft } from "./provider_calls";
+
 export type SourceType = "reddit" | "hn" | "rss" | "youtube" | "signal" | string;
 
 export type Cursor = Record<string, unknown>;
@@ -16,10 +18,18 @@ export interface FetchParams {
   windowEnd: string; // ISO
 }
 
+export interface FetchMeta extends Record<string, unknown> {
+  /**
+   * Optional accounting hook: connectors can emit provider call drafts (LLM, signal search, etc.)
+   * and the pipeline will persist them into `provider_calls`.
+   */
+  providerCalls?: ProviderCallDraft[];
+}
+
 export interface FetchResult {
   rawItems: unknown[];
   nextCursor: Cursor;
-  meta?: Record<string, unknown>;
+  meta?: FetchMeta;
 }
 
 
