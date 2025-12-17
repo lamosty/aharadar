@@ -7,7 +7,14 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm -r dev",
+    "build:cli": "pnpm --filter @aharadar/cli... build",
+    "dev": "pnpm dev:cli",
+    "dev:all": "pnpm -r dev",
+    "dev:cli": "pnpm build:cli && node packages/cli/dist/main.js",
+    "dev:services": "./scripts/dev.sh",
+    "migrate": "./scripts/migrate.sh",
+    "reset": "./scripts/reset.sh",
+    "logs": "./scripts/logs.sh",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"

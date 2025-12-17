@@ -44,8 +44,10 @@ The goal is “same stack locally and prod” via Docker Compose:
    - `./scripts/dev.sh`
 3. Apply migrations:
    - `./scripts/migrate.sh`
-4. Install JS deps (once we start adding runtime deps):
+4. Install JS deps:
    - `pnpm install`
+5. Verify the scaffold runs:
+   - `pnpm dev` (runs the stub CLI)
 
 ### Day-to-day workflow
 - **You do not rebuild Docker for TypeScript code changes.**
@@ -61,6 +63,7 @@ The goal is “same stack locally and prod” via Docker Compose:
 - `./scripts/migrate.sh`: apply SQL migrations
 - `./scripts/logs.sh [service]`: follow logs
 - `./scripts/down.sh`: stop services
+- `./scripts/restart.sh`: restart services
 - `./scripts/reset.sh`: wipe volumes + restart + migrate
 
 When the runtime code is implemented, the typical flow will be:
