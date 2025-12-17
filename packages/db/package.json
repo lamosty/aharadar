@@ -8,6 +8,9 @@
     "@aharadar/shared": "workspace:*",
     "pg": "^8.11.5"
   },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
+  },
   "scripts": {
     "build": "tsc -b",
     "dev": "echo \"db: no dev\"",
