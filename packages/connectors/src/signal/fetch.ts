@@ -96,7 +96,9 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           query,
           limit,
           windowStart: params.windowStart,
-          windowEnd: params.windowEnd
+          windowEnd: params.windowEnd,
+          endpoint: result.endpoint,
+          provider_model: result.model
         },
         startedAt,
         endedAt,
@@ -118,6 +120,13 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
       });
     } catch (err) {
       const endedAt = new Date().toISOString();
+      const errObj = err && typeof err === "object" ? (err as Record<string, unknown>) : {};
+      const statusCode = typeof errObj.statusCode === "number" ? errObj.statusCode : undefined;
+      const endpoint = typeof errObj.endpoint === "string" ? errObj.endpoint : undefined;
+      const providerModel = typeof errObj.model === "string" ? errObj.model : undefined;
+      const requestId = typeof errObj.requestId === "string" ? errObj.requestId : undefined;
+      const responseSnippet = typeof errObj.responseSnippet === "string" ? errObj.responseSnippet : undefined;
+
       providerCalls.push({
         userId: params.userId,
         purpose: "signal_search",
@@ -131,16 +140,22 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           query,
           limit,
           windowStart: params.windowStart,
-          windowEnd: params.windowEnd
+          windowEnd: params.windowEnd,
+          endpoint,
+          provider_model: providerModel,
+          requestId
         },
         startedAt,
         endedAt,
         status: "error",
         error: {
-          message: err instanceof Error ? err.message : String(err)
+          message: err instanceof Error ? err.message : String(err),
+          statusCode,
+          responseSnippet
         }
       });
-      // Continue other queries; the pipeline will mark the source partial if we end up with errors.
+      // Auth/permission errors are almost certainly global (bad key / missing access). Don't spam one per query.
+      if (statusCode === 401 || statusCode === 403) break;
       continue;
     }
   }

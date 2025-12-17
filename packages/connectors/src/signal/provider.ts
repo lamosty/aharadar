@@ -8,6 +8,8 @@ export interface GrokXSearchParams {
 export interface GrokXSearchResult {
   /** Raw provider response (kept opaque; normalization extracts what it can). */
   response: unknown;
+  endpoint: string;
+  model: string;
 }
 
 function firstEnv(names: string[]): string | undefined {
@@ -22,6 +24,40 @@ function requireAnyEnv(names: string[]): string {
   const value = firstEnv(names);
   if (value) return value;
   throw new Error(`Missing required env var for signal search: one of ${names.join(", ")}`);
+}
+
+function truncateString(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars)}…`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  return {};
+}
+
+function extractErrorDetail(response: unknown): string | null {
+  if (typeof response === "string") return response;
+  const obj = asRecord(response);
+  const err = obj.error;
+  if (err && typeof err === "object" && !Array.isArray(err)) {
+    const msg = (err as Record<string, unknown>).message;
+    if (typeof msg === "string") return msg;
+  }
+  if (typeof obj.message === "string") return obj.message;
+  if (typeof obj.detail === "string") return obj.detail;
+  if (typeof obj.error === "string") return obj.error;
+  return null;
+}
+
+function responseSnippet(response: unknown): string | null {
+  if (typeof response === "string") return truncateString(response, 800);
+  try {
+    const json = JSON.stringify(response);
+    return truncateString(json, 800);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -86,10 +122,22 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   }
 
   if (!res.ok) {
-    throw new Error(`Signal provider error (${res.status}) after ${endedAt - startedAt}ms`);
+    const detail = extractErrorDetail(response);
+    const snippet = responseSnippet(response);
+    const ms = endedAt - startedAt;
+    const suffix = detail ? `: ${truncateString(detail, 300)}` : snippet ? `: ${snippet}` : "";
+    const err = new Error(`Signal provider error (${res.status}) after ${ms}ms${suffix}`);
+    (err as unknown as Record<string, unknown>).statusCode = res.status;
+    (err as unknown as Record<string, unknown>).statusText = res.statusText;
+    (err as unknown as Record<string, unknown>).endpoint = endpoint;
+    (err as unknown as Record<string, unknown>).model = model;
+    (err as unknown as Record<string, unknown>).responseSnippet = snippet;
+    (err as unknown as Record<string, unknown>).requestId =
+      res.headers.get("x-request-id") ?? res.headers.get("xai-request-id") ?? res.headers.get("cf-ray");
+    throw err;
   }
 
-  return { response };
+  return { response, endpoint, model };
 }
 
 

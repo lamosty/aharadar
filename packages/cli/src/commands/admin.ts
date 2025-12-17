@@ -39,6 +39,32 @@ export async function adminRunNowCommand(): Promise<void> {
         );
       }
     }
+
+    // Helpful diagnostics: summarize provider-call errors for this run (keyed by windowEnd).
+    if (result.ingest.totals.errors > 0) {
+      const summary = await db.query<{ error: string | null; count: string }>(
+        `select
+           error_json->>'message' as error,
+           count(*)::text as count
+         from provider_calls
+         where user_id = $1
+           and purpose = 'signal_search'
+           and status = 'error'
+           and meta_json->>'windowEnd' = $2
+         group by 1
+         order by count(*) desc
+         limit 5`,
+        [user.id, windowEnd]
+      );
+
+      if (summary.rows.length > 0) {
+        console.log("");
+        console.log("Signal provider errors (this run):");
+        for (const row of summary.rows) {
+          console.log(`- ${row.count}× ${row.error ?? "(no message)"}`);
+        }
+      }
+    }
   } finally {
     await db.close();
   }
