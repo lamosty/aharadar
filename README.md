@@ -9,6 +9,7 @@ This repo is currently **spec-first**. Key contracts live in `docs/`.
 Start here:
 - `docs/spec.md`
 - `docs/README.md` (docs index)
+- `AGENTS.md` (AI agent entrypoint / working rules)
 
 ## Core loop (MVP)
 

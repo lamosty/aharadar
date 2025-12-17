@@ -1,0 +1,9 @@
+Read `AGENTS.md` first and follow it.
+
+Key non-negotiables:
+- topic-agnostic (no domain-specific logic)
+- provider-agnostic (LLM + signals via interfaces; use provider/model refs)
+- budgets in credits (monthly primary + optional daily throttle; warn + fallback to low on exhaustion)
+- make commit-sized changes and suggest a conventional commit message when done
+
+

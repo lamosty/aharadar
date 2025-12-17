@@ -4,6 +4,7 @@ This repo is currently **spec-first**. The goal is to lock down concrete MVP con
 
 ## Reading order (recommended)
 
+0. `../AGENTS.md` — AI agent entrypoint (fast context + working rules).
 1. `spec.md` — product/technical master spec (high level).
 2. `architecture.md` — concrete system decomposition + runtime data flow.
 3. `data-model.md` — database schema contract (tables, constraints, indexes).
