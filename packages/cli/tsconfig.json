@@ -1,9 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
+  "references": [{ "path": "../shared" }, { "path": "../db" }, { "path": "../pipeline" }],
   "compilerOptions": {
     "composite": true,
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }

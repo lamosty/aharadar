@@ -4,6 +4,11 @@
   "version": "0.0.0",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
+  "dependencies": {
+    "@aharadar/db": "workspace:*",
+    "@aharadar/pipeline": "workspace:*",
+    "@aharadar/shared": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -b",
     "dev": "pnpm build && node dist/main.js",
