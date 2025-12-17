@@ -1,0 +1,16 @@
+{
+  "name": "@aharadar/api",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "echo \"api: not implemented\"",
+    "test": "echo \"api: no tests yet\"",
+    "lint": "echo \"api: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
+

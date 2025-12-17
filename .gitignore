@@ -1,0 +1,51 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment / secrets
+.env
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Tool caches
+.turbo/
+.nx/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.cache/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS / misc
+Thumbs.db
+
+# Docker
+docker-data/
+
+

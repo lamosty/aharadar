@@ -1,0 +1,16 @@
+{
+  "name": "@aharadar/shared",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "echo \"shared: no dev\"",
+    "test": "echo \"shared: no tests yet\"",
+    "lint": "echo \"shared: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
+

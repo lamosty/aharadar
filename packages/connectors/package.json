@@ -1,0 +1,16 @@
+{
+  "name": "@aharadar/connectors",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "echo \"connectors: no dev\"",
+    "test": "echo \"connectors: no tests yet\"",
+    "lint": "echo \"connectors: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
+

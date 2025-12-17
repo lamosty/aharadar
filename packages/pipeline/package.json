@@ -1,0 +1,16 @@
+{
+  "name": "@aharadar/pipeline",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "echo \"pipeline: no dev\"",
+    "test": "echo \"pipeline: no tests yet\"",
+    "lint": "echo \"pipeline: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
+

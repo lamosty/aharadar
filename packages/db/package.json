@@ -1,0 +1,16 @@
+{
+  "name": "@aharadar/db",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "echo \"db: no dev\"",
+    "test": "echo \"db: no tests yet\"",
+    "lint": "echo \"db: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
+

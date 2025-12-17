@@ -1,0 +1,16 @@
+{
+  "name": "@aharadar/llm",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "echo \"llm: no dev\"",
+    "test": "echo \"llm: no tests yet\"",
+    "lint": "echo \"llm: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
+
