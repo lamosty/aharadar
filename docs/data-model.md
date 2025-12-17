@@ -1,0 +1,244 @@
+# Aha Radar — Data Model (Postgres + pgvector)
+
+This document defines the **schema contract** for MVP. Implementation may differ in migration layout, but the *behavioral guarantees* (idempotency, uniqueness, required fields) should match.
+
+## Goals
+
+- Unify all sources into `content_items` (with provenance).
+- Support dedupe and clustering (URL + embeddings).
+- Support personalization via feedback-derived preference profile.
+- Support budget + cost accounting.
+
+## Conventions
+
+- **IDs**: `uuid` with `gen_random_uuid()` (requires `pgcrypto`).
+- **Timestamps**: `timestamptz` in UTC.
+- **JSON**: `jsonb` for flexible metadata and raw payload storage.
+- **Vectors**: `vector(<DIMS>)` via pgvector extension `vector`.
+
+## Embedding dimension (`<DIMS>`) is a decision
+
+pgvector columns are defined with a fixed dimension in this contract.
+
+- **Proposed default**: `<DIMS> = 1536` (common “small” embedding size)
+- If you choose a different embedding model later (e.g., 3072), it requires a migration.
+
+## Source config vs cursor state
+
+We explicitly separate:
+- `sources.config_json`: user-configured static settings
+- `sources.cursor_json`: mutable connector state for incremental ingestion
+
+This keeps “what the user asked for” separate from “where we left off”.
+
+## Reference DDL (contract)
+
+```sql
+-- required extensions
+create extension if not exists pgcrypto;
+create extension if not exists vector;
+
+-- users (single-user MVP: one row; keep user_id for future multi-user)
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  email text,
+  created_at timestamptz not null default now()
+);
+
+-- sources: connector definitions + cursor state
+create table sources (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  type text not null,           -- reddit|hn|rss|youtube|signal|...
+  name text not null,
+  config_json jsonb not null default '{}'::jsonb,
+  cursor_json jsonb not null default '{}'::jsonb,
+  is_enabled boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index sources_user_enabled_idx on sources(user_id, is_enabled);
+
+-- fetch_runs: per-source ingestion audit trail
+create table fetch_runs (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references sources(id) on delete cascade,
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,
+  status text not null, -- ok|partial|error
+  cursor_in_json jsonb not null default '{}'::jsonb,
+  cursor_out_json jsonb not null default '{}'::jsonb,
+  counts_json jsonb not null default '{}'::jsonb, -- fetched/normalized/upserted/etc
+  error_json jsonb,
+  created_at timestamptz not null default now()
+);
+create index fetch_runs_source_started_idx on fetch_runs(source_id, started_at desc);
+
+-- content_items: unified normalized content store
+create table content_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  source_id uuid not null references sources(id) on delete cascade,
+  source_type text not null,       -- duplicated for convenience/debugging
+  external_id text,                -- source-native id (nullable when unavailable)
+  canonical_url text,              -- after canonicalization (nullable for some signals)
+  title text,
+  body_text text,
+  author text,
+  published_at timestamptz,
+  fetched_at timestamptz not null default now(),
+  language text,
+  metadata_json jsonb not null default '{}'::jsonb,
+  raw_json jsonb,                  -- raw payload (optional retention)
+  hash_url text,                   -- sha256 hex of canonical_url (nullable if no URL)
+  hash_text text,                  -- sha256 hex of embedding-input text (optional)
+  duplicate_of_content_item_id uuid references content_items(id),
+  deleted_at timestamptz
+);
+
+-- idempotency & dedupe indexes
+create unique index content_items_source_external_id_uniq
+  on content_items(source_id, external_id)
+  where external_id is not null;
+
+create unique index content_items_hash_url_uniq
+  on content_items(hash_url)
+  where hash_url is not null;
+
+-- common query indexes
+create index content_items_user_published_idx on content_items(user_id, published_at desc);
+create index content_items_user_fetched_idx on content_items(user_id, fetched_at desc);
+create index content_items_source_type_idx on content_items(source_type);
+
+-- embeddings: 1 row per content item (MVP)
+create table embeddings (
+  content_item_id uuid primary key references content_items(id) on delete cascade,
+  model text not null,
+  dims int not null,
+  vector vector(1536) not null,
+  created_at timestamptz not null default now()
+);
+create index embeddings_vector_hnsw
+  on embeddings using hnsw (vector vector_cosine_ops);
+
+-- clusters: story/topic grouping
+create table clusters (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  representative_content_item_id uuid references content_items(id),
+  centroid_vector vector(1536),
+  top_terms_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index clusters_user_updated_idx on clusters(user_id, updated_at desc);
+create index clusters_centroid_hnsw
+  on clusters using hnsw (centroid_vector vector_cosine_ops);
+
+create table cluster_items (
+  cluster_id uuid not null references clusters(id) on delete cascade,
+  content_item_id uuid not null references content_items(id) on delete cascade,
+  similarity real,
+  added_at timestamptz not null default now(),
+  primary key (cluster_id, content_item_id)
+);
+create index cluster_items_content_item_idx on cluster_items(content_item_id);
+
+-- digests: one per window + mode
+create table digests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  window_start timestamptz not null,
+  window_end timestamptz not null,
+  mode text not null, -- low|normal|high|catch_up
+  created_at timestamptz not null default now()
+);
+create unique index digests_user_window_mode_uniq
+  on digests(user_id, window_start, window_end, mode);
+create index digests_user_created_idx on digests(user_id, created_at desc);
+
+-- digest_items: ranked output rows
+create table digest_items (
+  digest_id uuid not null references digests(id) on delete cascade,
+  cluster_id uuid references clusters(id) on delete set null,
+  content_item_id uuid references content_items(id) on delete set null,
+  rank int not null,
+  score real not null,
+  triage_json jsonb,
+  summary_json jsonb,
+  entities_json jsonb,
+  created_at timestamptz not null default now(),
+  primary key (digest_id, rank),
+  constraint digest_items_exactly_one_ref_chk check (
+    (cluster_id is not null and content_item_id is null)
+    or (cluster_id is null and content_item_id is not null)
+  )
+);
+create index digest_items_digest_score_idx on digest_items(digest_id, score desc);
+
+-- feedback_events: explicit user feedback loop
+create table feedback_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  digest_id uuid references digests(id) on delete set null,
+  content_item_id uuid not null references content_items(id) on delete cascade,
+  action text not null, -- like|dislike|save|skip
+  created_at timestamptz not null default now()
+);
+create index feedback_events_user_created_idx on feedback_events(user_id, created_at desc);
+create index feedback_events_item_idx on feedback_events(content_item_id);
+
+-- provider_calls: accounting + debuggability for metered provider usage (LLM, embeddings, signal search, etc.)
+create table provider_calls (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  purpose text not null,          -- triage|deep_summary|entity_extract|signal_parse|embedding|signal_search|...
+  provider text not null,         -- openai|anthropic|google|xai|...
+  model text not null,
+  input_tokens int not null default 0,
+  output_tokens int not null default 0,
+  cost_estimate_credits numeric(12,6) not null default 0,
+  meta_json jsonb not null default '{}'::jsonb,
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,
+  status text not null,           -- ok|error
+  error_json jsonb
+);
+create index provider_calls_user_started_idx on provider_calls(user_id, started_at desc);
+
+-- user_preference_profiles (recommended for fast personalization scoring)
+create table user_preference_profiles (
+  user_id uuid primary key references users(id) on delete cascade,
+  positive_count int not null default 0,
+  negative_count int not null default 0,
+  positive_vector vector(1536),
+  negative_vector vector(1536),
+  updated_at timestamptz not null default now()
+);
+```
+
+## Notes & constraints
+
+### URL canonicalization
+
+Canonicalization must:
+- normalize scheme/host
+- strip known tracking params (utm_*, fbclid, gclid, ref, etc.)
+- normalize trailing slashes
+- keep essential query params when they define unique content (TBD list)
+
+`hash_url` is computed from the canonical URL **after** canonicalization.
+
+### Text limits (budget + storage)
+
+We will enforce max lengths (exact values TBD):
+- `title` max chars
+- `body_text` max chars stored
+- embedding input max tokens/chars (truncate deterministically)
+
+### Retention policies
+
+Raw payloads (`raw_json`) and large enrichment (`summary_json`) should be retention-configurable:
+- keep full in dev for debugging
+- keep limited duration in prod (TBD)
+
+

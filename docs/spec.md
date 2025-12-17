@@ -14,6 +14,11 @@ Build a **generic** personalized content manager that continuously monitors user
 
 This is **not** limited to markets or tech. Any user can define sources and interests (finance, tech, science, local news, gardening, medicine research, sports analysis, programming, cars, etc.). The mechanism is the same: ingest → normalize → dedupe/cluster → rank with personalization → budget-aware LLM enrichment → deliver digest → learn from feedback.
 
+**Topic-agnostic by design (explicit):**
+- The system MUST NOT hardcode any domain assumptions (finance/crypto/etc.).
+- Personalization comes from user-chosen sources + embeddings + feedback, not from domain-specific rules.
+- Prompts, schemas, ranking features, and UI labels should remain generic.
+
 ### Primary goals
 1. **High-signal discovery:** Surface content that is novel, meaningful, and relevant to each user.
 2. **Personalization:** Improve ranking rapidly via explicit user feedback (like/dislike/swipe).
@@ -33,7 +38,7 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 ## Non-goals
 - Not a trading bot; no broker integrations or automated trading.
 - No “investment advice” or guarantee of correctness.
-- No “scrape everything from X/Twitter” in MVP. X is treated as a **signal source** using Grok X Search (or similar) rather than full-firehose ingestion.
+- No “scrape everything from X/Twitter” in MVP. X is treated as a **signal source** using an X/Twitter search provider (e.g., Grok X Search) rather than full-firehose ingestion.
 - No custom model fine-tuning in MVP.
 - No heavy multimedia understanding (image/chart OCR, video decoding) in MVP.
 - No bypassing paywalls or ToS violations.
@@ -74,14 +79,13 @@ This is **not** limited to markets or tech. Any user can define sources and inte
   - Reddit (subreddits, optionally users)
   - Hacker News (top/new, optionally comments)
   - RSS feeds (e.g., ZeroHedge website RSS or any blog/news RSS)
-  - Web pages with “latest” feeds when RSS exists or is easy to extract
   - YouTube (channels → titles/descriptions + transcripts when available)
-  - Twitter/X **via Grok X Search** as summarized signals + extracted entities/links
+  - **Signals** via search/trend/alerts providers (initial MVP adapter: X/Twitter search provider) as summarized signals + extracted entities/links
 - **Core pipeline**:
   - Normalize all inputs into a unified content schema
   - Deduplicate and cluster similar items across sources
   - Personalization ranking using embeddings and feedback
-  - Budget-aware LLM processing using **GPT-5 family**
+  - Budget-aware LLM processing using a configurable LLM provider (OpenAI GPT models as default at time of writing)
   - Produce scheduled digests (default 3× daily)
 - **User feedback loop**:
   - Like/Dislike/Save/Skip actions
@@ -99,6 +103,7 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 - Real-time streaming ingestion
 - Vision parsing for images/charts (optional later)
 - Automated “deep web research loops” for every item (expensive; add only with dial-up mode)
+- Generic web page ingestion/extraction beyond RSS (planned as v2 `web` connector)
 
 ### Account-linking policy (MVP)
 - Public sources SHOULD NOT require users to connect their personal accounts (e.g., Reddit account linking) for basic ingestion.
@@ -183,9 +188,14 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 
 **FR-004** The system SHALL support ingesting RSS feed items.
 
+**FR-004a (future; not MVP)** The system MAY support ingesting public web pages/sites (blogs/news) when RSS is not available:
+- Discover new article URLs from configured seed/listing pages (or sitemap) without ToS violations.
+- Extract title/body/published_at using deterministic parsing (e.g., Readability/structured metadata).
+- Prefer RSS when available; do not bypass paywalls.
+
 **FR-005** The system SHALL support ingesting YouTube channel updates and transcripts when available.
 
-**FR-006** The system SHALL support ingesting X/Twitter signals via Grok X Search:
+**FR-006** The system SHALL support ingesting **signals** via a search/trend/alerts provider (initial MVP adapter: X/Twitter search provider):
 - Store summarized signals and extracted entities/links as Content Items.
 - Treat X as a *signal amplifier* rather than a full data lake in MVP.
 
@@ -230,8 +240,8 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 - recency decay
 - cluster-level aggregation
 
-### LLM enrichment (GPT-5 family)
-**FR-018** The system SHALL use GPT-5 family models for:
+### LLM enrichment (provider-agnostic)
+**FR-018** The system SHALL use configurable LLM provider(s) for:
 - triage scoring/classification (cheap model)
 - deep summarization and “why it matters” (more capable model)
 - entity extraction (optional)
@@ -242,17 +252,19 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 **FR-019a** The triage output SHALL include an explicit **Aha Score** (0–100) and a short reason string. This score is the primary ranking input for what the user sees.
 
 ### Budget dial
-**FR-020** The system SHALL enforce configurable budgets per user and per day:
+**FR-020** The system SHALL enforce configurable budgets per user and per period (monthly credits) with optional daily throttling:
+- max credits per month (budget pool)
+- optional daily throttle credits
 - max fetch items per source per run
 - max embeddings per run
 - max LLM calls per purpose
 - max tokens per call
-- max Grok X Search calls per day
+- max X/Twitter search calls per day
 
-**FR-021** The system SHALL implement “dial down” fallback:
+**FR-021** The system SHALL implement a “low tier” fallback:
 - if budget is reached, skip deep summaries and deliver triage-only digests.
 
-**FR-022** The system SHALL log token usage and estimate cost per provider per run.
+**FR-022** The system SHALL log token usage and estimate cost (in credits) per provider per run.
 
 ### Digests & delivery
 **FR-023** The system SHALL generate digests on a schedule (default 3× daily, configurable timezone).
@@ -298,9 +310,9 @@ This is **not** limited to markets or tech. Any user can define sources and inte
     `rank`, `score`, `triage_json`, `summary_json`, `entities_json`
 - `feedback_events`
   - `id`, `user_id`, `content_item_id`, `digest_id`, `action`, `created_at`
-- `llm_calls`
+- `provider_calls`
   - `id`, `user_id`, `purpose`, `provider`, `model`,
-    `input_tokens`, `output_tokens`, `cost_estimate`,
+    `input_tokens`, `output_tokens`, `cost_estimate_credits`, `meta_json`,
     `started_at`, `ended_at`, `status`, `error_json`
 
 ### Indexing (high level)
@@ -319,7 +331,7 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 #### Connector interface
 ```ts
 interface Connector {
-  sourceType: "reddit" | "hn" | "rss" | "youtube" | "x_signal" | string;
+  sourceType: "reddit" | "hn" | "rss" | "youtube" | "signal" | string;
   fetch(params: FetchParams): Promise<RawItem[]>;
   normalize(raw: RawItem): Promise<ContentItemDraft>;
 }
@@ -336,12 +348,14 @@ interface Connector {
 
 #### LLM router
 ```ts
-type TaskType = "triage" | "deep_summary" | "entity_extract" | "x_signal_parse";
-type BudgetMode = "dial_down" | "normal" | "dial_up";
+type TaskType = "triage" | "deep_summary" | "entity_extract" | "signal_parse";
+type BudgetTier = "low" | "normal" | "high";
+
+type ModelRef = { provider: string; model: string };
 
 interface LLMRouter {
-  chooseModel(task: TaskType, mode: BudgetMode): string; // GPT-5 family model id
-  call(task: TaskType, model: string, input: LLMInput): Promise<LLMOutput>;
+  chooseModel(task: TaskType, tier: BudgetTier): ModelRef; // provider+model are implementation details
+  call(task: TaskType, ref: ModelRef, input: LLMInput): Promise<LLMOutput>;
 }
 ```
 
@@ -426,7 +440,7 @@ Future multi-user:
   - detect 429/503, pause source temporarily
 - LLM failures:
   - retry once
-  - fallback to smaller GPT-5 model
+  - fallback to a smaller/cheaper model tier
   - or skip deep summary and deliver triage-only
 - Idempotency:
   - re-running a window does not create duplicates
@@ -438,7 +452,7 @@ Future multi-user:
 - Link-only posts (need to fetch title/metadata)
 - RSS feeds with missing dates or repeated GUIDs
 - YouTube transcripts missing/disabled
-- X signals vague or without stable identifiers
+- Signals vague or without stable identifiers
 - Sudden viral spam (e.g., meme floods) → throttles and preference dampening
 - Paywalled pages → do not bypass; store metadata and user-visible link
 
@@ -562,7 +576,7 @@ Future multi-user:
 ## Open Questions (do not guess; propose options)
 
 1. **Exact MVP source list**
-- Option A: start small (2 subreddits, HN top, 3 RSS, 2 YT channels, 5 X accounts)
+- Option A: start small (2 subreddits, HN top, 3 RSS, 2 YT channels, 30 X accounts for signals)
 - Option B: start broad but enforce strict per-source caps
 
 2. **Digest schedule defaults**
@@ -570,8 +584,8 @@ Future multi-user:
 - Option B: templates (weekday/weekend) and user activity based
 
 3. **Budget defaults**
-- Exact dial-down monthly cap ($30? $50?) and dial-up cap
-- Allocation of budget to: embeddings vs triage vs deep summaries vs X signals
+- Exact monthly credits defaults per tier (`low` / `normal` / `high`) (exact scale TBD)
+- Allocation of budget to: embeddings vs triage vs deep summaries vs signals
 
 4. **Embedding model**
 - Option A: smaller embedding model for cost/speed
@@ -590,7 +604,7 @@ Future multi-user:
 - Option B: minimal web UI for easier use on phone browser
 
 8. **X signal fidelity**
-- If Grok X Search does not provide stable identifiers:
+- If the X/Twitter search provider does not provide stable identifiers:
   - Option A: store only summarized signals
   - Option B: store any URLs returned and rely on other sources for details
 
@@ -606,7 +620,7 @@ Future multi-user:
 - **DB:** Postgres + pgvector
 - **Queue:** Redis + BullMQ (or Postgres-based queue if reducing services is desired)
 - **Deployment:** Docker Compose (same locally and on server)
-- **LLM:** OpenAI **GPT-5 family** for triage/summaries; Grok for X Search signals
+- **LLM:** configurable provider(s) for triage/summaries (OpenAI as default at time of writing); configurable X/Twitter search provider for signals (e.g., Grok)
 - **Dev machine:** MacBook Pro M3 Max (late 2023)
 - **Server:** Hetzner AX52 with Ubuntu LTS
 
@@ -614,7 +628,7 @@ Future multi-user:
 
 ## Notes on X/Twitter Strategy (MVP)
 - Prefer direct sources (RSS/site) for high-volume accounts (e.g., ZeroHedge website) to reduce X processing cost.
-- Use Grok X Search as a *signal detector* rather than a full ingestion pipeline.
+- Use an X/Twitter search provider as a *signal detector* rather than a full ingestion pipeline.
 - Keep a provider interface so official X pay-per-use API can be added later without refactoring.
 
 ---
