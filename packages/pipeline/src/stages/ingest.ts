@@ -121,7 +121,17 @@ function draftToUpsert(draft: ContentItemDraft, source: SourceRow, userId: strin
 
   const externalId =
     draft.externalId ??
-    (hashUrl ? null : stableSyntheticExternalId({ sourceId: source.id, sourceType: source.type, ...draft, canonicalUrl }));
+    (hashUrl
+      ? null
+      : stableSyntheticExternalId({
+          sourceId: source.id,
+          sourceType: source.type,
+          title: draft.title,
+          bodyText: draft.bodyText,
+          canonicalUrl,
+          publishedAt: draft.publishedAt,
+          author: draft.author
+        }));
 
   return {
     userId,
