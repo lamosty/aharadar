@@ -1,14 +1,38 @@
 # Aha Radar — AI Agent Entry Point
 
 This repository is primarily developed and maintained with AI coding agents (Cursor, etc.).
-**When starting any new task, read this file first.**
+
+## START HERE — AI agent operating prompt (read and follow)
+
+You are an AI coding agent working in this repository.
+
+**Before you change code**
+- Read this file fully.
+- Read the relevant spec/contract docs first (see **Where to read (minimal)** below).
+- Confirm behavior against `docs/*` (or update the docs first if you are changing a contract).
+
+**How to work (non-negotiable)**
+- Work in **commit-sized** chunks (small, reviewable, coherent).
+- Don’t guess: **confirm contracts** in docs/code; if unclear, propose options and ask.
+- Prefer consistency over cleverness: keep interfaces stable; avoid special cases unless ADR’d.
+- Keep the repo safe: no secrets committed; no ToS violations; avoid abusive scraping.
+
+**Definition of “done” for a task**
+- Correctness: behavior matches the relevant spec/ADR.
+- Types: TypeScript strict; no implicit `any`.
+- Docs: update docs/ADRs if behavior/contracts changed.
+- Local dev: keep Docker Compose/scripts coherent.
+
+**When you finish**
+- Output a short summary of what changed.
+- Suggest a **conventional commit message** (and optional 2–3 bullet body).
 
 ## Fast context (TL;DR)
 
 - **Product**: topic-agnostic personalized content aggregation + ranking (“aha radar”).
 - **Core loop**: ingest → normalize → dedupe/cluster → triage (Aha Score) → rank → budget-aware enrichment → digest → feedback.
 - **Budgets**: user-facing **credits**, primarily `monthly_credits`, optional `daily_throttle_credits`; tiers are `low | normal | high`.
-- **Signals (MVP)**: `signal` connector exists; first adapter is **X/Twitter search via Grok** (provider swap must not require refactors).
+- **Signals (MVP)**: `signal` connector exists; initial adapter is X/Twitter search behind a provider interface (see `docs/adr/0003-x-strategy-grok-signal.md`).
 - **Web ingestion**: generic `web` connector is **v2/deferred** (not MVP).
 - **Repo status**: spec-first + scaffolding exists; runtime packages are skeletons.
 
@@ -31,7 +55,7 @@ If you only read a few files, read these in order:
 - **Topic-agnostic**: no domain-specific logic (finance/crypto/etc.). All ranking/prompting must be generic.
 - **Provider-agnostic**:
   - LLM: never hardcode “GPT-5”; use `(provider, model)` selection and strict output schemas.
-  - Signals: treat “Grok” as a configurable adapter; keep interfaces vendor-neutral.
+  - Signals: treat any vendor as a configurable adapter; keep interfaces vendor-neutral.
 - **Budget correctness**:
   - budgets are in credits; enforce monthly + optional daily throttle
   - when exhausted: warn + fallback to `low` (unless explicitly configured to stop)
@@ -53,37 +77,6 @@ If you only read a few files, read these in order:
   - `worker` — BullMQ workers
   - `api` — optional HTTP API
   - `cli` — MVP UI
-
-## How to work (AI agent operating rules)
-
-### 1) Work in “commit-sized” chunks
-
-Each task should be a coherent, reviewable unit:
-- touches a small set of files
-- updates docs/ADRs if behavior/decisions change
-- leaves the repo in a consistent state
-
-At the end of the task, **suggest a commit message** (see below).
-
-### 2) Don’t guess; confirm contracts
-
-- Read existing docs/code first (search + open files).
-- If a decision is missing, propose options and ask.
-- Keep all changes aligned to `docs/*` contracts (or update contracts first).
-
-### 3) Consistency over cleverness
-
-- Prefer boring, modular designs.
-- Keep interfaces stable (connectors, providers, pipeline stages).
-- Avoid “one-off special cases” unless documented by an ADR.
-
-### 4) Due diligence checklist (before marking done)
-
-- **Correctness**: new behavior matches the relevant spec/ADR.
-- **Safety**: no secrets; no network calls or scraping defaults that violate ToS.
-- **Types**: TypeScript strict mode; no implicit `any`.
-- **Docs**: update docs when behavior/contracts change.
-- **Local dev**: keep Docker Compose and scripts coherent.
 
 ## Coding conventions (baseline)
 
