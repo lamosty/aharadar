@@ -70,6 +70,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
 
   const rawItems: unknown[] = [];
   const providerCalls: ProviderCallDraft[] = [];
+  let anySuccess = false;
 
   for (const query of queries) {
     const startedAt = new Date().toISOString();
@@ -102,6 +103,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
         status: "ok"
       });
 
+      anySuccess = true;
       rawItems.push({
         kind: "signal_query_response_v1",
         provider: config.provider,
@@ -143,14 +145,15 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
     }
   }
 
-  // Cursor: advance time-based cursor to the window end.
-  const nextCursor = { ...params.cursor, since_time: params.windowEnd };
+  // Cursor: only advance if at least one provider call succeeded.
+  const nextCursor = anySuccess ? { ...params.cursor, since_time: params.windowEnd } : { ...params.cursor };
 
   return {
     rawItems,
     nextCursor,
     meta: {
       providerCalls,
+      anySuccess,
       queryCount: queries.length,
       vendor: config.vendor,
       provider: config.provider

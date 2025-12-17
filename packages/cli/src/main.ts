@@ -43,7 +43,11 @@ function printHelp(): void {
 async function main(): Promise<void> {
   loadDotEnvIfPresent();
 
-  const [cmd, ...rest] = process.argv.slice(2);
+  let [cmd, ...rest] = process.argv.slice(2);
+  // pnpm often forwards the argument separator through to the script as a literal "--".
+  if (cmd === "--") {
+    [cmd, ...rest] = rest;
+  }
 
   let result: CommandResult;
   switch (cmd) {

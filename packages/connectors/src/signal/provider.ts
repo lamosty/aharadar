@@ -10,11 +10,18 @@ export interface GrokXSearchResult {
   response: unknown;
 }
 
-function requireEnv(name: string, value: string | undefined): string {
-  if (!value) {
-    throw new Error(`Missing required env var for signal search: ${name}`);
+function firstEnv(names: string[]): string | undefined {
+  for (const name of names) {
+    const value = process.env[name];
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
   }
-  return value;
+  return undefined;
+}
+
+function requireAnyEnv(names: string[]): string {
+  const value = firstEnv(names);
+  if (value) return value;
+  throw new Error(`Missing required env var for signal search: one of ${names.join(", ")}`);
 }
 
 /**
@@ -23,9 +30,19 @@ function requireEnv(name: string, value: string | undefined): string {
  * This preserves provider-agnosticism while still enabling a "real" integration when env is set.
  */
 export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearchResult> {
-  const endpoint = requireEnv("SIGNAL_GROK_ENDPOINT", process.env.SIGNAL_GROK_ENDPOINT);
-  const apiKey = requireEnv("SIGNAL_GROK_API_KEY", process.env.SIGNAL_GROK_API_KEY);
-  const model = process.env.SIGNAL_GROK_MODEL ?? "grok";
+  const apiKey = requireAnyEnv(["SIGNAL_GROK_API_KEY", "GROK_API_KEY"]);
+
+  const explicitEndpoint = firstEnv(["SIGNAL_GROK_ENDPOINT"]);
+  const baseUrl = firstEnv(["SIGNAL_GROK_BASE_URL", "GROK_BASE_URL"]);
+  const endpoint =
+    explicitEndpoint ?? (baseUrl ? `${baseUrl.replace(/\/+$/, "")}/v1/chat/completions` : undefined);
+  if (!endpoint) {
+    throw new Error(
+      "Missing required env var for signal search: SIGNAL_GROK_ENDPOINT (or SIGNAL_GROK_BASE_URL / GROK_BASE_URL)"
+    );
+  }
+
+  const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-latest";
 
   const startedAt = Date.now();
   const res = await fetch(endpoint, {
