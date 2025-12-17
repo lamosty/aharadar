@@ -6,6 +6,11 @@ export async function adminRunNowCommand(): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
   try {
+    // Temporary cost guardrails for local dev: cap signal search calls per run unless explicitly configured.
+    if (!process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN) {
+      process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN = "10";
+    }
+
     const user = await db.users.getOrCreateSingleton();
 
     const now = new Date();
@@ -64,6 +69,30 @@ export async function adminRunNowCommand(): Promise<void> {
           console.log(`- ${row.count}× ${row.error ?? "(no message)"}`);
         }
       }
+    }
+
+    // Signal usage summary (this run).
+    const signalOk = await db.query<{ calls: string; input_tokens: string; output_tokens: string; credits: string }>(
+      `select
+         count(*)::text as calls,
+         coalesce(sum(input_tokens), 0)::text as input_tokens,
+         coalesce(sum(output_tokens), 0)::text as output_tokens,
+         coalesce(sum(cost_estimate_credits), 0)::text as credits
+       from provider_calls
+       where user_id = $1
+         and purpose = 'signal_search'
+         and status = 'ok'
+         and meta_json->>'windowEnd' = $2`,
+      [user.id, windowEnd]
+    );
+    const okRow = signalOk.rows[0];
+    if (okRow) {
+      console.log("");
+      console.log("Signal usage (this run):");
+      console.log(`- calls: ${okRow.calls} (cap=${process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN})`);
+      console.log(`- tokens_in: ${okRow.input_tokens}`);
+      console.log(`- tokens_out: ${okRow.output_tokens}`);
+      console.log(`- cost_estimate_credits: ${okRow.credits}`);
     }
   } finally {
     await db.close();

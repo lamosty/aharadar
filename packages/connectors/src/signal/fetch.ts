@@ -3,6 +3,32 @@ import type { FetchParams, FetchResult, ProviderCallDraft } from "@aharadar/shar
 import type { SignalSourceConfig } from "./config";
 import { grokXSearch } from "./provider";
 
+let lastRunKey: string | null = null;
+let runSearchCallsUsed = 0;
+
+function parseIntEnv(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getRunKey(params: FetchParams): string {
+  // windowEnd comes from the pipeline run and is stable across all source fetches in the same run.
+  return `${params.userId}|${params.windowEnd}`;
+}
+
+function resetRunBudgetIfNeeded(params: FetchParams): void {
+  const runKey = getRunKey(params);
+  if (lastRunKey !== runKey) {
+    lastRunKey = runKey;
+    runSearchCallsUsed = 0;
+  }
+}
+
+function getMaxSearchCallsPerRun(): number | null {
+  return parseIntEnv(process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN);
+}
+
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((v) => typeof v === "string") as string[];
@@ -58,6 +84,9 @@ function estimateCreditsPerCall(): number {
 }
 
 export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
+  resetRunBudgetIfNeeded(params);
+  const maxSearchCallsPerRun = getMaxSearchCallsPerRun();
+
   const config = asConfig(params.config);
   const queries = compileQueries(config);
   if (queries.length === 0) return { rawItems: [], nextCursor: { ...params.cursor } };
@@ -73,8 +102,10 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
   let anySuccess = false;
 
   for (const query of queries) {
+    if (maxSearchCallsPerRun !== null && runSearchCallsUsed >= maxSearchCallsPerRun) break;
     const startedAt = new Date().toISOString();
     try {
+      runSearchCallsUsed += 1;
       // MVP: only grok vendor is implemented. Others can be added behind this switch without refactors.
       const result =
         config.vendor === "grok"
@@ -88,8 +119,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
         purpose: "signal_search",
         provider: config.provider,
         model: config.vendor,
-        inputTokens: 0,
-        outputTokens: 0,
+        inputTokens: result.inputTokens ?? 0,
+        outputTokens: result.outputTokens ?? 0,
         costEstimateCredits: estimateCreditsPerCall(),
         meta: {
           sourceId: params.sourceId,
@@ -98,7 +129,9 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
           endpoint: result.endpoint,
-          provider_model: result.model
+          provider_model: result.model,
+          maxTokens: process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS ?? null,
+          maxSearchCallsPerRun
         },
         startedAt,
         endedAt,
@@ -143,7 +176,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           windowEnd: params.windowEnd,
           endpoint,
           provider_model: providerModel,
-          requestId
+          requestId,
+          maxSearchCallsPerRun
         },
         startedAt,
         endedAt,

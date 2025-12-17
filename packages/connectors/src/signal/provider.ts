@@ -10,6 +10,8 @@ export interface GrokXSearchResult {
   response: unknown;
   endpoint: string;
   model: string;
+  inputTokens?: number;
+  outputTokens?: number;
 }
 
 function firstEnv(names: string[]): string | undefined {
@@ -60,6 +62,28 @@ function responseSnippet(response: unknown): string | null {
   }
 }
 
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function extractUsageTokens(response: unknown): { inputTokens: number; outputTokens: number } | null {
+  const obj = asRecord(response);
+  const usage = obj.usage;
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return null;
+  const u = usage as Record<string, unknown>;
+
+  const prompt = asNumber(u.prompt_tokens) ?? asNumber(u.input_tokens);
+  const completion = asNumber(u.completion_tokens) ?? asNumber(u.output_tokens);
+  if (prompt === null || completion === null) return null;
+  return { inputTokens: prompt, outputTokens: completion };
+}
+
+function parseIntEnv(name: string, value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * MVP implementation note:
  * We keep the provider call shape configurable via env and treat the response as opaque.
@@ -78,7 +102,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     );
   }
 
-  const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-latest";
+  const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
+  const maxTokens = parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ?? 600;
 
   const startedAt = Date.now();
   const res = await fetch(endpoint, {
@@ -89,13 +114,14 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     },
     body: JSON.stringify({
       model,
+      stream: false,
       // OpenAI-style chat body is commonly supported; if your endpoint expects a different shape,
       // point SIGNAL_GROK_ENDPOINT at a compatible shim.
       messages: [
         {
           role: "system",
           content:
-            "You can access public X/Twitter search results. Return STRICT JSON. Schema: { results: [{ id?: string, created_at?: string, author?: string, text?: string, urls?: string[] }] }."
+            "Return STRICT JSON only (no markdown, no prose). Schema: { results: Array<{ id: string|null, created_at: string|null, author: string|null, text_excerpt: string|null, urls: string[] }> }. Constraints: results.length <= limit; text_excerpt <= 200 chars; urls length <= 5; unknown fields => null."
         },
         {
           role: "user",
@@ -107,7 +133,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
           })
         }
       ],
-      temperature: 0
+      temperature: 0,
+      max_tokens: maxTokens
     })
   });
 
@@ -137,7 +164,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     throw err;
   }
 
-  return { response, endpoint, model };
+  const usage = extractUsageTokens(response);
+  return { response, endpoint, model, inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens };
 }
 
 
