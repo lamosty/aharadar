@@ -189,6 +189,11 @@ export async function ingestEnabledSources(params: {
 
       // Accounting hooks (e.g. signal search).
       const providerCalls = extractProviderCalls(fetchResult.meta);
+      const providerCallErrorCount = providerCalls.filter((c) => c.status === "error").length;
+      if (providerCallErrorCount > 0) {
+        baseResult.errors += providerCallErrorCount;
+        totals.errors += providerCallErrorCount;
+      }
       for (const call of providerCalls) {
         try {
           await params.db.providerCalls.insert(call);
