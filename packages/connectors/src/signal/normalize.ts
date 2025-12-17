@@ -108,7 +108,8 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
   return {
     title,
     bodyText,
-    canonicalUrl: urls[0] ?? null,
+    // Signals are "amplifiers" (not canonical content). Keep canonical_url null and store URLs in metadata.
+    canonicalUrl: null,
     sourceType: "signal",
     externalId,
     publishedAt: null,
@@ -118,6 +119,7 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       vendor,
       query,
       result_count: resultsObj && Array.isArray(resultsObj.results) ? resultsObj.results.length : null,
+      primary_url: urls[0] ?? null,
       extracted_urls: urls
     },
     raw: {
