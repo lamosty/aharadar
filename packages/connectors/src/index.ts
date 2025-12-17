@@ -1,4 +1,3 @@
-// Connector registry will live here.
-export {};
+export * from "./types";
 
 
