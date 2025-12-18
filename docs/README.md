@@ -15,6 +15,7 @@ This repo is currently **spec-first**. The goal is to lock down concrete MVP con
 8. `cli.md` — MVP review-queue UX + keybindings + commands.
 9. `api.md` — optional minimal HTTP API contract (if we expose it in MVP).
 10. `adr/*` — decisions and tradeoffs; where we lock choices.
+11. `sessions/*` — session recaps / audit log for AI-assisted development (handoff notes).
 
 ## Status legend
 
@@ -47,5 +48,3 @@ These are the key “we can’t code until this is decided” items.
 - **Embedding model**: “small” (cheaper) vs “large” (better retrieval)
 
 If you tell me your preferences on the above, I’ll update the ADRs to **Accepted** and remove alternatives.
-
-

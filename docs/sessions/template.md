@@ -1,14 +1,20 @@
 # Session recap (template)
 
 > Notes:
-> - This is a **local-only** handoff doc (gitignored).
-> - A “session” can span hours; capture enough context for the next agent to continue without guesswork.
+> - This is a handoff doc intended to be **committed**.
+> - A “session” is one AI chat/window (it can span hours/days).
 > - Prefer concrete facts (file paths, commands, decisions, error messages) over prose.
+> - Never include secrets (API keys, tokens, full `.env` values). Use `<REDACTED>` if needed.
 
 ## Session header
 
-- **Date/time (local)**:
+- **Recap filename**: `docs/sessions/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
+- **Agent/tool**: (Cursor / Claude Code / etc.)
+- **Agent model**: (e.g. GPT-5.2, Claude Sonnet, etc.)
+- **Date/time (local)**: (when this recap was written)
+- **Session span**: (when work started → ended; can span days)
 - **Repo branch**:
+- **Commit range (optional)**: `<start-sha>..HEAD` (or list key commits below)
 - **Context**: (why we’re writing this recap now)
 
 ## Goal(s) of the session
@@ -18,7 +24,7 @@
 
 ## What changed (high level)
 
-Summarize the meaningful outcomes. (This can be more than 5 bullets if the session was long.)
+Summarize meaningful outcomes (can be long if the session was long).
 
 - …
 
@@ -38,14 +44,11 @@ Summarize the meaningful outcomes. (This can be more than 5 bullets if the sessi
 - **Run-now / CLI**:
   - `pnpm dev:cli -- admin:run-now`
   - `pnpm dev:cli -- inbox`
-- **DB inspection** (optional):
-  - include exact `psql` queries if useful
 - **Key env vars** (names only; no secrets):
   - `DATABASE_URL=...`
   - `REDIS_URL=...`
   - `MONTHLY_CREDITS=...`
   - `DEFAULT_TIER=...`
-  - signal provider vars if relevant (e.g. `GROK_BASE_URL`, `GROK_API_KEY`, `SIGNAL_GROK_MODEL`, etc.)
 
 ## Relevant contracts (what we relied on)
 
