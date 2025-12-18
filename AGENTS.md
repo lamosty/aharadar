@@ -10,6 +10,7 @@ You are an AI coding agent working in this repository.
 - Read this file fully.
 - Read the relevant spec/contract docs first (see **Where to read (minimal)** below).
 - Confirm behavior against `docs/*` (or update the docs first if you are changing a contract).
+- If present, read the latest local handoff recap in `docs/_session/` before starting work.
 
 **How to work (non-negotiable)**
 - Work in **commit-sized** chunks (small, reviewable, coherent).
@@ -26,6 +27,7 @@ You are an AI coding agent working in this repository.
 **When you finish**
 - Output a short summary of what changed.
 - Suggest a **conventional commit message** (and optional 2–3 bullet body).
+- If chat context is running low, write a local handoff recap to `docs/_session/` using `docs/_session/template.md` (recaps are gitignored; don’t commit them).
 
 ## Fast context (TL;DR)
 
@@ -123,5 +125,3 @@ When starting a new chat in Cursor, include:
 - “Read `@AGENTS.md` first and follow it.”
 - “Task: <describe task>”
 - “Constraints: keep topic-agnostic; provider-agnostic; credits budgets; commit-sized changes.”
-
-

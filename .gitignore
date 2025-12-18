@@ -49,3 +49,7 @@ Thumbs.db
 docker-data/
 
 
+# Local AI session recaps (kept out of git)
+docs/_session/**
+!docs/_session/README.md
+!docs/_session/template.md
