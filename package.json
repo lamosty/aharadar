@@ -12,6 +12,8 @@
     "dev:all": "pnpm -r dev",
     "dev:cli": "pnpm build:cli && node packages/cli/dist/main.js",
     "dev:services": "./scripts/dev.sh",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
     "migrate": "./scripts/migrate.sh",
     "reset": "./scripts/reset.sh",
     "logs": "./scripts/logs.sh",
@@ -21,8 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "prettier": "^3.0.0",
     "typescript": "^5.7.0"
   }
 }
-
-

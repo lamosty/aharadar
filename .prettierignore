@@ -1,0 +1,14 @@
+# Dependencies / build outputs
+node_modules/
+dist/
+build/
+out/
+
+# pnpm / lockfiles
+pnpm-lock.yaml
+
+# Generated / caches
+*.tsbuildinfo
+.turbo/
+.nx/
+.cache/
