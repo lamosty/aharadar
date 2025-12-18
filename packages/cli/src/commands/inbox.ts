@@ -41,5 +41,3 @@ export async function inboxCommand(): Promise<void> {
     await db.close();
   }
 }
-
-

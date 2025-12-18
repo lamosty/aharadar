@@ -189,5 +189,3 @@ export function createContentItemsRepo(db: Queryable) {
     }
   };
 }
-
-

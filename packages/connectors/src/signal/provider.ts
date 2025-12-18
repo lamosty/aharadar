@@ -308,5 +308,3 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     structuredError
   };
 }
-
-

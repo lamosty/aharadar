@@ -31,5 +31,3 @@ export interface FetchResult {
   nextCursor: Cursor;
   meta?: FetchMeta;
 }
-
-

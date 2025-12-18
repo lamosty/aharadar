@@ -36,5 +36,3 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     ingest
   };
 }
-
-

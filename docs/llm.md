@@ -175,5 +175,3 @@ For every LLM call:
   - `purpose`, `provider`, `model`
   - tokens in/out
   - cost estimate in credits (best effort; exact pricing can be configured)
-
-

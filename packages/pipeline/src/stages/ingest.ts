@@ -284,5 +284,3 @@ export async function ingestEnabledSources(params: {
 
   return { perSource, totals };
 }
-
-

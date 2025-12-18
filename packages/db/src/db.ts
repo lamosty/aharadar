@@ -75,5 +75,3 @@ export function createDb(databaseUrl: string): Db {
     }
   };
 }
-
-

@@ -50,5 +50,3 @@ export function createProviderCallsRepo(db: Queryable) {
     }
   };
 }
-
-
