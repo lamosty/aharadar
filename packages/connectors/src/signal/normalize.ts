@@ -13,7 +13,8 @@ function asString(value: unknown): string | null {
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(text) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    if (Array.isArray(parsed)) return { results: parsed };
+    if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
     return null;
   } catch {
     return null;
@@ -22,6 +23,28 @@ function tryParseJsonObject(text: string): Record<string, unknown> | null {
 
 function extractOpenAIContent(response: unknown): string | null {
   const rec = asRecord(response);
+  const outputText = rec.output_text;
+  if (typeof outputText === "string" && outputText.length > 0) return outputText;
+
+  const output = rec.output;
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      const it = asRecord(item);
+      if (it.type === "message" && it.role === "assistant") {
+        const content = it.content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            const p = asRecord(part);
+            if (p.type === "output_text" || p.type === "text") {
+              const text = p.text;
+              if (typeof text === "string" && text.length > 0) return text;
+            }
+          }
+        }
+      }
+    }
+  }
+
   const choices = rec.choices;
   if (!Array.isArray(choices) || choices.length === 0) return null;
   const first = asRecord(choices[0]);
@@ -37,9 +60,9 @@ function extractResultsObject(response: unknown): Record<string, unknown> | null
     if (obj) return obj;
   }
 
-  // Otherwise, treat response itself as a JSON object.
+  // Otherwise, only treat response itself as a JSON object if it already looks like our {results:[...]} schema.
   const rec = asRecord(response);
-  return Object.keys(rec).length > 0 ? rec : null;
+  return Array.isArray(rec.results) ? rec : null;
 }
 
 function extractSnippets(resultsObj: Record<string, unknown>): string[] {
@@ -67,6 +90,9 @@ function extractUrls(resultsObj: Record<string, unknown>): string[] {
 
   for (const entry of results) {
     const r = asRecord(entry);
+    const singleUrl = asString(r.url);
+    if (singleUrl && looksLikeUrl(singleUrl)) out.push(singleUrl);
+
     const urls = r.urls;
     if (Array.isArray(urls)) {
       for (const u of urls) {
@@ -75,6 +101,10 @@ function extractUrls(resultsObj: Record<string, unknown>): string[] {
         if (out.length >= 20) return out;
       }
     }
+
+    const text = asString(r.text);
+    if (text && looksLikeUrl(text)) out.push(text);
+    if (out.length >= 20) return out;
   }
   return out;
 }

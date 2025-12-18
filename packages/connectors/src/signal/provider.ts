@@ -3,6 +3,15 @@ export interface GrokXSearchParams {
   limit: number;
   sinceId?: string;
   sinceTime?: string;
+  /**
+   * If provided, enable the x_search tool constrained to these handles.
+   * Handles must be without "@".
+   */
+  allowedXHandles?: string[];
+  /** ISO timestamp */
+  fromDate?: string;
+  /** ISO timestamp */
+  toDate?: string;
 }
 
 export interface GrokXSearchResult {
@@ -12,6 +21,12 @@ export interface GrokXSearchResult {
   model: string;
   inputTokens?: number;
   outputTokens?: number;
+  /**
+   * Best-effort parse of the assistant's strict-JSON output (Responses or Chat Completions).
+   * When present, callers can inspect `results`/`error` without re-parsing.
+   */
+  assistantJson?: Record<string, unknown>;
+  structuredError?: { code: string; message: string | null };
 }
 
 function firstEnv(names: string[]): string | undefined {
@@ -52,20 +67,52 @@ function extractErrorDetail(response: unknown): string | null {
   return null;
 }
 
-function extractOpenAIContent(response: unknown): string | null {
+function extractAssistantContent(response: unknown): string | null {
   const rec = asRecord(response);
+
+  // OpenAI-compatible Responses API: output_text is a convenience field.
+  const outputText = rec.output_text;
+  if (typeof outputText === "string" && outputText.length > 0) return outputText;
+
+  // Responses API: output[] may contain an assistant message with output_text parts.
+  const output = rec.output;
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      const it = asRecord(item);
+      if (it.type === "message" && it.role === "assistant") {
+        const content = it.content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            const p = asRecord(part);
+            if (p.type === "output_text" || p.type === "text") {
+              const text = p.text;
+              if (typeof text === "string" && text.length > 0) return text;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // OpenAI-compatible Chat Completions API.
   const choices = rec.choices;
-  if (!Array.isArray(choices) || choices.length === 0) return null;
-  const first = asRecord(choices[0]);
-  const msg = asRecord(first.message);
-  const content = msg.content;
-  return typeof content === "string" && content.length > 0 ? content : null;
+  if (Array.isArray(choices) && choices.length > 0) {
+    const first = asRecord(choices[0]);
+    const msg = asRecord(first.message);
+    const content = msg.content;
+    if (typeof content === "string" && content.length > 0) return content;
+  }
+
+  return null;
 }
 
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(text) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    if (Array.isArray(parsed)) {
+      return { results: parsed };
+    }
+    if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
     return null;
   } catch {
     return null;
@@ -73,7 +120,7 @@ function tryParseJsonObject(text: string): Record<string, unknown> | null {
 }
 
 function extractStructuredErrorCode(response: unknown): { code: string; message: string | null } | null {
-  const content = extractOpenAIContent(response);
+  const content = extractAssistantContent(response);
   if (!content) return null;
   const obj = tryParseJsonObject(content);
   if (!obj) return null;
@@ -83,6 +130,12 @@ function extractStructuredErrorCode(response: unknown): { code: string; message:
   const message = (err as Record<string, unknown>).message;
   if (typeof code !== "string" || code.length === 0) return null;
   return { code, message: typeof message === "string" && message.length > 0 ? message : null };
+}
+
+function extractAssistantJson(response: unknown): Record<string, unknown> | null {
+  const content = extractAssistantContent(response);
+  if (!content) return null;
+  return tryParseJsonObject(content);
 }
 
 function responseSnippet(response: unknown): string | null {
@@ -117,6 +170,27 @@ function parseIntEnv(name: string, value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function withV1(baseUrl: string, pathAfterV1: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  if (trimmed.endsWith("/v1")) return `${trimmed}${pathAfterV1}`;
+  return `${trimmed}/v1${pathAfterV1}`;
+}
+
+function looksLikeChatCompletionsEndpoint(endpoint: string): boolean {
+  return endpoint.includes("/chat/completions");
+}
+
+function toYYYYMMDD(value: string | undefined): string | null {
+  if (!value) return null;
+  // Accept already-normalized YYYY-MM-DD.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  // ISO timestamps: YYYY-MM-DDTHH:mm:ssZ
+  if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return value.slice(0, 10);
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * MVP implementation note:
  * We keep the provider call shape configurable via env and treat the response as opaque.
@@ -127,48 +201,72 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
 
   const explicitEndpoint = firstEnv(["SIGNAL_GROK_ENDPOINT"]);
   const baseUrl = firstEnv(["SIGNAL_GROK_BASE_URL", "GROK_BASE_URL"]);
-  const endpoint =
-    explicitEndpoint ?? (baseUrl ? `${baseUrl.replace(/\/+$/, "")}/v1/chat/completions` : undefined);
+  const enableXSearchTool = (firstEnv(["SIGNAL_GROK_ENABLE_X_SEARCH_TOOL"]) ?? "1").toLowerCase() !== "0";
+  const responsesEndpointDefault = baseUrl ? withV1(baseUrl, "/responses") : undefined;
+
+  let endpoint = explicitEndpoint ?? responsesEndpointDefault;
   if (!endpoint) {
     throw new Error(
       "Missing required env var for signal search: SIGNAL_GROK_ENDPOINT (or SIGNAL_GROK_BASE_URL / GROK_BASE_URL)"
     );
   }
+  // Always prefer Responses API. If endpoint points to chat/completions, auto-swap to /responses.
+  if (looksLikeChatCompletionsEndpoint(endpoint)) {
+    if (endpoint.includes("/v1/chat/completions")) {
+      endpoint = endpoint.replace("/v1/chat/completions", "/v1/responses");
+    } else if (responsesEndpointDefault) {
+      endpoint = responsesEndpointDefault;
+    }
+  }
 
   const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
   const maxTokens = parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ?? 600;
 
+  const fromDate = toYYYYMMDD(params.fromDate ?? params.sinceTime);
+  const toDate = toYYYYMMDD(params.toDate);
+
+  const tools = enableXSearchTool
+    ? [
+        {
+          type: "x_search",
+          ...(params.allowedXHandles && params.allowedXHandles.length > 0 ? { allowed_x_handles: params.allowedXHandles } : {}),
+          ...(fromDate ? { from_date: fromDate } : {}),
+          ...(toDate ? { to_date: toDate } : {})
+        }
+      ]
+    : undefined;
+
   const startedAt = Date.now();
+  const body = {
+    model,
+    // OpenAI-compatible Responses API shape.
+    input: [
+      {
+        role: "system",
+        content:
+          "Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: \"YYYY-MM-DD\", url: \"https://x.com/...\", text: \"...\" }. If there are no results, return []. Never fabricate posts."
+      },
+      {
+        role: "user",
+        content:
+          `Search X for query: ${JSON.stringify(params.query)} (mode: Latest). ` +
+          `Return at most ${params.limit} results as JSON. ` +
+          `If a tool is available, use it to fetch real posts; do not guess.`
+      }
+    ],
+    ...(tools ? { tools } : {}),
+    temperature: 0,
+    stream: false,
+    max_output_tokens: maxTokens
+  };
+
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${apiKey}`
     },
-    body: JSON.stringify({
-      model,
-      stream: false,
-      // OpenAI-style chat body is commonly supported; if your endpoint expects a different shape,
-      // point SIGNAL_GROK_ENDPOINT at a compatible shim.
-      messages: [
-        {
-          role: "system",
-          content:
-            "Return STRICT JSON only (no markdown, no prose). Schema: { results: Array<{ id: string|null, created_at: string|null, author: string|null, text_excerpt: string|null, urls: string[] }>, error?: { code: string, message?: string } }. Constraints: results.length <= limit; text_excerpt <= 200 chars; urls length <= 5; unknown fields => null. Never fabricate posts. If you cannot access live X/Twitter search results for this query, return results:[] and set error.code=\"no_live_x_access\"."
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            query: params.query,
-            limit: params.limit,
-            since_id: params.sinceId ?? null,
-            since_time: params.sinceTime ?? null
-          })
-        }
-      ],
-      temperature: 0,
-      max_tokens: maxTokens
-    })
+    body: JSON.stringify(body)
   });
 
   const endedAt = Date.now();
@@ -197,22 +295,18 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     throw err;
   }
 
-  // If the model returns a structured "no_live_x_access" error, treat as an error so we don't silently store empty signals.
-  const structured = extractStructuredErrorCode(response);
-  if (structured?.code === "no_live_x_access") {
-    const ms = endedAt - startedAt;
-    const err = new Error(
-      `Signal provider reported no_live_x_access after ${ms}ms${structured.message ? `: ${structured.message}` : ""}`
-    );
-    (err as unknown as Record<string, unknown>).statusCode = 403;
-    (err as unknown as Record<string, unknown>).endpoint = endpoint;
-    (err as unknown as Record<string, unknown>).model = model;
-    (err as unknown as Record<string, unknown>).responseSnippet = responseSnippet(response);
-    throw err;
-  }
-
   const usage = extractUsageTokens(response);
-  return { response, endpoint, model, inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens };
+  const assistantJson = extractAssistantJson(response) ?? undefined;
+  const structuredError = extractStructuredErrorCode(response) ?? undefined;
+  return {
+    response,
+    endpoint,
+    model,
+    inputTokens: usage?.inputTokens,
+    outputTokens: usage?.outputTokens,
+    assistantJson,
+    structuredError
+  };
 }
 
 
