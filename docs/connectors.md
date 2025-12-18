@@ -370,11 +370,33 @@ Notes (Proposed):
 ```
 
 **Normalize**
-- `external_id`: provider-native stable id if present; else stable synthetic id
-- `canonical_url`: may be null; if URLs exist in results, store them in metadata (and optionally choose a “primary” URL)
-- `title`: optional short label
-- `body_text`: summarized “signal” text (what’s happening + why it matters)
-- `metadata_json`: provider id, query, extracted URLs, extracted entities, representative snippets
+- **Signal output contract (MVP)**: the `signal` connector emits **signal bundles** — one `ContentItemDraft` per `(source_id, query, day_bucket)`.
+  - `day_bucket` is derived from the pipeline `windowEnd` date (`YYYY-MM-DD`).
+  - This keeps signals **cheap and reviewable** while still retaining post-level evidence for later ranking/triage.
+
+Field mapping:
+- `external_id`: deterministic synthetic id (sha256 of `provider|vendor|query|day_bucket`)
+- `canonical_url`: **null** (signals are amplifiers; do not claim canonical content)
+- `title`: `Signal: <query>` (or other short label)
+- `body_text`: short, human-readable evidence (e.g. bullet list of representative post snippets)
+
+Required `metadata_json` keys (MVP):
+- `provider`: signal provider id (e.g. `"x_search"`)
+- `vendor`: vendor adapter id (e.g. `"grok"`)
+- `query`: the compiled query string used for the call
+- `day_bucket`: `YYYY-MM-DD` (from `windowEnd`)
+- `window_start`: pipeline window start (ISO string)
+- `window_end`: pipeline window end (ISO string)
+- `result_count`: number of results in `signal_results` (int)
+- `signal_results`: array of objects `{ date, url, text }` (top N results returned by the provider)
+- `extracted_urls`: URLs extracted from the `signal_results[].text` fields (best-effort)
+- `primary_url`: “best click target” URL (prefer `extracted_urls[0]`, else first `signal_results[].url`, else null)
+
+`raw_json` retention (dev-friendly):
+- May include the full provider response payload for debugging (retention policy TBD for prod; see `docs/data-model.md`).
+
+Debugging:
+- Use the CLI `admin:signal-debug` command to view the latest stored signal bundles and their `signal_results` without running manual DB queries.
 
 **Future: “X posts” as canonical connector**
 
@@ -383,5 +405,3 @@ If/when X provides a normal pay-as-you-go REST API suitable for canonical ingest
 - It would fetch posts/timelines like other canonical connectors (stable IDs, URLs), and it can coexist with `signal`.
 
 This requires **no refactor** if we keep the connector interface stable; it’s just a new connector module and source type.
-
-

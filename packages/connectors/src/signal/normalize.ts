@@ -10,6 +10,16 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function asIsoDate(value: unknown): string | null {
+  const s = asString(value);
+  if (!s) return null;
+  // Strict day buckets only for now (provider contract).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Accept ISO timestamps by truncating date prefix.
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
+  return null;
+}
+
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(text) as unknown;
@@ -83,28 +93,35 @@ function looksLikeUrl(s: string): boolean {
   return s.startsWith("http://") || s.startsWith("https://");
 }
 
-function extractUrls(resultsObj: Record<string, unknown>): string[] {
-  const out: string[] = [];
+function extractSignalResults(resultsObj: Record<string, unknown>): Array<{ date: string | null; url: string | null; text: string | null }> {
   const results = resultsObj.results;
-  if (!Array.isArray(results)) return out;
-
+  if (!Array.isArray(results)) return [];
+  const out: Array<{ date: string | null; url: string | null; text: string | null }> = [];
   for (const entry of results) {
     const r = asRecord(entry);
-    const singleUrl = asString(r.url);
-    if (singleUrl && looksLikeUrl(singleUrl)) out.push(singleUrl);
+    out.push({
+      date: asIsoDate(r.date),
+      url: asString(r.url),
+      text: asString(r.text_excerpt) ?? asString(r.text)
+    });
+    // Hard bound for storage safety (provider already limits, but keep this defensive).
+    if (out.length >= 50) break;
+  }
+  return out;
+}
 
-    const urls = r.urls;
-    if (Array.isArray(urls)) {
-      for (const u of urls) {
-        const s = asString(u);
-        if (s && looksLikeUrl(s)) out.push(s);
-        if (out.length >= 20) return out;
-      }
-    }
-
-    const text = asString(r.text);
-    if (text && looksLikeUrl(text)) out.push(text);
-    if (out.length >= 20) return out;
+function extractUrlsFromText(text: string): string[] {
+  // Best-effort URL extraction (MVP): http/https substrings, with minimal trailing punctuation cleanup.
+  const matches = text.match(/https?:\/\/[^\s"'<>]+/g) ?? [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of matches) {
+    const cleaned = raw.replace(/[)\].,;!?]+$/g, "");
+    if (!looksLikeUrl(cleaned)) continue;
+    if (seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+    if (out.length >= 100) break;
   }
   return out;
 }
@@ -121,9 +138,35 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
   const vendor = asString(rec.vendor) ?? "grok";
 
   const response = rec.response;
-  const resultsObj = extractResultsObject(response);
+  const assistantJson = asRecord(rec.assistantJson);
+  const resultsObj = Array.isArray(assistantJson.results) ? assistantJson : extractResultsObject(response);
   const snippets = resultsObj ? extractSnippets(resultsObj) : [];
-  const urls = resultsObj ? extractUrls(resultsObj) : [];
+  const signalResults = resultsObj ? extractSignalResults(resultsObj) : [];
+
+  const postUrls: string[] = [];
+  const postUrlSet = new Set<string>();
+  for (const r of signalResults) {
+    if (!r.url || !looksLikeUrl(r.url)) continue;
+    if (postUrlSet.has(r.url)) continue;
+    postUrlSet.add(r.url);
+    postUrls.push(r.url);
+  }
+
+  const extractedUrls: string[] = [];
+  const extractedUrlSet = new Set<string>();
+  for (const r of signalResults) {
+    if (!r.text) continue;
+    for (const u of extractUrlsFromText(r.text)) {
+      if (postUrlSet.has(u)) continue;
+      if (extractedUrlSet.has(u)) continue;
+      extractedUrlSet.add(u);
+      extractedUrls.push(u);
+      if (extractedUrls.length >= 100) break;
+    }
+    if (extractedUrls.length >= 100) break;
+  }
+
+  const primaryUrl = extractedUrls[0] ?? postUrls[0] ?? null;
 
   const title = `Signal: ${query}`;
   const bodyText =
@@ -132,7 +175,7 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       : null;
 
   // Deterministic: one item per (query, day-bucket).
-  const dayBucket = params.windowStart.slice(0, 10); // YYYY-MM-DD
+  const dayBucket = params.windowEnd.slice(0, 10); // YYYY-MM-DD
   const externalId = sha256Hex([provider, vendor, query, dayBucket].join("|"));
 
   return {
@@ -148,18 +191,21 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       provider,
       vendor,
       query,
-      result_count: resultsObj && Array.isArray(resultsObj.results) ? resultsObj.results.length : null,
-      primary_url: urls[0] ?? null,
-      extracted_urls: urls
+      day_bucket: dayBucket,
+      window_start: params.windowStart,
+      window_end: params.windowEnd,
+      result_count: signalResults.length > 0 ? signalResults.length : resultsObj && Array.isArray(resultsObj.results) ? resultsObj.results.length : null,
+      signal_results: signalResults,
+      primary_url: primaryUrl,
+      extracted_urls: extractedUrls
     },
     raw: {
       kind: asString(rec.kind),
       query,
       provider,
       vendor,
+      assistantJson: Object.keys(assistantJson).length > 0 ? assistantJson : null,
       response
     }
   };
 }
-
-

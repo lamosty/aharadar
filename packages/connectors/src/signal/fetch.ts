@@ -176,7 +176,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
       anySuccess = true;
 
       // Don't store empty signal items; they create noisy inbox entries.
-      if (resultsCount && resultsCount > 0) {
+      // But do store unparseable responses so we can debug parsing/provider changes without manual DB queries.
+      if (resultsCount === null || (resultsCount && resultsCount > 0)) {
         rawItems.push({
           kind: "signal_query_response_v1",
           provider: config.provider,
@@ -187,6 +188,10 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           sinceTime: sinceTime ?? null,
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
+          assistantJson: result.assistantJson ?? null,
+          structuredError: result.structuredError ?? null,
+          endpoint: result.endpoint,
+          providerModel: result.model,
           response: result.response
         });
       }
@@ -248,5 +253,3 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
     }
   };
 }
-
-

@@ -2,6 +2,20 @@ import { createDb } from "@aharadar/db";
 import { runPipelineOnce } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  return {};
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function truncate(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars)}…`;
+}
+
 export async function adminRunNowCommand(): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
@@ -107,4 +121,200 @@ export function adminBudgetsCommand(): void {
   console.log(`- defaultTier: ${env.defaultTier}`);
 }
 
+type SignalDebugOptions = {
+  limit: number;
+  json: boolean;
+  raw: boolean;
+};
 
+function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
+  let limit = 3;
+  let json = false;
+  let raw = false;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--json") {
+      json = true;
+      continue;
+    }
+    if (a === "--raw") {
+      raw = true;
+      continue;
+    }
+    if (a === "--limit") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (Number.isFinite(parsed) && parsed > 0) limit = parsed;
+      i += 1;
+      continue;
+    }
+  }
+
+  return { limit, json, raw };
+}
+
+type SignalResult = { date: string | null; url: string | null; text: string | null };
+
+function asSignalResults(value: unknown): SignalResult[] {
+  if (!Array.isArray(value)) return [];
+  const out: SignalResult[] = [];
+  for (const entry of value) {
+    const r = asRecord(entry);
+    const date = asString(r.date);
+    const url = asString(r.url);
+    const text = asString(r.text);
+    out.push({ date, url, text });
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
+export async function adminSignalDebugCommand(args: string[]): Promise<void> {
+  const opts = parseSignalDebugArgs(args);
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getFirstUser();
+    if (!user) {
+      console.log("No user found yet. Run `admin:run-now` after creating sources.");
+      return;
+    }
+
+    const signalItems = await db.query<{
+      id: string;
+      title: string | null;
+      body_text: string | null;
+      fetched_at: string;
+      metadata_json: Record<string, unknown>;
+      raw_json: unknown | null;
+    }>(
+      `select id, title, body_text, fetched_at, metadata_json, raw_json
+       from content_items
+       where user_id = $1
+         and deleted_at is null
+         and source_type = 'signal'
+       order by fetched_at desc
+       limit $2`,
+      [user.id, opts.limit]
+    );
+
+    const providerCalls = await db.query<{
+      id: string;
+      started_at: string;
+      ended_at: string | null;
+      status: string;
+      input_tokens: number;
+      output_tokens: number;
+      cost_estimate_credits: string;
+      meta_json: Record<string, unknown>;
+      error_json: Record<string, unknown> | null;
+    }>(
+      `select
+         id,
+         started_at,
+         ended_at,
+         status,
+         input_tokens,
+         output_tokens,
+         cost_estimate_credits::text as cost_estimate_credits,
+         meta_json,
+         error_json
+       from provider_calls
+       where user_id = $1
+         and purpose = 'signal_search'
+       order by started_at desc
+       limit $2`,
+      [user.id, Math.max(10, opts.limit * 5)]
+    );
+
+    const normalized = signalItems.rows.map((row) => {
+      const meta = row.metadata_json ?? {};
+      const signalResults = asSignalResults((meta as Record<string, unknown>).signal_results);
+      return {
+        id: row.id,
+        fetchedAt: row.fetched_at,
+        title: row.title,
+        query: asString((meta as Record<string, unknown>).query),
+        dayBucket: asString((meta as Record<string, unknown>).day_bucket),
+        windowStart: asString((meta as Record<string, unknown>).window_start),
+        windowEnd: asString((meta as Record<string, unknown>).window_end),
+        resultCount: (meta as Record<string, unknown>).result_count,
+        primaryUrl: asString((meta as Record<string, unknown>).primary_url),
+        extractedUrls: Array.isArray((meta as Record<string, unknown>).extracted_urls)
+          ? ((meta as Record<string, unknown>).extracted_urls as unknown[]).filter((u) => typeof u === "string")
+          : [],
+        signalResults,
+        bodyText: row.body_text,
+        raw: opts.raw ? row.raw_json : undefined
+      };
+    });
+
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            userId: user.id,
+            generatedAt: new Date().toISOString(),
+            signalItems: normalized,
+            providerCalls: providerCalls.rows
+          },
+          null,
+          2
+        )
+      );
+      return;
+    }
+
+    console.log(`Signal debug (user=${user.id}, latest signal items=${normalized.length}):`);
+
+    for (const item of normalized) {
+      const q = item.query ?? "(unknown query)";
+      const rc = item.resultCount ?? item.signalResults.length;
+      const p = item.primaryUrl ? ` primary_url=${item.primaryUrl}` : "";
+      console.log(``);
+      console.log(`- ${item.id} fetched_at=${item.fetchedAt} day=${item.dayBucket ?? "?"} results=${rc} query=${JSON.stringify(q)}${p}`);
+
+      if (item.extractedUrls.length > 0) {
+        const preview = item.extractedUrls.slice(0, 10);
+        const suffix = item.extractedUrls.length > preview.length ? ` (+${item.extractedUrls.length - preview.length} more)` : "";
+        console.log(`  extracted_urls (${item.extractedUrls.length}): ${preview.join(" ")}${suffix}`);
+      }
+
+      if (item.signalResults.length > 0) {
+        console.log(`  signal_results (${item.signalResults.length}):`);
+        for (let i = 0; i < item.signalResults.length; i += 1) {
+          const r = item.signalResults[i]!;
+          const date = r.date ?? "?";
+          const url = r.url ?? "(no url)";
+          const text = r.text ? truncate(r.text.replaceAll("\n", " ").trim(), 240) : "(no text)";
+          console.log(`    ${i + 1}. ${date} ${url}`);
+          console.log(`       ${text}`);
+        }
+      } else {
+        console.log("  (no parsed signal_results on this item; try re-running ingestion or use --raw)");
+      }
+
+      if (opts.raw) {
+        console.log("  raw_json:");
+        console.log(`    ${truncate(JSON.stringify(item.raw ?? null), 2_000)}`);
+      }
+    }
+
+    if (providerCalls.rows.length > 0) {
+      console.log("");
+      console.log(`Latest provider_calls (purpose='signal_search', showing ${providerCalls.rows.length}):`);
+      for (const c of providerCalls.rows) {
+        const meta = c.meta_json ?? {};
+        const query = asString((meta as Record<string, unknown>).query) ?? "(unknown query)";
+        const resultsCount = (meta as Record<string, unknown>).results_count;
+        const winEnd = asString((meta as Record<string, unknown>).windowEnd);
+        console.log(
+          `- ${c.started_at} status=${c.status} query=${JSON.stringify(query)} results=${resultsCount ?? "?"} tokens_in=${c.input_tokens} tokens_out=${c.output_tokens} credits=${c.cost_estimate_credits} windowEnd=${winEnd ?? "?"}`
+        );
+      }
+    }
+  } finally {
+    await db.close();
+  }
+}

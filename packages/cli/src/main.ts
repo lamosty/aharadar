@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { inboxCommand } from "./commands/inbox";
 import { reviewCommand } from "./commands/review";
 import { searchCommand } from "./commands/search";
-import { adminBudgetsCommand, adminRunNowCommand } from "./commands/admin";
+import { adminBudgetsCommand, adminRunNowCommand, adminSignalDebugCommand } from "./commands/admin";
 
 type CommandResult = void | Promise<void>;
 
@@ -38,6 +38,7 @@ function printHelp(): void {
   console.log("  search <query>");
   console.log("  admin:run-now");
   console.log("  admin:budgets");
+  console.log("  admin:signal-debug [--limit N] [--json] [--raw]");
 }
 
 async function main(): Promise<void> {
@@ -66,6 +67,9 @@ async function main(): Promise<void> {
     case "admin:budgets":
       result = adminBudgetsCommand();
       break;
+    case "admin:signal-debug":
+      result = adminSignalDebugCommand(rest);
+      break;
     default:
       printHelp();
       result = undefined;
@@ -79,5 +83,3 @@ main().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-
-
