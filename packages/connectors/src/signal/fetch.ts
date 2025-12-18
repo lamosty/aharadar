@@ -71,6 +71,17 @@ function compileQueries(config: SignalSourceConfig): string[] {
   return out;
 }
 
+function extractHandleFromFromQuery(query: string): string | null {
+  const m = query.trim().match(/^from:([A-Za-z0-9_]{1,30})(?:\s|$)/);
+  return m ? m[1] : null;
+}
+
+function getResultsCount(assistantJson: Record<string, unknown> | undefined): number | null {
+  if (!assistantJson) return null;
+  const results = assistantJson.results;
+  return Array.isArray(results) ? results.length : null;
+}
+
 function getCursorString(cursor: Record<string, unknown>, key: string): string | undefined {
   const v = cursor[key];
   return typeof v === "string" && v.length > 0 ? v : undefined;
@@ -93,6 +104,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
 
   const sinceId = getCursorString(params.cursor, "since_id") ?? getCursorString(params.cursor, "sinceId");
   const sinceTime = getCursorString(params.cursor, "since_time") ?? getCursorString(params.cursor, "sinceTime");
+  const fromDate = sinceTime ?? params.windowStart;
+  const toDate = params.windowEnd;
 
   const perQueryBudget = Math.max(1, Math.floor(params.limits.maxItems / queries.length));
   const limit = Math.max(1, Math.min(config.maxResultsPerQuery ?? 20, perQueryBudget));
@@ -106,13 +119,32 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
     const startedAt = new Date().toISOString();
     try {
       runSearchCallsUsed += 1;
+      const handle = extractHandleFromFromQuery(query);
       // MVP: only grok vendor is implemented. Others can be added behind this switch without refactors.
       const result =
         config.vendor === "grok"
-          ? await grokXSearch({ query, limit, sinceId, sinceTime })
-          : await grokXSearch({ query, limit, sinceId, sinceTime });
+          ? await grokXSearch({
+              query,
+              limit,
+              sinceId,
+              sinceTime,
+              allowedXHandles: handle ? [handle] : undefined,
+              fromDate,
+              toDate
+            })
+          : await grokXSearch({
+              query,
+              limit,
+              sinceId,
+              sinceTime,
+              allowedXHandles: handle ? [handle] : undefined,
+              fromDate,
+              toDate
+            });
 
       const endedAt = new Date().toISOString();
+      const resultsCount = getResultsCount(result.assistantJson);
+      const toolErrorCode = result.structuredError?.code ?? null;
 
       providerCalls.push({
         userId: params.userId,
@@ -130,6 +162,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           windowEnd: params.windowEnd,
           endpoint: result.endpoint,
           provider_model: result.model,
+          results_count: resultsCount,
+          tool_error_code: toolErrorCode,
           maxTokens: process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS ?? null,
           maxSearchCallsPerRun
         },
@@ -138,19 +172,24 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
         status: "ok"
       });
 
+      // Successful provider call (even if it returns 0 results) should advance cursors.
       anySuccess = true;
-      rawItems.push({
-        kind: "signal_query_response_v1",
-        provider: config.provider,
-        vendor: config.vendor,
-        query,
-        limit,
-        sinceId: sinceId ?? null,
-        sinceTime: sinceTime ?? null,
-        windowStart: params.windowStart,
-        windowEnd: params.windowEnd,
-        response: result.response
-      });
+
+      // Don't store empty signal items; they create noisy inbox entries.
+      if (resultsCount && resultsCount > 0) {
+        rawItems.push({
+          kind: "signal_query_response_v1",
+          provider: config.provider,
+          vendor: config.vendor,
+          query,
+          limit,
+          sinceId: sinceId ?? null,
+          sinceTime: sinceTime ?? null,
+          windowStart: params.windowStart,
+          windowEnd: params.windowEnd,
+          response: result.response
+        });
+      }
     } catch (err) {
       const endedAt = new Date().toISOString();
       const errObj = err && typeof err === "object" ? (err as Record<string, unknown>) : {};
@@ -189,7 +228,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
         }
       });
       // Auth/permission errors are almost certainly global (bad key / missing access). Don't spam one per query.
-      if (statusCode === 401 || statusCode === 403) break;
+      if (statusCode === 401 || statusCode === 403 || statusCode === 422) break;
       continue;
     }
   }

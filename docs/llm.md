@@ -27,6 +27,13 @@ To enable that:
 - routing chooses a `(provider, model)` pair from config, based on task + budget tier
 - every output records `provider` and `model` for audit/debugging, but downstream stages depend on **schema**, not model identity.
 
+### Implementation convention (recommended)
+
+When a provider offers an OpenAI-compatible **Responses API**, prefer it over Chat Completions:
+- we are not building a chat product; we want a single “request → structured output” contract
+- tool calling tends to evolve faster in Responses endpoints than legacy chat endpoints
+- treat Chat Completions as legacy/compat only (do not design new code around it)
+
 ## Router contract
 
 ```ts
