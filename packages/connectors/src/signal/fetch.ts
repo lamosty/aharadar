@@ -51,7 +51,7 @@ function asConfig(value: Record<string, unknown>): SignalSourceConfig {
     queries: asStringArray(value.queries),
     maxResultsPerQuery: asNumber(value.maxResultsPerQuery, 20),
     extractUrls: asBool(value.extractUrls, true),
-    extractEntities: asBool(value.extractEntities, true)
+    extractEntities: asBool(value.extractEntities, true),
   };
 }
 
@@ -60,7 +60,8 @@ function compileQueries(config: SignalSourceConfig): string[] {
 
   const out: string[] = [];
   const keywords = (config.keywords ?? []).filter((k) => k.trim().length > 0);
-  const kwExpr = keywords.length > 0 ? keywords.map((k) => `"${k.replaceAll('"', '\\"')}"`).join(" OR ") : null;
+  const kwExpr =
+    keywords.length > 0 ? keywords.map((k) => `"${k.replaceAll('"', '\\"')}"`).join(" OR ") : null;
 
   for (const account of (config.accounts ?? []).filter((a) => a.trim().length > 0)) {
     const prefix = `from:${account.trim()}`;
@@ -103,7 +104,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
   if (queries.length === 0) return { rawItems: [], nextCursor: { ...params.cursor } };
 
   const sinceId = getCursorString(params.cursor, "since_id") ?? getCursorString(params.cursor, "sinceId");
-  const sinceTime = getCursorString(params.cursor, "since_time") ?? getCursorString(params.cursor, "sinceTime");
+  const sinceTime =
+    getCursorString(params.cursor, "since_time") ?? getCursorString(params.cursor, "sinceTime");
   const fromDate = sinceTime ?? params.windowStart;
   const toDate = params.windowEnd;
 
@@ -130,7 +132,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
               sinceTime,
               allowedXHandles: handle ? [handle] : undefined,
               fromDate,
-              toDate
+              toDate,
             })
           : await grokXSearch({
               query,
@@ -139,7 +141,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
               sinceTime,
               allowedXHandles: handle ? [handle] : undefined,
               fromDate,
-              toDate
+              toDate,
             });
 
       const endedAt = new Date().toISOString();
@@ -165,11 +167,11 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
           maxTokens: process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS ?? null,
-          maxSearchCallsPerRun
+          maxSearchCallsPerRun,
         },
         startedAt,
         endedAt,
-        status: "ok"
+        status: "ok",
       });
 
       // Successful provider call (even if it returns 0 results) should advance cursors.
@@ -192,7 +194,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           structuredError: result.structuredError ?? null,
           endpoint: result.endpoint,
           providerModel: result.model,
-          response: result.response
+          response: result.response,
         });
       }
     } catch (err) {
@@ -221,7 +223,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
           endpoint,
           provider_model: providerModel,
           requestId,
-          maxSearchCallsPerRun
+          maxSearchCallsPerRun,
         },
         startedAt,
         endedAt,
@@ -229,8 +231,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
         error: {
           message: err instanceof Error ? err.message : String(err),
           statusCode,
-          responseSnippet
-        }
+          responseSnippet,
+        },
       });
       // Auth/permission errors are almost certainly global (bad key / missing access). Don't spam one per query.
       if (statusCode === 401 || statusCode === 403 || statusCode === 422) break;
@@ -249,7 +251,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
       anySuccess,
       queryCount: queries.length,
       vendor: config.vendor,
-      provider: config.provider
-    }
+      provider: config.provider,
+    },
   };
 }

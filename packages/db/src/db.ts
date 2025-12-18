@@ -31,20 +31,20 @@ function createContext(db: Queryable): DbContext {
     sources: createSourcesRepo(db),
     fetchRuns: createFetchRunsRepo(db),
     contentItems: createContentItemsRepo(db),
-    providerCalls: createProviderCallsRepo(db)
+    providerCalls: createProviderCallsRepo(db),
   };
 }
 
 function asQueryable(client: PoolClient): Queryable {
   return {
-    query: client.query.bind(client)
+    query: client.query.bind(client),
   };
 }
 
 export function createDb(databaseUrl: string): Db {
   const pool = new Pool({ connectionString: databaseUrl });
   const base: Queryable = {
-    query: pool.query.bind(pool)
+    query: pool.query.bind(pool),
   };
 
   const ctx = createContext(base);
@@ -72,6 +72,6 @@ export function createDb(databaseUrl: string): Db {
     },
     async close(): Promise<void> {
       await pool.end();
-    }
+    },
   };
 }

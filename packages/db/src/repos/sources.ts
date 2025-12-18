@@ -22,7 +22,10 @@ export function createSourcesRepo(db: Queryable) {
     },
 
     async updateCursor(sourceId: string, cursor: Record<string, unknown>): Promise<void> {
-      await db.query("update sources set cursor_json = $2::jsonb where id = $1", [sourceId, JSON.stringify(cursor)]);
-    }
+      await db.query("update sources set cursor_json = $2::jsonb where id = $1", [
+        sourceId,
+        JSON.stringify(cursor),
+      ]);
+    },
   };
 }

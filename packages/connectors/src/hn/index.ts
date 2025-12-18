@@ -5,7 +5,5 @@ import { normalizeHn } from "./normalize";
 export const hnConnector: Connector = {
   sourceType: "hn",
   fetch: fetchHn,
-  normalize: normalizeHn
+  normalize: normalizeHn,
 };
-
-

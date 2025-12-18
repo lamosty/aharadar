@@ -1,6 +1,7 @@
 # Aha Radar — Minimal HTTP API (Optional MVP)
 
 The MVP can be CLI-only, but a minimal API is useful for:
+
 - remote CLI usage (without DB credentials on the client)
 - optional minimal web viewer later
 - admin trigger endpoints (“run now”)
@@ -15,6 +16,7 @@ The MVP can be CLI-only, but a minimal API is useful for:
 ### `GET /api/health`
 
 Returns:
+
 ```json
 { "ok": true }
 ```
@@ -22,22 +24,26 @@ Returns:
 ### `GET /api/digests?from=<iso>&to=<iso>`
 
 Returns:
+
 - list of digests within `[from, to]` (default: recent)
 
 ### `GET /api/digests/:id`
 
 Returns:
+
 - digest metadata
 - ranked digest items (triage + summary if present)
 
 ### `GET /api/items/:id`
 
 Returns:
+
 - a `content_item` plus any cluster context (optional)
 
 ### `POST /api/feedback`
 
 Request:
+
 ```json
 {
   "contentItemId": "uuid",
@@ -47,6 +53,7 @@ Request:
 ```
 
 Response:
+
 ```json
 { "ok": true }
 ```
@@ -56,6 +63,7 @@ Response:
 Triggers a pipeline run (async) for a window.
 
 Request (Proposed):
+
 ```json
 {
   "mode": "normal",
@@ -65,9 +73,11 @@ Request (Proposed):
 ```
 
 `mode` values (Proposed):
+
 - `low` | `normal` | `high` | `catch_up`
 
 Response:
+
 ```json
 { "ok": true, "jobId": "string" }
 ```
@@ -75,6 +85,7 @@ Response:
 ### `GET /api/admin/config` and `PUT /api/admin/config`
 
 Optional MVP admin endpoints to manage:
+
 - sources
 - schedule
 - budgets
@@ -82,6 +93,7 @@ Optional MVP admin endpoints to manage:
 ## Error responses (Proposed)
 
 All errors return:
+
 ```json
 {
   "ok": false,
@@ -96,5 +108,3 @@ All errors return:
 
 - No multi-user auth/sessions.
 - No public exposure without a reverse proxy and TLS.
-
-

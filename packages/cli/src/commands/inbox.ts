@@ -1,7 +1,10 @@
 import { createDb } from "@aharadar/db";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
-function getPrimaryUrl(item: { canonical_url: string | null; metadata_json: Record<string, unknown> }): string | null {
+function getPrimaryUrl(item: {
+  canonical_url: string | null;
+  metadata_json: Record<string, unknown>;
+}): string | null {
   if (item.canonical_url) return item.canonical_url;
   const meta = item.metadata_json;
   const primary = meta.primary_url;

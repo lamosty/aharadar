@@ -5,7 +5,5 @@ import { normalizeReddit } from "./normalize";
 export const redditConnector: Connector = {
   sourceType: "reddit",
   fetch: fetchReddit,
-  normalize: normalizeReddit
+  normalize: normalizeReddit,
 };
-
-

@@ -7,12 +7,14 @@ This repository is primarily developed and maintained with AI coding agents (Cur
 You are an AI coding agent working in this repository.
 
 **Before you change code**
+
 - Read this file fully.
 - Read the relevant spec/contract docs first (see **Where to read (minimal)** below).
 - Confirm behavior against `docs/*` (or update the docs first if you are changing a contract).
 - If present, read the latest handoff recap in `docs/sessions/recaps/` before starting work.
 
 **How to work (non-negotiable)**
+
 - Work in **commit-sized** chunks (small, reviewable, coherent).
 - Don’t guess: **confirm contracts** in docs/code; if unclear, propose options and ask.
 - Prefer consistency over cleverness: keep interfaces stable; avoid special cases unless ADR’d.
@@ -24,12 +26,14 @@ You are an AI coding agent working in this repository.
   - Only add fallbacks when required by spec/ADR (e.g. budget exhaustion behavior) or explicitly requested, and document them.
 
 **Definition of “done” for a task**
+
 - Correctness: behavior matches the relevant spec/ADR.
 - Types: TypeScript strict; no implicit `any`.
 - Docs: update docs/ADRs if behavior/contracts changed.
 - Local dev: keep Docker Compose/scripts coherent.
 
 **When you finish**
+
 - Output a short summary of what changed.
 - Suggest a **conventional commit message** (and optional 2–3 bullet body).
   - Include the **exact file list** you expect in that commit.
@@ -93,6 +97,7 @@ If you only read a few files, read these in order:
 ## Coding conventions (baseline)
 
 Until lint/format tooling is added, follow:
+
 - **TypeScript**: strict, explicit types for public interfaces.
 - **Naming**:
   - files: `snake_case.ts` for pipeline stages, `kebab-case` for docs if needed
@@ -111,6 +116,7 @@ Until lint/format tooling is added, follow:
 ### Conventional commits (recommended)
 
 Use:
+
 - `feat(<scope>): ...`
 - `fix(<scope>): ...`
 - `docs(<scope>): ...`
@@ -119,6 +125,7 @@ Use:
 - `test(<scope>): ...`
 
 Examples:
+
 - `docs(budgets): switch tiers to low/normal/high and monthly credits`
 - `feat(connectors): add grok X signal adapter`
 - `chore(docker): add pgvector postgres + redis compose stack`

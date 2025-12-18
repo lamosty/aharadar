@@ -12,6 +12,7 @@ This document turns the high-level product spec (`docs/spec.md`) into an impleme
 The MVP assumes **single-user** usage but keeps `user_id` boundaries so multi-user is feasible later.
 
 Core principle:
+
 - The system is **topic-agnostic**. No domain-specific logic; personalization is learned from sources + embeddings + feedback.
 
 ## High-level system diagram
@@ -54,6 +55,7 @@ External providers:
 ### Postgres (+ pgvector)
 
 **Source of truth** for:
+
 - user(s), sources, cursor state
 - normalized content items (with raw payloads)
 - embeddings, clusters, digests, feedback events
@@ -64,6 +66,7 @@ Contract-level details live in `docs/data-model.md`.
 ### Queue (Redis) + Worker(s)
 
 Runs the pipeline for scheduled windows and admin-triggered runs:
+
 - fetch & normalize from connectors
 - store items and raw payloads
 - compute embeddings
@@ -78,10 +81,12 @@ Pipeline contract lives in `docs/pipeline.md`.
 ### Scheduler
 
 Responsible for:
+
 - generating run windows (default 3× daily, user timezone)
 - enqueueing pipeline work
 
 In MVP, scheduler can be:
+
 - an internal cron loop inside the worker container, or
 - systemd/cron calling an “admin run” endpoint/command (preferred in production for simplicity)
 
@@ -96,6 +101,7 @@ Connector contract lives in `docs/connectors.md`.
 ### LLM Router + prompts
 
 Responsible for:
+
 - selecting `(provider, model)` per task and budget tier (derived from numeric budget pool/policy)
 - calling LLMs with retries/fallbacks
 - strict output validation via JSON schema
@@ -106,6 +112,7 @@ LLM contract lives in `docs/llm.md`.
 ### API (optional in MVP)
 
 If enabled, provides:
+
 - read-only access to digests/items
 - feedback submission
 - admin “run now”
@@ -115,6 +122,7 @@ API contract lives in `docs/api.md`.
 ### CLI (MVP)
 
 Primary UI:
+
 - shows latest digest items
 - fast review loop: like/dislike/save/skip + open link + “why shown”
 
@@ -150,24 +158,26 @@ CLI contract lives in `docs/cli.md`.
 ## Core invariants (MVP must preserve these)
 
 ### Idempotency
+
 - Re-running the same window must not create duplicates:
   - content items dedupe via `(source_id, external_id)` and/or `hash_url`
   - digests dedupe via `(user_id, window_start, window_end, mode)`
 
 ### Provenance
+
 - Every displayed item must keep:
   - original source URL(s)
   - source type and source id
   - enough raw metadata to debug ingestion
 
 ### Budget enforcement and graceful degradation
+
 - If budget caps are hit:
   - skip deep summaries first (deliver triage-only digest)
   - if needed, reduce triage coverage (fallback to heuristic scoring)
-  - always attempt to produce *some* digest output
+  - always attempt to produce _some_ digest output
 
 ### “Hard filter” posture
+
 - The product is not “summarize everything.”
 - Summarization and deep enrichment happen only **after** candidates pass relevance/novelty/aha thresholds.
-
-

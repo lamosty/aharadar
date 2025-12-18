@@ -29,21 +29,25 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 ### 1) Ingest (per source)
 
 **Inputs**
+
 - enabled `sources` rows for `user_id`
 - each source’s `config_json` and `cursor_json`
 - per-run limits from budgets
 
 **Outputs**
+
 - new/updated `content_items` (idempotent upserts)
 - `fetch_runs` row per source
 - updated `sources.cursor_json` (only after successful fetch)
 
 **Idempotency rules**
+
 - Upsert uniqueness:
   - `(source_id, external_id)` when `external_id` exists
   - else by `hash_url` when `canonical_url` exists
 
 **Failure policy**
+
 - Source failures must not abort the entire run:
   - mark `fetch_runs.status = error`
   - continue remaining sources
@@ -52,28 +56,34 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 ### 2) Embed
 
 **Inputs**
+
 - `content_items` missing an `embeddings` row (and not deleted/duplicate)
 - embedding budget caps
 
 **Outputs**
+
 - new `embeddings` rows
 
 **Notes**
+
 - Embedding input text is deterministic: `title + "\n\n" + body_text`, truncated to max length.
 - Store embedding `model` and `dims` for audit.
 
 ### 3) Dedupe
 
 **Hard dedupe**
+
 - By unique constraints:
   - `hash_url`
   - `(source_id, external_id)`
 
 **Soft dedupe (optional MVP)**
+
 - For a new item, find nearest neighbors by embedding; if cosine similarity ≥ threshold (TBD, e.g. 0.98),
   mark `duplicate_of_content_item_id`.
 
 **Outputs**
+
 - `content_items.duplicate_of_content_item_id` set for duplicates
 
 ### 4) Cluster
@@ -82,16 +92,19 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 Group semantically similar items into a “story/topic” cluster.
 
 **Candidate search**
+
 - Use pgvector similarity search on `clusters.centroid_vector` for the user.
 - Restrict to clusters updated recently (TBD window, e.g. last 7 days) for performance and relevance.
 
 **Assignment**
+
 - If best similarity ≥ `CLUSTER_SIM_THRESHOLD` (TBD, e.g. 0.86 cosine), attach item to that cluster.
 - Else create a new cluster with:
   - `representative_content_item_id = item.id`
   - `centroid_vector = item.embedding`
 
 **Centroid update (MVP)**
+
 - Maintain centroid as an incremental mean of member vectors (implementation detail).
 
 ### 5) Candidate selection
@@ -100,12 +113,14 @@ Group semantically similar items into a “story/topic” cluster.
 Pick what we will triage/rank for the digest window.
 
 **MVP selection rule (Proposed)**
+
 - Prefer cluster-based digests:
   - select clusters that have ≥1 member item with `published_at` (or `fetched_at`) within the window
 - If clustering is disabled or fails, fall back to item-based candidates:
   - select content_items in the window not marked duplicate
 
 **Signals vs canonical content (important)**
+
 - Canonical connectors (`reddit|hn|rss|youtube|...` and future `web`) produce items that are the thing the user reads/watches.
 - The `signal` connector produces **derived** items (search/trend/alerts) which often work best as **amplifiers**:
   - extract URLs/entities/topics
@@ -113,6 +128,7 @@ Pick what we will triage/rank for the digest window.
   - optionally display as triage-only items when they are high-aha but not yet corroborated
 
 Optional (Proposed, later):
+
 - If a signal item contains high-confidence external URLs that we haven’t ingested yet, enqueue a follow-up `web` ingestion for those URLs (budget-capped).
 
 ### 6) Triage (LLM)
@@ -121,6 +137,7 @@ Optional (Proposed, later):
 Produce `aha_score` (0–100) and a short reason string per candidate.
 
 **Input construction**
+
 - For clusters:
   - representative item title/body
   - top N member titles + source provenance
@@ -129,15 +146,18 @@ Produce `aha_score` (0–100) and a short reason string per candidate.
   - title/body + provenance
 
 **Output storage**
+
 - store triage output JSON into `digest_items.triage_json` for that candidate.
 - include schema/prompt version fields (see `docs/llm.md`).
 
 **Budget policy**
+
 - If triage budget is limited:
   - triage only the top K candidates by cheap heuristic (recency + source + simple keyword match)
   - assign default/heuristic aha scores to the rest (or omit them entirely)
 
 **Credits exhaustion behavior (MVP)**
+
 - When remaining credits are low, emit warnings (CLI/API) and automatically reduce tier to `low` unless configured to stop.
 - When credits are exhausted, skip paid provider calls (LLM + signal search) but still attempt to produce a digest from already-ingested canonical sources using heuristic scoring.
 
@@ -146,6 +166,7 @@ Produce `aha_score` (0–100) and a short reason string per candidate.
 Ranking produces `digest_items.score` and `rank`.
 
 **Feature set (MVP)**
+
 - **Aha**: `aha_score / 100` (from triage LLM)
 - **Preference similarity**: cosine(candidate_vector, user_profile_vector)
 - **Novelty**: 1 − max cosine(candidate_vector, recent_history_vectors)
@@ -167,6 +188,7 @@ final_score =
 ```
 
 Default weights are **TBD**; the only strong constraint is:
+
 - `w_aha` should be largest, because Aha Score is the primary user-visible ranking input (FR‑019a).
 
 ### 8) Deep enrich (LLM)
@@ -175,19 +197,23 @@ Default weights are **TBD**; the only strong constraint is:
 Generate deeper summaries only for the most valuable candidates.
 
 **Selection rule (Proposed)**
+
 - Deep summarize top N by `final_score`, where N is budget-capped.
 - Optional: only deep summarize if `aha_score ≥ AHA_ENRICH_THRESHOLD` (TBD).
 
 **Storage**
+
 - `digest_items.summary_json` for deep summary
 - `digest_items.entities_json` for entity extraction (optional)
 
 **Low-tier behavior**
+
 - In `low`, skip deep summary entirely (triage-only digest is still valid).
 
 ### 9) Persist digest
 
 Create:
+
 - `digests` row (unique by `(user_id, window_start, window_end, mode)`)
 - `digest_items` rows with:
   - reference to `cluster_id` (preferred) or `content_item_id`
@@ -197,6 +223,7 @@ Create:
 ## Feedback loop integration
 
 Feedback events update personalization inputs:
+
 - store all actions in `feedback_events`
 - update `user_preference_profiles` incrementally:
   - `like/save` increases positive vector contribution
@@ -206,6 +233,7 @@ Feedback events update personalization inputs:
 ## Observability requirements (MVP)
 
 Per run:
+
 - counts per stage (fetched/upserted/embedded/clustered/triaged/enriched)
 - budget usage summary:
   - remaining budget pool (credits)
@@ -213,6 +241,5 @@ Per run:
   - calls + tokens per purpose
 
 Per LLM call:
+
 - record a row in `provider_calls` with tokens and cost estimate (credits) (FR‑022).
-
-

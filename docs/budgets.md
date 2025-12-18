@@ -7,12 +7,14 @@ This document defines **what we budget**, **how we enforce budgets**, and how a 
 ### Layer 1 — Budget pool (user-facing)
 
 The user sets a numeric budget cap in **credits**, e.g.:
+
 - `monthly_credits` (primary)
 - optional `daily_throttle_credits` to prevent burning the entire month in one day
 
 This pool is what answers: “how much am I willing to spend?”
 
 Top-ups (future billing):
+
 - In MVP (single-user), “top up” can be manual (increase `monthly_credits`).
 - Automated purchasing/billing is out-of-scope for MVP (see `docs/spec.md` non-goals).
 
@@ -34,12 +36,14 @@ Config (Proposed):
 ```
 
 Behavior:
+
 - **warn**: show warnings in CLI/API when approaching exhaustion.
 - **fallback_low**: continue scheduled runs but force tier=`low` and disable paid provider calls that would exceed remaining credits (signals + LLM), while still attempting a triage-only/heuristic digest.
 - **stop** (optional): stop scheduled runs entirely when exhausted (but still allow manual “run now” after top-up).
 
 **Credits are an internal accounting unit.**
-- Providers may bill us in some currency, but *users think in credits*.
+
+- Providers may bill us in some currency, but _users think in credits_.
 - Later, we can sell/price credits in any currency; the core system just enforces a credits budget.
 
 #### How credits are estimated (MVP contract)
@@ -47,6 +51,7 @@ Behavior:
 To enforce a credits budget, we need a deterministic way to estimate “cost” from usage.
 
 Proposed rule:
+
 - every metered action produces a `cost_estimate_credits`
 - we track a running total per user per budget period (monthly) and stop/skip when caps are reached
 
@@ -70,17 +75,20 @@ Proposed pricing config shape (example):
 ```
 
 Numbers are placeholders; the point is:
+
 - credits are configurable
 - budget enforcement uses credits regardless of billing currency
 
 ### Layer 2 — Budget tier (policy preset / derived)
 
-We still use **tiers** (`low | normal | high`) to control *behavior*, such as:
+We still use **tiers** (`low | normal | high`) to control _behavior_, such as:
+
 - which features are enabled (deep summary/entities)
 - which model tier to choose for each task
 - how aggressively we triage/enrich
 
 But the tier is **not the only budget control**:
+
 - it can be chosen explicitly, **or**
 - derived automatically from the remaining budget pool (e.g., drop to `low` when credits are low).
 
@@ -89,26 +97,32 @@ But the tier is **not the only budget control**:
 Budgets exist to keep spend predictable and to force graceful degradation.
 
 ### Ingestion (connector fetch)
+
 - max items fetched per source per run
 - max total items fetched per run (global cap)
 - optional: max comment fetches (Reddit/HN)
 
 ### Embeddings
+
 - max items embedded per run
 - max embedding tokens (or chars) per item
 
 ### LLM tasks
+
 Per purpose:
+
 - triage calls
 - deep summary calls
 - entity extraction calls
 - signal_parse calls (if any)
 
 Per call:
+
 - max input tokens
 - max output tokens
 
 ### Signals (search/trend/alerts providers)
+
 - max search calls per day
 - max results per query
 
@@ -123,21 +137,25 @@ When budgets are exceeded, degrade in this order:
 5. **Reduce ingestion volume** (lower per-source caps)
 
 Hard constraint (from spec):
-- Always attempt to output *some* digest (`triage-only` is acceptable).
+
+- Always attempt to output _some_ digest (`triage-only` is acceptable).
 
 ## Budget tier semantics (policy presets)
 
 ### low (previously “dial_down”)
+
 - Prioritize: ingestion + basic clustering + minimal triage
 - Deep summaries: **off**
 - Entities: **off**
 
 ### normal
+
 - Triage: broad coverage of candidates
 - Deep summaries: on for top N
 - Entities: optional for top N
 
 ### high (previously “dial_up”)
+
 - Higher caps on:
   - deep summaries
   - entities
@@ -147,6 +165,7 @@ Hard constraint (from spec):
 ## Proposed config shape (per user)
 
 Important: even with a credits pool, the system still enforces **hard caps** (calls/tokens/items). Those caps can be:
+
 - **compiled** automatically from the pool + tier (recommended), and/or
 - overridden explicitly (advanced).
 
@@ -179,21 +198,22 @@ These numbers are placeholders; the important part is the **shape** and the enfo
 
 ## Preset options (pick one to “Accept”)
 
-These presets define a **policy tier**. You can still set *any* numeric credits pool; the tier controls how the system spends that pool.
+These presets define a **policy tier**. You can still set _any_ numeric credits pool; the tier controls how the system spends that pool.
 
 ### Option A — Minimal cost
+
 - `low` default
 - Triage only top K candidates; deep summary disabled
 - Best when you want **very low spend** and can tolerate missing some “aha” items
 
 ### Option B — Balanced MVP (recommended starting point)
+
 - `normal` default
 - Broad triage coverage, deep summary for top N
 - Best for validating the core loop (signal → feedback → better signal)
 
 ### Option C — Research / catch-up
+
 - `high` for catch-up windows
 - Higher deep summary and entity extraction limits
 - Intended for occasional use, not always-on
-
-

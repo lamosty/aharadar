@@ -1,6 +1,7 @@
 # Session recap (template)
 
 > Notes:
+>
 > - This is a handoff doc intended to be **committed**.
 > - A “session” is one AI chat/window (it can span hours/days).
 > - Prefer concrete facts (file paths, commands, decisions, error messages) over prose.

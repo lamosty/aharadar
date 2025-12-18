@@ -28,19 +28,23 @@ This repo is currently **spec-first**. The goal is to lock down concrete MVP con
 These are the key “we can’t code until this is decided” items.
 
 ### MVP surface area
+
 - **MVP UI**: CLI-only vs CLI + minimal web viewer
 - **MVP sources**: small starter set vs broad with strict caps
 
 ### Scheduling & windows
+
 - **Default schedule**: fixed 3× daily vs templates
 - **Digest window semantics**: fixed windows vs “since last run”
 
 ### Budget defaults
+
 - **Budget input**: credits (multi-currency pricing can be layered later), and whether tier is manual or derived
 - **Monthly cap target** and **daily cap translation** (how monthly → daily)
 - **Allocation**: % budget to embeddings vs triage vs deep summary vs signals
 
 ### Key implementation choices
+
 - **Queue**: Redis + BullMQ vs Postgres-only job queue
 - **HN ingestion**: Firebase API vs Algolia vs RSS-ish proxies
 - **YouTube ingestion**: channel RSS + optional transcript fetch vs Data API

@@ -3,5 +3,3 @@ export interface HnSourceConfig {
   includeComments?: boolean;
   maxCommentCount?: number;
 }
-
-

@@ -6,6 +6,7 @@
 ## Context
 
 We want some of the “what’s happening right now” value of X/Twitter, but MVP constraints are:
+
 - avoid full-firehose ingestion (cost, complexity, policy risk)
 - avoid requiring user account linking/OAuth for public sources in MVP
 - keep budget dial effective: X should not dominate spend
@@ -22,6 +23,7 @@ Treat X/Twitter as a **signal amplifier** via a **search provider** (default: Gr
   - **URLs** referenced in results (which can later be ingested via RSS/web/other connectors)
 
 Identifiers and cursoring (Proposed):
+
 - If provider returns stable tweet IDs: use them in `external_id`.
 - If not: generate a stable synthetic `external_id` (hash of `(query, primary_url, time_bucket)`).
 - Cursor uses:
@@ -37,6 +39,7 @@ Identifiers and cursoring (Proposed):
 ## Future path (no-refactor)
 
 If X provides a normal pay-as-you-go REST API suitable for canonical ingestion, add a separate canonical connector:
+
 - `type = "x_posts"` (fetch posts/timelines like other content sources)
 - keep `type = "signal"` for search/trend/alerts ingestion (still useful for amplification)
 
@@ -44,5 +47,3 @@ If X provides a normal pay-as-you-go REST API suitable for canonical ingestion, 
 
 - Full X ingest: high cost, high ToS/policy complexity, hard to make budget-predictable.
 - No X at all in MVP: simplest, but loses a valuable “early signal” channel.
-
-

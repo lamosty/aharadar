@@ -18,7 +18,7 @@ export interface PipelineRunResult {
 
 export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promise<PipelineRunResult> {
   const ingestLimits: IngestLimits = {
-    maxItemsPerSource: params.ingest?.maxItemsPerSource ?? 50
+    maxItemsPerSource: params.ingest?.maxItemsPerSource ?? 50,
   };
 
   const ingest = await ingestEnabledSources({
@@ -26,13 +26,13 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     userId: params.userId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
-    limits: ingestLimits
+    limits: ingestLimits,
   });
 
   return {
     userId: params.userId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
-    ingest
+    ingest,
   };
 }

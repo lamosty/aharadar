@@ -1,6 +1,6 @@
 # Aha Radar — Data Model (Postgres + pgvector)
 
-This document defines the **schema contract** for MVP. Implementation may differ in migration layout, but the *behavioral guarantees* (idempotency, uniqueness, required fields) should match.
+This document defines the **schema contract** for MVP. Implementation may differ in migration layout, but the _behavioral guarantees_ (idempotency, uniqueness, required fields) should match.
 
 ## Goals
 
@@ -26,6 +26,7 @@ pgvector columns are defined with a fixed dimension in this contract.
 ## Source config vs cursor state
 
 We explicitly separate:
+
 - `sources.config_json`: user-configured static settings
 - `sources.cursor_json`: mutable connector state for incremental ingestion
 
@@ -221,8 +222,9 @@ create table user_preference_profiles (
 ### URL canonicalization
 
 Canonicalization must:
+
 - normalize scheme/host
-- strip known tracking params (utm_*, fbclid, gclid, ref, etc.)
+- strip known tracking params (utm\_\*, fbclid, gclid, ref, etc.)
 - normalize trailing slashes
 - keep essential query params when they define unique content (TBD list)
 
@@ -231,6 +233,7 @@ Canonicalization must:
 ### Text limits (budget + storage)
 
 We will enforce max lengths (exact values TBD):
+
 - `title` max chars
 - `body_text` max chars stored
 - embedding input max tokens/chars (truncate deterministically)
@@ -238,7 +241,6 @@ We will enforce max lengths (exact values TBD):
 ### Retention policies
 
 Raw payloads (`raw_json`) and large enrichment (`summary_json`) should be retention-configurable:
+
 - keep full in dev for debugging
 - keep limited duration in prod (TBD)
-
-

@@ -8,6 +8,7 @@
 We want to ingest content from blogs/news outlets where RSS/Atom is missing or incomplete.
 
 Constraints:
+
 - avoid ToS violations and paywall bypassing
 - keep ingestion reliable and budgetable
 - keep architecture modular (swap extraction/discovery implementations)
@@ -22,6 +23,7 @@ Adopt a **RSS-first** posture:
    - extraction using deterministic “article text extraction” (Readability-style) plus JSON-LD/OpenGraph
 
 Make extraction/discovery pluggable behind interfaces:
+
 - `PageDiscovery` (seed pages, sitemap, link scraping, optional headless)
 - `PageExtractor` (readability, structured-data, optional external providers)
 
@@ -37,5 +39,3 @@ Make extraction/discovery pluggable behind interfaces:
 
 - “Full web crawler” approach: too complex/risky for MVP.
 - External extraction vendor only: faster, but introduces vendor lock-in and cost uncertainty.
-
-

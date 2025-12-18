@@ -11,6 +11,7 @@ Not all sources behave the same way. For MVP, it’s useful to distinguish:
 Examples: Reddit posts, HN stories, RSS entries, YouTube videos.
 
 Properties:
+
 - usually have stable IDs and/or canonical URLs
 - the item itself is something the user can read/watch
 - good fit for dedupe/clustering and for deep summaries
@@ -20,6 +21,7 @@ Properties:
 Examples: X/Twitter search results, “breaking news” alerts, watchlists, trend detectors.
 
 Properties:
+
 - often **derived** from a search/trend query (not a canonical feed)
 - may not have stable identifiers
 - often best used as a **signal amplifier**:
@@ -39,6 +41,7 @@ Important: **X is not special here**. In MVP we may start with X/Twitter signals
 ## Common interface (contract)
 
 The master spec defines:
+
 - `fetch(cursor, limits) -> RawItem[]`
 - `normalize(raw) -> ContentItemDraft`
 
@@ -60,7 +63,7 @@ interface FetchParams {
     maxComments?: number;
   };
   windowStart: string; // ISO
-  windowEnd: string;   // ISO
+  windowEnd: string; // ISO
 }
 
 interface FetchResult {
@@ -93,25 +96,30 @@ interface Connector {
 ### URL canonicalization (FR‑010)
 
 Canonicalization must:
+
 - normalize scheme/host
 - strip tracking params (`utm_*`, `fbclid`, `gclid`, etc.)
 - normalize trailing slashes
 - preserve query params that change the content identity (TBD allowlist per domain)
 
 If `canonical_url` is present, compute:
+
 - `hash_url = sha256_hex(canonical_url)`
 
 ### Text for embeddings
 
 Embedding input (deterministic):
+
 - `title + "\n\n" + body_text`, truncated to a fixed max length.
 
 Optionally compute:
+
 - `hash_text = sha256_hex(embedding_input_text)`
 
 ### Required identity
 
 Each stored item must have at least one stable identity:
+
 - `(source_id, external_id)` **or**
 - `hash_url`
 
@@ -125,6 +133,7 @@ If a source cannot provide stable external IDs and there is no URL, connectors m
 Ingest posts from public subreddits (optionally top comments).
 
 **config_json (Proposed)**
+
 ```json
 {
   "subreddits": ["MachineLearning", "programming"],
@@ -137,6 +146,7 @@ Ingest posts from public subreddits (optionally top comments).
 ```
 
 **cursor_json (Proposed)**
+
 ```json
 {
   "after": "t3_abc123",
@@ -145,10 +155,12 @@ Ingest posts from public subreddits (optionally top comments).
 ```
 
 **Fetch**
+
 - Use public JSON endpoints (rate limited; set an explicit User-Agent).
 - Prefer listing `new` for incremental ingestion.
 
 **Normalize**
+
 - `external_id`: Reddit post id/fullname
 - `canonical_url`:
   - link post: canonicalized `url`
@@ -165,6 +177,7 @@ Ingest posts from public subreddits (optionally top comments).
 Ingest stories (optionally comments).
 
 **config_json (Proposed)**
+
 ```json
 {
   "feed": "top",
@@ -175,6 +188,7 @@ Ingest stories (optionally comments).
 ```
 
 **cursor_json (Proposed)**
+
 ```json
 {
   "last_run_at": "2025-12-17T08:00:00Z"
@@ -182,10 +196,12 @@ Ingest stories (optionally comments).
 ```
 
 **Fetch**
+
 - Proposed MVP approach: use the official HN Firebase API.
 - Note: “top” feeds are not strictly incremental; rely on external_id dedupe.
 
 **Normalize**
+
 - `external_id`: HN item id (string)
 - `canonical_url`: `url` if present else `https://news.ycombinator.com/item?id=<id>`
 - `title`: story title
@@ -200,6 +216,7 @@ Ingest stories (optionally comments).
 Ingest items from any RSS/Atom feed.
 
 **config_json (Proposed)**
+
 ```json
 {
   "feed_url": "https://example.com/rss.xml",
@@ -209,6 +226,7 @@ Ingest items from any RSS/Atom feed.
 ```
 
 **cursor_json (Proposed)**
+
 ```json
 {
   "last_published_at": "2025-12-17T08:00:00Z",
@@ -217,6 +235,7 @@ Ingest items from any RSS/Atom feed.
 ```
 
 **Normalize**
+
 - `external_id`: entry GUID if present else null
 - `canonical_url`: entry link (canonicalized)
 - `title`: entry title
@@ -233,17 +252,20 @@ Ingest articles from websites/blogs/news outlets when RSS/Atom is not available 
 Deferred to v2 (documented for future; not implemented in MVP).
 
 Important constraints:
+
 - RSS is still preferred when available (cheaper, more reliable).
 - No paywall bypassing; if a page is paywalled/blocked, store minimal metadata and the URL.
 - Respect reasonable crawl behavior (rate limiting, backoff, timeouts).
 
 **What this is (and isn’t)**
+
 - This can cover “a lot of the web” for public pages, but it won’t be perfect for every site.
 - The MVP should aim for **semi-generic** extraction:
   - generic “article text extraction” (Readability-style) works for many pages
   - discovery of “latest posts” still often needs a configured listing/seed URL and/or patterns
 
 **config_json (Proposed)**
+
 ```json
 {
   "seed_urls": ["https://example.com/news", "https://example.com/blog"],
@@ -266,6 +288,7 @@ Important constraints:
 ```
 
 **cursor_json (Proposed)**
+
 ```json
 {
   "last_run_at": "2025-12-17T08:00:00Z"
@@ -273,6 +296,7 @@ Important constraints:
 ```
 
 **Fetch (Proposed)**
+
 - Fetch each `seed_url` HTML.
 - Extract candidate links:
   - filter by `allowed_domains` and `url_patterns`
@@ -284,6 +308,7 @@ Important constraints:
   - published_at if available (JSON-LD/og/article meta)
 
 **Normalize (Proposed)**
+
 - `external_id`: null (usually not stable) — rely on canonical URL hashing for dedupe
 - `canonical_url`: canonicalized `rel=canonical` (fallback: final URL after redirects)
 - `title`: extracted title
@@ -294,6 +319,7 @@ Important constraints:
 
 **Implementation note**
 The extraction strategy should be pluggable (ADR candidate):
+
 - open-source “readability” style libraries (works for many articles)
 - optional headless fallback for JS-heavy pages (expensive; likely dial-up)
 - optional external extraction providers (paid/hosted) behind an interface
@@ -304,6 +330,7 @@ The extraction strategy should be pluggable (ADR candidate):
 Ingest channel uploads; optionally fetch transcripts.
 
 **config_json (Proposed)**
+
 ```json
 {
   "channel_id": "UCxxxx",
@@ -313,6 +340,7 @@ Ingest channel uploads; optionally fetch transcripts.
 ```
 
 **cursor_json (Proposed)**
+
 ```json
 {
   "last_published_at": "2025-12-17T08:00:00Z",
@@ -321,10 +349,12 @@ Ingest channel uploads; optionally fetch transcripts.
 ```
 
 **Fetch**
+
 - Proposed MVP approach: use YouTube’s channel RSS feed for uploads.
 - Transcripts are optional and should be behind config + budget dial.
 
 **Normalize**
+
 - `external_id`: video id
 - `canonical_url`: `https://www.youtube.com/watch?v=<id>`
 - `title`: video title
@@ -339,10 +369,12 @@ Ingest channel uploads; optionally fetch transcripts.
 Ingest summarized signals from a signal provider (search/trend/alerts). Initial MVP adapter can be X/Twitter search (ADR 0003), but the connector type is generic.
 
 Provider abstraction (recommended):
+
 - define a `SignalProvider` interface (X search, official APIs, other vendors, etc.)
 - the connector depends on the interface, not on a specific vendor
 
 **config_json (Proposed)**
+
 ```json
 {
   "provider": "x_search",
@@ -357,11 +389,13 @@ Provider abstraction (recommended):
 ```
 
 Notes (Proposed):
+
 - `accounts` is the primary UX for “follow these accounts”.
 - `keywords` supports “monitor a topic” and the “deep dive into a theme” journey.
 - `queries` is an advanced escape hatch; if present, it is used directly. Otherwise, the connector compiles queries from `accounts`/`keywords`.
 
 **cursor_json (Proposed)**
+
 ```json
 {
   "since_id": null,
@@ -370,17 +404,20 @@ Notes (Proposed):
 ```
 
 **Normalize**
+
 - **Signal output contract (MVP)**: the `signal` connector emits **signal bundles** — one `ContentItemDraft` per `(source_id, query, day_bucket)`.
   - `day_bucket` is derived from the pipeline `windowEnd` date (`YYYY-MM-DD`).
   - This keeps signals **cheap and reviewable** while still retaining post-level evidence for later ranking/triage.
 
 Field mapping:
+
 - `external_id`: deterministic synthetic id (sha256 of `provider|vendor|query|day_bucket`)
 - `canonical_url`: **null** (signals are amplifiers; do not claim canonical content)
 - `title`: `Signal: <query>` (or other short label)
 - `body_text`: short, human-readable evidence (e.g. bullet list of representative post snippets)
 
 Required `metadata_json` keys (MVP):
+
 - `provider`: signal provider id (e.g. `"x_search"`)
 - `vendor`: vendor adapter id (e.g. `"grok"`)
 - `query`: the compiled query string used for the call
@@ -393,14 +430,17 @@ Required `metadata_json` keys (MVP):
 - `primary_url`: “best click target” URL (prefer `extracted_urls[0]`, else first `signal_results[].url`, else null)
 
 `raw_json` retention (dev-friendly):
+
 - May include the full provider response payload for debugging (retention policy TBD for prod; see `docs/data-model.md`).
 
 Debugging:
+
 - Use the CLI `admin:signal-debug` command to view the latest stored signal bundles and their `signal_results` without running manual DB queries.
 
 **Future: “X posts” as canonical connector**
 
 If/when X provides a normal pay-as-you-go REST API suitable for canonical ingestion, we can add a **separate connector**:
+
 - `type = "x_posts"` (canonical content)
 - It would fetch posts/timelines like other canonical connectors (stable IDs, URLs), and it can coexist with `signal`.
 

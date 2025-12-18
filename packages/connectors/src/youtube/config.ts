@@ -3,5 +3,3 @@ export interface YoutubeSourceConfig {
   maxVideoCount?: number;
   includeTranscript?: boolean;
 }
-
-

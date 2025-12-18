@@ -4,5 +4,3 @@ export interface RedditSourceConfig {
   includeComments?: boolean;
   maxCommentCount?: number;
 }
-
-

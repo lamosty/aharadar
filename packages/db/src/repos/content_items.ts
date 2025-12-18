@@ -91,7 +91,7 @@ export function createContentItemsRepo(db: Queryable) {
         JSON.stringify(item.metadata ?? {}),
         item.raw ? JSON.stringify(item.raw) : null,
         item.hashUrl,
-        item.hashText
+        item.hashText,
       ]
     );
     const row = res.rows[0];
@@ -147,7 +147,7 @@ export function createContentItemsRepo(db: Queryable) {
         JSON.stringify(item.metadata ?? {}),
         item.raw ? JSON.stringify(item.raw) : null,
         item.hashUrl,
-        item.hashText
+        item.hashText,
       ]
     );
     const row = res.rows[0];
@@ -186,6 +186,6 @@ export function createContentItemsRepo(db: Queryable) {
         [userId, limit]
       );
       return res.rows;
-    }
+    },
   };
 }

@@ -6,6 +6,7 @@
 ## Context
 
 The product spec references “GPT-5 family” as a pragmatic default, but:
+
 - OpenAI model names will change (GPT‑6, new variants, etc.)
 - we may choose Claude/Gemini for some tasks (quality/cost/latency)
 - we must keep pipeline behavior stable as providers change
@@ -30,5 +31,3 @@ Make the LLM layer **provider-agnostic**:
 
 - Hardcode a single provider/model family: simplest now, but fragile and creates churn in docs and code.
 - Build multi-provider support later: risks baking assumptions that are expensive to unwind.
-
-

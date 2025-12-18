@@ -1,4 +1,2 @@
 // Novelty scoring stub.
 export {};
-
-

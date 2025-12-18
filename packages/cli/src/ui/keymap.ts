@@ -8,7 +8,5 @@ export const DEFAULT_KEYMAP = {
   open: "o",
   why: "w",
   help: "?",
-  quit: "q"
+  quit: "q",
 } as const;
-
-

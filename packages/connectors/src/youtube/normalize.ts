@@ -10,8 +10,6 @@ export async function normalizeYoutube(_raw: unknown, _params: FetchParams): Pro
     externalId: null,
     publishedAt: null,
     author: null,
-    metadata: {}
+    metadata: {},
   };
 }
-
-

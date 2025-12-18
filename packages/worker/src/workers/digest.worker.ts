@@ -1,4 +1,2 @@
 // Digest worker stub.
 export {};
-
-

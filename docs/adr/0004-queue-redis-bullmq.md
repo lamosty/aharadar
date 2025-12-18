@@ -6,6 +6,7 @@
 ## Context
 
 The pipeline needs:
+
 - background execution (scheduled runs, admin “run now”)
 - concurrency across sources and stages
 - retries with backoff and failure visibility
@@ -17,6 +18,7 @@ The spec recommends Redis + BullMQ but allows a Postgres-only queue to reduce se
 Use **Redis + BullMQ** for MVP job orchestration.
 
 Design constraint:
+
 - keep a small internal abstraction around “enqueue/run job” so we can migrate to a Postgres queue later if we decide to remove Redis.
 
 ## Consequences
@@ -28,5 +30,3 @@ Design constraint:
 
 - **Postgres-only queue**: fewer services, but more custom implementation work and weaker job UX (unless adopting a mature library).
 - **External managed queues (SQS, etc.)**: more ops complexity for a self-hosted MVP.
-
-

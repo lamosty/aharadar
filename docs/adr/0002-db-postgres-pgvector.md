@@ -6,6 +6,7 @@
 ## Context
 
 MVP requirements include:
+
 - canonical storage of normalized items across connectors
 - dedupe + clustering + semantic search via embeddings
 - minimal operational complexity (same stack local/prod)
@@ -13,6 +14,7 @@ MVP requirements include:
 ## Decision
 
 Use a **single Postgres database** as the canonical store, and use **pgvector** for embedding vectors:
+
 - Postgres version: **16+** (exact version pinned in Docker images later)
 - Extensions:
   - `vector` (pgvector) for embeddings
@@ -23,6 +25,7 @@ Use a **single Postgres database** as the canonical store, and use **pgvector** 
   - embeddings in `vector(<DIMS>)` columns with HNSW indexes
 
 Migration strategy (Proposed):
+
 - Use **SQL migrations** (portable, explicit) rather than a heavy ORM-first schema.
 - If we later choose an ORM (Drizzle/Prisma), it must not obscure pgvector index details.
 
@@ -36,5 +39,3 @@ Migration strategy (Proposed):
 
 - Separate vector DB (Pinecone/Weaviate): more services, higher complexity for MVP.
 - SQLite + local vector index: simpler locally but diverges from production and complicates concurrency.
-
-

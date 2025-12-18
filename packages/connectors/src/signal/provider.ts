@@ -220,7 +220,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   }
 
   const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
-  const maxTokens = parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ?? 600;
+  const maxTokens =
+    parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ?? 600;
 
   const fromDate = toYYYYMMDD(params.fromDate ?? params.sinceTime);
   const toDate = toYYYYMMDD(params.toDate);
@@ -229,10 +230,12 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     ? [
         {
           type: "x_search",
-          ...(params.allowedXHandles && params.allowedXHandles.length > 0 ? { allowed_x_handles: params.allowedXHandles } : {}),
+          ...(params.allowedXHandles && params.allowedXHandles.length > 0
+            ? { allowed_x_handles: params.allowedXHandles }
+            : {}),
           ...(fromDate ? { from_date: fromDate } : {}),
-          ...(toDate ? { to_date: toDate } : {})
-        }
+          ...(toDate ? { to_date: toDate } : {}),
+        },
       ]
     : undefined;
 
@@ -244,29 +247,29 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
       {
         role: "system",
         content:
-          "Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: \"YYYY-MM-DD\", url: \"https://x.com/...\", text: \"...\" }. If there are no results, return []. Never fabricate posts."
+          'Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: "YYYY-MM-DD", url: "https://x.com/...", text: "..." }. If there are no results, return []. Never fabricate posts.',
       },
       {
         role: "user",
         content:
           `Search X for query: ${JSON.stringify(params.query)} (mode: Latest). ` +
           `Return at most ${params.limit} results as JSON. ` +
-          `If a tool is available, use it to fetch real posts; do not guess.`
-      }
+          `If a tool is available, use it to fetch real posts; do not guess.`,
+      },
     ],
     ...(tools ? { tools } : {}),
     temperature: 0,
     stream: false,
-    max_output_tokens: maxTokens
+    max_output_tokens: maxTokens,
   };
 
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`
+      authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 
   const endedAt = Date.now();
@@ -305,6 +308,6 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,
     assistantJson,
-    structuredError
+    structuredError,
   };
 }

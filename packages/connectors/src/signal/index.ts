@@ -5,7 +5,5 @@ import { normalizeSignal } from "./normalize";
 export const signalConnector: Connector = {
   sourceType: "signal",
   fetch: fetchSignal,
-  normalize: normalizeSignal
+  normalize: normalizeSignal,
 };
-
-

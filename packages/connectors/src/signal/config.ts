@@ -13,5 +13,3 @@ export interface SignalSourceConfig {
   extractUrls?: boolean;
   extractEntities?: boolean;
 }
-
-

@@ -3,6 +3,7 @@
 This folder contains **handoff recaps between AI sessions** (Cursor, Claude Code, etc.).
 
 Why:
+
 - Chat context windows are finite.
 - A recap lets the next agent pick up quickly without re-reading the whole repo.
 - Keeping recaps **committed** provides a lightweight audit log / progress journal.
@@ -24,6 +25,7 @@ Recap files should be unique and sortable:
 ## Safety policy (non-negotiable)
 
 Recaps must not contain secrets:
+
 - do not paste API keys, tokens, or full `.env` values
 - prefer listing env var **names** only
 - redact anything sensitive with `<REDACTED>`

@@ -14,5 +14,3 @@ export interface ProviderCallDraft {
   status: ProviderCallStatus;
   error?: Record<string, unknown>;
 }
-
-

@@ -33,5 +33,3 @@ export function canonicalizeUrl(input: string): string {
 
   return url.toString();
 }
-
-

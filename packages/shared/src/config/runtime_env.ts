@@ -47,8 +47,6 @@ export function loadRuntimeEnv(env: NodeJS.ProcessEnv = process.env): RuntimeEnv
     adminApiKey: env.ADMIN_API_KEY,
     monthlyCredits: parseIntEnv("MONTHLY_CREDITS", env.MONTHLY_CREDITS),
     dailyThrottleCredits,
-    defaultTier
+    defaultTier,
   };
 }
-
-

@@ -36,7 +36,7 @@ export async function adminRunNowCommand(): Promise<void> {
     const result = await runPipelineOnce(db, {
       userId: user.id,
       windowStart,
-      windowEnd
+      windowEnd,
     });
 
     console.log("");
@@ -86,7 +86,12 @@ export async function adminRunNowCommand(): Promise<void> {
     }
 
     // Signal usage summary (this run).
-    const signalOk = await db.query<{ calls: string; input_tokens: string; output_tokens: string; credits: string }>(
+    const signalOk = await db.query<{
+      calls: string;
+      input_tokens: string;
+      output_tokens: string;
+      credits: string;
+    }>(
       `select
          count(*)::text as calls,
          coalesce(sum(input_tokens), 0)::text as input_tokens,
@@ -242,11 +247,13 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
         resultCount: (meta as Record<string, unknown>).result_count,
         primaryUrl: asString((meta as Record<string, unknown>).primary_url),
         extractedUrls: Array.isArray((meta as Record<string, unknown>).extracted_urls)
-          ? ((meta as Record<string, unknown>).extracted_urls as unknown[]).filter((u) => typeof u === "string")
+          ? ((meta as Record<string, unknown>).extracted_urls as unknown[]).filter(
+              (u) => typeof u === "string"
+            )
           : [],
         signalResults,
         bodyText: row.body_text,
-        raw: opts.raw ? row.raw_json : undefined
+        raw: opts.raw ? row.raw_json : undefined,
       };
     });
 
@@ -257,7 +264,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
             userId: user.id,
             generatedAt: new Date().toISOString(),
             signalItems: normalized,
-            providerCalls: providerCalls.rows
+            providerCalls: providerCalls.rows,
           },
           null,
           2
@@ -273,11 +280,16 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       const rc = item.resultCount ?? item.signalResults.length;
       const p = item.primaryUrl ? ` primary_url=${item.primaryUrl}` : "";
       console.log(``);
-      console.log(`- ${item.id} fetched_at=${item.fetchedAt} day=${item.dayBucket ?? "?"} results=${rc} query=${JSON.stringify(q)}${p}`);
+      console.log(
+        `- ${item.id} fetched_at=${item.fetchedAt} day=${item.dayBucket ?? "?"} results=${rc} query=${JSON.stringify(q)}${p}`
+      );
 
       if (item.extractedUrls.length > 0) {
         const preview = item.extractedUrls.slice(0, 10);
-        const suffix = item.extractedUrls.length > preview.length ? ` (+${item.extractedUrls.length - preview.length} more)` : "";
+        const suffix =
+          item.extractedUrls.length > preview.length
+            ? ` (+${item.extractedUrls.length - preview.length} more)`
+            : "";
         console.log(`  extracted_urls (${item.extractedUrls.length}): ${preview.join(" ")}${suffix}`);
       }
 

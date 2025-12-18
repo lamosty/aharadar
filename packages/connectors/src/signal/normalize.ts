@@ -93,7 +93,9 @@ function looksLikeUrl(s: string): boolean {
   return s.startsWith("http://") || s.startsWith("https://");
 }
 
-function extractSignalResults(resultsObj: Record<string, unknown>): Array<{ date: string | null; url: string | null; text: string | null }> {
+function extractSignalResults(
+  resultsObj: Record<string, unknown>
+): Array<{ date: string | null; url: string | null; text: string | null }> {
   const results = resultsObj.results;
   if (!Array.isArray(results)) return [];
   const out: Array<{ date: string | null; url: string | null; text: string | null }> = [];
@@ -102,7 +104,7 @@ function extractSignalResults(resultsObj: Record<string, unknown>): Array<{ date
     out.push({
       date: asIsoDate(r.date),
       url: asString(r.url),
-      text: asString(r.text_excerpt) ?? asString(r.text)
+      text: asString(r.text_excerpt) ?? asString(r.text),
     });
     // Hard bound for storage safety (provider already limits, but keep this defensive).
     if (out.length >= 50) break;
@@ -194,10 +196,15 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       day_bucket: dayBucket,
       window_start: params.windowStart,
       window_end: params.windowEnd,
-      result_count: signalResults.length > 0 ? signalResults.length : resultsObj && Array.isArray(resultsObj.results) ? resultsObj.results.length : null,
+      result_count:
+        signalResults.length > 0
+          ? signalResults.length
+          : resultsObj && Array.isArray(resultsObj.results)
+            ? resultsObj.results.length
+            : null,
       signal_results: signalResults,
       primary_url: primaryUrl,
-      extracted_urls: extractedUrls
+      extracted_urls: extractedUrls,
     },
     raw: {
       kind: asString(rec.kind),
@@ -205,7 +212,7 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       provider,
       vendor,
       assistantJson: Object.keys(assistantJson).length > 0 ? assistantJson : null,
-      response
-    }
+      response,
+    },
   };
 }

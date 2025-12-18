@@ -12,6 +12,7 @@ The CLI is the MVP UI: a fast **review queue** optimized for “aha-per-minute�
 ## Data model assumptions
 
 The CLI primarily displays `digest_items`:
+
 - cluster-based by default (one row per cluster/story)
 - item detail view can show top member `content_items` for the cluster
 
@@ -20,12 +21,14 @@ The CLI primarily displays `digest_items`:
 ### `aharadar inbox`
 
 Shows latest digest(s):
+
 - digest window time
 - ranked list of items (cluster title + aha score + short reason)
 
 ### `aharadar review`
 
 Starts the review loop for the latest digest:
+
 - one item at a time
 - immediate keypress feedback
 
@@ -42,6 +45,7 @@ Triggers a run for “now” window (or specified range).
 Shows current budget usage (current month + current run) derived from `provider_calls`.
 
 Also shows warnings when:
+
 - monthly used ≥ 80% / 95%
 - daily throttle used ≥ 80% / 95%
 
@@ -61,6 +65,7 @@ Also shows warnings when:
 ## “Why shown” content (MVP)
 
 Display a short explanation assembled from:
+
 - triage `reason`
 - top matching preference theme (derived from liked items embedding similarity)
 - novelty indicator (e.g., “new vs your recent history”)
@@ -71,5 +76,3 @@ Display a short explanation assembled from:
 - If deep summary is missing (budget dial-down): show triage only.
 - If a source fails during ingestion: do not block CLI; show what exists.
 - If canonical URL is missing: show source-native link (e.g., HN item link).
-
-

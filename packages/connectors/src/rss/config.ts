@@ -3,5 +3,3 @@ export interface RssSourceConfig {
   maxItemCount?: number;
   preferContentEncoded?: boolean;
 }
-
-

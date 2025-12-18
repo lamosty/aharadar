@@ -10,8 +10,6 @@ export async function normalizeRss(_raw: unknown, _params: FetchParams): Promise
     externalId: null,
     publishedAt: null,
     author: null,
-    metadata: {}
+    metadata: {},
   };
 }
-
-

@@ -41,9 +41,9 @@ export function createFetchRunsRepo(db: Queryable) {
           params.status,
           JSON.stringify(params.cursorOut),
           JSON.stringify(params.counts),
-          params.error ? JSON.stringify(params.error) : null
+          params.error ? JSON.stringify(params.error) : null,
         ]
       );
-    }
+    },
   };
 }

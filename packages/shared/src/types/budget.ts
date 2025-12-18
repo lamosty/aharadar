@@ -15,5 +15,3 @@ export interface CreditsExhaustionPolicy {
     dailyThrottleUsedPct: number[];
   };
 }
-
-

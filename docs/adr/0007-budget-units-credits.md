@@ -6,6 +6,7 @@
 ## Context
 
 We want budget controls that:
+
 - are provider-agnostic and stable over time
 - don’t assume the user thinks in USD
 - support future billing/subscriptions without changing core pipeline logic
@@ -29,7 +30,6 @@ Use **credits** as the internal and user-facing budget unit:
 ## Notes (MVP)
 
 Single-user MVP can treat “credits” as a pure accounting unit:
+
 - we maintain a config mapping of expected costs to credits
 - budgets are enforced in credits first, with per-task hard caps as backstops
-
-

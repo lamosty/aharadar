@@ -5,7 +5,5 @@ import { normalizeRss } from "./normalize";
 export const rssConnector: Connector = {
   sourceType: "rss",
   fetch: fetchRss,
-  normalize: normalizeRss
+  normalize: normalizeRss,
 };
-
-

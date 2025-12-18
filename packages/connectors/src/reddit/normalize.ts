@@ -10,8 +10,6 @@ export async function normalizeReddit(_raw: unknown, _params: FetchParams): Prom
     externalId: null,
     publishedAt: null,
     author: null,
-    metadata: {}
+    metadata: {},
   };
 }
-
-

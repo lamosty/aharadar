@@ -12,6 +12,7 @@ This document defines the LLM tasks, routing policy, and **strict JSON outputs**
 ## Topic-agnostic prompts (non-negotiable)
 
 Prompts and outputs must be **domain-neutral**:
+
 - no finance/crypto-specific assumptions
 - categories/entities are extracted from the content itself and/or user profile, not from hardcoded domain taxonomies
 
@@ -20,16 +21,19 @@ Prompts and outputs must be **domain-neutral**:
 The **tasks** and **output schemas** are the contract; the exact model name is not.
 
 We should be able to:
+
 - upgrade OpenAI models (e.g., GPT‑5 → GPT‑6) without changing any contracts, and/or
 - swap providers for specific tasks (Claude/Gemini/etc.) without changing downstream pipeline logic.
 
 To enable that:
+
 - routing chooses a `(provider, model)` pair from config, based on task + budget tier
 - every output records `provider` and `model` for audit/debugging, but downstream stages depend on **schema**, not model identity.
 
 ### Implementation convention (recommended)
 
 When a provider offers an OpenAI-compatible **Responses API**, prefer it over Chat Completions:
+
 - we are not building a chat product; we want a single “request → structured output” contract
 - tool calling tends to evolve faster in Responses endpoints than legacy chat endpoints
 - treat Chat Completions as legacy/compat only (do not design new code around it)
@@ -47,6 +51,7 @@ interface LLMRouter {
 ```
 
 **Routing policy (Proposed)**
+
 - `triage`: fastest/cheapest model that is reliable at strict JSON
 - `deep_summary`: more capable model
 - `entity_extract`: cheap model unless dial-up
@@ -55,11 +60,13 @@ interface LLMRouter {
 ## Output storage conventions
 
 Store these outputs inside `digest_items`:
+
 - `triage_json`: triage output (always when triage ran)
 - `summary_json`: deep summary output (only for enriched items)
 - `entities_json`: entities output (optional)
 
 Each output JSON must include:
+
 - `schema_version`
 - `provider`
 - `model`
@@ -70,6 +77,7 @@ Each output JSON must include:
 ### Purpose
 
 Return a strict JSON object including:
+
 - `aha_score` (0–100)
 - a short reason string
 - minimal booleans to support filtering and dial decisions
@@ -101,6 +109,7 @@ Return a strict JSON object including:
 ### Input format (Proposed)
 
 For a cluster candidate:
+
 - representative title/body
 - top N member titles and canonical URLs
 - source provenance (reddit/hn/rss/youtube/signal)
@@ -112,6 +121,7 @@ For a cluster candidate:
 ### Purpose
 
 Generate a deeper summary for top-ranked candidates, emphasizing:
+
 - what happened
 - why it matters
 - caveats and open questions
@@ -150,6 +160,7 @@ Generate a deeper summary for top-ranked candidates, emphasizing:
 ```
 
 Types (Proposed):
+
 - `person | org | product | ticker | topic | place | paper`
 
 ## Reliability rules
@@ -171,6 +182,7 @@ Types (Proposed):
 ## Accounting (FR‑022)
 
 For every LLM call:
+
 - create a `provider_calls` row with:
   - `purpose`, `provider`, `model`
   - tokens in/out

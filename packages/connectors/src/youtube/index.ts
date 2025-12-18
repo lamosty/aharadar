@@ -5,7 +5,5 @@ import { normalizeYoutube } from "./normalize";
 export const youtubeConnector: Connector = {
   sourceType: "youtube",
   fetch: fetchYoutube,
-  normalize: normalizeYoutube
+  normalize: normalizeYoutube,
 };
-
-

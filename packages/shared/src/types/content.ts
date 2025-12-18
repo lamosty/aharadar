@@ -9,5 +9,3 @@ export interface ContentItemDraft {
   metadata: Record<string, unknown>;
   raw?: unknown;
 }
-
-

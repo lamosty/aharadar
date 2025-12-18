@@ -5,5 +5,3 @@ export interface Connector {
   fetch(params: FetchParams): Promise<FetchResult>;
   normalize(raw: unknown, params: FetchParams): Promise<ContentItemDraft>;
 }
-
-

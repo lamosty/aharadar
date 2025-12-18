@@ -73,14 +73,20 @@ function extractProviderCalls(meta: unknown): ProviderCallDraft[] {
         startedAt: e.startedAt,
         endedAt: e.endedAt,
         status: e.status,
-        error: e.error as Record<string, unknown> | undefined
+        error: e.error as Record<string, unknown> | undefined,
       });
     }
   }
   return out;
 }
 
-function buildFetchParams(source: SourceRow, userId: string, windowStart: string, windowEnd: string, limits: IngestLimits): FetchParams {
+function buildFetchParams(
+  source: SourceRow,
+  userId: string,
+  windowStart: string,
+  windowEnd: string,
+  limits: IngestLimits
+): FetchParams {
   return {
     userId,
     sourceId: source.id,
@@ -89,7 +95,7 @@ function buildFetchParams(source: SourceRow, userId: string, windowStart: string
     cursor: asRecord(source.cursor_json),
     limits: { maxItems: limits.maxItemsPerSource },
     windowStart,
-    windowEnd
+    windowEnd,
   };
 }
 
@@ -110,7 +116,7 @@ function stableSyntheticExternalId(params: {
     params.bodyText ?? "",
     params.canonicalUrl ?? "",
     params.publishedAt ?? "",
-    params.author ?? ""
+    params.author ?? "",
   ];
   return sha256Hex(parts.join("|"));
 }
@@ -130,7 +136,7 @@ function draftToUpsert(draft: ContentItemDraft, source: SourceRow, userId: strin
           bodyText: draft.bodyText,
           canonicalUrl,
           publishedAt: draft.publishedAt,
-          author: draft.author
+          author: draft.author,
         }));
 
   return {
@@ -147,7 +153,7 @@ function draftToUpsert(draft: ContentItemDraft, source: SourceRow, userId: strin
     metadata: draft.metadata ?? {},
     raw: draft.raw ?? null,
     hashUrl,
-    hashText: null
+    hashText: null,
   };
 }
 
@@ -167,11 +173,17 @@ export async function ingestEnabledSources(params: {
     normalized: 0,
     upserted: 0,
     inserted: 0,
-    errors: 0
+    errors: 0,
   };
 
   for (const source of sources) {
-    const fetchParams = buildFetchParams(source, params.userId, params.windowStart, params.windowEnd, params.limits);
+    const fetchParams = buildFetchParams(
+      source,
+      params.userId,
+      params.windowStart,
+      params.windowEnd,
+      params.limits
+    );
     const connector = getConnector(source.type);
 
     const baseResult: IngestSourceResult = {
@@ -183,7 +195,7 @@ export async function ingestEnabledSources(params: {
       normalized: 0,
       upserted: 0,
       inserted: 0,
-      errors: 0
+      errors: 0,
     };
 
     const fetchRun = await params.db.fetchRuns.start(source.id, asRecord(source.cursor_json));
@@ -251,8 +263,8 @@ export async function ingestEnabledSources(params: {
           normalized: baseResult.normalized,
           upserted: baseResult.upserted,
           inserted: baseResult.inserted,
-          errors: baseResult.errors
-        }
+          errors: baseResult.errors,
+        },
       });
 
       perSource.push(baseResult);
@@ -272,9 +284,9 @@ export async function ingestEnabledSources(params: {
           normalized: baseResult.normalized,
           upserted: baseResult.upserted,
           inserted: baseResult.inserted,
-          errors: baseResult.errors
+          errors: baseResult.errors,
         },
-        error: { message }
+        error: { message },
       });
 
       perSource.push(baseResult);

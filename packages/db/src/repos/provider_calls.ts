@@ -41,12 +41,12 @@ export function createProviderCallsRepo(db: Queryable) {
           draft.startedAt,
           draft.endedAt ?? null,
           draft.status,
-          draft.error ? JSON.stringify(draft.error) : null
+          draft.error ? JSON.stringify(draft.error) : null,
         ]
       );
       const row = res.rows[0];
       if (!row) throw new Error("Failed to insert provider_call");
       return row;
-    }
+    },
   };
 }
