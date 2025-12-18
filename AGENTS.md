@@ -17,6 +17,11 @@ You are an AI coding agent working in this repository.
 - Don’t guess: **confirm contracts** in docs/code; if unclear, propose options and ask.
 - Prefer consistency over cleverness: keep interfaces stable; avoid special cases unless ADR’d.
 - Keep the repo safe: no secrets committed; no ToS violations; avoid abusive scraping.
+- Avoid premature **fallbacks/compat shims** (early-phase velocity rule):
+  - Prefer fixing the **root cause** over adding “silent” multi-path logic.
+  - If there’s a choice/tradeoff, surface options and let the **human decide**.
+  - Don’t add backward-compat logic for older DB rows unless explicitly requested; prefer re-run/reset/migration.
+  - Only add fallbacks when required by spec/ADR (e.g. budget exhaustion behavior) or explicitly requested, and document them.
 
 **Definition of “done” for a task**
 - Correctness: behavior matches the relevant spec/ADR.
@@ -27,6 +32,10 @@ You are an AI coding agent working in this repository.
 **When you finish**
 - Output a short summary of what changed.
 - Suggest a **conventional commit message** (and optional 2–3 bullet body).
+  - Include the **exact file list** you expect in that commit.
+  - Include **copy/paste-ready commands** to create the commit (so humans can split work into multiple clean commits):
+    - `git add <files...>`
+    - `git commit -m "<type(scope)>: <message>"` (and optional extra `-m` lines for body)
 - If chat context is running low (or the session was long), write a handoff recap to `docs/sessions/recaps/` using `docs/sessions/template.md` and **commit it**. Never include secrets (API keys, tokens, full `.env` values).
   - Naming: `docs/sessions/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
 
