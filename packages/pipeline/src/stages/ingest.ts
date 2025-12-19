@@ -7,6 +7,11 @@ export interface IngestLimits {
   maxItemsPerSource: number;
 }
 
+export interface IngestSourceFilter {
+  onlySourceTypes?: string[];
+  onlySourceIds?: string[];
+}
+
 export type IngestSourceStatus = "ok" | "partial" | "error";
 
 export interface IngestSourceResult {
@@ -163,8 +168,22 @@ export async function ingestEnabledSources(params: {
   windowStart: string;
   windowEnd: string;
   limits: IngestLimits;
+  filter?: IngestSourceFilter;
 }): Promise<IngestRunResult> {
-  const sources = await params.db.sources.listEnabledByUser(params.userId);
+  let sources = await params.db.sources.listEnabledByUser(params.userId);
+
+  const onlyTypes = (params.filter?.onlySourceTypes ?? []).filter((t) => t.trim().length > 0);
+  const onlyIds = (params.filter?.onlySourceIds ?? []).filter((id) => id.trim().length > 0);
+
+  if (onlyTypes.length > 0) {
+    const set = new Set(onlyTypes);
+    sources = sources.filter((s) => set.has(s.type));
+  }
+  if (onlyIds.length > 0) {
+    const set = new Set(onlyIds);
+    sources = sources.filter((s) => set.has(s.id));
+  }
+
   const perSource: IngestSourceResult[] = [];
 
   const totals = {

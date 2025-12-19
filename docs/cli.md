@@ -43,11 +43,23 @@ Triggers a run for “now” window (or specified range).
 Options:
 
 - `--max-items-per-source N`: override the default per-source ingest cap (default: 50).
+- `--source-type <type>[,<type>...]`: only ingest enabled sources matching these `sources.type` values (e.g. `reddit`, `signal`).
+- `--source-id <uuid>`: only ingest a specific source by id (repeat by passing multiple times).
 
 Example:
 
 ```bash
 pnpm dev:cli -- admin:run-now --max-items-per-source 200
+```
+
+Examples (run subsets):
+
+```bash
+# Run canonical content sources more frequently (e.g. 2–3×/day)
+pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200
+
+# Run signals explicitly (signal connector is also internally once-per-day per source)
+pnpm dev:cli -- admin:run-now --source-type signal
 ```
 
 ### `aharadar admin:sources-list`

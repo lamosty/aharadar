@@ -1,12 +1,13 @@
 import type { Db } from "@aharadar/db";
 
-import { ingestEnabledSources, type IngestLimits, type IngestRunResult } from "../stages/ingest";
+import { ingestEnabledSources, type IngestLimits, type IngestRunResult, type IngestSourceFilter } from "../stages/ingest";
 
 export interface PipelineRunParams {
   userId: string;
   windowStart: string;
   windowEnd: string;
   ingest?: Partial<IngestLimits>;
+  ingestFilter?: IngestSourceFilter;
 }
 
 export interface PipelineRunResult {
@@ -27,6 +28,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     limits: ingestLimits,
+    filter: params.ingestFilter,
   });
 
   return {

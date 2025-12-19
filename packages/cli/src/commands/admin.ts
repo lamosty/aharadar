@@ -18,10 +18,21 @@ function truncate(value: string, maxChars: number): string {
 
 type RunNowOptions = {
   maxItemsPerSource: number;
+  sourceTypes: string[];
+  sourceIds: string[];
 };
+
+function splitCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
 
 function parseRunNowArgs(args: string[]): RunNowOptions {
   let maxItemsPerSource = 50;
+  const sourceTypes: string[] = [];
+  const sourceIds: string[] = [];
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
@@ -35,20 +46,39 @@ function parseRunNowArgs(args: string[]): RunNowOptions {
       i += 1;
       continue;
     }
+    if (a === "--source-type") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --source-type value (expected a source type string)");
+      }
+      sourceTypes.push(...splitCsv(String(next)));
+      i += 1;
+      continue;
+    }
+    if (a === "--source-id") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --source-id value (expected a source id)");
+      }
+      sourceIds.push(String(next).trim());
+      i += 1;
+      continue;
+    }
     if (a === "--help" || a === "-h") {
       throw new Error("help");
     }
   }
 
-  return { maxItemsPerSource };
+  return { maxItemsPerSource, sourceTypes, sourceIds };
 }
 
 function printRunNowUsage(): void {
   console.log("Usage:");
-  console.log("  admin:run-now [--max-items-per-source N]");
+  console.log("  admin:run-now [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
   console.log("");
   console.log("Example:");
-  console.log("  pnpm dev:cli -- admin:run-now --max-items-per-source 200");
+  console.log("  pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200");
+  console.log("  pnpm dev:cli -- admin:run-now --source-type signal");
 }
 
 export async function adminRunNowCommand(args: string[] = []): Promise<void> {
@@ -86,6 +116,13 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       windowStart,
       windowEnd,
       ingest: { maxItemsPerSource: opts.maxItemsPerSource },
+      ingestFilter:
+        opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
+          ? {
+              onlySourceTypes: opts.sourceTypes.length > 0 ? opts.sourceTypes : undefined,
+              onlySourceIds: opts.sourceIds.length > 0 ? opts.sourceIds : undefined,
+            }
+          : undefined,
     });
 
     console.log("");

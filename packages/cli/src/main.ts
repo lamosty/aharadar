@@ -43,7 +43,7 @@ function printHelp(): void {
   console.log("  inbox");
   console.log("  review");
   console.log("  search <query>");
-  console.log("  admin:run-now [--max-items-per-source N]");
+  console.log("  admin:run-now [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
   console.log("  admin:budgets");
   console.log("  admin:sources-list");
   console.log("  admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]");
