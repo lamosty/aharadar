@@ -20,11 +20,6 @@ export async function adminRunNowCommand(): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
   try {
-    // Temporary cost guardrails for local dev: cap signal search calls per run unless explicitly configured.
-    if (!process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN) {
-      process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN = "10";
-    }
-
     const user = await db.users.getOrCreateSingleton();
 
     const now = new Date();
@@ -108,7 +103,7 @@ export async function adminRunNowCommand(): Promise<void> {
     if (okRow) {
       console.log("");
       console.log("Signal usage (this run):");
-      console.log(`- calls: ${okRow.calls} (cap=${process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN})`);
+      console.log(`- calls: ${okRow.calls} (cap=${process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN ?? "(none)"})`);
       console.log(`- tokens_in: ${okRow.input_tokens}`);
       console.log(`- tokens_out: ${okRow.output_tokens}`);
       console.log(`- cost_estimate_credits: ${okRow.credits}`);
