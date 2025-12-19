@@ -13,6 +13,7 @@ export interface LlmRequest {
   user: string;
   maxOutputTokens?: number;
   temperature?: number;
+  reasoningEffort?: "low" | "medium" | "high";
 }
 
 export interface LlmCallResult {

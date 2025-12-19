@@ -47,6 +47,13 @@ function parseIntEnv(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseReasoningEffort(value: string | undefined): "low" | "medium" | "high" | null {
+  if (!value) return null;
+  const raw = value.trim().toLowerCase();
+  if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  return null;
+}
+
 function parseFloatEnv(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseFloat(value);
@@ -209,13 +216,14 @@ async function runTriageOnce(params: {
   isRetry: boolean;
 }): Promise<{ output: TriageOutput; inputTokens: number; outputTokens: number; endpoint: string }> {
   const ref = params.router.chooseModel("triage", params.tier);
+  const reasoningEffort = parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
   const maxOutputTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
 
   const call = await params.router.call("triage", ref, {
     system: buildSystemPrompt(ref, params.isRetry),
     user: buildUserPrompt(params.candidate, params.tier),
     maxOutputTokens,
-    temperature: 0,
+    reasoningEffort: reasoningEffort ?? undefined,
   });
 
   const parsed = tryParseJsonObject(call.outputText);

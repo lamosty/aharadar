@@ -61,10 +61,11 @@ For now we use **OpenAI-compatible Responses API** settings (OpenAI only in conf
   - `OPENAI_MODEL` (fallback model name if task-specific is not set)
 - Task-specific (triage):
   - `OPENAI_TRIAGE_MODEL` (or tiered overrides: `OPENAI_TRIAGE_MODEL_LOW`, `OPENAI_TRIAGE_MODEL_NORMAL`, `OPENAI_TRIAGE_MODEL_HIGH`)
-  - `OPENAI_TRIAGE_MAX_OUTPUT_TOKENS` (default 250)
+  - `OPENAI_TRIAGE_MAX_OUTPUT_TOKENS` (default 250; set higher if you use reasoning effort)
   - `OPENAI_TRIAGE_MAX_INPUT_CHARS` (default 4000)
   - `OPENAI_TRIAGE_MAX_TITLE_CHARS` (default 240)
   - `OPENAI_TRIAGE_MAX_CALLS_PER_RUN` (optional cap on triage calls)
+  - `OPENAI_TRIAGE_REASONING_EFFORT` (`low|medium|high`, optional; applies to all tiers for now)
 - Credits estimate (optional, best-effort):
   - `OPENAI_CREDITS_PER_1K_INPUT_TOKENS`
   - `OPENAI_CREDITS_PER_1K_OUTPUT_TOKENS`
@@ -78,6 +79,8 @@ For now we use **OpenAI-compatible Responses API** settings (OpenAI only in conf
 - `deep_summary`: more capable model
 - `entity_extract`: cheap model unless dial-up
 - `signal_parse`: cheap model
+
+Note: we may later map reasoning effort by budget tier (low/normal/high). For now it is a single env toggle, and you should explicitly raise `OPENAI_TRIAGE_MAX_OUTPUT_TOKENS` when using reasoning.
 
 ## Output storage conventions
 

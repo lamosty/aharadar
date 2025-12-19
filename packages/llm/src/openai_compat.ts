@@ -35,6 +35,7 @@ function responseSnippet(response: unknown): string | null {
 }
 
 function extractAssistantContent(response: unknown): string | null {
+  if (typeof response === "string" && response.length > 0) return response;
   const rec = asRecord(response);
 
   const outputText = rec.output_text;
@@ -44,17 +45,30 @@ function extractAssistantContent(response: unknown): string | null {
   if (Array.isArray(output)) {
     for (const item of output) {
       const it = asRecord(item);
+      const directText =
+        typeof it.text === "string" ? it.text : typeof it.output_text === "string" ? it.output_text : null;
+      if (directText && directText.length > 0) return directText;
       if (it.type === "message" && it.role === "assistant") {
         const content = it.content;
         if (Array.isArray(content)) {
           for (const part of content) {
             const p = asRecord(part);
-            if (p.type === "output_text" || p.type === "text") {
-              const text = p.text;
-              if (typeof text === "string" && text.length > 0) return text;
-            }
+            const text = typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
+            if (text && text.length > 0) return text;
           }
+        } else if (content && typeof content === "object" && !Array.isArray(content)) {
+          const c = content as Record<string, unknown>;
+          const text = typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
+          if (text && text.length > 0) return text;
+        } else if (typeof content === "string" && content.length > 0) {
+          return content;
         }
+      } else if (it.content && typeof it.content === "object" && !Array.isArray(it.content)) {
+        const c = it.content as Record<string, unknown>;
+        const text = typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
+        if (text && text.length > 0) return text;
+      } else if (typeof it.content === "string" && it.content.length > 0) {
+        return it.content;
       }
     }
   }
@@ -65,6 +79,13 @@ function extractAssistantContent(response: unknown): string | null {
     const msg = asRecord(first.message);
     const content = msg.content;
     if (typeof content === "string" && content.length > 0) return content;
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        const p = asRecord(part);
+        const text = typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
+        if (text && text.length > 0) return text;
+      }
+    }
   }
 
   return null;
@@ -107,9 +128,10 @@ export async function callOpenAiCompat(params: {
       { role: "system", content: params.request.system },
       { role: "user", content: params.request.user },
     ],
-    temperature: params.request.temperature ?? 0,
     stream: false,
+    ...(params.request.temperature !== undefined ? { temperature: params.request.temperature } : {}),
     ...(params.request.maxOutputTokens ? { max_output_tokens: params.request.maxOutputTokens } : {}),
+    ...(params.request.reasoningEffort ? { reasoning: { effort: params.request.reasoningEffort } } : {}),
   };
 
   const res = await fetch(params.endpoint, {
@@ -141,7 +163,11 @@ export async function callOpenAiCompat(params: {
 
   const outputText = extractAssistantContent(response);
   if (!outputText) {
-    throw new Error("LLM response missing output_text");
+    const snippet = responseSnippet(response);
+    const suffix = snippet ? `: ${snippet}` : "";
+    const err: LlmProviderError = new Error(`LLM response missing output_text${suffix}`);
+    err.responseSnippet = snippet;
+    throw err;
   }
 
   const usage = extractUsageTokens(response);
