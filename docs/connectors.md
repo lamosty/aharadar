@@ -145,19 +145,32 @@ Ingest posts from public subreddits (optionally top comments).
 }
 ```
 
-**cursor_json (Proposed)**
+**cursor_json (MVP)**
 
 ```json
 {
-  "after": "t3_abc123",
-  "last_seen_created_utc": 1734390000
+  "per_subreddit": {
+    "MachineLearning": { "last_seen_created_utc": 1734390000 },
+    "programming": { "last_seen_created_utc": 1734390000 }
+  }
 }
 ```
 
 **Fetch**
 
-- Use public JSON endpoints (rate limited; set an explicit User-Agent).
+- Use the **official OAuth Data API** (recommended for reliability):
+  - obtain a bearer token via `https://www.reddit.com/api/v1/access_token`
+  - fetch listings via `https://oauth.reddit.com/r/<subreddit>/<listing>.json`
+  - follow rate-limit headers: `X-Ratelimit-Used`, `X-Ratelimit-Remaining`, `X-Ratelimit-Reset`
+- Set an explicit `User-Agent` (generic UAs may be throttled).
 - Prefer listing `new` for incremental ingestion.
+  - For non-`new` listings (`top|hot`), treat fetch as non-incremental and rely on idempotent upsert by `external_id`.
+
+**OAuth env vars (MVP)**
+
+- `REDDIT_CLIENT_ID`
+- `REDDIT_CLIENT_SECRET` (may be empty for some app types)
+- `REDDIT_USER_AGENT` (recommended)
 
 **Normalize**
 
