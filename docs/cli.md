@@ -62,6 +62,23 @@ pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200
 pnpm dev:cli -- admin:run-now --source-type signal
 ```
 
+### `aharadar admin:digest-now`
+
+Recompute the digest **without running ingest** (no connector fetch). Uses existing `content_items` already stored in the DB.
+
+Options:
+
+- `--max-items N`: number of digest items to persist (default: 20).
+- `--source-type <type>[,<type>...]`: only consider candidates from these source types (e.g. `reddit`).
+- `--source-id <uuid>`: only consider candidates from a specific source id.
+
+Example:
+
+```bash
+pnpm dev:cli -- admin:digest-now --source-type reddit --max-items 20
+pnpm dev:cli -- inbox
+```
+
 ### `aharadar admin:sources-list`
 
 Lists all configured sources for the current user (debug/dev convenience).

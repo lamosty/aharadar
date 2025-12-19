@@ -6,6 +6,7 @@ import { reviewCommand } from "./commands/review";
 import { searchCommand } from "./commands/search";
 import {
   adminBudgetsCommand,
+  adminDigestNowCommand,
   adminRunNowCommand,
   adminSignalDebugCommand,
   adminSignalResetCursorCommand,
@@ -44,6 +45,7 @@ function printHelp(): void {
   console.log("  review");
   console.log("  search <query>");
   console.log("  admin:run-now [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
+  console.log("  admin:digest-now [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
   console.log("  admin:budgets");
   console.log("  admin:sources-list");
   console.log("  admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]");
@@ -73,6 +75,9 @@ async function main(): Promise<void> {
       break;
     case "admin:run-now":
       result = adminRunNowCommand(rest);
+      break;
+    case "admin:digest-now":
+      result = adminDigestNowCommand(rest);
       break;
     case "admin:budgets":
       result = adminBudgetsCommand();

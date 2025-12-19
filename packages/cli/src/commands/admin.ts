@@ -1,5 +1,5 @@
 import { createDb } from "@aharadar/db";
-import { runPipelineOnce } from "@aharadar/pipeline";
+import { persistDigestFromContentItems, runPipelineOnce } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -22,11 +22,60 @@ type RunNowOptions = {
   sourceIds: string[];
 };
 
+type DigestNowOptions = {
+  maxItems: number;
+  sourceTypes: string[];
+  sourceIds: string[];
+};
+
 function splitCsv(value: string): string[] {
   return value
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+}
+
+function parseDigestNowArgs(args: string[]): DigestNowOptions {
+  let maxItems = 20;
+  const sourceTypes: string[] = [];
+  const sourceIds: string[] = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--max-items") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error("Invalid --max-items (expected a positive integer)");
+      }
+      maxItems = parsed;
+      i += 1;
+      continue;
+    }
+    if (a === "--source-type") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --source-type value (expected a source type string)");
+      }
+      sourceTypes.push(...splitCsv(String(next)));
+      i += 1;
+      continue;
+    }
+    if (a === "--source-id") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --source-id value (expected a source id)");
+      }
+      sourceIds.push(String(next).trim());
+      i += 1;
+      continue;
+    }
+    if (a === "--help" || a === "-h") {
+      throw new Error("help");
+    }
+  }
+
+  return { maxItems, sourceTypes, sourceIds };
 }
 
 function parseRunNowArgs(args: string[]): RunNowOptions {
@@ -79,6 +128,17 @@ function printRunNowUsage(): void {
   console.log("Example:");
   console.log("  pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200");
   console.log("  pnpm dev:cli -- admin:run-now --source-type signal");
+}
+
+function printDigestNowUsage(): void {
+  console.log("Usage:");
+  console.log("  admin:digest-now [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
+  console.log("");
+  console.log("Notes:");
+  console.log("- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.");
+  console.log("");
+  console.log("Example:");
+  console.log("  pnpm dev:cli -- admin:digest-now --source-type reddit --max-items 20");
 }
 
 export async function adminRunNowCommand(args: string[] = []): Promise<void> {
@@ -209,6 +269,66 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       console.log(`- tokens_in: ${okRow.input_tokens}`);
       console.log(`- tokens_out: ${okRow.output_tokens}`);
       console.log(`- cost_estimate_credits: ${okRow.credits}`);
+    }
+  } finally {
+    await db.close();
+  }
+}
+
+export async function adminDigestNowCommand(args: string[] = []): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    let opts: DigestNowOptions;
+    try {
+      opts = parseDigestNowArgs(args);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === "help") {
+        printDigestNowUsage();
+        return;
+      }
+      console.error(message);
+      console.log("");
+      printDigestNowUsage();
+      process.exitCode = 1;
+      return;
+    }
+
+    const user = await db.users.getOrCreateSingleton();
+
+    const now = new Date();
+    const windowEnd = now.toISOString();
+    const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+    console.log(
+      `Building digest (no ingest) (user=${user.id}, window=${windowStart} → ${windowEnd}, maxItems=${opts.maxItems})...`
+    );
+
+    const digest = await persistDigestFromContentItems({
+      db,
+      userId: user.id,
+      windowStart,
+      windowEnd,
+      mode: env.defaultTier,
+      limits: { maxItems: opts.maxItems },
+      filter:
+        opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
+          ? {
+              onlySourceTypes: opts.sourceTypes.length > 0 ? opts.sourceTypes : undefined,
+              onlySourceIds: opts.sourceIds.length > 0 ? opts.sourceIds : undefined,
+            }
+          : undefined,
+    });
+
+    console.log("");
+    console.log("Digest summary:");
+    if (digest) {
+      console.log(`- digest_id: ${digest.digestId}`);
+      console.log(`- mode:      ${digest.mode}`);
+      console.log(`- items:     ${digest.items}`);
+    } else {
+      console.log("- (no digest created; no candidates in window)");
     }
   } finally {
     await db.close();
