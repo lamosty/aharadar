@@ -1,6 +1,11 @@
 import { createDb } from "@aharadar/db";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
+function truncate(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars - 1)}…`;
+}
+
 function getPrimaryUrl(item: {
   canonical_url: string | null;
   metadata_json: Record<string, unknown>;
@@ -36,6 +41,7 @@ export async function inboxCommand(): Promise<void> {
     const items = await db.query<{
       rank: number;
       score: number;
+      triage_json: Record<string, unknown> | null;
       source_type: string;
       title: string | null;
       canonical_url: string | null;
@@ -44,6 +50,7 @@ export async function inboxCommand(): Promise<void> {
       `select
          di.rank,
          di.score,
+         di.triage_json,
          ci.source_type,
          ci.title,
          ci.canonical_url,
@@ -61,7 +68,18 @@ export async function inboxCommand(): Promise<void> {
       const primaryUrl = getPrimaryUrl(item);
       const url = primaryUrl ? ` ${primaryUrl}` : "";
       const score = Number.isFinite(item.score) ? item.score.toFixed(3) : String(item.score);
-      console.log(`${String(item.rank).padStart(2, " ")}. score=${score} [${item.source_type}] ${title}${url}`);
+      const triage = item.triage_json ?? {};
+      const ahaScore =
+        typeof (triage as Record<string, unknown>).aha_score === "number"
+          ? (triage as Record<string, unknown>).aha_score
+          : null;
+      const reason =
+        typeof (triage as Record<string, unknown>).reason === "string"
+          ? (triage as Record<string, unknown>).reason
+          : null;
+      const ahaText = ahaScore !== null ? ` aha=${Math.round(ahaScore)}` : "";
+      const reasonText = reason ? ` — ${truncate(reason, 140)}` : "";
+      console.log(`${String(item.rank).padStart(2, " ")}. score=${score}${ahaText} [${item.source_type}] ${title}${url}${reasonText}`);
     }
   } finally {
     await db.close();

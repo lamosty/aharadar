@@ -1,4 +1,5 @@
 import type { Db } from "@aharadar/db";
+import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 
 import type { IngestSourceFilter } from "./ingest";
@@ -20,7 +21,14 @@ export interface DigestRunResult {
 type CandidateRow = {
   id: string;
   candidate_at: string;
+  source_id: string;
   source_type: string;
+  source_name: string | null;
+  title: string | null;
+  body_text: string | null;
+  canonical_url: string | null;
+  author: string | null;
+  published_at: string | null;
   metadata_json: Record<string, unknown>;
 };
 
@@ -33,6 +41,12 @@ function clamp01(x: number): number {
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
   return {};
+}
+
+function parseIntEnv(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseIsoMs(value: string): number {
@@ -71,6 +85,32 @@ function normalize01(values: number[]): number[] {
   return values.map((v) => clamp01((v - min) / range));
 }
 
+function getPrimaryUrl(params: {
+  canonicalUrl: string | null;
+  metadata: Record<string, unknown>;
+}): string | null {
+  if (params.canonicalUrl) return params.canonicalUrl;
+  const primary = params.metadata.primary_url;
+  if (typeof primary === "string" && primary.length > 0) return primary;
+  const extracted = params.metadata.extracted_urls;
+  if (Array.isArray(extracted) && extracted.length > 0) {
+    const first = extracted[0];
+    if (typeof first === "string" && first.length > 0) return first;
+  }
+  return null;
+}
+
+function resolveBudgetTier(mode: DigestMode): BudgetTier {
+  return mode === "catch_up" ? "high" : mode;
+}
+
+function resolveTriageLimit(params: { maxItems: number; candidateCount: number }): number {
+  const envLimit = parseIntEnv(process.env.LLM_TRIAGE_MAX_CALLS_PER_RUN);
+  const defaultLimit = Math.min(params.candidateCount, Math.max(params.maxItems, params.maxItems * 5));
+  if (envLimit !== null) return Math.max(0, Math.min(envLimit, params.candidateCount));
+  return defaultLimit;
+}
+
 function applyCandidateFilterSql(params: {
   filter?: IngestSourceFilter;
   args: unknown[];
@@ -93,6 +133,136 @@ function applyCandidateFilterSql(params: {
   return { whereSql, args };
 }
 
+async function triageCandidates(params: {
+  db: Db;
+  userId: string;
+  candidates: Array<{
+    contentItemId: string;
+    sourceId: string;
+    sourceType: string;
+    sourceName: string | null;
+    title: string | null;
+    bodyText: string | null;
+    canonicalUrl: string | null;
+    author: string | null;
+    publishedAt: string | null;
+    metadata: Record<string, unknown>;
+  }>;
+  windowStart: string;
+  windowEnd: string;
+  mode: DigestMode;
+  maxCalls: number;
+}): Promise<Map<string, TriageOutput>> {
+  if (params.maxCalls <= 0 || params.candidates.length === 0) return new Map();
+
+  let router: ReturnType<typeof createEnvLlmRouter> | null = null;
+  try {
+    router = createEnvLlmRouter();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`LLM triage disabled: ${message}`);
+    return new Map();
+  }
+  if (!router) return new Map();
+
+  const tier = resolveBudgetTier(params.mode);
+  const triageMap = new Map<string, TriageOutput>();
+
+  for (const candidate of params.candidates.slice(0, params.maxCalls)) {
+    const ref = router.chooseModel("triage", tier);
+    const startedAt = new Date().toISOString();
+    try {
+      const result = await triageCandidate({
+        router,
+        tier,
+        candidate: {
+          id: candidate.contentItemId,
+          title: candidate.title,
+          bodyText: candidate.bodyText,
+          sourceType: candidate.sourceType,
+          sourceName: candidate.sourceName,
+          primaryUrl: getPrimaryUrl({
+            canonicalUrl: candidate.canonicalUrl,
+            metadata: candidate.metadata,
+          }),
+          author: candidate.author,
+          publishedAt: candidate.publishedAt,
+          windowStart: params.windowStart,
+          windowEnd: params.windowEnd,
+        },
+      });
+
+      triageMap.set(candidate.contentItemId, result.output);
+
+      const endedAt = new Date().toISOString();
+      try {
+        await params.db.providerCalls.insert({
+          userId: params.userId,
+          purpose: "triage",
+          provider: result.provider,
+          model: result.model,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costEstimateCredits: result.costEstimateCredits,
+          meta: {
+            contentItemId: candidate.contentItemId,
+            sourceId: candidate.sourceId,
+            sourceType: candidate.sourceType,
+            windowStart: params.windowStart,
+            windowEnd: params.windowEnd,
+            endpoint: result.endpoint,
+            promptId: result.output.prompt_id,
+            schemaVersion: result.output.schema_version,
+          },
+          startedAt,
+          endedAt,
+          status: "ok",
+        });
+      } catch (err) {
+        console.warn("provider_calls insert failed (triage)", err);
+      }
+    } catch (err) {
+      const endedAt = new Date().toISOString();
+      const errObj = err && typeof err === "object" ? (err as Record<string, unknown>) : {};
+      try {
+        await params.db.providerCalls.insert({
+          userId: params.userId,
+          purpose: "triage",
+          provider: ref.provider,
+          model: ref.model,
+          inputTokens: 0,
+          outputTokens: 0,
+          costEstimateCredits: 0,
+          meta: {
+            contentItemId: candidate.contentItemId,
+            sourceId: candidate.sourceId,
+            sourceType: candidate.sourceType,
+            windowStart: params.windowStart,
+            windowEnd: params.windowEnd,
+            endpoint: ref.endpoint,
+          },
+          startedAt,
+          endedAt,
+          status: "error",
+          error: {
+            message: err instanceof Error ? err.message : String(err),
+            statusCode: errObj.statusCode,
+            responseSnippet: errObj.responseSnippet,
+          },
+        });
+      } catch (err) {
+        console.warn("provider_calls insert failed (triage error)", err);
+      }
+
+      console.warn(
+        `triage failed for content_item ${candidate.contentItemId}: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  return triageMap;
+}
+
 export async function persistDigestFromContentItems(params: {
   db: Db;
   userId: string;
@@ -112,9 +282,17 @@ export async function persistDigestFromContentItems(params: {
     `select
        id::text as id,
        coalesce(published_at, fetched_at)::text as candidate_at,
+       source_id::text as source_id,
        source_type,
+       s.name as source_name,
+       title,
+       body_text,
+       canonical_url,
+       author,
+       published_at::text as published_at,
        metadata_json
      from content_items
+     join sources s on s.id = content_items.source_id
      where user_id = $1
        and deleted_at is null
        and duplicate_of_content_item_id is null
@@ -146,7 +324,15 @@ export async function persistDigestFromContentItems(params: {
     return {
       contentItemId: row.id,
       candidateAtMs: tMs,
+      sourceId: row.source_id,
       sourceType: row.source_type,
+      sourceName: row.source_name,
+      title: row.title,
+      bodyText: row.body_text,
+      canonicalUrl: row.canonical_url,
+      author: row.author,
+      publishedAt: row.published_at ?? row.candidate_at,
+      metadata: asRecord(row.metadata_json),
       recency,
       engagementRaw,
     };
@@ -159,14 +345,44 @@ export async function persistDigestFromContentItems(params: {
 
   const scored = base.map((b, idx) => {
     const e = engagementNorm[idx] ?? 0;
-    const score = wRecency * b.recency + wEngagement * e;
-    return { contentItemId: b.contentItemId, score, candidateAtMs: b.candidateAtMs };
+    const heuristicScore = wRecency * b.recency + wEngagement * e;
+    return { ...b, heuristicScore };
   });
 
-  scored.sort((a, b) => b.score - a.score || b.candidateAtMs - a.candidateAtMs);
+  scored.sort((a, b) => b.heuristicScore - a.heuristicScore || b.candidateAtMs - a.candidateAtMs);
 
-  const selected = scored.slice(0, maxItems);
-  const items = selected.map((s) => ({ contentItemId: s.contentItemId, score: s.score }));
+  const triageLimit = resolveTriageLimit({ maxItems, candidateCount: scored.length });
+  const triageMap = await triageCandidates({
+    db: params.db,
+    userId: params.userId,
+    candidates: scored,
+    windowStart: params.windowStart,
+    windowEnd: params.windowEnd,
+    mode: params.mode,
+    maxCalls: triageLimit,
+  });
+
+  const wAha = 0.85;
+  const wHeuristic = 0.15;
+
+  const scoredFinal = scored.map((candidate) => {
+    const triage = triageMap.get(candidate.contentItemId) ?? null;
+    const ahaScore01 = triage ? triage.aha_score / 100 : candidate.heuristicScore;
+    const score = triage
+      ? wAha * ahaScore01 + wHeuristic * candidate.heuristicScore
+      : candidate.heuristicScore;
+    return {
+      contentItemId: candidate.contentItemId,
+      score,
+      candidateAtMs: candidate.candidateAtMs,
+      triageJson: triage,
+    };
+  });
+
+  scoredFinal.sort((a, b) => b.score - a.score || b.candidateAtMs - a.candidateAtMs);
+
+  const selected = scoredFinal.slice(0, maxItems);
+  const items = selected.map((s) => ({ contentItemId: s.contentItemId, score: s.score, triageJson: s.triageJson }));
 
   const digest = await params.db.tx(async (tx) => {
     const res = await tx.digests.upsert({

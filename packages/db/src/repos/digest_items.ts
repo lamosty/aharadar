@@ -1,6 +1,10 @@
 import type { Queryable } from "../db";
 
-export type DigestItemRef = { contentItemId: string; score: number };
+export type DigestItemRef = {
+  contentItemId: string;
+  score: number;
+  triageJson?: Record<string, unknown> | null;
+};
 
 export function createDigestItemsRepo(db: Queryable) {
   return {
@@ -16,18 +20,17 @@ export function createDigestItemsRepo(db: Queryable) {
         const item = params.items[i]!;
         // digest_id is always $1
         // rank is i+1 (1-based)
-        values.push(`($1, $${idx}, ${i + 1}, $${idx + 1})`);
-        args.push(item.contentItemId, item.score);
-        idx += 2;
+        values.push(`($1, $${idx}, ${i + 1}, $${idx + 1}, $${idx + 2}::jsonb)`);
+        args.push(item.contentItemId, item.score, item.triageJson ? JSON.stringify(item.triageJson) : null);
+        idx += 3;
       }
 
       await db.query(
-        `insert into digest_items (digest_id, content_item_id, rank, score)
+        `insert into digest_items (digest_id, content_item_id, rank, score, triage_json)
          values ${values.join(", ")}`,
         args
       );
     },
   };
 }
-
 
