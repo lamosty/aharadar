@@ -2,6 +2,8 @@ import { Pool } from "pg";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { createContentItemsRepo } from "./repos/content_items";
+import { createDigestItemsRepo } from "./repos/digest_items";
+import { createDigestsRepo } from "./repos/digests";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
 import { createProviderCallsRepo } from "./repos/provider_calls";
 import { createSourcesRepo } from "./repos/sources";
@@ -16,6 +18,8 @@ export type DbContext = Queryable & {
   sources: ReturnType<typeof createSourcesRepo>;
   fetchRuns: ReturnType<typeof createFetchRunsRepo>;
   contentItems: ReturnType<typeof createContentItemsRepo>;
+  digests: ReturnType<typeof createDigestsRepo>;
+  digestItems: ReturnType<typeof createDigestItemsRepo>;
   providerCalls: ReturnType<typeof createProviderCallsRepo>;
 };
 
@@ -31,6 +35,8 @@ function createContext(db: Queryable): DbContext {
     sources: createSourcesRepo(db),
     fetchRuns: createFetchRunsRepo(db),
     contentItems: createContentItemsRepo(db),
+    digests: createDigestsRepo(db),
+    digestItems: createDigestItemsRepo(db),
     providerCalls: createProviderCallsRepo(db),
   };
 }

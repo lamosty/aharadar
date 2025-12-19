@@ -123,6 +123,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
               onlySourceIds: opts.sourceIds.length > 0 ? opts.sourceIds : undefined,
             }
           : undefined,
+      mode: env.defaultTier,
     });
 
     console.log("");
@@ -133,6 +134,16 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     console.log(`- upserted:   ${result.ingest.totals.upserted}`);
     console.log(`- inserted:   ${result.ingest.totals.inserted}`);
     console.log(`- errors:     ${result.ingest.totals.errors}`);
+
+    console.log("");
+    console.log("Digest summary:");
+    if (result.digest) {
+      console.log(`- digest_id: ${result.digest.digestId}`);
+      console.log(`- mode:      ${result.digest.mode}`);
+      console.log(`- items:     ${result.digest.items}`);
+    } else {
+      console.log("- (no digest created; no candidates in window)");
+    }
 
     if (result.ingest.perSource.length > 0) {
       console.log("");

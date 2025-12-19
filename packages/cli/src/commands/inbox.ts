@@ -27,18 +27,41 @@ export async function inboxCommand(): Promise<void> {
       return;
     }
 
-    const items = await db.contentItems.listRecentByUser(user.id, 20);
-    if (items.length === 0) {
-      console.log("Inbox is empty (no ingested items yet).");
+    const digest = await db.digests.getLatestByUser(user.id);
+    if (!digest) {
+      console.log("No digests yet. Run `admin:run-now` after creating sources.");
       return;
     }
 
-    console.log(`Latest items (user=${user.id}):`);
-    for (const item of items) {
+    const items = await db.query<{
+      rank: number;
+      score: number;
+      source_type: string;
+      title: string | null;
+      canonical_url: string | null;
+      metadata_json: Record<string, unknown>;
+    }>(
+      `select
+         di.rank,
+         di.score,
+         ci.source_type,
+         ci.title,
+         ci.canonical_url,
+         ci.metadata_json
+       from digest_items di
+       join content_items ci on ci.id = di.content_item_id
+       where di.digest_id = $1
+       order by di.rank asc`,
+      [digest.id]
+    );
+
+    console.log(`Latest digest (user=${user.id}, window=${digest.window_start} → ${digest.window_end}, mode=${digest.mode}):`);
+    for (const item of items.rows) {
       const title = item.title ?? "(no title)";
       const primaryUrl = getPrimaryUrl(item);
       const url = primaryUrl ? ` ${primaryUrl}` : "";
-      console.log(`- [${item.source_type}] ${title}${url}`);
+      const score = Number.isFinite(item.score) ? item.score.toFixed(3) : String(item.score);
+      console.log(`${String(item.rank).padStart(2, " ")}. score=${score} [${item.source_type}] ${title}${url}`);
     }
   } finally {
     await db.close();
