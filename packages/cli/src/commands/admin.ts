@@ -126,6 +126,53 @@ export function adminBudgetsCommand(): void {
   console.log(`- defaultTier: ${env.defaultTier}`);
 }
 
+export async function adminSignalResetCursorCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getFirstUser();
+    if (!user) {
+      console.log("No user found yet. Run `admin:run-now` after creating sources.");
+      return;
+    }
+
+    let sinceTime: string | null = null;
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--since-time") {
+        const v = args[i + 1];
+        if (v && v.trim().length > 0) sinceTime = v.trim();
+        i += 1;
+      }
+      if (a === "--clear") {
+        sinceTime = null;
+      }
+    }
+
+    const cursor = sinceTime ? { since_time: sinceTime } : {};
+    const res = await db.query<{ id: string; name: string }>(
+      `update sources
+       set cursor_json = $2::jsonb
+       where user_id = $1
+         and type = 'signal'
+       returning id, name`,
+      [user.id, JSON.stringify(cursor)]
+    );
+
+    console.log(`Reset cursor for ${res.rows.length} signal source(s).`);
+    if (sinceTime) {
+      console.log(`- new cursor_json: ${JSON.stringify(cursor)}`);
+    } else {
+      console.log("- new cursor_json: {}");
+    }
+    for (const row of res.rows) {
+      console.log(`- ${row.id} ${row.name}`);
+    }
+  } finally {
+    await db.close();
+  }
+}
+
 type SignalDebugOptions = {
   limit: number;
   json: boolean;

@@ -49,9 +49,12 @@ function asConfig(value: Record<string, unknown>): SignalSourceConfig {
     accounts: asStringArray(value.accounts),
     keywords: asStringArray(value.keywords),
     queries: asStringArray(value.queries),
-    maxResultsPerQuery: asNumber(value.maxResultsPerQuery, 20),
+    // Cost-friendly default: keep per-query results small unless explicitly increased.
+    maxResultsPerQuery: asNumber(value.maxResultsPerQuery, 5),
     extractUrls: asBool(value.extractUrls, true),
     extractEntities: asBool(value.extractEntities, true),
+    excludeReplies: asBool(value.excludeReplies, true),
+    excludeRetweets: asBool(value.excludeRetweets, true),
   };
 }
 
@@ -64,12 +67,22 @@ function compileQueries(config: SignalSourceConfig): string[] {
     keywords.length > 0 ? keywords.map((k) => `"${k.replaceAll('"', '\\"')}"`).join(" OR ") : null;
 
   for (const account of (config.accounts ?? []).filter((a) => a.trim().length > 0)) {
-    const prefix = `from:${account.trim()}`;
-    out.push(kwExpr ? `${prefix} (${kwExpr})` : prefix);
+    const filters: string[] = [];
+    if (config.excludeReplies) filters.push("-filter:replies");
+    if (config.excludeRetweets) filters.push("-filter:retweets");
+    const base = `from:${account.trim()}${filters.length > 0 ? ` ${filters.join(" ")}` : ""}`;
+    out.push(kwExpr ? `${base} (${kwExpr})` : base);
   }
 
   if (out.length === 0 && kwExpr) out.push(kwExpr);
   return out;
+}
+
+function dayBucketFromIso(value: string | undefined): string | null {
+  if (!value) return null;
+  // Expected: ISO timestamp (YYYY-MM-DDTHH:mm:ss.sssZ) or YYYY-MM-DD
+  if (value.length >= 10) return value.slice(0, 10);
+  return null;
 }
 
 function extractHandleFromFromQuery(query: string): string | null {
@@ -106,6 +119,28 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
   const sinceId = getCursorString(params.cursor, "since_id") ?? getCursorString(params.cursor, "sinceId");
   const sinceTime =
     getCursorString(params.cursor, "since_time") ?? getCursorString(params.cursor, "sinceTime");
+
+  // Daily cadence guardrail (MVP): only fetch once per day per source to control cost/noise.
+  // If a signal source already fetched today (based on cursor since_time day bucket), skip.
+  const todayBucket = dayBucketFromIso(params.windowEnd);
+  const lastBucket = dayBucketFromIso(sinceTime);
+  if (todayBucket && lastBucket === todayBucket) {
+    return {
+      rawItems: [],
+      nextCursor: { ...params.cursor },
+      meta: {
+        providerCalls: [],
+        anySuccess: false,
+        queryCount: queries.length,
+        vendor: config.vendor,
+        provider: config.provider,
+        skipped: true,
+        skip_reason: "already_fetched_today",
+        day_bucket: todayBucket,
+      },
+    };
+  }
+
   const fromDate = sinceTime ?? params.windowStart;
   const toDate = params.windowEnd;
 

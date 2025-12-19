@@ -36,11 +36,11 @@ Starts the review loop for the latest digest:
 
 Semantic search across history (MVP may be “best effort”).
 
-### `aharadar admin run-now`
+### `aharadar admin:run-now`
 
 Triggers a run for “now” window (or specified range).
 
-### `aharadar admin budgets`
+### `aharadar admin:budgets`
 
 Shows current budget usage (current month + current run) derived from `provider_calls`.
 
@@ -48,6 +48,17 @@ Also shows warnings when:
 
 - monthly used ≥ 80% / 95%
 - daily throttle used ≥ 80% / 95%
+
+### `aharadar admin:signal-debug [--limit N] [--json] [--raw]`
+
+Prints the latest stored `signal` bundles (from `content_items`) and recent `provider_calls` for `purpose='signal_search'` to help debug what `x_search` is returning.
+
+### `aharadar admin:signal-reset-cursor [--clear] [--since-time <ISO>]`
+
+Resets `cursor_json` for all `signal` sources:
+
+- Use `--clear` to remove `since_time` (forces the next run to use the pipeline window start).
+- Use `--since-time <ISO>` to set an explicit lower bound for the next run.
 
 ## Review keybindings (Proposed)
 

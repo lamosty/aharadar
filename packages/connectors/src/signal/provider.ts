@@ -247,14 +247,14 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
       {
         role: "system",
         content:
-          'Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: "YYYY-MM-DD", url: "https://x.com/...", text: "..." }. If there are no results, return []. Never fabricate posts.',
+          'Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: "YYYY-MM-DD", url: "https://x.com/...", text: "..." }. Selection: include only high-signal posts (novel/meaningful/insightful). Exclude low-signal noise: emoji-only, one-word reactions (e.g. "True", "Yes", "No", "lol", "ok"), greetings, or generic acknowledgements. Short posts are allowed if they still communicate a clear idea/claim/information. Text: text MUST be a single line (no newlines) and <= 240 characters (truncate if needed). If there are no qualifying results, return []. Never fabricate posts.',
       },
       {
         role: "user",
         content:
           `Search X for query: ${JSON.stringify(params.query)} (mode: Latest). ` +
-          `Return at most ${params.limit} results as JSON. ` +
-          `If a tool is available, use it to fetch real posts; do not guess.`,
+          `Return at most ${params.limit} results as JSON (return fewer if only fewer qualify). ` +
+          `If a tool is available, use it to fetch real posts; do not guess or fabricate.`,
       },
     ],
     ...(tools ? { tools } : {}),

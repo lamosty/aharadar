@@ -382,9 +382,11 @@ Provider abstraction (recommended):
   "accounts": ["someaccount", "anotheraccount"],
   "keywords": ["bitcoin", "macro", "rates"],
   "queries": ["from:someaccount (keyword OR phrase)", "topic keyword filter"],
-  "max_results_per_query": 20,
-  "extract_urls": true,
-  "extract_entities": true
+  "maxResultsPerQuery": 5,
+  "excludeReplies": true,
+  "excludeRetweets": true,
+  "extractUrls": true,
+  "extractEntities": true
 }
 ```
 
@@ -393,6 +395,7 @@ Notes (Proposed):
 - `accounts` is the primary UX for “follow these accounts”.
 - `keywords` supports “monitor a topic” and the “deep dive into a theme” journey.
 - `queries` is an advanced escape hatch; if present, it is used directly. Otherwise, the connector compiles queries from `accounts`/`keywords`.
+- Tier note (future/policy): in `high` tier we may choose to set `excludeReplies=false`, `excludeRetweets=false`, and raise `maxResultsPerQuery` (e.g. 20) to increase recall at higher cost.
 
 **cursor_json (Proposed)**
 
@@ -402,6 +405,12 @@ Notes (Proposed):
   "since_time": "2025-12-17T08:00:00Z"
 }
 ```
+
+Notes (MVP):
+
+- `since_time` is advanced to the pipeline `windowEnd` after a successful fetch.
+- To control cost/noise, the connector may skip fetching more than once per day per source (based on `since_time` day bucket).
+- Use CLI `admin:signal-reset-cursor --clear` to force a wider re-fetch window in local dev.
 
 **Normalize**
 

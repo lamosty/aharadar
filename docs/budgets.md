@@ -125,6 +125,7 @@ Per call:
 
 - max search calls per day
 - max results per query
+- query strictness / noise filters (tiered)
 
 ## Budget enforcement order (MVP)
 
@@ -153,6 +154,9 @@ Hard constraint (from spec):
 - Triage: broad coverage of candidates
 - Deep summaries: on for top N
 - Entities: optional for top N
+- Signals (default): prefer higher signal-to-noise
+  - exclude replies and retweets when compiling account-based X queries
+  - keep per-query results modest (e.g. 5) unless explicitly increased
 
 ### high (previously “dial_up”)
 
@@ -161,6 +165,9 @@ Hard constraint (from spec):
   - entities
   - signals
 - Intended for “catch-up” or special research windows.
+- Signals (high): allow spending more for recall
+  - may include replies/retweets for account-based X queries (higher noise, higher spend)
+  - may increase per-query results cap (e.g. back up to 20)
 
 ## Proposed config shape (per user)
 
@@ -189,7 +196,7 @@ Important: even with a credits pool, the system still enforces **hard caps** (ca
   },
   "signal": {
     "max_search_calls_per_day": 10,
-    "max_results_per_query": 20
+    "max_results_per_query": 5
   }
 }
 ```

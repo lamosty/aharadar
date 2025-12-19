@@ -4,7 +4,12 @@ import { resolve } from "node:path";
 import { inboxCommand } from "./commands/inbox";
 import { reviewCommand } from "./commands/review";
 import { searchCommand } from "./commands/search";
-import { adminBudgetsCommand, adminRunNowCommand, adminSignalDebugCommand } from "./commands/admin";
+import {
+  adminBudgetsCommand,
+  adminRunNowCommand,
+  adminSignalDebugCommand,
+  adminSignalResetCursorCommand,
+} from "./commands/admin";
 
 type CommandResult = void | Promise<void>;
 
@@ -39,6 +44,7 @@ function printHelp(): void {
   console.log("  admin:run-now");
   console.log("  admin:budgets");
   console.log("  admin:signal-debug [--limit N] [--json] [--raw]");
+  console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
 
 async function main(): Promise<void> {
@@ -69,6 +75,9 @@ async function main(): Promise<void> {
       break;
     case "admin:signal-debug":
       result = adminSignalDebugCommand(rest);
+      break;
+    case "admin:signal-reset-cursor":
+      result = adminSignalResetCursorCommand(rest);
       break;
     default:
       printHelp();
