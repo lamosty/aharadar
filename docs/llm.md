@@ -52,26 +52,25 @@ interface LLMRouter {
 
 ## Runtime configuration (env, MVP)
 
-The LLM client is **OpenAI Responses API compatible**. Configure it via env:
+For now we use **OpenAI-compatible Responses API** settings (OpenAI only in config), while keeping the router abstraction in code for future multi‑provider support.
 
 - Required:
-  - `LLM_API_KEY`
-  - `LLM_ENDPOINT` (full URL to `/v1/responses`) **or** `LLM_BASE_URL` (base URL; `/v1/responses` is appended)
+  - `OPENAI_API_KEY`
+  - `OPENAI_ENDPOINT` (full URL to `/v1/responses`) **or** `OPENAI_BASE_URL` (base URL; `/v1/responses` is appended)
 - Recommended:
-  - `LLM_PROVIDER` (label stored in outputs and `provider_calls`, e.g. `openai`, `xai`, `anthropic_proxy`)
-  - `LLM_MODEL` (fallback model name if task-specific is not set)
+  - `OPENAI_MODEL` (fallback model name if task-specific is not set)
 - Task-specific (triage):
-  - `LLM_TRIAGE_MODEL` (or tiered overrides: `LLM_TRIAGE_MODEL_LOW`, `LLM_TRIAGE_MODEL_NORMAL`, `LLM_TRIAGE_MODEL_HIGH`)
-  - `LLM_TRIAGE_MAX_OUTPUT_TOKENS` (default 250)
-  - `LLM_TRIAGE_MAX_INPUT_CHARS` (default 4000)
-  - `LLM_TRIAGE_MAX_TITLE_CHARS` (default 240)
-  - `LLM_TRIAGE_MAX_CALLS_PER_RUN` (optional cap on triage calls)
+  - `OPENAI_TRIAGE_MODEL` (or tiered overrides: `OPENAI_TRIAGE_MODEL_LOW`, `OPENAI_TRIAGE_MODEL_NORMAL`, `OPENAI_TRIAGE_MODEL_HIGH`)
+  - `OPENAI_TRIAGE_MAX_OUTPUT_TOKENS` (default 250)
+  - `OPENAI_TRIAGE_MAX_INPUT_CHARS` (default 4000)
+  - `OPENAI_TRIAGE_MAX_TITLE_CHARS` (default 240)
+  - `OPENAI_TRIAGE_MAX_CALLS_PER_RUN` (optional cap on triage calls)
 - Credits estimate (optional, best-effort):
-  - `LLM_CREDITS_PER_1K_INPUT_TOKENS`
-  - `LLM_CREDITS_PER_1K_OUTPUT_TOKENS`
+  - `OPENAI_CREDITS_PER_1K_INPUT_TOKENS`
+  - `OPENAI_CREDITS_PER_1K_OUTPUT_TOKENS`
   - Optional triage overrides:
-    - `LLM_TRIAGE_CREDITS_PER_1K_INPUT_TOKENS`
-    - `LLM_TRIAGE_CREDITS_PER_1K_OUTPUT_TOKENS`
+    - `OPENAI_TRIAGE_CREDITS_PER_1K_INPUT_TOKENS`
+    - `OPENAI_TRIAGE_CREDITS_PER_1K_OUTPUT_TOKENS`
 
 **Routing policy (Proposed)**
 

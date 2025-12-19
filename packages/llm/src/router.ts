@@ -30,13 +30,13 @@ function looksLikeChatCompletionsEndpoint(endpoint: string): boolean {
 }
 
 function resolveEndpoint(env: NodeJS.ProcessEnv): string {
-  const explicit = firstEnv(env, ["LLM_ENDPOINT"]);
-  const baseUrl = firstEnv(env, ["LLM_BASE_URL"]);
+  const explicit = firstEnv(env, ["OPENAI_ENDPOINT"]);
+  const baseUrl = firstEnv(env, ["OPENAI_BASE_URL"]);
   const responsesDefault = baseUrl ? withV1(baseUrl, "/responses") : undefined;
 
   let endpoint = explicit ?? responsesDefault;
   if (!endpoint) {
-    throw new Error("Missing required env var: LLM_ENDPOINT (or LLM_BASE_URL)");
+    throw new Error("Missing required env var: OPENAI_ENDPOINT (or OPENAI_BASE_URL)");
   }
   if (looksLikeChatCompletionsEndpoint(endpoint)) {
     if (endpoint.includes("/v1/chat/completions")) {
@@ -49,7 +49,7 @@ function resolveEndpoint(env: NodeJS.ProcessEnv): string {
 }
 
 function toEnvKey(task: TaskType, suffix: string): string {
-  return `LLM_${task.toUpperCase()}_${suffix}`;
+  return `OPENAI_${task.toUpperCase()}_${suffix}`;
 }
 
 function resolveModel(env: NodeJS.ProcessEnv, task: TaskType, tier: BudgetTier): string {
@@ -58,15 +58,15 @@ function resolveModel(env: NodeJS.ProcessEnv, task: TaskType, tier: BudgetTier):
   if (byTier && byTier.trim().length > 0) return byTier.trim();
   const byTask = env[toEnvKey(task, "MODEL")];
   if (byTask && byTask.trim().length > 0) return byTask.trim();
-  const fallback = env.LLM_MODEL;
+  const fallback = env.OPENAI_MODEL;
   if (fallback && fallback.trim().length > 0) return fallback.trim();
-  throw new Error(`Missing model env var for LLM task: ${task} (set ${toEnvKey(task, "MODEL")})`);
+  throw new Error(`Missing model env var for OpenAI task: ${task} (set ${toEnvKey(task, "MODEL")})`);
 }
 
 export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRouter {
-  const apiKey = requireEnv(env, "LLM_API_KEY");
+  const apiKey = requireEnv(env, "OPENAI_API_KEY");
   const endpoint = resolveEndpoint(env);
-  const provider = firstEnv(env, ["LLM_PROVIDER"]) ?? "openai_compat";
+  const provider = "openai";
 
   const call = async (_task: TaskType, ref: ModelRef, request: LlmRequest): Promise<LlmCallResult> => {
     return callOpenAiCompat({

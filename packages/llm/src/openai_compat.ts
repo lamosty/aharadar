@@ -86,6 +86,15 @@ function extractUsageTokens(response: unknown): { inputTokens: number; outputTok
   return { inputTokens: prompt, outputTokens: completion };
 }
 
+type LlmProviderError = Error & {
+  statusCode?: number;
+  statusText?: string;
+  endpoint?: string;
+  model?: string;
+  responseSnippet?: string | null;
+  requestId?: string | null;
+};
+
 export async function callOpenAiCompat(params: {
   apiKey: string;
   endpoint: string;
@@ -119,13 +128,13 @@ export async function callOpenAiCompat(params: {
     const detail = extractErrorDetail(response);
     const snippet = responseSnippet(response);
     const suffix = detail ? `: ${truncateString(detail, 300)}` : snippet ? `: ${snippet}` : "";
-    const err = new Error(`LLM provider error (${res.status})${suffix}`);
-    (err as Record<string, unknown>).statusCode = res.status;
-    (err as Record<string, unknown>).statusText = res.statusText;
-    (err as Record<string, unknown>).endpoint = params.endpoint;
-    (err as Record<string, unknown>).model = params.model;
-    (err as Record<string, unknown>).responseSnippet = snippet;
-    (err as Record<string, unknown>).requestId =
+    const err: LlmProviderError = new Error(`LLM provider error (${res.status})${suffix}`);
+    err.statusCode = res.status;
+    err.statusText = res.statusText;
+    err.endpoint = params.endpoint;
+    err.model = params.model;
+    err.responseSnippet = snippet;
+    err.requestId =
       res.headers.get("x-request-id") ?? res.headers.get("xai-request-id") ?? res.headers.get("cf-ray");
     throw err;
   }

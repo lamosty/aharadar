@@ -6,6 +6,19 @@ function truncate(value: string, maxChars: number): string {
   return `${value.slice(0, maxChars - 1)}…`;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  return {};
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
 function getPrimaryUrl(item: {
   canonical_url: string | null;
   metadata_json: Record<string, unknown>;
@@ -68,15 +81,9 @@ export async function inboxCommand(): Promise<void> {
       const primaryUrl = getPrimaryUrl(item);
       const url = primaryUrl ? ` ${primaryUrl}` : "";
       const score = Number.isFinite(item.score) ? item.score.toFixed(3) : String(item.score);
-      const triage = item.triage_json ?? {};
-      const ahaScore =
-        typeof (triage as Record<string, unknown>).aha_score === "number"
-          ? (triage as Record<string, unknown>).aha_score
-          : null;
-      const reason =
-        typeof (triage as Record<string, unknown>).reason === "string"
-          ? (triage as Record<string, unknown>).reason
-          : null;
+      const triage = asRecord(item.triage_json);
+      const ahaScore = asFiniteNumber(triage.aha_score);
+      const reason = asString(triage.reason);
       const ahaText = ahaScore !== null ? ` aha=${Math.round(ahaScore)}` : "";
       const reasonText = reason ? ` — ${truncate(reason, 140)}` : "";
       console.log(`${String(item.rank).padStart(2, " ")}. score=${score}${ahaText} [${item.source_type}] ${title}${url}${reasonText}`);

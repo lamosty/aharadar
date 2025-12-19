@@ -91,8 +91,8 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
 }
 
 function buildUserPrompt(candidate: TriageCandidateInput, tier: BudgetTier): string {
-  const maxBody = parseIntEnv(process.env.LLM_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
-  const maxTitle = parseIntEnv(process.env.LLM_TRIAGE_MAX_TITLE_CHARS) ?? 240;
+  const maxBody = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
+  const maxTitle = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_TITLE_CHARS) ?? 240;
 
   const payload = {
     budget_tier: tier,
@@ -189,12 +189,12 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
 
 function estimateCredits(params: { inputTokens: number; outputTokens: number }): number {
   const rateIn =
-    parseFloatEnv(process.env.LLM_TRIAGE_CREDITS_PER_1K_INPUT_TOKENS) ??
-    parseFloatEnv(process.env.LLM_CREDITS_PER_1K_INPUT_TOKENS) ??
+    parseFloatEnv(process.env.OPENAI_TRIAGE_CREDITS_PER_1K_INPUT_TOKENS) ??
+    parseFloatEnv(process.env.OPENAI_CREDITS_PER_1K_INPUT_TOKENS) ??
     0;
   const rateOut =
-    parseFloatEnv(process.env.LLM_TRIAGE_CREDITS_PER_1K_OUTPUT_TOKENS) ??
-    parseFloatEnv(process.env.LLM_CREDITS_PER_1K_OUTPUT_TOKENS) ??
+    parseFloatEnv(process.env.OPENAI_TRIAGE_CREDITS_PER_1K_OUTPUT_TOKENS) ??
+    parseFloatEnv(process.env.OPENAI_CREDITS_PER_1K_OUTPUT_TOKENS) ??
     0;
 
   const inCredits = (params.inputTokens / 1000) * rateIn;
@@ -209,7 +209,7 @@ async function runTriageOnce(params: {
   isRetry: boolean;
 }): Promise<{ output: TriageOutput; inputTokens: number; outputTokens: number; endpoint: string }> {
   const ref = params.router.chooseModel("triage", params.tier);
-  const maxOutputTokens = parseIntEnv(process.env.LLM_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
+  const maxOutputTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
 
   const call = await params.router.call("triage", ref, {
     system: buildSystemPrompt(ref, params.isRetry),

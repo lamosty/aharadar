@@ -51,7 +51,11 @@ importers:
         specifier: ^8.15.5
         version: 8.16.0
 
-  packages/llm: {}
+  packages/llm:
+    dependencies:
+      '@aharadar/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/pipeline:
     dependencies:
@@ -61,6 +65,9 @@ importers:
       '@aharadar/db':
         specifier: workspace:*
         version: link:../db
+      '@aharadar/llm':
+        specifier: workspace:*
+        version: link:../llm
       '@aharadar/shared':
         specifier: workspace:*
         version: link:../shared

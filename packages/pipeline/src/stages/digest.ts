@@ -105,7 +105,7 @@ function resolveBudgetTier(mode: DigestMode): BudgetTier {
 }
 
 function resolveTriageLimit(params: { maxItems: number; candidateCount: number }): number {
-  const envLimit = parseIntEnv(process.env.LLM_TRIAGE_MAX_CALLS_PER_RUN);
+  const envLimit = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_CALLS_PER_RUN);
   const defaultLimit = Math.min(params.candidateCount, Math.max(params.maxItems, params.maxItems * 5));
   if (envLimit !== null) return Math.max(0, Math.min(envLimit, params.candidateCount));
   return defaultLimit;
@@ -280,7 +280,7 @@ export async function persistDigestFromContentItems(params: {
 
   const candidates = await params.db.query<CandidateRow>(
     `select
-       id::text as id,
+       content_items.id::text as id,
        coalesce(published_at, fetched_at)::text as candidate_at,
        source_id::text as source_id,
        source_type,
@@ -293,7 +293,7 @@ export async function persistDigestFromContentItems(params: {
        metadata_json
      from content_items
      join sources s on s.id = content_items.source_id
-     where user_id = $1
+     where content_items.user_id = $1
        and deleted_at is null
        and duplicate_of_content_item_id is null
        and coalesce(published_at, fetched_at) >= $2::timestamptz
@@ -367,6 +367,7 @@ export async function persistDigestFromContentItems(params: {
 
   const scoredFinal = scored.map((candidate) => {
     const triage = triageMap.get(candidate.contentItemId) ?? null;
+    const triageJson = triage ? (triage as unknown as Record<string, unknown>) : null;
     const ahaScore01 = triage ? triage.aha_score / 100 : candidate.heuristicScore;
     const score = triage
       ? wAha * ahaScore01 + wHeuristic * candidate.heuristicScore
@@ -375,7 +376,7 @@ export async function persistDigestFromContentItems(params: {
       contentItemId: candidate.contentItemId,
       score,
       candidateAtMs: candidate.candidateAtMs,
-      triageJson: triage,
+      triageJson,
     };
   });
 
