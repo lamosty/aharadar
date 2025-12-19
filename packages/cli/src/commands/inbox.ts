@@ -1,11 +1,6 @@
 import { createDb } from "@aharadar/db";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
-function truncate(value: string, maxChars: number): string {
-  if (value.length <= maxChars) return value;
-  return `${value.slice(0, maxChars - 1)}…`;
-}
-
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
   return {};
@@ -17,6 +12,20 @@ function asFiniteNumber(value: unknown): number | null {
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function clip(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars - 1)}…`;
+}
+
+function padRight(value: string, width: number): string {
+  if (value.length >= width) return value;
+  return value + " ".repeat(width - value.length);
 }
 
 function getPrimaryUrl(item: {
@@ -33,6 +42,49 @@ function getPrimaryUrl(item: {
     if (typeof first === "string" && first.length > 0) return first;
   }
   return null;
+}
+
+type InboxTableRow = {
+  rank: string;
+  score: string;
+  aha: string;
+  source: string;
+  title: string;
+  link: string;
+  reason: string;
+};
+
+function printInboxTable(rows: InboxTableRow[]): void {
+  const columns: Array<{ key: keyof InboxTableRow; label: string; maxWidth: number }> = [
+    { key: "rank", label: "rank", maxWidth: 4 },
+    { key: "score", label: "score", maxWidth: 6 },
+    { key: "aha", label: "aha", maxWidth: 4 },
+    { key: "source", label: "source", maxWidth: 10 },
+    { key: "title", label: "title", maxWidth: 64 },
+    { key: "link", label: "link", maxWidth: 64 },
+    { key: "reason", label: "reason", maxWidth: 80 },
+  ];
+
+  const widths = columns.map((c) => {
+    const max = Math.max(c.label.length, ...rows.map((r) => r[c.key].length));
+    return Math.min(max, c.maxWidth);
+  });
+
+  const header = columns.map((c, i) => padRight(c.label, widths[i]!)).join("  ");
+  const sep = columns.map((_c, i) => "-".repeat(widths[i]!)).join("  ");
+  console.log(header);
+  console.log(sep);
+
+  for (const row of rows) {
+    const line = columns
+      .map((c, i) => {
+        const raw = row[c.key] ?? "";
+        const cell = raw.length > widths[i]! ? clip(raw, widths[i]!) : raw;
+        return padRight(cell, widths[i]!);
+      })
+      .join("  ");
+    console.log(line);
+  }
 }
 
 export async function inboxCommand(): Promise<void> {
@@ -76,18 +128,30 @@ export async function inboxCommand(): Promise<void> {
     );
 
     console.log(`Latest digest (user=${user.id}, window=${digest.window_start} → ${digest.window_end}, mode=${digest.mode}):`);
-    for (const item of items.rows) {
-      const title = item.title ?? "(no title)";
+    const rows: InboxTableRow[] = items.rows.map((item) => {
+      const title = normalizeWhitespace(item.title ?? "(no title)");
       const primaryUrl = getPrimaryUrl(item);
-      const url = primaryUrl ? ` ${primaryUrl}` : "";
       const score = Number.isFinite(item.score) ? item.score.toFixed(3) : String(item.score);
       const triage = asRecord(item.triage_json);
       const ahaScore = asFiniteNumber(triage.aha_score);
-      const reason = asString(triage.reason);
-      const ahaText = ahaScore !== null ? ` aha=${Math.round(ahaScore)}` : "";
-      const reasonText = reason ? ` — ${truncate(reason, 140)}` : "";
-      console.log(`${String(item.rank).padStart(2, " ")}. score=${score}${ahaText} [${item.source_type}] ${title}${url}${reasonText}`);
+      const reasonRaw = asString(triage.reason);
+      return {
+        rank: String(item.rank),
+        score,
+        aha: ahaScore !== null ? String(Math.round(ahaScore)) : "-",
+        source: item.source_type,
+        title,
+        link: primaryUrl ?? "",
+        reason: reasonRaw ? normalizeWhitespace(reasonRaw) : "",
+      };
+    });
+
+    if (rows.length === 0) {
+      console.log("(no digest items)");
+      return;
     }
+
+    printInboxTable(rows);
   } finally {
     await db.close();
   }
