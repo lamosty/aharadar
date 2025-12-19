@@ -40,6 +40,30 @@ Semantic search across history (MVP may be “best effort”).
 
 Triggers a run for “now” window (or specified range).
 
+Options:
+
+- `--max-items-per-source N`: override the default per-source ingest cap (default: 50).
+
+Example:
+
+```bash
+pnpm dev:cli -- admin:run-now --max-items-per-source 200
+```
+
+### `aharadar admin:sources-list`
+
+Lists all configured sources for the current user (debug/dev convenience).
+
+### `aharadar admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]`
+
+Creates a source row for the current user (debug/dev convenience).
+
+Example (reddit):
+
+```bash
+pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config '{"subreddits":["MachineLearning"],"listing":"new"}'
+```
+
 ### `aharadar admin:budgets`
 
 Shows current budget usage (current month + current run) derived from `provider_calls`.

@@ -16,22 +16,76 @@ function truncate(value: string, maxChars: number): string {
   return `${value.slice(0, maxChars)}…`;
 }
 
-export async function adminRunNowCommand(): Promise<void> {
+type RunNowOptions = {
+  maxItemsPerSource: number;
+};
+
+function parseRunNowArgs(args: string[]): RunNowOptions {
+  let maxItemsPerSource = 50;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--max-items-per-source") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error("Invalid --max-items-per-source (expected a positive integer)");
+      }
+      maxItemsPerSource = parsed;
+      i += 1;
+      continue;
+    }
+    if (a === "--help" || a === "-h") {
+      throw new Error("help");
+    }
+  }
+
+  return { maxItemsPerSource };
+}
+
+function printRunNowUsage(): void {
+  console.log("Usage:");
+  console.log("  admin:run-now [--max-items-per-source N]");
+  console.log("");
+  console.log("Example:");
+  console.log("  pnpm dev:cli -- admin:run-now --max-items-per-source 200");
+}
+
+export async function adminRunNowCommand(args: string[] = []): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
   try {
+    let opts: RunNowOptions;
+    try {
+      opts = parseRunNowArgs(args);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === "help") {
+        printRunNowUsage();
+        return;
+      }
+      console.error(message);
+      console.log("");
+      printRunNowUsage();
+      process.exitCode = 1;
+      return;
+    }
+
     const user = await db.users.getOrCreateSingleton();
 
     const now = new Date();
     const windowEnd = now.toISOString();
     const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-    console.log(`Running pipeline (user=${user.id}, window=${windowStart} → ${windowEnd})...`);
+    console.log(
+      `Running pipeline (user=${user.id}, window=${windowStart} → ${windowEnd}, maxItemsPerSource=${opts.maxItemsPerSource})...`
+    );
 
     const result = await runPipelineOnce(db, {
       userId: user.id,
       windowStart,
       windowEnd,
+      ingest: { maxItemsPerSource: opts.maxItemsPerSource },
     });
 
     console.log("");
@@ -119,6 +173,106 @@ export function adminBudgetsCommand(): void {
   console.log(`- monthlyCredits: ${env.monthlyCredits}`);
   console.log(`- dailyThrottleCredits: ${env.dailyThrottleCredits ?? "(none)"}`);
   console.log(`- defaultTier: ${env.defaultTier}`);
+}
+
+function parseJsonObjectFlag(value: string | null): Record<string, unknown> {
+  if (!value) return {};
+  const parsed: unknown = JSON.parse(value);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Expected JSON object");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+export async function adminSourcesListCommand(): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getFirstUser();
+    if (!user) {
+      console.log("No user found yet. Run `admin:run-now` after creating sources.");
+      return;
+    }
+
+    const sources = await db.sources.listByUser(user.id);
+    if (sources.length === 0) {
+      console.log("No sources yet.");
+      console.log("");
+      console.log("Add one with:");
+      console.log(
+        '  pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config \'{"subreddits":["MachineLearning"],"listing":"new"}\''
+      );
+      return;
+    }
+
+    console.log(`Sources (${sources.length}):`);
+    for (const s of sources) {
+      const enabled = s.is_enabled ? "enabled" : "disabled";
+      const cfg = JSON.stringify(s.config_json ?? {});
+      console.log(`- ${s.id} ${enabled} ${s.type}:${s.name} config=${truncate(cfg, 240)}`);
+    }
+  } finally {
+    await db.close();
+  }
+}
+
+export async function adminSourcesAddCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getOrCreateSingleton();
+
+    let type: string | null = null;
+    let name: string | null = null;
+    let configStr: string | null = null;
+    let cursorStr: string | null = null;
+
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--type") {
+        type = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--name") {
+        name = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--config") {
+        configStr = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--cursor") {
+        cursorStr = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+    }
+
+    if (!type || !name) {
+      console.log("Usage:");
+      console.log("  admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]");
+      console.log("");
+      console.log("Example (reddit):");
+      console.log(
+        '  pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config \'{"subreddits":["MachineLearning"],"listing":"new"}\''
+      );
+      return;
+    }
+
+    const config = parseJsonObjectFlag(configStr);
+    const cursor = parseJsonObjectFlag(cursorStr);
+    const res = await db.sources.create({ userId: user.id, type, name, config, cursor, isEnabled: true });
+
+    console.log("Created source:");
+    console.log(`- id: ${res.id}`);
+    console.log(`- type: ${type}`);
+    console.log(`- name: ${name}`);
+  } finally {
+    await db.close();
+  }
 }
 
 export async function adminSignalResetCursorCommand(args: string[]): Promise<void> {

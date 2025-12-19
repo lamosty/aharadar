@@ -9,6 +9,8 @@ import {
   adminRunNowCommand,
   adminSignalDebugCommand,
   adminSignalResetCursorCommand,
+  adminSourcesAddCommand,
+  adminSourcesListCommand,
 } from "./commands/admin";
 
 type CommandResult = void | Promise<void>;
@@ -41,8 +43,10 @@ function printHelp(): void {
   console.log("  inbox");
   console.log("  review");
   console.log("  search <query>");
-  console.log("  admin:run-now");
+  console.log("  admin:run-now [--max-items-per-source N]");
   console.log("  admin:budgets");
+  console.log("  admin:sources-list");
+  console.log("  admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]");
   console.log("  admin:signal-debug [--limit N] [--verbose] [--json] [--raw]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
@@ -68,7 +72,7 @@ async function main(): Promise<void> {
       result = searchCommand(rest.join(" "));
       break;
     case "admin:run-now":
-      result = adminRunNowCommand();
+      result = adminRunNowCommand(rest);
       break;
     case "admin:budgets":
       result = adminBudgetsCommand();
@@ -78,6 +82,12 @@ async function main(): Promise<void> {
       break;
     case "admin:signal-reset-cursor":
       result = adminSignalResetCursorCommand(rest);
+      break;
+    case "admin:sources-list":
+      result = adminSourcesListCommand();
+      break;
+    case "admin:sources-add":
+      result = adminSourcesAddCommand(rest);
       break;
     default:
       printHelp();
