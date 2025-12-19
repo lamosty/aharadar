@@ -41,7 +41,7 @@ function printHelp(): void {
   console.log("aharadar CLI");
   console.log("");
   console.log("Commands:");
-  console.log("  inbox");
+  console.log("  inbox [--cards|--table]");
   console.log("  review");
   console.log("  search <query>");
   console.log("  admin:run-now [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   let result: CommandResult;
   switch (cmd) {
     case "inbox":
-      result = inboxCommand();
+      result = inboxCommand(rest);
       break;
     case "review":
       result = reviewCommand();

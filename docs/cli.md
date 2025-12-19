@@ -23,7 +23,8 @@ The CLI primarily displays `digest_items`:
 Shows latest digest(s):
 
 - digest window time
-- ranked list of items (cluster title + aha score + short reason)
+- ranked list of items (cards by default: title + reason + link)
+- use `--table` for a compact tabular view
 
 ### `aharadar review`
 
