@@ -16,6 +16,7 @@ This repo is currently **spec-first**. The goal is to lock down concrete MVP con
 9. `api.md` — optional minimal HTTP API contract (if we expose it in MVP).
 10. `adr/*` — decisions and tradeoffs; where we lock choices.
 11. `sessions/*` — session recaps / audit log for AI-assisted development (handoff notes).
+12. `learnings/*` - research notes / blog-draft material (informational).
 
 ## Status legend
 
