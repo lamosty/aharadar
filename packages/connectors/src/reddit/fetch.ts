@@ -1,7 +1,6 @@
 import type { FetchParams, FetchResult } from "@aharadar/shared";
 
 import { parseRedditSourceConfig } from "./config";
-import { getLastRedditRateLimit, redditFetchJson } from "./oauth";
 
 type RedditCursorJson = {
   per_subreddit?: Record<string, { last_seen_created_utc?: number }>;
@@ -46,7 +45,7 @@ function buildListingUrl(params: {
   after: string | null;
   timeFilter: "hour" | "day" | "week" | "month" | "year" | "all";
 }): string {
-  const base = `https://oauth.reddit.com/r/${encodeURIComponent(params.subreddit)}/${params.listing}.json`;
+  const base = `https://www.reddit.com/r/${encodeURIComponent(params.subreddit)}/${params.listing}.json`;
   const url = new URL(base);
   url.searchParams.set("raw_json", "1");
   url.searchParams.set("limit", String(Math.max(1, Math.min(100, params.limit))));
@@ -55,14 +54,33 @@ function buildListingUrl(params: {
   return url.toString();
 }
 
+async function fetchJson(url: string): Promise<unknown> {
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      // Reddit strongly prefers an explicit UA for API-like access.
+      "user-agent": "aharadar/0.x (mvp; connectors/reddit)",
+      accept: "application/json",
+    },
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  const body = contentType.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const detail = typeof body === "string" ? body.slice(0, 500) : JSON.stringify(body).slice(0, 500);
+    throw new Error(`Reddit fetch failed (${res.status} ${res.statusText}): ${detail}`);
+  }
+  return body;
+}
+
 async function fetchTopComments(params: { permalink: string; maxCommentCount: number }): Promise<string[]> {
-  const base = `https://oauth.reddit.com${params.permalink}.json`;
+  const base = `https://www.reddit.com${params.permalink}.json`;
   const url = new URL(base);
   url.searchParams.set("raw_json", "1");
   url.searchParams.set("limit", String(Math.max(1, Math.min(50, params.maxCommentCount))));
   url.searchParams.set("depth", "1");
 
-  const payload = await redditFetchJson(url.toString());
+  const payload = await fetchJson(url.toString());
   if (!Array.isArray(payload) || payload.length < 2) return [];
   const commentsListing = payload[1] as Record<string, unknown>;
   const data = asRecord(commentsListing.data);
@@ -118,7 +136,7 @@ export async function fetchReddit(params: FetchParams): Promise<FetchResult> {
         limit: Math.min(100, maxItems - rawItems.length),
       });
 
-      const payload = (await redditFetchJson(url)) as RedditListingResponse;
+      const payload = (await fetchJson(url)) as RedditListingResponse;
       httpRequests += 1;
 
       const children = payload?.data?.children ?? [];
@@ -172,7 +190,6 @@ export async function fetchReddit(params: FetchParams): Promise<FetchResult> {
       listing: config.listing ?? "new",
       subreddits: config.subreddits,
       incremental: isIncremental,
-      redditRateLimit: getLastRedditRateLimit(),
     },
   };
 }

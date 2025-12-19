@@ -158,19 +158,12 @@ Ingest posts from public subreddits (optionally top comments).
 
 **Fetch**
 
-- Use the **official OAuth Data API** (recommended for reliability):
-  - obtain a bearer token via `https://www.reddit.com/api/v1/access_token`
-  - fetch listings via `https://oauth.reddit.com/r/<subreddit>/<listing>.json`
-  - follow rate-limit headers: `X-Ratelimit-Used`, `X-Ratelimit-Remaining`, `X-Ratelimit-Reset`
-- Set an explicit `User-Agent` (generic UAs may be throttled).
+- MVP: use **public endpoints** (JSON or RSS) with an explicit `User-Agent`.
+  - JSON listings: `https://www.reddit.com/r/<subreddit>/<listing>.json` (`listing=new|top|hot`)
+  - RSS listings: `https://www.reddit.com/r/<subreddit>/.rss` (optional alternative; not implemented yet)
+  - Note: public endpoints may be throttled/blocked; we’ll revisit official OAuth later.
 - Prefer listing `new` for incremental ingestion.
   - For non-`new` listings (`top|hot`), treat fetch as non-incremental and rely on idempotent upsert by `external_id`.
-
-**OAuth env vars (MVP)**
-
-- `REDDIT_CLIENT_ID`
-- `REDDIT_CLIENT_SECRET` (may be empty for some app types)
-- `REDDIT_USER_AGENT` (recommended)
 
 **Normalize**
 
