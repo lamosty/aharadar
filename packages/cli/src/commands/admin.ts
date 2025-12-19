@@ -172,12 +172,14 @@ type SignalDebugOptions = {
   limit: number;
   json: boolean;
   raw: boolean;
+  verbose: boolean;
 };
 
 function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
-  let limit = 3;
+  let limit = 50;
   let json = false;
   let raw = false;
+  let verbose = false;
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
@@ -189,6 +191,10 @@ function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
       raw = true;
       continue;
     }
+    if (a === "--verbose") {
+      verbose = true;
+      continue;
+    }
     if (a === "--limit") {
       const next = args[i + 1];
       const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
@@ -198,7 +204,10 @@ function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
     }
   }
 
-  return { limit, json, raw };
+  // raw output is inherently verbose.
+  if (raw) verbose = true;
+
+  return { limit, json, raw, verbose };
 }
 
 type SignalResult = { date: string | null; url: string | null; text: string | null };
@@ -217,6 +226,82 @@ function asSignalResults(value: unknown): SignalResult[] {
   return out;
 }
 
+function extractXHandleFromQuery(query: string | null): string | null {
+  if (!query) return null;
+  const m = query.trim().match(/^from:([A-Za-z0-9_]{1,30})(?:\s|$)/);
+  return m ? m[1] : null;
+}
+
+function isXLikeUrl(url: string): boolean {
+  // Minimal heuristic; avoids being provider-specific elsewhere.
+  return url.includes("://x.com/") || url.includes("://twitter.com/");
+}
+
+function formatShortLocalTimestamp(value: unknown): string {
+  const d =
+    value instanceof Date
+      ? value
+      : typeof value === "string" || typeof value === "number"
+        ? new Date(value)
+        : null;
+  if (!d || !Number.isFinite(d.getTime())) return typeof value === "string" ? value : String(value);
+  const yyyy = String(d.getFullYear());
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+}
+
+function clip(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars - 1)}…`;
+}
+
+function padRight(value: string, width: number): string {
+  if (value.length >= width) return value;
+  return value + " ".repeat(width - value.length);
+}
+
+type SignalDebugTableRow = {
+  fetched: string;
+  who: string;
+  results: string;
+  text: string;
+  link: string;
+};
+
+function printSignalDebugTable(rows: SignalDebugTableRow[]): void {
+  const columns: Array<{ key: keyof SignalDebugTableRow; label: string; maxWidth: number }> = [
+    { key: "fetched", label: "fetched", maxWidth: 16 },
+    { key: "who", label: "who", maxWidth: 16 },
+    { key: "results", label: "results", maxWidth: 7 },
+    { key: "text", label: "text", maxWidth: 100 },
+    { key: "link", label: "link", maxWidth: 64 },
+  ];
+
+  const widths = columns.map((c) => {
+    const max = Math.max(c.label.length, ...rows.map((r) => r[c.key].length));
+    return Math.min(max, c.maxWidth);
+  });
+
+  const header = columns.map((c, i) => padRight(c.label, widths[i]!)).join("  ");
+  const sep = columns.map((_c, i) => "-".repeat(widths[i]!)).join("  ");
+  console.log(header);
+  console.log(sep);
+
+  for (const row of rows) {
+    const line = columns
+      .map((c, i) => {
+        const raw = row[c.key] ?? "";
+        const cell = raw.length > widths[i]! ? clip(raw, widths[i]!) : raw;
+        return padRight(cell, widths[i]!);
+      })
+      .join("  ");
+    console.log(line);
+  }
+}
+
 export async function adminSignalDebugCommand(args: string[]): Promise<void> {
   const opts = parseSignalDebugArgs(args);
   const env = loadRuntimeEnv();
@@ -232,7 +317,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       id: string;
       title: string | null;
       body_text: string | null;
-      fetched_at: string;
+      fetched_at: unknown;
       metadata_json: Record<string, unknown>;
       raw_json: unknown | null;
     }>(
@@ -315,16 +400,53 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       return;
     }
 
-    console.log(`Signal debug (user=${user.id}, latest signal items=${normalized.length}):`);
+    const tableRows: SignalDebugTableRow[] = normalized.map((item) => {
+      const handle = extractXHandleFromQuery(item.query);
+      const who = handle ? `@${handle}` : item.query ? clip(item.query, 16) : "(signal)";
+      const rc = typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
+      const topTextRaw =
+        item.signalResults.length > 0
+          ? (item.signalResults[0]?.text ?? "")
+          : typeof item.bodyText === "string"
+            ? item.bodyText
+            : "";
+      const topText = topTextRaw.replaceAll("\n", " ").trim();
+      const link =
+        item.primaryUrl && !isXLikeUrl(item.primaryUrl)
+          ? item.primaryUrl
+          : (item.extractedUrls.find((u) => typeof u === "string" && !isXLikeUrl(u)) ?? "");
+      return {
+        fetched: formatShortLocalTimestamp(item.fetchedAt),
+        who,
+        results: String(rc),
+        text: topText,
+        link,
+      };
+    });
+
+    console.log(`Signal debug (latest ${normalized.length}):`);
+    printSignalDebugTable(tableRows);
+
+    if (!opts.verbose) {
+      console.log("");
+      console.log(
+        "Tip: add --verbose to print full results and recent provider calls; use --json for structured output. For paging: append `| less -R`."
+      );
+      return;
+    }
 
     for (const item of normalized) {
       const q = item.query ?? "(unknown query)";
-      const rc = item.resultCount ?? item.signalResults.length;
-      const p = item.primaryUrl ? ` primary_url=${item.primaryUrl}` : "";
-      console.log(``);
-      console.log(
-        `- ${item.id} fetched_at=${item.fetchedAt} day=${item.dayBucket ?? "?"} results=${rc} query=${JSON.stringify(q)}${p}`
-      );
+      const handle = extractXHandleFromQuery(q);
+      const who = handle ? `@${handle}` : q;
+      const rc = typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
+      const topPost = item.signalResults.length > 0 ? (item.signalResults[0]?.url ?? null) : null;
+      const primary = item.primaryUrl;
+
+      console.log("");
+      console.log(`- ${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`);
+      if (topPost) console.log(`  top_post: ${topPost}`);
+      if (primary) console.log(`  primary_url: ${primary}`);
 
       if (item.extractedUrls.length > 0) {
         const preview = item.extractedUrls.slice(0, 10);
@@ -340,13 +462,11 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
         for (let i = 0; i < item.signalResults.length; i += 1) {
           const r = item.signalResults[i]!;
           const date = r.date ?? "?";
-          const url = r.url ?? "(no url)";
-          const text = r.text ? truncate(r.text.replaceAll("\n", " ").trim(), 240) : "(no text)";
-          console.log(`    ${i + 1}. ${date} ${url}`);
-          console.log(`       ${text}`);
+          const text = r.text ? r.text.replaceAll("\n", " ").trim() : "(no text)";
+          console.log(`    ${i + 1}. ${date} ${text}`);
         }
       } else {
-        console.log("  (no parsed signal_results on this item; try re-running ingestion or use --raw)");
+        console.log("  (no parsed signal_results on this item)");
       }
 
       if (opts.raw) {
@@ -361,10 +481,12 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       for (const c of providerCalls.rows) {
         const meta = c.meta_json ?? {};
         const query = asString((meta as Record<string, unknown>).query) ?? "(unknown query)";
+        const handle = extractXHandleFromQuery(query);
+        const who = handle ? `@${handle}` : query;
         const resultsCount = (meta as Record<string, unknown>).results_count;
         const winEnd = asString((meta as Record<string, unknown>).windowEnd);
         console.log(
-          `- ${c.started_at} status=${c.status} query=${JSON.stringify(query)} results=${resultsCount ?? "?"} tokens_in=${c.input_tokens} tokens_out=${c.output_tokens} credits=${c.cost_estimate_credits} windowEnd=${winEnd ?? "?"}`
+          `- ${formatShortLocalTimestamp(c.started_at)} status=${c.status} who=${JSON.stringify(who)} results=${resultsCount ?? "?"} tokens_in=${c.input_tokens} tokens_out=${c.output_tokens} credits=${c.cost_estimate_credits} windowEnd=${winEnd ?? "?"}`
         );
       }
     }

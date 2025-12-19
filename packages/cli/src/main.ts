@@ -43,7 +43,7 @@ function printHelp(): void {
   console.log("  search <query>");
   console.log("  admin:run-now");
   console.log("  admin:budgets");
-  console.log("  admin:signal-debug [--limit N] [--json] [--raw]");
+  console.log("  admin:signal-debug [--limit N] [--verbose] [--json] [--raw]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
 

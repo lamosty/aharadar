@@ -170,6 +170,12 @@ function parseIntEnv(name: string, value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function readDefaultTier(): "low" | "normal" | "high" {
+  const raw = (process.env.DEFAULT_TIER ?? "normal").toLowerCase();
+  if (raw === "low" || raw === "normal" || raw === "high") return raw;
+  return "normal";
+}
+
 function withV1(baseUrl: string, pathAfterV1: string): string {
   const trimmed = baseUrl.replace(/\/+$/, "");
   if (trimmed.endsWith("/v1")) return `${trimmed}${pathAfterV1}`;
@@ -219,9 +225,14 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     }
   }
 
+  const tier = readDefaultTier();
+  const maxTextChars = tier === "high" ? 1000 : 480;
+
   const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
+  const maxTokensDefault = tier === "high" ? 2000 : 900;
   const maxTokens =
-    parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ?? 600;
+    parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ??
+    maxTokensDefault;
 
   const fromDate = toYYYYMMDD(params.fromDate ?? params.sinceTime);
   const toDate = toYYYYMMDD(params.toDate);
@@ -246,8 +257,7 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     input: [
       {
         role: "system",
-        content:
-          'Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: "YYYY-MM-DD", url: "https://x.com/...", text: "..." }. Selection: include only high-signal posts (novel/meaningful/insightful). Exclude low-signal noise: emoji-only, one-word reactions (e.g. "True", "Yes", "No", "lol", "ok"), greetings, or generic acknowledgements. Short posts are allowed if they still communicate a clear idea/claim/information. Text: text MUST be a single line (no newlines) and <= 240 characters (truncate if needed). If there are no qualifying results, return []. Never fabricate posts.',
+        content: `Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: "YYYY-MM-DD", url: "https://x.com/...", text: "..." }. Selection: include only high-signal posts (novel/meaningful/insightful). Prefer excluding obvious low-signal noise like emoji-only posts or pure acknowledgements/reactions (e.g. "True", "Yes", "No", "lol") when they add no information. Short posts are allowed if they still communicate a clear idea/claim/information. Do not over-filter: when unsure, include. Text: text MUST be a single line (no newlines) and <= ${maxTextChars} characters (truncate if needed). If there are no qualifying results, return []. Never fabricate posts.`,
       },
       {
         role: "user",

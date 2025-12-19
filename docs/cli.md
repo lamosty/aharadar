@@ -49,7 +49,7 @@ Also shows warnings when:
 - monthly used ≥ 80% / 95%
 - daily throttle used ≥ 80% / 95%
 
-### `aharadar admin:signal-debug [--limit N] [--json] [--raw]`
+### `aharadar admin:signal-debug [--limit N] [--verbose] [--json] [--raw]`
 
 Prints the latest stored `signal` bundles (from `content_items`) and recent `provider_calls` for `purpose='signal_search'` to help debug what `x_search` is returning.
 
