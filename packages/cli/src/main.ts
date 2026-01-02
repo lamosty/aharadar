@@ -21,7 +21,14 @@ function loadDotEnvIfPresent(): void {
   for (const filename of [".env", ".env.local"]) {
     const fullPath = resolve(cwd, filename);
     if (!existsSync(fullPath)) continue;
-    const raw = readFileSync(fullPath, "utf8");
+    let raw: string;
+    try {
+      raw = readFileSync(fullPath, "utf8");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`warning: failed to read ${filename}: ${message}`);
+      continue;
+    }
     for (const line of raw.split(/\r?\n/)) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) continue;
