@@ -227,7 +227,8 @@ Create:
 Feedback events update personalization inputs:
 
 - store all actions in `feedback_events`
-- update `user_preference_profiles` incrementally:
+- update preference profiles incrementally:
+  - prefer topic-scoped `topic_preference_profiles` to avoid mixing unrelated topics
   - `like/save` increases positive vector contribution
   - `dislike` increases negative vector contribution
   - `skip` is stored but typically lower-weight or ignored (TBD)
