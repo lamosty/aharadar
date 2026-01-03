@@ -7,6 +7,7 @@ import { searchCommand } from "./commands/search";
 import {
   adminBudgetsCommand,
   adminDigestNowCommand,
+  adminEmbedNowCommand,
   adminRunNowCommand,
   adminSignalDebugCommand,
   adminSignalResetCursorCommand,
@@ -53,10 +54,11 @@ function printHelp(): void {
   console.log("Commands:");
   console.log("  inbox [--cards|--table] [--topic <id-or-name>]");
   console.log("  review [--topic <id-or-name>]");
-  console.log("  search <query>");
+  console.log('  search [--topic <id-or-name>] [--limit N] "<query>"');
   console.log(
     "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
   );
+  console.log("  admin:embed-now [--topic <id-or-name>] [--max-items N]");
   console.log(
     "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
   );
@@ -88,10 +90,13 @@ async function main(): Promise<void> {
       result = reviewCommand(rest);
       break;
     case "search":
-      result = searchCommand(rest.join(" "));
+      result = searchCommand(rest);
       break;
     case "admin:run-now":
       result = adminRunNowCommand(rest);
+      break;
+    case "admin:embed-now":
+      result = adminEmbedNowCommand(rest);
       break;
     case "admin:digest-now":
       result = adminDigestNowCommand(rest);

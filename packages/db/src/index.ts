@@ -3,6 +3,7 @@ export * from "./repos/content_item_sources";
 export * from "./repos/content_items";
 export * from "./repos/digest_items";
 export * from "./repos/digests";
+export * from "./repos/embeddings";
 export * from "./repos/feedback_events";
 export * from "./repos/fetch_runs";
 export * from "./repos/provider_calls";

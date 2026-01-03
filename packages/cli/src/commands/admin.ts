@@ -1,5 +1,5 @@
 import { createDb } from "@aharadar/db";
-import { ingestEnabledSources, persistDigestFromContentItems } from "@aharadar/pipeline";
+import { embedTopicContentItems, ingestEnabledSources, persistDigestFromContentItems } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
 import { formatTopicList, resolveTopicForUser } from "../topics";
@@ -30,6 +30,11 @@ type DigestNowOptions = {
   maxItems: number;
   sourceTypes: string[];
   sourceIds: string[];
+  topic: string | null;
+};
+
+type EmbedNowOptions = {
+  maxItems: number | null;
   topic: string | null;
 };
 
@@ -91,6 +96,39 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
   }
 
   return { maxItems, sourceTypes, sourceIds, topic };
+}
+
+function parseEmbedNowArgs(args: string[]): EmbedNowOptions {
+  let maxItems: number | null = null;
+  let topic: string | null = null;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--max-items") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error("Invalid --max-items (expected a positive integer)");
+      }
+      maxItems = parsed;
+      i += 1;
+      continue;
+    }
+    if (a === "--topic") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --topic value (expected a topic id or name)");
+      }
+      topic = String(next).trim();
+      i += 1;
+      continue;
+    }
+    if (a === "--help" || a === "-h") {
+      throw new Error("help");
+    }
+  }
+
+  return { maxItems, topic };
 }
 
 function parseRunNowArgs(args: string[]): RunNowOptions {
@@ -168,6 +206,18 @@ function printRunNowUsage(): void {
   console.log("  pnpm dev:cli -- admin:run-now --source-type signal");
 }
 
+function printEmbedNowUsage(): void {
+  console.log("Usage:");
+  console.log("  admin:embed-now [--topic <id-or-name>] [--max-items N]");
+  console.log("");
+  console.log("Notes:");
+  console.log("- Does NOT run ingest (no connector fetch). Embeds existing content_items already in the DB.");
+  console.log("- Respects OPENAI_EMBED_MAX_ITEMS_PER_RUN unless overridden with --max-items.");
+  console.log("");
+  console.log("Example:");
+  console.log('  pnpm dev:cli -- admin:embed-now --topic "default"');
+}
+
 function printDigestNowUsage(): void {
   console.log("Usage:");
   console.log(
@@ -230,6 +280,15 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       filter: ingestFilter,
     });
 
+    const embed = await embedTopicContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      windowStart,
+      windowEnd,
+      tier: env.defaultTier,
+    });
+
     // Dev-friendly default: include "all candidates (capped)" so review doesn't feel broken.
     // Cap matches the digest candidate pool bound (500) to prevent runaway triage/review.
     const digestMaxItemsDefault = Math.min(500, Math.max(20, ingest.totals.upserted));
@@ -254,6 +313,16 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     console.log(`- upserted:   ${ingest.totals.upserted}`);
     console.log(`- inserted:   ${ingest.totals.inserted}`);
     console.log(`- errors:     ${ingest.totals.errors}`);
+
+    console.log("");
+    console.log("Embed summary:");
+    console.log(`- attempted:         ${embed.attempted}`);
+    console.log(`- embedded:          ${embed.embedded}`);
+    console.log(`- updated_hash_only: ${embed.updatedHashOnly}`);
+    console.log(`- skipped:           ${embed.skipped}`);
+    console.log(`- errors:            ${embed.errors}`);
+    console.log(`- provider_calls_ok: ${embed.providerCallsOk}`);
+    console.log(`- provider_calls_err:${embed.providerCallsError}`);
 
     console.log("");
     console.log("Digest summary:");
@@ -331,6 +400,57 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       console.log(`- tokens_out: ${okRow.output_tokens}`);
       console.log(`- cost_estimate_credits: ${okRow.credits}`);
     }
+  } finally {
+    await db.close();
+  }
+}
+
+export async function adminEmbedNowCommand(args: string[] = []): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    let opts: EmbedNowOptions;
+    try {
+      opts = parseEmbedNowArgs(args);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === "help") {
+        printEmbedNowUsage();
+        return;
+      }
+      console.error(message);
+      console.log("");
+      printEmbedNowUsage();
+      process.exitCode = 1;
+      return;
+    }
+
+    const user = await db.users.getOrCreateSingleton();
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg: opts.topic });
+
+    console.log(`Embedding (no ingest/digest) (user=${user.id}, topic=${topic.name})...`);
+
+    const embed = await embedTopicContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      tier: env.defaultTier,
+      limits: opts.maxItems ? { maxItems: opts.maxItems } : undefined,
+    });
+
+    console.log("");
+    console.log("Embed summary:");
+    console.log(`- attempted:         ${embed.attempted}`);
+    console.log(`- embedded:          ${embed.embedded}`);
+    console.log(`- updated_hash_only: ${embed.updatedHashOnly}`);
+    console.log(`- skipped:           ${embed.skipped}`);
+    console.log(`- errors:            ${embed.errors}`);
+    console.log(`- provider_calls_ok: ${embed.providerCallsOk}`);
+    console.log(`- provider_calls_err:${embed.providerCallsError}`);
+
+    console.log("");
+    console.log("Next:");
+    console.log(`- semantic search: pnpm dev:cli -- search --topic ${JSON.stringify(topic.name)} "your query"`);
   } finally {
     await db.close();
   }

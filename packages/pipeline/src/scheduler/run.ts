@@ -2,6 +2,7 @@ import type { Db } from "@aharadar/db";
 import type { BudgetTier } from "@aharadar/shared";
 
 import { ingestEnabledSources, type IngestLimits, type IngestRunResult, type IngestSourceFilter } from "../stages/ingest";
+import { embedTopicContentItems, type EmbedRunResult } from "../stages/embed";
 import { persistDigestFromContentItems, type DigestRunResult } from "../stages/digest";
 
 export interface PipelineRunParams {
@@ -21,7 +22,13 @@ export interface PipelineRunResult {
   windowStart: string;
   windowEnd: string;
   ingest: IngestRunResult;
+  embed: EmbedRunResult;
   digest: DigestRunResult | null;
+}
+
+function resolveTier(mode: BudgetTier | "catch_up" | undefined): BudgetTier {
+  if (!mode || mode === "catch_up") return "high";
+  return mode;
 }
 
 export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promise<PipelineRunResult> {
@@ -37,6 +44,15 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     windowEnd: params.windowEnd,
     limits: ingestLimits,
     filter: params.ingestFilter,
+  });
+
+  const embed = await embedTopicContentItems({
+    db,
+    userId: params.userId,
+    topicId: params.topicId,
+    windowStart: params.windowStart,
+    windowEnd: params.windowEnd,
+    tier: resolveTier(params.mode),
   });
 
   const digest = await persistDigestFromContentItems({
@@ -56,6 +72,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     ingest,
+    embed,
     digest,
   };
 }
