@@ -404,6 +404,48 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
           contentItemId: item.contentItemIdForFeedback,
           action,
         });
+
+        // Update topic-scoped preference profile (best effort).
+        if (action === "like" || action === "save" || action === "dislike") {
+          try {
+            const emb = await db.query<{ vector_text: string | null }>(
+              `select vector::text as vector_text
+               from embeddings
+               where content_item_id = $1::uuid
+               limit 1`,
+              [item.contentItemIdForFeedback]
+            );
+            const vecText = emb.rows[0]?.vector_text ?? null;
+            if (vecText) {
+              const trimmed = vecText.trim();
+              if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                const inner = trimmed.slice(1, -1).trim();
+                const parts = inner.length > 0 ? inner.split(",") : [];
+                const vector: number[] = [];
+                let ok = true;
+                for (const p of parts) {
+                  const n = Number.parseFloat(p);
+                  if (!Number.isFinite(n)) {
+                    ok = false;
+                    break;
+                  }
+                  vector.push(n);
+                }
+                if (ok && vector.length > 0) {
+                  await db.topicPreferenceProfiles.applyFeedbackEmbedding({
+                    userId: user.id,
+                    topicId: topic.id,
+                    action,
+                    embeddingVector: vector,
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            // Preference updates should never break the review loop.
+            console.warn("preference profile update failed", err);
+          }
+        }
         lastActionByRank.set(item.rank, action);
       } finally {
         busy = false;

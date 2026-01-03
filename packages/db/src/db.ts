@@ -10,6 +10,7 @@ import { createFeedbackEventsRepo } from "./repos/feedback_events";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
 import { createProviderCallsRepo } from "./repos/provider_calls";
 import { createSourcesRepo } from "./repos/sources";
+import { createTopicPreferenceProfilesRepo } from "./repos/topic_preference_profiles";
 import { createTopicsRepo } from "./repos/topics";
 import { createUsersRepo } from "./repos/users";
 
@@ -25,6 +26,7 @@ export type DbContext = Queryable & {
   contentItems: ReturnType<typeof createContentItemsRepo>;
   contentItemSources: ReturnType<typeof createContentItemSourcesRepo>;
   embeddings: ReturnType<typeof createEmbeddingsRepo>;
+  topicPreferenceProfiles: ReturnType<typeof createTopicPreferenceProfilesRepo>;
   digests: ReturnType<typeof createDigestsRepo>;
   digestItems: ReturnType<typeof createDigestItemsRepo>;
   feedbackEvents: ReturnType<typeof createFeedbackEventsRepo>;
@@ -46,6 +48,7 @@ function createContext(db: Queryable): DbContext {
     contentItems: createContentItemsRepo(db),
     contentItemSources: createContentItemSourcesRepo(db),
     embeddings: createEmbeddingsRepo(db),
+    topicPreferenceProfiles: createTopicPreferenceProfilesRepo(db),
     digests: createDigestsRepo(db),
     digestItems: createDigestItemsRepo(db),
     feedbackEvents: createFeedbackEventsRepo(db),

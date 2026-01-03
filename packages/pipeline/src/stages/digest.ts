@@ -31,6 +31,8 @@ type CandidateRow = {
   author: string | null;
   published_at: string | null;
   metadata_json: Record<string, unknown>;
+  positive_sim: number | null;
+  negative_sim: number | null;
 };
 
 function clamp01(x: number): number {
@@ -302,10 +304,20 @@ export async function persistDigestFromContentItems(params: {
        ci.canonical_url,
        ci.author,
        ci.published_at::text as published_at,
-       ci.metadata_json
+       ci.metadata_json,
+       (case
+          when p.positive_vector is not null and e.vector is not null then (1 - (e.vector <=> p.positive_vector))::float8
+          else null
+        end) as positive_sim,
+       (case
+          when p.negative_vector is not null and e.vector is not null then (1 - (e.vector <=> p.negative_vector))::float8
+          else null
+        end) as negative_sim
      from content_items ci
      join topic_item_source tis on tis.content_item_id = ci.id
      join sources s on s.id = tis.source_id
+     left join embeddings e on e.content_item_id = ci.id
+     left join topic_preference_profiles p on p.user_id = $1 and p.topic_id = $2::uuid
      where ci.user_id = $1
        and ci.deleted_at is null
        and ci.duplicate_of_content_item_id is null
@@ -348,6 +360,8 @@ export async function persistDigestFromContentItems(params: {
       metadata: asRecord(row.metadata_json),
       recency,
       engagementRaw,
+      positiveSim: row.positive_sim,
+      negativeSim: row.negative_sim,
     };
   });
 
@@ -375,16 +389,20 @@ export async function persistDigestFromContentItems(params: {
     maxCalls: triageLimit,
   });
 
-  const wAha = 0.85;
+  const wAha = 0.8;
   const wHeuristic = 0.15;
+  const wPref = 0.05;
 
   const scoredFinal = scored.map((candidate) => {
     const triage = triageMap.get(candidate.contentItemId) ?? null;
     const triageJson = triage ? (triage as unknown as Record<string, unknown>) : null;
     const ahaScore01 = triage ? triage.aha_score / 100 : candidate.heuristicScore;
+    const pos = Number.isFinite(candidate.positiveSim ?? NaN) ? (candidate.positiveSim as number) : 0;
+    const neg = Number.isFinite(candidate.negativeSim ?? NaN) ? (candidate.negativeSim as number) : 0;
+    const pref = pos - neg; // [-1,1]ish
     const score = triage
-      ? wAha * ahaScore01 + wHeuristic * candidate.heuristicScore
-      : candidate.heuristicScore;
+      ? wAha * ahaScore01 + wHeuristic * candidate.heuristicScore + wPref * pref
+      : candidate.heuristicScore + wPref * pref;
     return {
       contentItemId: candidate.contentItemId,
       score,

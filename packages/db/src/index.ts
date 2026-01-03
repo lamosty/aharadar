@@ -8,5 +8,6 @@ export * from "./repos/feedback_events";
 export * from "./repos/fetch_runs";
 export * from "./repos/provider_calls";
 export * from "./repos/sources";
+export * from "./repos/topic_preference_profiles";
 export * from "./repos/topics";
 export * from "./repos/users";
