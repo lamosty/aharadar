@@ -66,9 +66,23 @@ For now we use **OpenAI-compatible Responses API** settings (OpenAI only in conf
   - `OPENAI_TRIAGE_MAX_TITLE_CHARS` (default 240)
   - `OPENAI_TRIAGE_MAX_CALLS_PER_RUN` (optional cap on triage calls)
   - `OPENAI_TRIAGE_REASONING_EFFORT` (`low|medium|high`, optional; applies to all tiers for now)
+- Embeddings (OpenAI-compatible):
+  - Required (to enable embed stage + semantic search):
+    - `OPENAI_API_KEY`
+    - `OPENAI_EMBED_ENDPOINT` (full URL to `/v1/embeddings`) **or** `OPENAI_BASE_URL` (base URL; `/v1/embeddings` is appended)
+      - If you only set `OPENAI_ENDPOINT` (Responses API), the implementation derives an embeddings endpoint from it when possible.
+    - `OPENAI_EMBED_MODEL` (or tiered overrides: `OPENAI_EMBED_MODEL_LOW`, `OPENAI_EMBED_MODEL_NORMAL`, `OPENAI_EMBED_MODEL_HIGH`)
+      - If unset, the implementation falls back to `OPENAI_MODEL`.
+  - Limits (optional):
+    - `OPENAI_EMBED_MAX_ITEMS_PER_RUN` (default 100)
+    - `OPENAI_EMBED_BATCH_SIZE` (default 16)
+    - `OPENAI_EMBED_MAX_INPUT_CHARS` (default 8000)
 - Credits estimate (optional, best-effort):
   - `OPENAI_CREDITS_PER_1K_INPUT_TOKENS`
   - `OPENAI_CREDITS_PER_1K_OUTPUT_TOKENS`
+  - Optional embedding overrides:
+    - `OPENAI_EMBED_CREDITS_PER_1K_INPUT_TOKENS` (preferred)
+    - `OPENAI_EMBED_CREDITS_PER_1K_TOKENS` (legacy alias)
   - Optional triage overrides:
     - `OPENAI_TRIAGE_CREDITS_PER_1K_INPUT_TOKENS`
     - `OPENAI_TRIAGE_CREDITS_PER_1K_OUTPUT_TOKENS`

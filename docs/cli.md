@@ -39,6 +39,18 @@ Starts the review loop for the latest digest:
 
 Semantic search across history (MVP may be “best effort”).
 
+Notes:
+
+- Results are **topic-scoped** when you pass `--topic <id-or-name>` (recommended when you have multiple topics).
+- Semantic search requires embeddings to be enabled (see `docs/llm.md` for required embedding env vars like `OPENAI_EMBED_MODEL`).
+
+Examples:
+
+```bash
+pnpm dev:cli -- search "vector database indexing"
+pnpm dev:cli -- search --topic default "pipeline errors"
+```
+
 ### `aharadar admin:run-now`
 
 Triggers a run for “now” window (or specified range).
@@ -46,6 +58,7 @@ Triggers a run for “now” window (or specified range).
 Options:
 
 - `--max-items-per-source N`: override the default per-source ingest cap (default: 50).
+- `--max-digest-items N`: override the default digest size (otherwise the CLI picks a dev-friendly size based on what ingest upserted, capped).
 - `--source-type <type>[,<type>...]`: only ingest enabled sources matching these `sources.type` values (e.g. `reddit`, `signal`).
 - `--source-id <uuid>`: only ingest a specific source by id (repeat by passing multiple times).
 - `--topic <id-or-name>`: run ingestion + digest for a single topic (recommended when you have multiple topics).
@@ -64,6 +77,21 @@ pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200
 
 # Run signals explicitly (signal connector is also internally once-per-day per source)
 pnpm dev:cli -- admin:run-now --source-type signal
+```
+
+### `aharadar admin:embed-now`
+
+Embeds existing content items **without running ingest** (no connector fetch). This enables semantic search and downstream clustering/dedupe/personalization work.
+
+Options:
+
+- `--max-items N`: override the per-run embedding cap (otherwise uses `OPENAI_EMBED_MAX_ITEMS_PER_RUN`).
+- `--topic <id-or-name>`: embed content for a single topic.
+
+Example:
+
+```bash
+pnpm dev:cli -- admin:embed-now --topic default
 ```
 
 ### `aharadar admin:digest-now`
