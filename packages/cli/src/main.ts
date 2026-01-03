@@ -20,6 +20,54 @@ import {
 
 type CommandResult = void | Promise<void>;
 
+function stripInlineComment(value: string): string {
+  // Treat " # ..." as a comment delimiter for unquoted values (common dotenv style).
+  // Keep `#` when it's part of the value (no preceding whitespace).
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i];
+    if (ch === "#") {
+      const prev = i > 0 ? value[i - 1] : "";
+      if (prev === " " || prev === "\t") {
+        return value.slice(0, i).trimEnd();
+      }
+    }
+  }
+  return value;
+}
+
+function parseEnvValue(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return "";
+
+  const quote = trimmed[0];
+  if (quote === '"' || quote === "'") {
+    // Support: KEY="value" # comment
+    // Minimal escape handling: allow backslash-escaped quote inside.
+    let out = "";
+    let escaped = false;
+    for (let i = 1; i < trimmed.length; i += 1) {
+      const ch = trimmed[i]!;
+      if (escaped) {
+        out += ch;
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === quote) {
+        return out;
+      }
+      out += ch;
+    }
+    // Unclosed quote: fall back to best-effort stripping inline comments.
+    return stripInlineComment(trimmed);
+  }
+
+  return stripInlineComment(trimmed);
+}
+
 function loadDotEnvIfPresent(): void {
   const cwd = process.cwd();
   for (const filename of [".env", ".env.local"]) {
@@ -39,10 +87,7 @@ function loadDotEnvIfPresent(): void {
       const idx = trimmed.indexOf("=");
       if (idx <= 0) continue;
       const key = trimmed.slice(0, idx).trim();
-      let value = trimmed.slice(idx + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
+      const value = parseEnvValue(trimmed.slice(idx + 1));
       if (process.env[key] === undefined) process.env[key] = value;
     }
   }
