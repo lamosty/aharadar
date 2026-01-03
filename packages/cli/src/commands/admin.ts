@@ -27,7 +27,7 @@ type RunNowOptions = {
 };
 
 type DigestNowOptions = {
-  maxItems: number;
+  maxItems: number | null;
   sourceTypes: string[];
   sourceIds: string[];
   topic: string | null;
@@ -46,7 +46,7 @@ function splitCsv(value: string): string[] {
 }
 
 function parseDigestNowArgs(args: string[]): DigestNowOptions {
-  let maxItems = 20;
+  let maxItems: number | null = null;
   const sourceTypes: string[] = [];
   const sourceIds: string[] = [];
   let topic: string | null = null;
@@ -226,9 +226,10 @@ function printDigestNowUsage(): void {
   console.log("");
   console.log("Notes:");
   console.log("- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.");
+  console.log("- If --max-items is omitted, uses a dev-friendly default: all candidates (capped).");
   console.log("");
   console.log("Example:");
-  console.log("  pnpm dev:cli -- admin:digest-now --source-type reddit --max-items 20");
+  console.log("  pnpm dev:cli -- admin:digest-now --source-type reddit");
 }
 
 export async function adminRunNowCommand(args: string[] = []): Promise<void> {
@@ -483,8 +484,48 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
     const windowEnd = now.toISOString();
     const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
+    // Dev-friendly default: include "all candidates (capped)" so review/search doesn't feel broken.
+    // Candidate definition matches the digest stage (topic-scoped via content_item_sources).
+    const candidateCountArgs: unknown[] = [user.id, topic.id, windowStart, windowEnd];
+    let filterSql = "";
+    if (opts.sourceTypes.length > 0) {
+      candidateCountArgs.push(opts.sourceTypes);
+      filterSql += ` and s.type = any($${candidateCountArgs.length}::text[])`;
+    }
+    if (opts.sourceIds.length > 0) {
+      candidateCountArgs.push(opts.sourceIds);
+      filterSql += ` and s.id = any($${candidateCountArgs.length}::uuid[])`;
+    }
+
+    const candidateCountRes = await db.query<{ candidate_count: number }>(
+      `with topic_item_source as (
+         select distinct on (cis.content_item_id)
+           cis.content_item_id,
+           cis.source_id
+         from content_item_sources cis
+         join sources s on s.id = cis.source_id
+         where s.user_id = $1
+           and s.topic_id = $2::uuid
+         order by cis.content_item_id, cis.added_at desc
+       )
+       select least(count(*), 500)::int as candidate_count
+       from content_items ci
+       join topic_item_source tis on tis.content_item_id = ci.id
+       join sources s on s.id = tis.source_id
+       where ci.user_id = $1
+         and ci.deleted_at is null
+         and ci.duplicate_of_content_item_id is null
+         and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
+         and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
+         ${filterSql}`,
+      candidateCountArgs
+    );
+    const candidateCount = candidateCountRes.rows[0]?.candidate_count ?? 0;
+    const digestMaxItemsDefault = Math.min(500, Math.max(20, candidateCount));
+    const digestMaxItems = opts.maxItems ?? digestMaxItemsDefault;
+
     console.log(
-      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${opts.maxItems})...`
+      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${digestMaxItems})...`
     );
 
     const digest = await persistDigestFromContentItems({
@@ -494,7 +535,7 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
       windowStart,
       windowEnd,
       mode: env.defaultTier,
-      limits: { maxItems: opts.maxItems },
+      limits: { maxItems: digestMaxItems },
       filter:
         opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
           ? {
@@ -511,6 +552,7 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
       console.log(`- mode:      ${digest.mode}`);
       console.log(`- topic:     ${topic.name}`);
       console.log(`- items:     ${digest.items}`);
+      console.log(`- requested_max_items: ${digestMaxItems}`);
     } else {
       console.log("- (no digest created; no candidates in window)");
     }

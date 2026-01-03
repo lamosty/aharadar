@@ -100,7 +100,7 @@ Recompute the digest **without running ingest** (no connector fetch). Uses exist
 
 Options:
 
-- `--max-items N`: number of digest items to persist (default: 20).
+- `--max-items N`: number of digest items to persist (if omitted: dev-friendly default = all candidates (capped)).
 - `--source-type <type>[,<type>...]`: only consider candidates from these source types (e.g. `reddit`).
 - `--source-id <uuid>`: only consider candidates from a specific source id.
 - `--topic <id-or-name>`: build digest for a single topic.
@@ -108,7 +108,7 @@ Options:
 Example:
 
 ```bash
-pnpm dev:cli -- admin:digest-now --source-type reddit --max-items 20
+pnpm dev:cli -- admin:digest-now --source-type reddit
 pnpm dev:cli -- inbox
 ```
 
