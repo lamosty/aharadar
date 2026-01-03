@@ -1,5 +1,5 @@
 import { createDb } from "@aharadar/db";
-import { persistDigestFromContentItems, runPipelineOnce } from "@aharadar/pipeline";
+import { ingestEnabledSources, persistDigestFromContentItems } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
 import { formatTopicList, resolveTopicForUser } from "../topics";
@@ -20,6 +20,7 @@ function truncate(value: string, maxChars: number): string {
 
 type RunNowOptions = {
   maxItemsPerSource: number;
+  maxDigestItems: number | null;
   sourceTypes: string[];
   sourceIds: string[];
   topic: string | null;
@@ -94,6 +95,7 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
 
 function parseRunNowArgs(args: string[]): RunNowOptions {
   let maxItemsPerSource = 50;
+  let maxDigestItems: number | null = null;
   const sourceTypes: string[] = [];
   const sourceIds: string[] = [];
   let topic: string | null = null;
@@ -107,6 +109,16 @@ function parseRunNowArgs(args: string[]): RunNowOptions {
         throw new Error("Invalid --max-items-per-source (expected a positive integer)");
       }
       maxItemsPerSource = parsed;
+      i += 1;
+      continue;
+    }
+    if (a === "--max-digest-items") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error("Invalid --max-digest-items (expected a positive integer)");
+      }
+      maxDigestItems = parsed;
       i += 1;
       continue;
     }
@@ -142,17 +154,17 @@ function parseRunNowArgs(args: string[]): RunNowOptions {
     }
   }
 
-  return { maxItemsPerSource, sourceTypes, sourceIds, topic };
+  return { maxItemsPerSource, maxDigestItems, sourceTypes, sourceIds, topic };
 }
 
 function printRunNowUsage(): void {
   console.log("Usage:");
   console.log(
-    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--max-digest-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
   );
   console.log("");
   console.log("Example:");
-  console.log("  pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200");
+  console.log("  pnpm dev:cli -- admin:run-now --topic finance --source-type reddit --max-items-per-source 200");
   console.log("  pnpm dev:cli -- admin:run-now --source-type signal");
 }
 
@@ -200,46 +212,64 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       `Running pipeline (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItemsPerSource=${opts.maxItemsPerSource})...`
     );
 
-    const result = await runPipelineOnce(db, {
+    const ingestFilter =
+      opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
+        ? {
+            onlySourceTypes: opts.sourceTypes.length > 0 ? opts.sourceTypes : undefined,
+            onlySourceIds: opts.sourceIds.length > 0 ? opts.sourceIds : undefined,
+          }
+        : undefined;
+
+    const ingest = await ingestEnabledSources({
+      db,
       userId: user.id,
       topicId: topic.id,
       windowStart,
       windowEnd,
-      ingest: { maxItemsPerSource: opts.maxItemsPerSource },
-      ingestFilter:
-        opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
-          ? {
-              onlySourceTypes: opts.sourceTypes.length > 0 ? opts.sourceTypes : undefined,
-              onlySourceIds: opts.sourceIds.length > 0 ? opts.sourceIds : undefined,
-            }
-          : undefined,
+      limits: { maxItemsPerSource: opts.maxItemsPerSource },
+      filter: ingestFilter,
+    });
+
+    // Dev-friendly default: include "all candidates (capped)" so review doesn't feel broken.
+    // Cap matches the digest candidate pool bound (500) to prevent runaway triage/review.
+    const digestMaxItemsDefault = Math.min(500, Math.max(20, ingest.totals.upserted));
+    const digestMaxItems = opts.maxDigestItems ?? digestMaxItemsDefault;
+
+    const digest = await persistDigestFromContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      windowStart,
+      windowEnd,
       mode: env.defaultTier,
+      limits: { maxItems: digestMaxItems },
+      filter: ingestFilter,
     });
 
     console.log("");
     console.log("Ingest summary:");
-    console.log(`- sources:    ${result.ingest.totals.sources}`);
-    console.log(`- fetched:    ${result.ingest.totals.fetched}`);
-    console.log(`- normalized: ${result.ingest.totals.normalized}`);
-    console.log(`- upserted:   ${result.ingest.totals.upserted}`);
-    console.log(`- inserted:   ${result.ingest.totals.inserted}`);
-    console.log(`- errors:     ${result.ingest.totals.errors}`);
+    console.log(`- sources:    ${ingest.totals.sources}`);
+    console.log(`- fetched:    ${ingest.totals.fetched}`);
+    console.log(`- normalized: ${ingest.totals.normalized}`);
+    console.log(`- upserted:   ${ingest.totals.upserted}`);
+    console.log(`- inserted:   ${ingest.totals.inserted}`);
+    console.log(`- errors:     ${ingest.totals.errors}`);
 
     console.log("");
     console.log("Digest summary:");
-    if (result.digest) {
-      console.log(`- digest_id: ${result.digest.digestId}`);
-      console.log(`- mode:      ${result.digest.mode}`);
+    if (digest) {
+      console.log(`- digest_id: ${digest.digestId}`);
+      console.log(`- mode:      ${digest.mode}`);
       console.log(`- topic:     ${topic.name}`);
-      console.log(`- items:     ${result.digest.items}`);
+      console.log(`- items:     ${digest.items} (requested_max_items=${digestMaxItems})`);
     } else {
       console.log("- (no digest created; no candidates in window)");
     }
 
-    if (result.ingest.perSource.length > 0) {
+    if (ingest.perSource.length > 0) {
       console.log("");
       console.log("Per-source:");
-      for (const s of result.ingest.perSource) {
+      for (const s of ingest.perSource) {
         const suffix = s.error ? ` (${s.error.message})` : "";
         console.log(
           `- ${s.sourceType}:${s.sourceName} status=${s.status} fetched=${s.fetched} upserted=${s.upserted} inserted=${s.inserted} errors=${s.errors}${suffix}`
@@ -248,7 +278,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     }
 
     // Helpful diagnostics: summarize provider-call errors for this run (keyed by windowEnd).
-    if (result.ingest.totals.errors > 0) {
+    if (ingest.totals.errors > 0) {
       const summary = await db.query<{ error: string | null; count: string }>(
         `select
            error_json->>'message' as error,

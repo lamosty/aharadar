@@ -92,6 +92,7 @@ type ReviewRow = {
   title: string | null;
   canonical_url: string | null;
   metadata_json: Record<string, unknown> | null;
+  last_action: FeedbackAction | null;
 };
 
 type ReviewItem = {
@@ -335,19 +336,36 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
          coalesce(ci.source_type, rci.source_type)::text as source_type,
          coalesce(ci.title, rci.title) as title,
          coalesce(ci.canonical_url, rci.canonical_url) as canonical_url,
-         coalesce(ci.metadata_json, rci.metadata_json) as metadata_json
+         coalesce(ci.metadata_json, rci.metadata_json) as metadata_json,
+         fe.action as last_action
        from digest_items di
        left join content_items ci on ci.id = di.content_item_id
        left join clusters cl on cl.id = di.cluster_id
        left join content_items rci on rci.id = cl.representative_content_item_id
+       left join lateral (
+         select action
+         from feedback_events
+         where user_id = $2::uuid
+           and content_item_id = coalesce(di.content_item_id, cl.representative_content_item_id)
+         order by created_at desc
+         limit 1
+       ) fe on true
        where di.digest_id = $1
        order by di.rank asc`,
-      [digest.id]
+      [digest.id, user.id]
     );
 
-    const items = resolveReviewItems(itemsRes.rows);
+    const reviewed = itemsRes.rows.filter((r) => r.last_action !== null).length;
+    const unreviewedRows = itemsRes.rows.filter((r) => r.last_action === null);
+
+    const items = resolveReviewItems(unreviewedRows);
     if (items.length === 0) {
-      console.log("(no digest items)");
+      if (reviewed > 0) {
+        console.log(`No unreviewed items left for topic "${topic.name}".`);
+        console.log(`- reviewed: ${reviewed}`);
+      } else {
+        console.log("(no digest items)");
+      }
       return;
     }
 
