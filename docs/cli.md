@@ -172,7 +172,7 @@ Creates a topic for the current user.
 Display a short explanation assembled from:
 
 - triage `reason`
-- top matching preference theme (derived from liked items embedding similarity)
+- embedding-based preference match (similarity to topic preference profile; and/or similar liked items)
 - novelty indicator (e.g., “new vs your recent history”)
 - provenance (sources contributing to the cluster)
 

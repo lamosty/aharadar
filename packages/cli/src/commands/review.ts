@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 
-import { createDb } from "@aharadar/db";
+import { createDb, type Db } from "@aharadar/db";
 import type { FeedbackAction } from "@aharadar/shared";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
@@ -112,6 +112,150 @@ type ReviewItem = {
 
 type ViewMode = "item" | "details" | "help";
 
+type WhyShownData = {
+  targetHasEmbedding: boolean;
+  profile:
+    | null
+    | {
+        positiveCount: number;
+        negativeCount: number;
+        positiveSim: number | null;
+        negativeSim: number | null;
+      };
+  similarLikes: Array<{
+    contentItemId: string;
+    action: FeedbackAction;
+    similarity: number;
+    title: string;
+    link: string | null;
+  }>;
+};
+
+type WhyShownState =
+  | { status: "loading" }
+  | { status: "ready"; data: WhyShownData }
+  | { status: "error"; message: string };
+
+async function computeWhyShown(params: {
+  db: Db;
+  userId: string;
+  topicId: string;
+  contentItemId: string;
+}): Promise<WhyShownData> {
+  const target = await params.db.query<{ vector_text: string | null }>(
+    `select vector::text as vector_text
+     from embeddings
+     where content_item_id = $1::uuid
+     limit 1`,
+    [params.contentItemId]
+  );
+  const vectorText = target.rows[0]?.vector_text ?? null;
+  if (!vectorText) {
+    return { targetHasEmbedding: false, profile: null, similarLikes: [] };
+  }
+
+  const prof = await params.db.query<{
+    positive_count: number;
+    negative_count: number;
+    positive_sim: number | null;
+    negative_sim: number | null;
+  }>(
+    `select
+       positive_count,
+       negative_count,
+       (case
+          when positive_vector is not null then (1 - (positive_vector <=> $3::vector))::float8
+          else null
+        end) as positive_sim,
+       (case
+          when negative_vector is not null then (1 - (negative_vector <=> $3::vector))::float8
+          else null
+        end) as negative_sim
+     from topic_preference_profiles
+     where user_id = $1::uuid and topic_id = $2::uuid`,
+    [params.userId, params.topicId, vectorText]
+  );
+  const profileRow = prof.rows[0] ?? null;
+
+  const similar = await params.db.query<{
+    content_item_id: string;
+    action: FeedbackAction;
+    similarity: number;
+    title: string | null;
+    canonical_url: string | null;
+    metadata_json: Record<string, unknown>;
+  }>(
+    `with nn as (
+       select
+         e.content_item_id,
+         (1 - (e.vector <=> $3::vector))::float8 as similarity
+       from embeddings e
+       where e.content_item_id <> $4::uuid
+       order by e.vector <=> $3::vector asc
+       limit 50
+     ),
+     last_feedback as (
+       select distinct on (fe.content_item_id)
+         fe.content_item_id,
+         fe.action
+       from feedback_events fe
+       where fe.user_id = $1::uuid
+       order by fe.content_item_id, fe.created_at desc
+     ),
+     topic_membership as (
+       select distinct cis.content_item_id
+       from content_item_sources cis
+       join sources s on s.id = cis.source_id
+       where s.user_id = $1::uuid
+         and s.topic_id = $2::uuid
+     ),
+     liked_nn as (
+       select nn.content_item_id, nn.similarity, lf.action
+       from nn
+       join last_feedback lf on lf.content_item_id = nn.content_item_id
+       join topic_membership tm on tm.content_item_id = nn.content_item_id
+       where lf.action in ('like','save')
+       order by nn.similarity desc
+       limit 3
+     )
+     select
+       lnn.content_item_id::text as content_item_id,
+       lnn.action,
+       lnn.similarity,
+       ci.title,
+       ci.canonical_url,
+       ci.metadata_json
+     from liked_nn lnn
+     join content_items ci on ci.id = lnn.content_item_id`,
+    [params.userId, params.topicId, vectorText, params.contentItemId]
+  );
+
+  const similarLikes = similar.rows.map((r) => {
+    const title = normalizeWhitespace(r.title ?? "(no title)");
+    const link = getPrimaryUrl({ canonicalUrl: r.canonical_url, metadata: asRecord(r.metadata_json) });
+    return {
+      contentItemId: r.content_item_id,
+      action: r.action,
+      similarity: r.similarity,
+      title,
+      link,
+    };
+  });
+
+  return {
+    targetHasEmbedding: true,
+    profile: profileRow
+      ? {
+          positiveCount: profileRow.positive_count,
+          negativeCount: profileRow.negative_count,
+          positiveSim: profileRow.positive_sim,
+          negativeSim: profileRow.negative_sim,
+        }
+      : null,
+    similarLikes,
+  };
+}
+
 function formatHeader(params: { idx: number; total: number; digestMode: string }): string {
   return `Review (${params.idx + 1}/${params.total}, mode=${params.digestMode})`;
 }
@@ -144,6 +288,7 @@ function renderItem(params: {
   view: ViewMode;
   lastAction: FeedbackAction | null;
   busy: boolean;
+  whyShown: WhyShownState | null;
 }): void {
   console.clear();
   console.log(params.header);
@@ -185,6 +330,47 @@ function renderItem(params: {
   if (params.view === "details") {
     console.log("");
     console.log("--- details ---");
+
+    console.log("personalization:");
+    if (!params.item.contentItemIdForFeedback) {
+      console.log("(missing content_item_id for feedback; can't compute embedding-based why-shown)");
+    } else if (!params.whyShown) {
+      console.log("(loading…)");
+    } else if (params.whyShown.status === "loading") {
+      console.log("(loading…)");
+    } else if (params.whyShown.status === "error") {
+      console.log(`(error: ${params.whyShown.message})`);
+    } else {
+      const data = params.whyShown.data;
+      if (!data.targetHasEmbedding) {
+        console.log("(no embedding for this item yet; run admin:embed-now)");
+      } else if (!data.profile) {
+        console.log("(no topic preference profile yet; like/save/dislike a few items)");
+      } else {
+        const posSim = data.profile.positiveSim;
+        const negSim = data.profile.negativeSim;
+        const posText = posSim !== null && Number.isFinite(posSim) ? posSim.toFixed(3) : "-";
+        const negText = negSim !== null && Number.isFinite(negSim) ? negSim.toFixed(3) : "-";
+        const pref =
+          posSim !== null && negSim !== null && Number.isFinite(posSim) && Number.isFinite(negSim) ? posSim - negSim : null;
+        const prefText = pref !== null && Number.isFinite(pref) ? pref.toFixed(3) : "-";
+        console.log(
+          `pref_sim=${prefText} (pos_sim=${posText}, pos_n=${data.profile.positiveCount}; neg_sim=${negText}, neg_n=${data.profile.negativeCount})`
+        );
+      }
+
+      if (data.similarLikes.length > 0) {
+        console.log("similar_to_likes:");
+        for (const s of data.similarLikes) {
+          const sim = Number.isFinite(s.similarity) ? s.similarity.toFixed(3) : String(s.similarity);
+          const suffix = s.link ? ` link=${s.link}` : "";
+          console.log(`- sim=${sim} action=${s.action} title=${clip(s.title, 140)}${suffix}`);
+        }
+      } else {
+        console.log("similar_to_likes: (none yet)");
+      }
+    }
+
     if (params.item.categories.length > 0) {
       console.log(`categories: ${params.item.categories.join(", ")}`);
     }
@@ -370,6 +556,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
     }
 
     const lastActionByRank = new Map<number, FeedbackAction>();
+    const whyByContentItemId = new Map<string, WhyShownState>();
 
     let idx = 0;
     let view: ViewMode = "item";
@@ -380,11 +567,34 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
       if (!item) return;
       const header = `${formatHeader({ idx, total: items.length, digestMode: digest.mode })} topic=${topic.name}`;
       const lastAction = lastActionByRank.get(item.rank) ?? null;
+      const whyShown =
+        item.contentItemIdForFeedback && whyByContentItemId.has(item.contentItemIdForFeedback)
+          ? (whyByContentItemId.get(item.contentItemIdForFeedback) ?? null)
+          : null;
       if (view === "help") {
         renderHelp();
         return;
       }
-      renderItem({ header, item, view, lastAction, busy });
+      renderItem({ header, item, view, lastAction, busy, whyShown });
+    };
+
+    const ensureWhyLoaded = (): void => {
+      const item = items[idx];
+      const contentItemId = item?.contentItemIdForFeedback ?? null;
+      if (!contentItemId) return;
+      if (whyByContentItemId.has(contentItemId)) return;
+      whyByContentItemId.set(contentItemId, { status: "loading" });
+      render();
+      void (async () => {
+        try {
+          const data = await computeWhyShown({ db, userId: user.id, topicId: topic.id, contentItemId });
+          whyByContentItemId.set(contentItemId, { status: "ready", data });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          whyByContentItemId.set(contentItemId, { status: "error", message });
+        }
+        render();
+      })();
     };
 
     const recordFeedback = async (action: FeedbackAction): Promise<void> => {
@@ -510,6 +720,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
 
       if (key === DEFAULT_KEYMAP.why) {
         view = view === "details" ? "item" : "details";
+        if (view === "details") ensureWhyLoaded();
         render();
         return;
       }
