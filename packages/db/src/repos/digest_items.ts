@@ -1,10 +1,22 @@
 import type { Queryable } from "../db";
 
-export type DigestItemRef = {
-  contentItemId: string;
-  score: number;
-  triageJson?: Record<string, unknown> | null;
-};
+export type DigestItemRef =
+  | {
+      clusterId: string;
+      contentItemId: null;
+      score: number;
+      triageJson?: Record<string, unknown> | null;
+      summaryJson?: Record<string, unknown> | null;
+      entitiesJson?: Record<string, unknown> | null;
+    }
+  | {
+      clusterId: null;
+      contentItemId: string;
+      score: number;
+      triageJson?: Record<string, unknown> | null;
+      summaryJson?: Record<string, unknown> | null;
+      entitiesJson?: Record<string, unknown> | null;
+    };
 
 export function createDigestItemsRepo(db: Queryable) {
   return {
@@ -20,13 +32,22 @@ export function createDigestItemsRepo(db: Queryable) {
         const item = params.items[i]!;
         // digest_id is always $1
         // rank is i+1 (1-based)
-        values.push(`($1, $${idx}, ${i + 1}, $${idx + 1}, $${idx + 2}::jsonb)`);
-        args.push(item.contentItemId, item.score, item.triageJson ? JSON.stringify(item.triageJson) : null);
-        idx += 3;
+        values.push(
+          `($1, $${idx}::uuid, $${idx + 1}::uuid, ${i + 1}, $${idx + 2}, $${idx + 3}::jsonb, $${idx + 4}::jsonb, $${idx + 5}::jsonb)`
+        );
+        args.push(
+          item.clusterId,
+          item.contentItemId,
+          item.score,
+          item.triageJson ? JSON.stringify(item.triageJson) : null,
+          item.summaryJson ? JSON.stringify(item.summaryJson) : null,
+          item.entitiesJson ? JSON.stringify(item.entitiesJson) : null
+        );
+        idx += 6;
       }
 
       await db.query(
-        `insert into digest_items (digest_id, content_item_id, rank, score, triage_json)
+        `insert into digest_items (digest_id, cluster_id, content_item_id, rank, score, triage_json, summary_json, entities_json)
          values ${values.join(", ")}`,
         args
       );

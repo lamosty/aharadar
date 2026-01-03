@@ -512,33 +512,61 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
     }
 
     const itemsRes = await db.query<ReviewRow>(
-      `select
+      `with topic_item_source as (
+         select distinct on (cis.content_item_id)
+           cis.content_item_id,
+           cis.source_id
+         from content_item_sources cis
+         join sources s on s.id = cis.source_id
+         where s.user_id = $2::uuid
+           and s.topic_id = $3::uuid
+         order by cis.content_item_id, cis.added_at desc
+       )
+       select
          di.rank,
          di.score,
          di.triage_json,
          di.content_item_id::text as content_item_id,
          di.cluster_id::text as cluster_id,
-         coalesce(di.content_item_id, cl.representative_content_item_id)::text as feedback_content_item_id,
-         coalesce(ci.source_type, rci.source_type)::text as source_type,
-         coalesce(ci.title, rci.title) as title,
-         coalesce(ci.canonical_url, rci.canonical_url) as canonical_url,
-         coalesce(ci.metadata_json, rci.metadata_json) as metadata_json,
+         coalesce(di.content_item_id, rep.content_item_id)::text as feedback_content_item_id,
+         s.type as source_type,
+         ci.title,
+         ci.canonical_url,
+         ci.metadata_json,
          fe.action as last_action
        from digest_items di
-       left join content_items ci on ci.id = di.content_item_id
-       left join clusters cl on cl.id = di.cluster_id
-       left join content_items rci on rci.id = cl.representative_content_item_id
+       left join lateral (
+         select ci2.id as content_item_id
+         from cluster_items cli
+         join content_items ci2 on ci2.id = cli.content_item_id
+         join topic_item_source tis2 on tis2.content_item_id = ci2.id
+         where di.cluster_id is not null
+           and cli.cluster_id = di.cluster_id
+           and ci2.deleted_at is null
+           and ci2.duplicate_of_content_item_id is null
+         order by
+           (case
+              when coalesce(ci2.published_at, ci2.fetched_at) >= $4::timestamptz
+               and coalesce(ci2.published_at, ci2.fetched_at) < $5::timestamptz
+              then 0 else 1
+            end) asc,
+           coalesce(ci2.published_at, ci2.fetched_at) desc
+         limit 1
+       ) rep on di.cluster_id is not null
+       left join content_items ci on ci.id = coalesce(di.content_item_id, rep.content_item_id)
+       left join topic_item_source tis on tis.content_item_id = ci.id
+       left join sources s on s.id = tis.source_id
        left join lateral (
          select action
          from feedback_events
          where user_id = $2::uuid
-           and content_item_id = coalesce(di.content_item_id, cl.representative_content_item_id)
+           and content_item_id = coalesce(di.content_item_id, rep.content_item_id)
          order by created_at desc
          limit 1
        ) fe on true
        where di.digest_id = $1
        order by di.rank asc`,
-      [digest.id, user.id]
+      [digest.id, user.id, topic.id, digest.window_start, digest.window_end]
     );
 
     const reviewed = itemsRes.rows.filter((r) => r.last_action !== null).length;

@@ -283,19 +283,49 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
       canonical_url: string | null;
       metadata_json: Record<string, unknown>;
     }>(
-      `select
+      `with topic_item_source as (
+         select distinct on (cis.content_item_id)
+           cis.content_item_id,
+           cis.source_id
+         from content_item_sources cis
+         join sources s on s.id = cis.source_id
+         where s.user_id = $2::uuid
+           and s.topic_id = $3::uuid
+         order by cis.content_item_id, cis.added_at desc
+       )
+       select
          di.rank,
          di.score,
          di.triage_json,
-         ci.source_type,
+         s.type as source_type,
          ci.title,
          ci.canonical_url,
          ci.metadata_json
        from digest_items di
-       join content_items ci on ci.id = di.content_item_id
+       left join lateral (
+         select ci2.id as content_item_id
+         from cluster_items cli
+         join content_items ci2 on ci2.id = cli.content_item_id
+         join topic_item_source tis2 on tis2.content_item_id = ci2.id
+         where di.cluster_id is not null
+           and cli.cluster_id = di.cluster_id
+           and ci2.deleted_at is null
+           and ci2.duplicate_of_content_item_id is null
+         order by
+           (case
+              when coalesce(ci2.published_at, ci2.fetched_at) >= $4::timestamptz
+               and coalesce(ci2.published_at, ci2.fetched_at) < $5::timestamptz
+              then 0 else 1
+            end) asc,
+           coalesce(ci2.published_at, ci2.fetched_at) desc
+         limit 1
+       ) rep on di.cluster_id is not null
+       join content_items ci on ci.id = coalesce(di.content_item_id, rep.content_item_id)
+       join topic_item_source tis on tis.content_item_id = ci.id
+       join sources s on s.id = tis.source_id
        where di.digest_id = $1
        order by di.rank asc`,
-      [digest.id]
+      [digest.id, user.id, topic.id, digest.window_start, digest.window_end]
     );
 
     console.log(

@@ -1,5 +1,11 @@
 import { createDb } from "@aharadar/db";
-import { embedTopicContentItems, ingestEnabledSources, persistDigestFromContentItems } from "@aharadar/pipeline";
+import {
+  clusterTopicContentItems,
+  dedupeTopicContentItems,
+  embedTopicContentItems,
+  ingestEnabledSources,
+  persistDigestFromContentItems,
+} from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
 import { formatTopicList, resolveTopicForUser } from "../topics";
@@ -290,6 +296,22 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       tier: env.defaultTier,
     });
 
+    const dedupe = await dedupeTopicContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      windowStart,
+      windowEnd,
+    });
+
+    const cluster = await clusterTopicContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      windowStart,
+      windowEnd,
+    });
+
     // Dev-friendly default: include "all candidates (capped)" so review doesn't feel broken.
     // Cap matches the digest candidate pool bound (500) to prevent runaway triage/review.
     const digestMaxItemsDefault = Math.min(500, Math.max(20, ingest.totals.upserted));
@@ -324,6 +346,20 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     console.log(`- errors:            ${embed.errors}`);
     console.log(`- provider_calls_ok: ${embed.providerCallsOk}`);
     console.log(`- provider_calls_err:${embed.providerCallsError}`);
+
+    console.log("");
+    console.log("Dedupe summary:");
+    console.log(`- attempted: ${dedupe.attempted}`);
+    console.log(`- matches:   ${dedupe.matches}`);
+    console.log(`- deduped:   ${dedupe.deduped}`);
+
+    console.log("");
+    console.log("Cluster summary:");
+    console.log(`- attempted:           ${cluster.attempted}`);
+    console.log(`- attached_to_existing:${cluster.attachedToExisting}`);
+    console.log(`- created:             ${cluster.created}`);
+    console.log(`- skipped:             ${cluster.skipped}`);
+    console.log(`- errors:              ${cluster.errors}`);
 
     console.log("");
     console.log("Digest summary:");
@@ -528,6 +564,22 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
       `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${digestMaxItems})...`
     );
 
+    // Keep clustering/dedupe reasonably fresh even when re-running digest without ingest.
+    const dedupe = await dedupeTopicContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      windowStart,
+      windowEnd,
+    });
+    const cluster = await clusterTopicContentItems({
+      db,
+      userId: user.id,
+      topicId: topic.id,
+      windowStart,
+      windowEnd,
+    });
+
     const digest = await persistDigestFromContentItems({
       db,
       userId: user.id,
@@ -544,6 +596,20 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
             }
           : undefined,
     });
+
+    console.log("");
+    console.log("Dedupe summary:");
+    console.log(`- attempted: ${dedupe.attempted}`);
+    console.log(`- matches:   ${dedupe.matches}`);
+    console.log(`- deduped:   ${dedupe.deduped}`);
+
+    console.log("");
+    console.log("Cluster summary:");
+    console.log(`- attempted:           ${cluster.attempted}`);
+    console.log(`- attached_to_existing:${cluster.attachedToExisting}`);
+    console.log(`- created:             ${cluster.created}`);
+    console.log(`- skipped:             ${cluster.skipped}`);
+    console.log(`- errors:              ${cluster.errors}`);
 
     console.log("");
     console.log("Digest summary:");

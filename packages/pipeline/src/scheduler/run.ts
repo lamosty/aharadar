@@ -3,6 +3,8 @@ import type { BudgetTier } from "@aharadar/shared";
 
 import { ingestEnabledSources, type IngestLimits, type IngestRunResult, type IngestSourceFilter } from "../stages/ingest";
 import { embedTopicContentItems, type EmbedRunResult } from "../stages/embed";
+import { dedupeTopicContentItems, type DedupeRunResult } from "../stages/dedupe";
+import { clusterTopicContentItems, type ClusterRunResult } from "../stages/cluster";
 import { persistDigestFromContentItems, type DigestRunResult } from "../stages/digest";
 
 export interface PipelineRunParams {
@@ -23,6 +25,8 @@ export interface PipelineRunResult {
   windowEnd: string;
   ingest: IngestRunResult;
   embed: EmbedRunResult;
+  dedupe: DedupeRunResult;
+  cluster: ClusterRunResult;
   digest: DigestRunResult | null;
 }
 
@@ -55,6 +59,22 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     tier: resolveTier(params.mode),
   });
 
+  const dedupe = await dedupeTopicContentItems({
+    db,
+    userId: params.userId,
+    topicId: params.topicId,
+    windowStart: params.windowStart,
+    windowEnd: params.windowEnd,
+  });
+
+  const cluster = await clusterTopicContentItems({
+    db,
+    userId: params.userId,
+    topicId: params.topicId,
+    windowStart: params.windowStart,
+    windowEnd: params.windowEnd,
+  });
+
   const digest = await persistDigestFromContentItems({
     db,
     userId: params.userId,
@@ -73,6 +93,8 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     windowEnd: params.windowEnd,
     ingest,
     embed,
+    dedupe,
+    cluster,
     digest,
   };
 }
