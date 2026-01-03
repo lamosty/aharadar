@@ -1,6 +1,8 @@
 import { createDb } from "@aharadar/db";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
+import { resolveTopicForUser } from "../topics";
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
   return {};
@@ -196,33 +198,56 @@ function printInboxTable(rows: InboxTableRow[]): void {
 
 type InboxView = "cards" | "table";
 
-function parseInboxArgs(args: string[]): InboxView {
-  for (const arg of args) {
-    if (arg === "--table") return "table";
-    if (arg === "--cards") return "cards";
+type InboxArgs = { view: InboxView; topic: string | null };
+
+function parseInboxArgs(args: string[]): InboxArgs {
+  let view: InboxView = "cards";
+  let topic: string | null = null;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--table") {
+      view = "table";
+      continue;
+    }
+    if (arg === "--cards") {
+      view = "cards";
+      continue;
+    }
+    if (arg === "--topic") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --topic value (expected a topic id or name)");
+      }
+      topic = String(next).trim();
+      i += 1;
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       throw new Error("help");
     }
   }
-  return "cards";
+
+  return { view, topic };
 }
 
 function printInboxUsage(): void {
   console.log("Usage:");
-  console.log("  inbox [--cards|--table]");
+  console.log("  inbox [--cards|--table] [--topic <id-or-name>]");
   console.log("");
   console.log("Examples:");
   console.log("  pnpm dev:cli -- inbox");
   console.log("  pnpm dev:cli -- inbox --table");
+  console.log('  pnpm dev:cli -- inbox --topic "default"');
 }
 
 export async function inboxCommand(args: string[] = []): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
   try {
-    let view: InboxView = "cards";
+    let parsed: InboxArgs;
     try {
-      view = parseInboxArgs(args);
+      parsed = parseInboxArgs(args);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === "help") {
@@ -242,9 +267,10 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
       return;
     }
 
-    const digest = await db.digests.getLatestByUser(user.id);
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg: parsed.topic });
+    const digest = await db.digests.getLatestByUserAndTopic({ userId: user.id, topicId: topic.id });
     if (!digest) {
-      console.log("No digests yet. Run `admin:run-now` after creating sources.");
+      console.log(`No digests yet for topic "${topic.name}". Run \`admin:run-now\` after creating sources.`);
       return;
     }
 
@@ -272,7 +298,9 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
       [digest.id]
     );
 
-    console.log(`Latest digest (user=${user.id}, window=${digest.window_start} → ${digest.window_end}, mode=${digest.mode}):`);
+    console.log(
+      `Latest digest (user=${user.id}, topic=${topic.name}, window=${digest.window_start} → ${digest.window_end}, mode=${digest.mode}):`
+    );
     const rows: InboxCard[] = items.rows.map((item) => {
       const title = normalizeWhitespace(item.title ?? "(no title)");
       const primaryUrl = getPrimaryUrl(item);
@@ -301,7 +329,7 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
       return;
     }
 
-    if (view === "table") {
+    if (parsed.view === "table") {
       const tableRows: InboxTableRow[] = rows.map((row) => ({
         rank: String(row.rank),
         score: row.score,

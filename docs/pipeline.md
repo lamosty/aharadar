@@ -9,6 +9,7 @@ This document defines **stage order**, **inputs/outputs**, **idempotency**, and 
 - **Budget pool**: numeric cap (credits) that limits spend over time (default: per month, with optional daily throttle).
 - **Budget tier**: `low | normal | high` is a policy preset (or derived state) that controls depth of processing.
 - **Aha Score**: 0–100 output from triage LLM; primary ranking input.
+- **Topic**: a user-defined collection of sources. Pipeline runs and digests are topic-scoped (see ADR 0008).
 
 ## Stage order (MVP)
 
@@ -30,13 +31,14 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 
 **Inputs**
 
-- enabled `sources` rows for `user_id`
+- enabled `sources` rows for `user_id` within the selected `topic_id`
 - each source’s `config_json` and `cursor_json`
 - per-run limits from budgets
 
 **Outputs**
 
 - new/updated `content_items` (idempotent upserts)
+- `content_item_sources` rows linking the upserted `content_item_id` to the ingesting `source_id`
 - `fetch_runs` row per source
 - updated `sources.cursor_json` (only after successful fetch)
 
@@ -117,7 +119,7 @@ Pick what we will triage/rank for the digest window.
 - Prefer cluster-based digests:
   - select clusters that have ≥1 member item with `published_at` (or `fetched_at`) within the window
 - If clustering is disabled or fails, fall back to item-based candidates:
-  - select content_items in the window not marked duplicate
+  - select content_items in the window not marked duplicate **scoped to the topic** via `content_item_sources → sources(topic_id)`
 
 **Signals vs canonical content (important)**
 

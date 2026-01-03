@@ -6,6 +6,7 @@ import { persistDigestFromContentItems, type DigestRunResult } from "../stages/d
 
 export interface PipelineRunParams {
   userId: string;
+  topicId: string;
   windowStart: string;
   windowEnd: string;
   ingest?: Partial<IngestLimits>;
@@ -16,6 +17,7 @@ export interface PipelineRunParams {
 
 export interface PipelineRunResult {
   userId: string;
+  topicId: string;
   windowStart: string;
   windowEnd: string;
   ingest: IngestRunResult;
@@ -30,6 +32,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
   const ingest = await ingestEnabledSources({
     db,
     userId: params.userId,
+    topicId: params.topicId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     limits: ingestLimits,
@@ -39,6 +42,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
   const digest = await persistDigestFromContentItems({
     db,
     userId: params.userId,
+    topicId: params.topicId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     mode: params.mode ?? "normal",
@@ -48,6 +52,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
 
   return {
     userId: params.userId,
+    topicId: params.topicId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     ingest,

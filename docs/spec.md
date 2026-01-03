@@ -96,7 +96,10 @@ This is **not** limited to markets or tech. Any user can define sources and inte
   - Deduplicate and cluster similar items across sources
   - Personalization ranking using embeddings and feedback
   - Budget-aware LLM processing using a configurable LLM provider (OpenAI GPT models as default at time of writing)
-  - Produce scheduled digests (default 3× daily)
+  - Produce scheduled digests (default 3× daily), **scoped to a user-selected topic/collection**
+- **User-defined topics/collections**:
+  - Users can group sources into arbitrary topics (unrestricted naming/semantics)
+  - Review/feedback and digests operate per topic to reduce cross-interest noise
 - **User feedback loop**:
   - Like/Dislike/Save/Skip actions
   - Use feedback to update preference profile and improve ranking
@@ -160,6 +163,7 @@ This is **not** limited to markets or tech. Any user can define sources and inte
 
 1. **Single-user builder (MVP primary)**
    - Wants high-signal digests 2–3× daily
+   - Often has multiple unrelated interests; wants to review one topic at a time
    - Provides quick feedback to train personalization
    - Runs locally on MacBook and deploys to Hetzner
 2. **Future general user**

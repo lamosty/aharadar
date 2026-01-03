@@ -5,6 +5,7 @@ import type { FeedbackAction } from "@aharadar/shared";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
 import { DEFAULT_KEYMAP } from "../ui/keymap";
+import { resolveTopicForUser } from "../topics";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
@@ -272,10 +273,24 @@ function startKeyListener(onKey: (key: string) => void): () => void {
   };
 }
 
-export async function reviewCommand(): Promise<void> {
+export async function reviewCommand(args: string[] = []): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
   try {
+    for (const a of args) {
+      if (a === "--help" || a === "-h") {
+        console.log("Usage:");
+        console.log("  review [--topic <id-or-name>]");
+        console.log("");
+        console.log("Notes:");
+        console.log("- Review is topic-scoped; if you have multiple topics, pass --topic.");
+        console.log("");
+        console.log("Example:");
+        console.log('  pnpm dev:cli -- review --topic "default"');
+        return;
+      }
+    }
+
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
       console.log("review requires an interactive terminal. Try:");
       console.log("  pnpm dev:cli -- inbox");
@@ -289,9 +304,23 @@ export async function reviewCommand(): Promise<void> {
       return;
     }
 
-    const digest = await db.digests.getLatestByUser(user.id);
+    let topicArg: string | null = null;
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--topic") {
+        const next = args[i + 1];
+        if (!next || String(next).trim().length === 0) {
+          throw new Error("Missing --topic value (expected a topic id or name)");
+        }
+        topicArg = String(next).trim();
+        i += 1;
+      }
+    }
+
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
+    const digest = await db.digests.getLatestByUserAndTopic({ userId: user.id, topicId: topic.id });
     if (!digest) {
-      console.log("No digests yet. Run `admin:run-now` after creating sources.");
+      console.log(`No digests yet for topic "${topic.name}". Run \`admin:run-now\` after creating sources.`);
       return;
     }
 
@@ -331,7 +360,7 @@ export async function reviewCommand(): Promise<void> {
     const render = (): void => {
       const item = items[idx];
       if (!item) return;
-      const header = formatHeader({ idx, total: items.length, digestMode: digest.mode });
+      const header = `${formatHeader({ idx, total: items.length, digestMode: digest.mode })} topic=${topic.name}`;
       const lastAction = lastActionByRank.get(item.rank) ?? null;
       if (view === "help") {
         renderHelp();

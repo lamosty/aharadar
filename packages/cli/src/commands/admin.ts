@@ -2,6 +2,8 @@ import { createDb } from "@aharadar/db";
 import { persistDigestFromContentItems, runPipelineOnce } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
+import { formatTopicList, resolveTopicForUser } from "../topics";
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
   return {};
@@ -20,12 +22,14 @@ type RunNowOptions = {
   maxItemsPerSource: number;
   sourceTypes: string[];
   sourceIds: string[];
+  topic: string | null;
 };
 
 type DigestNowOptions = {
   maxItems: number;
   sourceTypes: string[];
   sourceIds: string[];
+  topic: string | null;
 };
 
 function splitCsv(value: string): string[] {
@@ -39,6 +43,7 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
   let maxItems = 20;
   const sourceTypes: string[] = [];
   const sourceIds: string[] = [];
+  let topic: string | null = null;
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
@@ -52,6 +57,15 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
       i += 1;
       continue;
     }
+    if (a === "--topic") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --topic value (expected a topic id or name)");
+      }
+      topic = String(next).trim();
+      i += 1;
+      continue;
+    }
     if (a === "--source-type") {
       const next = args[i + 1];
       if (!next || String(next).trim().length === 0) {
@@ -75,13 +89,14 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
     }
   }
 
-  return { maxItems, sourceTypes, sourceIds };
+  return { maxItems, sourceTypes, sourceIds, topic };
 }
 
 function parseRunNowArgs(args: string[]): RunNowOptions {
   let maxItemsPerSource = 50;
   const sourceTypes: string[] = [];
   const sourceIds: string[] = [];
+  let topic: string | null = null;
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
@@ -95,6 +110,15 @@ function parseRunNowArgs(args: string[]): RunNowOptions {
       i += 1;
       continue;
     }
+    if (a === "--topic") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --topic value (expected a topic id or name)");
+      }
+      topic = String(next).trim();
+      i += 1;
+      continue;
+    }
     if (a === "--source-type") {
       const next = args[i + 1];
       if (!next || String(next).trim().length === 0) {
@@ -118,12 +142,14 @@ function parseRunNowArgs(args: string[]): RunNowOptions {
     }
   }
 
-  return { maxItemsPerSource, sourceTypes, sourceIds };
+  return { maxItemsPerSource, sourceTypes, sourceIds, topic };
 }
 
 function printRunNowUsage(): void {
   console.log("Usage:");
-  console.log("  admin:run-now [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
+  console.log(
+    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+  );
   console.log("");
   console.log("Example:");
   console.log("  pnpm dev:cli -- admin:run-now --source-type reddit --max-items-per-source 200");
@@ -132,7 +158,9 @@ function printRunNowUsage(): void {
 
 function printDigestNowUsage(): void {
   console.log("Usage:");
-  console.log("  admin:digest-now [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
+  console.log(
+    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+  );
   console.log("");
   console.log("Notes:");
   console.log("- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.");
@@ -162,17 +190,19 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     }
 
     const user = await db.users.getOrCreateSingleton();
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg: opts.topic });
 
     const now = new Date();
     const windowEnd = now.toISOString();
     const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
     console.log(
-      `Running pipeline (user=${user.id}, window=${windowStart} → ${windowEnd}, maxItemsPerSource=${opts.maxItemsPerSource})...`
+      `Running pipeline (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItemsPerSource=${opts.maxItemsPerSource})...`
     );
 
     const result = await runPipelineOnce(db, {
       userId: user.id,
+      topicId: topic.id,
       windowStart,
       windowEnd,
       ingest: { maxItemsPerSource: opts.maxItemsPerSource },
@@ -200,6 +230,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     if (result.digest) {
       console.log(`- digest_id: ${result.digest.digestId}`);
       console.log(`- mode:      ${result.digest.mode}`);
+      console.log(`- topic:     ${topic.name}`);
       console.log(`- items:     ${result.digest.items}`);
     } else {
       console.log("- (no digest created; no candidates in window)");
@@ -296,18 +327,20 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
     }
 
     const user = await db.users.getOrCreateSingleton();
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg: opts.topic });
 
     const now = new Date();
     const windowEnd = now.toISOString();
     const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
     console.log(
-      `Building digest (no ingest) (user=${user.id}, window=${windowStart} → ${windowEnd}, maxItems=${opts.maxItems})...`
+      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${opts.maxItems})...`
     );
 
     const digest = await persistDigestFromContentItems({
       db,
       userId: user.id,
+      topicId: topic.id,
       windowStart,
       windowEnd,
       mode: env.defaultTier,
@@ -326,6 +359,7 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
     if (digest) {
       console.log(`- digest_id: ${digest.digestId}`);
       console.log(`- mode:      ${digest.mode}`);
+      console.log(`- topic:     ${topic.name}`);
       console.log(`- items:     ${digest.items}`);
     } else {
       console.log("- (no digest created; no candidates in window)");
@@ -362,8 +396,22 @@ export async function adminSourcesListCommand(): Promise<void> {
       return;
     }
 
-    const sources = await db.sources.listByUser(user.id);
-    if (sources.length === 0) {
+    const sources = await db.query<{
+      id: string;
+      is_enabled: boolean;
+      type: string;
+      name: string;
+      config_json: Record<string, unknown> | null;
+      topic_name: string | null;
+    }>(
+      `select s.id, s.is_enabled, s.type, s.name, s.config_json, t.name as topic_name
+       from sources s
+       join topics t on t.id = s.topic_id
+       where s.user_id = $1
+       order by s.created_at asc`,
+      [user.id]
+    );
+    if (sources.rows.length === 0) {
       console.log("No sources yet.");
       console.log("");
       console.log("Add one with:");
@@ -373,11 +421,13 @@ export async function adminSourcesListCommand(): Promise<void> {
       return;
     }
 
-    console.log(`Sources (${sources.length}):`);
-    for (const s of sources) {
+    console.log(`Sources (${sources.rows.length}):`);
+    for (const s of sources.rows) {
       const enabled = s.is_enabled ? "enabled" : "disabled";
       const cfg = JSON.stringify(s.config_json ?? {});
+      const topicName = s.topic_name ?? "(unknown topic)";
       console.log(`- ${s.id} ${enabled} ${s.type}:${s.name} config=${truncate(cfg, 240)}`);
+      console.log(`  topic: ${topicName}`);
     }
   } finally {
     await db.close();
@@ -392,6 +442,7 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
 
     let type: string | null = null;
     let name: string | null = null;
+    let topicArg: string | null = null;
     let configStr: string | null = null;
     let cursorStr: string | null = null;
 
@@ -404,6 +455,11 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
       }
       if (a === "--name") {
         name = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--topic") {
+        topicArg = args[i + 1] ? String(args[i + 1]).trim() : null;
         i += 1;
         continue;
       }
@@ -421,7 +477,7 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
 
     if (!type || !name) {
       console.log("Usage:");
-      console.log("  admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]");
+      console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
       console.log("");
       console.log("Example (reddit):");
       console.log(
@@ -430,14 +486,115 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
       return;
     }
 
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
     const config = parseJsonObjectFlag(configStr);
     const cursor = parseJsonObjectFlag(cursorStr);
-    const res = await db.sources.create({ userId: user.id, type, name, config, cursor, isEnabled: true });
+    const res = await db.sources.create({ userId: user.id, topicId: topic.id, type, name, config, cursor, isEnabled: true });
 
     console.log("Created source:");
     console.log(`- id: ${res.id}`);
     console.log(`- type: ${type}`);
     console.log(`- name: ${name}`);
+    console.log(`- topic: ${topic.name}`);
+  } finally {
+    await db.close();
+  }
+}
+
+export async function adminTopicsListCommand(): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getOrCreateSingleton();
+    await db.topics.getOrCreateDefaultForUser(user.id);
+    const topics = await db.topics.listByUser(user.id);
+    console.log(`Topics (${topics.length}):`);
+    console.log(formatTopicList(topics));
+  } finally {
+    await db.close();
+  }
+}
+
+export async function adminTopicsAddCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getOrCreateSingleton();
+
+    let name: string | null = null;
+    let description: string | null = null;
+
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--name") {
+        name = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--description") {
+        description = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--help" || a === "-h") {
+        name = null;
+      }
+    }
+
+    if (!name || name.length === 0) {
+      console.log("Usage:");
+      console.log("  admin:topics-add --name <name> [--description <text>]");
+      console.log("");
+      console.log("Example:");
+      console.log('  pnpm dev:cli -- admin:topics-add --name "vehicles"');
+      return;
+    }
+
+    const res = await db.topics.create({ userId: user.id, name, description });
+    console.log("Created topic:");
+    console.log(`- id: ${res.id}`);
+    console.log(`- name: ${name}`);
+    if (description) console.log(`- description: ${description}`);
+  } finally {
+    await db.close();
+  }
+}
+
+export async function adminSourcesSetTopicCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getOrCreateSingleton();
+
+    let sourceId: string | null = null;
+    let topicArg: string | null = null;
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--source-id") {
+        sourceId = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--topic") {
+        topicArg = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+    }
+
+    if (!sourceId || !topicArg) {
+      console.log("Usage:");
+      console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
+      console.log("");
+      console.log("Tip: list topics with `admin:topics-list` and sources with `admin:sources-list`.");
+      return;
+    }
+
+    const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
+    await db.sources.updateTopic({ sourceId, topicId: topic.id });
+    console.log("Updated source topic:");
+    console.log(`- source_id: ${sourceId}`);
+    console.log(`- topic: ${topic.name}`);
   } finally {
     await db.close();
   }

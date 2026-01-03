@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
+import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
 import { createDigestItemsRepo } from "./repos/digest_items";
 import { createDigestsRepo } from "./repos/digests";
@@ -8,6 +9,7 @@ import { createFeedbackEventsRepo } from "./repos/feedback_events";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
 import { createProviderCallsRepo } from "./repos/provider_calls";
 import { createSourcesRepo } from "./repos/sources";
+import { createTopicsRepo } from "./repos/topics";
 import { createUsersRepo } from "./repos/users";
 
 export interface Queryable {
@@ -16,9 +18,11 @@ export interface Queryable {
 
 export type DbContext = Queryable & {
   users: ReturnType<typeof createUsersRepo>;
+  topics: ReturnType<typeof createTopicsRepo>;
   sources: ReturnType<typeof createSourcesRepo>;
   fetchRuns: ReturnType<typeof createFetchRunsRepo>;
   contentItems: ReturnType<typeof createContentItemsRepo>;
+  contentItemSources: ReturnType<typeof createContentItemSourcesRepo>;
   digests: ReturnType<typeof createDigestsRepo>;
   digestItems: ReturnType<typeof createDigestItemsRepo>;
   feedbackEvents: ReturnType<typeof createFeedbackEventsRepo>;
@@ -34,9 +38,11 @@ function createContext(db: Queryable): DbContext {
   return {
     query: db.query.bind(db),
     users: createUsersRepo(db),
+    topics: createTopicsRepo(db),
     sources: createSourcesRepo(db),
     fetchRuns: createFetchRunsRepo(db),
     contentItems: createContentItemsRepo(db),
+    contentItemSources: createContentItemSourcesRepo(db),
     digests: createDigestsRepo(db),
     digestItems: createDigestItemsRepo(db),
     feedbackEvents: createFeedbackEventsRepo(db),

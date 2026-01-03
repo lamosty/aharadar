@@ -25,6 +25,7 @@ Shows latest digest(s):
 - digest window time
 - ranked list of items (cards by default: title + reason + link)
 - use `--table` for a compact tabular view
+- use `--topic <id-or-name>` to select a topic when multiple exist
 
 ### `aharadar review`
 
@@ -32,6 +33,7 @@ Starts the review loop for the latest digest:
 
 - one item at a time
 - immediate keypress feedback
+- scoped to a single topic (pass `--topic <id-or-name>` when multiple topics exist)
 
 ### `aharadar search "<query>"`
 
@@ -46,6 +48,7 @@ Options:
 - `--max-items-per-source N`: override the default per-source ingest cap (default: 50).
 - `--source-type <type>[,<type>...]`: only ingest enabled sources matching these `sources.type` values (e.g. `reddit`, `signal`).
 - `--source-id <uuid>`: only ingest a specific source by id (repeat by passing multiple times).
+- `--topic <id-or-name>`: run ingestion + digest for a single topic (recommended when you have multiple topics).
 
 Example:
 
@@ -72,6 +75,7 @@ Options:
 - `--max-items N`: number of digest items to persist (default: 20).
 - `--source-type <type>[,<type>...]`: only consider candidates from these source types (e.g. `reddit`).
 - `--source-id <uuid>`: only consider candidates from a specific source id.
+- `--topic <id-or-name>`: build digest for a single topic.
 
 Example:
 
@@ -84,7 +88,7 @@ pnpm dev:cli -- inbox
 
 Lists all configured sources for the current user (debug/dev convenience).
 
-### `aharadar admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]`
+### `aharadar admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]`
 
 Creates a source row for the current user (debug/dev convenience).
 
@@ -113,6 +117,14 @@ Resets `cursor_json` for all `signal` sources:
 
 - Use `--clear` to remove `since_time` (forces the next run to use the pipeline window start).
 - Use `--since-time <ISO>` to set an explicit lower bound for the next run.
+
+### `aharadar admin:topics-list`
+
+Lists topics for the current user.
+
+### `aharadar admin:topics-add --name <name> [--description <text>]`
+
+Creates a topic for the current user.
 
 ## Review keybindings (Proposed)
 

@@ -50,6 +50,7 @@ create table users (
 create table sources (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
+  topic_id uuid not null references topics(id) on delete cascade,
   type text not null,           -- reddit|hn|rss|youtube|signal|...
   name text not null,
   config_json jsonb not null default '{}'::jsonb,
@@ -58,6 +59,17 @@ create table sources (
   created_at timestamptz not null default now()
 );
 create index sources_user_enabled_idx on sources(user_id, is_enabled);
+
+-- topics: user-defined collections (unrestricted naming/semantics)
+create table topics (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  name text not null,
+  description text,
+  created_at timestamptz not null default now()
+);
+create unique index topics_user_name_uniq on topics(user_id, name);
+create index topics_user_created_idx on topics(user_id, created_at desc);
 
 -- fetch_runs: per-source ingestion audit trail
 create table fetch_runs (
@@ -110,6 +122,16 @@ create index content_items_user_published_idx on content_items(user_id, publishe
 create index content_items_user_fetched_idx on content_items(user_id, fetched_at desc);
 create index content_items_source_type_idx on content_items(source_type);
 
+-- content_item_sources: record every (content_item, source) association.
+-- This preserves provenance and topic membership even when content_items are URL-deduped across sources.
+create table content_item_sources (
+  content_item_id uuid not null references content_items(id) on delete cascade,
+  source_id uuid not null references sources(id) on delete cascade,
+  added_at timestamptz not null default now(),
+  primary key (content_item_id, source_id)
+);
+create index content_item_sources_source_idx on content_item_sources(source_id);
+
 -- embeddings: 1 row per content item (MVP)
 create table embeddings (
   content_item_id uuid primary key references content_items(id) on delete cascade,
@@ -148,13 +170,14 @@ create index cluster_items_content_item_idx on cluster_items(content_item_id);
 create table digests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
+  topic_id uuid not null references topics(id) on delete cascade,
   window_start timestamptz not null,
   window_end timestamptz not null,
   mode text not null, -- low|normal|high|catch_up
   created_at timestamptz not null default now()
 );
-create unique index digests_user_window_mode_uniq
-  on digests(user_id, window_start, window_end, mode);
+create unique index digests_user_topic_window_mode_uniq
+  on digests(user_id, topic_id, window_start, window_end, mode);
 create index digests_user_created_idx on digests(user_id, created_at desc);
 
 -- digest_items: ranked output rows

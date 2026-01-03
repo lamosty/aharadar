@@ -13,6 +13,7 @@ export interface DigestLimits {
 export interface DigestRunResult {
   digestId: string;
   mode: DigestMode;
+  topicId: string;
   windowStart: string;
   windowEnd: string;
   items: number;
@@ -123,11 +124,11 @@ function applyCandidateFilterSql(params: {
 
   if (onlyTypes.length > 0) {
     args.push(onlyTypes);
-    whereSql += ` and source_type = any($${args.length}::text[])`;
+    whereSql += ` and s.type = any($${args.length}::text[])`;
   }
   if (onlyIds.length > 0) {
     args.push(onlyIds);
-    whereSql += ` and source_id = any($${args.length}::uuid[])`;
+    whereSql += ` and s.id = any($${args.length}::uuid[])`;
   }
 
   return { whereSql, args };
@@ -266,6 +267,7 @@ async function triageCandidates(params: {
 export async function persistDigestFromContentItems(params: {
   db: Db;
   userId: string;
+  topicId: string;
   windowStart: string;
   windowEnd: string;
   mode: DigestMode;
@@ -275,32 +277,43 @@ export async function persistDigestFromContentItems(params: {
   const maxItems = params.limits?.maxItems ?? 20;
   const candidatePoolSize = Math.min(500, Math.max(maxItems, maxItems * 10));
 
-  const baseArgs: unknown[] = [params.userId, params.windowStart, params.windowEnd, candidatePoolSize];
+  const baseArgs: unknown[] = [params.userId, params.topicId, params.windowStart, params.windowEnd, candidatePoolSize];
   const filtered = applyCandidateFilterSql({ filter: params.filter, args: baseArgs });
 
   const candidates = await params.db.query<CandidateRow>(
-    `select
-       content_items.id::text as id,
-       coalesce(published_at, fetched_at)::text as candidate_at,
-       source_id::text as source_id,
-       source_type,
+    `with topic_item_source as (
+       select distinct on (cis.content_item_id)
+         cis.content_item_id,
+         cis.source_id
+       from content_item_sources cis
+       join sources s on s.id = cis.source_id
+       where s.user_id = $1
+         and s.topic_id = $2::uuid
+       order by cis.content_item_id, cis.added_at desc
+     )
+     select
+       ci.id::text as id,
+       coalesce(ci.published_at, ci.fetched_at)::text as candidate_at,
+       tis.source_id::text as source_id,
+       s.type as source_type,
        s.name as source_name,
-       title,
-       body_text,
-       canonical_url,
-       author,
-       published_at::text as published_at,
-       metadata_json
-     from content_items
-     join sources s on s.id = content_items.source_id
-     where content_items.user_id = $1
-       and deleted_at is null
-       and duplicate_of_content_item_id is null
-       and coalesce(published_at, fetched_at) >= $2::timestamptz
-       and coalesce(published_at, fetched_at) < $3::timestamptz
+       ci.title,
+       ci.body_text,
+       ci.canonical_url,
+       ci.author,
+       ci.published_at::text as published_at,
+       ci.metadata_json
+     from content_items ci
+     join topic_item_source tis on tis.content_item_id = ci.id
+     join sources s on s.id = tis.source_id
+     where ci.user_id = $1
+       and ci.deleted_at is null
+       and ci.duplicate_of_content_item_id is null
+       and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
+       and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
        ${filtered.whereSql}
-     order by coalesce(published_at, fetched_at) desc
-     limit $4`,
+     order by coalesce(ci.published_at, ci.fetched_at) desc
+     limit $5`,
     filtered.args
   );
 
@@ -388,6 +401,7 @@ export async function persistDigestFromContentItems(params: {
   const digest = await params.db.tx(async (tx) => {
     const res = await tx.digests.upsert({
       userId: params.userId,
+      topicId: params.topicId,
       windowStart: params.windowStart,
       windowEnd: params.windowEnd,
       mode: params.mode,
@@ -399,6 +413,7 @@ export async function persistDigestFromContentItems(params: {
   return {
     digestId: digest.id,
     mode: params.mode,
+    topicId: params.topicId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     items: items.length,

@@ -165,12 +165,13 @@ function draftToUpsert(draft: ContentItemDraft, source: SourceRow, userId: strin
 export async function ingestEnabledSources(params: {
   db: Db;
   userId: string;
+  topicId: string;
   windowStart: string;
   windowEnd: string;
   limits: IngestLimits;
   filter?: IngestSourceFilter;
 }): Promise<IngestRunResult> {
-  let sources = await params.db.sources.listEnabledByUser(params.userId);
+  let sources = await params.db.sources.listEnabledByUserAndTopic({ userId: params.userId, topicId: params.topicId });
 
   const onlyTypes = (params.filter?.onlySourceTypes ?? []).filter((t) => t.trim().length > 0);
   const onlyIds = (params.filter?.onlySourceIds ?? []).filter((id) => id.trim().length > 0);
@@ -260,6 +261,16 @@ export async function ingestEnabledSources(params: {
           if (upsertRes.inserted) {
             baseResult.inserted += 1;
             totals.inserted += 1;
+          }
+
+          // Record provenance / topic membership via (content_item, source).
+          try {
+            await params.db.contentItemSources.upsert({ contentItemId: upsertRes.id, sourceId: source.id });
+          } catch (err) {
+            // This mapping is helpful for topic scoping, but failures should not abort ingest.
+            baseResult.errors += 1;
+            totals.errors += 1;
+            console.warn("content_item_sources upsert failed", err);
           }
         } catch (err) {
           baseResult.errors += 1;

@@ -10,8 +10,11 @@ import {
   adminRunNowCommand,
   adminSignalDebugCommand,
   adminSignalResetCursorCommand,
+  adminSourcesSetTopicCommand,
   adminSourcesAddCommand,
   adminSourcesListCommand,
+  adminTopicsAddCommand,
+  adminTopicsListCommand,
 } from "./commands/admin";
 
 type CommandResult = void | Promise<void>;
@@ -48,14 +51,21 @@ function printHelp(): void {
   console.log("aharadar CLI");
   console.log("");
   console.log("Commands:");
-  console.log("  inbox [--cards|--table]");
-  console.log("  review");
+  console.log("  inbox [--cards|--table] [--topic <id-or-name>]");
+  console.log("  review [--topic <id-or-name>]");
   console.log("  search <query>");
-  console.log("  admin:run-now [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
-  console.log("  admin:digest-now [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]");
+  console.log(
+    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+  );
+  console.log(
+    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+  );
   console.log("  admin:budgets");
+  console.log("  admin:topics-list");
+  console.log("  admin:topics-add --name <name> [--description <text>]");
   console.log("  admin:sources-list");
-  console.log("  admin:sources-add --type <type> --name <name> [--config <json>] [--cursor <json>]");
+  console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
+  console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
   console.log("  admin:signal-debug [--limit N] [--verbose] [--json] [--raw]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
@@ -75,7 +85,7 @@ async function main(): Promise<void> {
       result = inboxCommand(rest);
       break;
     case "review":
-      result = reviewCommand();
+      result = reviewCommand(rest);
       break;
     case "search":
       result = searchCommand(rest.join(" "));
@@ -95,11 +105,20 @@ async function main(): Promise<void> {
     case "admin:signal-reset-cursor":
       result = adminSignalResetCursorCommand(rest);
       break;
+    case "admin:topics-list":
+      result = adminTopicsListCommand();
+      break;
+    case "admin:topics-add":
+      result = adminTopicsAddCommand(rest);
+      break;
     case "admin:sources-list":
       result = adminSourcesListCommand();
       break;
     case "admin:sources-add":
       result = adminSourcesAddCommand(rest);
+      break;
+    case "admin:sources-set-topic":
+      result = adminSourcesSetTopicCommand(rest);
       break;
     default:
       printHelp();
