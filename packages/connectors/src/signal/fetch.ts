@@ -12,6 +12,15 @@ function parseIntEnv(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  return {};
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
 function getRunKey(params: FetchParams): string {
   // windowEnd comes from the pipeline run and is stable across all source fetches in the same run.
   return `${params.userId}|${params.windowEnd}`;
@@ -27,6 +36,11 @@ function resetRunBudgetIfNeeded(params: FetchParams): void {
 
 function getMaxSearchCallsPerRun(): number | null {
   return parseIntEnv(process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN);
+}
+
+function shouldStoreBundleItems(): boolean {
+  const raw = (process.env.SIGNAL_STORE_BUNDLES ?? "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
 }
 
 function asStringArray(value: unknown): string[] {
@@ -96,6 +110,40 @@ function getResultsCount(assistantJson: Record<string, unknown> | undefined): nu
   return Array.isArray(results) ? results.length : null;
 }
 
+function extractPostRawItems(params: {
+  assistantJson: Record<string, unknown> | undefined;
+  provider: string;
+  vendor: string;
+  query: string;
+  dayBucket: string;
+  windowStart: string;
+  windowEnd: string;
+}): unknown[] {
+  const results = params.assistantJson?.results;
+  if (!Array.isArray(results) || results.length === 0) return [];
+
+  const out: unknown[] = [];
+  for (const entry of results) {
+    const r = asRecord(entry);
+    out.push({
+      kind: "signal_post_v1",
+      provider: params.provider,
+      vendor: params.vendor,
+      query: params.query,
+      day_bucket: params.dayBucket,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      date: asString(r.date),
+      url: asString(r.url),
+      text: asString(r.text),
+    });
+    // Hard bound for safety (provider should already cap, but keep this defensive).
+    if (out.length >= 200) break;
+  }
+
+  return out;
+}
+
 function getCursorString(cursor: Record<string, unknown>, key: string): string | undefined {
   const v = cursor[key];
   return typeof v === "string" && v.length > 0 ? v : undefined;
@@ -111,6 +159,7 @@ function estimateCreditsPerCall(): number {
 export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
   resetRunBudgetIfNeeded(params);
   const maxSearchCallsPerRun = getMaxSearchCallsPerRun();
+  const storeBundles = shouldStoreBundleItems();
 
   const config = asConfig(params.config);
   const queries = compileQueries(config);
@@ -143,6 +192,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
 
   const fromDate = sinceTime ?? params.windowStart;
   const toDate = params.windowEnd;
+  const dayBucket = (todayBucket ?? params.windowEnd.slice(0, 10)) || params.windowEnd.slice(0, 10);
 
   const perQueryBudget = Math.max(1, Math.floor(params.limits.maxItems / queries.length));
   const limit = Math.max(1, Math.min(config.maxResultsPerQuery ?? 20, perQueryBudget));
@@ -213,13 +263,30 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
       anySuccess = true;
 
       // Don't store empty signal items; they create noisy inbox entries.
-      // But do store unparseable responses so we can debug parsing/provider changes without manual DB queries.
-      if (resultsCount === null || (resultsCount && resultsCount > 0)) {
+      if (resultsCount && resultsCount > 0) {
+        rawItems.push(
+          ...extractPostRawItems({
+            assistantJson: result.assistantJson,
+            provider: config.provider,
+            vendor: config.vendor,
+            query,
+            dayBucket,
+            windowStart: params.windowStart,
+            windowEnd: params.windowEnd,
+          })
+        );
+      }
+
+      // Optional: store the query-level bundle item for debugging/audit.
+      // Always store unparseable responses so we can debug parsing/provider changes without manual DB queries.
+      const shouldStoreBundle = resultsCount === null || (storeBundles && resultsCount !== null && resultsCount > 0);
+      if (shouldStoreBundle) {
         rawItems.push({
-          kind: "signal_query_response_v1",
+          kind: "signal_bundle_v1",
           provider: config.provider,
           vendor: config.vendor,
           query,
+          day_bucket: dayBucket,
           limit,
           sinceId: sinceId ?? null,
           sinceTime: sinceTime ?? null,
@@ -287,6 +354,7 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
       queryCount: queries.length,
       vendor: config.vendor,
       provider: config.provider,
+      storeBundles,
     },
   };
 }

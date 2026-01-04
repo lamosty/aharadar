@@ -10,6 +10,16 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function parseXStatusUrl(url: string): { handle: string | null; statusId: string | null } {
+  // Best-effort: keep signal connector provider-agnostic overall, but X/Twitter URLs are common in MVP.
+  // Examples:
+  // - https://x.com/<handle>/status/<id>
+  // - https://twitter.com/<handle>/status/<id>
+  const m = url.match(/\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,30})\/status\/(\d+)/);
+  if (!m) return { handle: null, statusId: null };
+  return { handle: m[1] ?? null, statusId: m[2] ?? null };
+}
+
 function asIsoDate(value: unknown): string | null {
   const s = asString(value);
   if (!s) return null;
@@ -135,9 +145,63 @@ function clampText(text: string, maxChars: number): string {
 
 export async function normalizeSignal(raw: unknown, params: FetchParams): Promise<ContentItemDraft> {
   const rec = asRecord(raw);
+  const kind = asString(rec.kind);
   const query = asString(rec.query) ?? "signal";
   const provider = asString(rec.provider) ?? "x_search";
   const vendor = asString(rec.vendor) ?? "grok";
+  const dayBucket = asString(rec.day_bucket) ?? params.windowEnd.slice(0, 10);
+
+  if (kind === "signal_post_v1") {
+    const url = asString(rec.url);
+    const canonicalUrl = url && looksLikeUrl(url) ? url : null;
+    const textRaw = asString(rec.text);
+    const bodyText = textRaw ? clampText(textRaw.replaceAll("\n", " ").trim(), 10_000) : null;
+    const dateDay = asIsoDate(rec.date);
+
+    const parsed = canonicalUrl ? parseXStatusUrl(canonicalUrl) : { handle: null, statusId: null };
+    const fallbackKey = canonicalUrl ?? bodyText ?? "";
+    const externalId = parsed.statusId ?? sha256Hex([provider, vendor, query, dayBucket, fallbackKey].join("|"));
+
+    const extractedUrls =
+      bodyText && bodyText.length > 0
+        ? extractUrlsFromText(bodyText).filter((u) => (canonicalUrl ? u !== canonicalUrl : true))
+        : [];
+    const primaryUrl = extractedUrls[0] ?? canonicalUrl ?? null;
+
+    return {
+      title: null,
+      bodyText,
+      canonicalUrl,
+      sourceType: "signal",
+      externalId,
+      // Providers often only return a day bucket, not a full timestamp.
+      // Avoid fabricating a timestamptz that can skew window inclusion; store the day bucket in metadata instead.
+      publishedAt: null,
+      author: parsed.handle ? `@${parsed.handle}` : null,
+      metadata: {
+        kind: "signal_post_v1",
+        provider,
+        vendor,
+        query,
+        day_bucket: dayBucket,
+        window_start: params.windowStart,
+        window_end: params.windowEnd,
+        post_url: canonicalUrl ?? url,
+        post_date: dateDay,
+        extracted_urls: extractedUrls,
+        primary_url: primaryUrl,
+      },
+      raw: {
+        kind,
+        query,
+        provider,
+        vendor,
+        day_bucket: dayBucket,
+        date: dateDay,
+        url,
+      },
+    };
+  }
 
   const response = rec.response;
   const assistantJson = asRecord(rec.assistantJson);
@@ -177,7 +241,6 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       : null;
 
   // Deterministic: one item per (query, day-bucket).
-  const dayBucket = params.windowEnd.slice(0, 10); // YYYY-MM-DD
   const externalId = sha256Hex([provider, vendor, query, dayBucket].join("|"));
 
   return {
@@ -190,6 +253,7 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
     publishedAt: null,
     author: null,
     metadata: {
+      kind: "signal_bundle_v1",
       provider,
       vendor,
       query,
@@ -207,10 +271,11 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
       extracted_urls: extractedUrls,
     },
     raw: {
-      kind: asString(rec.kind),
+      kind: kind ?? "signal_bundle_v1",
       query,
       provider,
       vendor,
+      day_bucket: dayBucket,
       assistantJson: Object.keys(assistantJson).length > 0 ? assistantJson : null,
       response,
     },

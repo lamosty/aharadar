@@ -135,9 +135,23 @@ Also shows warnings when:
 - monthly used ≥ 80% / 95%
 - daily throttle used ≥ 80% / 95%
 
-### `aharadar admin:signal-debug [--limit N] [--verbose] [--json] [--raw]`
+### `aharadar admin:signal-debug [--kind post|bundle|all] [--limit N] [--verbose] [--json] [--raw]`
 
-Prints the latest stored `signal` bundles (from `content_items`) and recent `provider_calls` for `purpose='signal_search'` to help debug what `x_search` is returning.
+Prints recent stored `signal` items (from `content_items`) and recent `provider_calls` for `purpose='signal_search'` to help debug what `x_search` is returning.
+
+Notes:
+
+- `--kind post` shows per-post `signal_post_v1` rows (default).
+- `--kind bundle` shows query-level `signal_bundle_v1` rows.
+
+### `aharadar admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]`
+
+Backfill helper: converts existing stored signal bundles into per-post `signal_post_v1` content items **without** re-calling the signal provider.
+
+Notes:
+
+- Use `--dry-run` to preview counts.
+- Use `--delete-bundles` to soft-delete bundle rows after backfill (optional).
 
 ### `aharadar admin:signal-reset-cursor [--clear] [--since-time <ISO>]`
 

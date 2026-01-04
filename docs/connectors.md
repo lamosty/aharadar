@@ -420,25 +420,48 @@ Notes (MVP):
 
 **Normalize**
 
-- **Signal output contract (MVP)**: the `signal` connector emits **signal bundles** — one `ContentItemDraft` per `(source_id, query, day_bucket)`.
-  - `day_bucket` is derived from the pipeline `windowEnd` date (`YYYY-MM-DD`).
-  - This keeps signals **cheap and reviewable** while still retaining post-level evidence for later ranking/triage.
+The `signal` connector may emit two **kinds** of normalized items, both stored in `content_items` with `source_type = "signal"`.
+
+#### 1) `signal_post_v1` (user-facing; first-class items)
+
+One `ContentItemDraft` per returned post/result. These are intended to be **eligible for clustering and digests** (i.e. shown in inbox/review like other content items).
+
+Field mapping:
+
+- `canonical_url`: the post URL when available (e.g. `https://x.com/<user>/status/<id>`). This is the stable identity for dedupe/idempotency.
+- `external_id`: stable; prefer parsing the status id from the post URL. Fallback: `sha256_hex(provider|vendor|query|day_bucket|url)`.
+- `title`: null (signals are short-form; avoid paraphrasing into a synthetic title).
+- `body_text`: the post excerpt, as returned by the provider (no paraphrasing).
+- `published_at`: best-effort (may be null; providers often only return a day bucket, not a full timestamp).
+
+Required `metadata_json` keys:
+
+- `kind`: `"signal_post_v1"`
+- `provider`: signal provider id (e.g. `"x_search"`)
+- `vendor`: vendor adapter id (e.g. `"grok"`)
+- `query`: the compiled query string used for the call
+- `day_bucket`: `YYYY-MM-DD` (derived from `windowEnd`)
+- `window_start`: pipeline window start (ISO string)
+- `window_end`: pipeline window end (ISO string)
+- `post_url`: the post URL (redundant with `canonical_url`, but convenient for tooling)
+- `extracted_urls`: URLs extracted from the post text (best-effort)
+- `primary_url`: “best click target” URL (prefer `extracted_urls[0]`, else the post URL, else null)
+
+#### 2) `signal_bundle_v1` (debug/audit; optional)
+
+One `ContentItemDraft` per `(source_id, query, day_bucket)`. This is **not shown** in digests/review; it exists for debugging and auditability (e.g. “what did the provider return for this query today?”).
 
 Field mapping:
 
 - `external_id`: deterministic synthetic id (sha256 of `provider|vendor|query|day_bucket`)
-- `canonical_url`: **null** (signals are amplifiers; do not claim canonical content)
+- `canonical_url`: **null** (bundles are amplifiers; do not claim canonical content)
 - `title`: `Signal: <query>` (or other short label)
 - `body_text`: short, human-readable evidence (e.g. bullet list of representative post snippets)
 
-Required `metadata_json` keys (MVP):
+Required `metadata_json` keys:
 
-- `provider`: signal provider id (e.g. `"x_search"`)
-- `vendor`: vendor adapter id (e.g. `"grok"`)
-- `query`: the compiled query string used for the call
-- `day_bucket`: `YYYY-MM-DD` (from `windowEnd`)
-- `window_start`: pipeline window start (ISO string)
-- `window_end`: pipeline window end (ISO string)
+- `kind`: `"signal_bundle_v1"`
+- `provider`, `vendor`, `query`, `day_bucket`, `window_start`, `window_end`
 - `result_count`: number of results in `signal_results` (int)
 - `signal_results`: array of objects `{ date, url, text }` (top N results returned by the provider)
 - `extracted_urls`: URLs extracted from the `signal_results[].text` fields (best-effort)
@@ -450,7 +473,9 @@ Required `metadata_json` keys (MVP):
 
 Debugging:
 
-- Use the CLI `admin:signal-debug` command to view the latest stored signal bundles and their `signal_results` without running manual DB queries.
+- Use the CLI `admin:signal-debug --kind post|bundle|all` command to view recent `signal_post_v1` and/or `signal_bundle_v1` rows without manual DB queries.
+- By default, bundles are only stored for **unparseable** provider responses. To also persist `signal_bundle_v1` rows for debugging/audit, set `SIGNAL_STORE_BUNDLES=1`.
+- To backfill `signal_post_v1` items from already-stored bundles (without calling the provider again), use `admin:signal-explode-bundles` (CLI).
 
 **Future: “X posts” as canonical connector**
 

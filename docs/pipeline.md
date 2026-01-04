@@ -124,7 +124,10 @@ Pick what we will triage/rank for the digest window.
 **Signals vs canonical content (important)**
 
 - Canonical connectors (`reddit|hn|rss|youtube|...` and future `web`) produce items that are the thing the user reads/watches.
-- The `signal` connector produces **derived** items (search/trend/alerts) which often work best as **amplifiers**:
+- The `signal` connector produces **derived** items (search/trend/alerts), but in MVP we distinguish two kinds (see `docs/connectors.md`):
+  - `signal_post_v1`: first-class, post-level items; eligible for clustering and can be shown in digests/review.
+  - `signal_bundle_v1`: debug/audit bundles; must be excluded from candidate selection and digests.
+- Signal items often work best as **amplifiers**:
   - extract URLs/entities/topics
   - boost ranking of corroborated clusters
   - optionally display as triage-only items when they are high-aha but not yet corroborated

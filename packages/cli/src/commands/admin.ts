@@ -6,7 +6,7 @@ import {
   ingestEnabledSources,
   persistDigestFromContentItems,
 } from "@aharadar/pipeline";
-import { loadRuntimeEnv } from "@aharadar/shared";
+import { canonicalizeUrl, loadRuntimeEnv, sha256Hex } from "@aharadar/shared";
 
 import { formatTopicList, resolveTopicForUser } from "../topics";
 
@@ -907,6 +907,7 @@ export async function adminSignalResetCursorCommand(args: string[]): Promise<voi
 
 type SignalDebugOptions = {
   limit: number;
+  kind: "post" | "bundle" | "all";
   json: boolean;
   raw: boolean;
   verbose: boolean;
@@ -914,6 +915,7 @@ type SignalDebugOptions = {
 
 function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
   let limit = 50;
+  let kind: "post" | "bundle" | "all" = "post";
   let json = false;
   let raw = false;
   let verbose = false;
@@ -932,6 +934,17 @@ function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
       verbose = true;
       continue;
     }
+    if (a === "--kind") {
+      const next = args[i + 1];
+      const v = next ? String(next).trim().toLowerCase() : "";
+      if (v === "post" || v === "bundle" || v === "all") {
+        kind = v;
+      } else {
+        throw new Error('Invalid --kind (expected "post", "bundle", or "all")');
+      }
+      i += 1;
+      continue;
+    }
     if (a === "--limit") {
       const next = args[i + 1];
       const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
@@ -944,7 +957,7 @@ function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
   // raw output is inherently verbose.
   if (raw) verbose = true;
 
-  return { limit, json, raw, verbose };
+  return { limit, kind, json, raw, verbose };
 }
 
 type SignalResult = { date: string | null; url: string | null; text: string | null };
@@ -966,6 +979,12 @@ function asSignalResults(value: unknown): SignalResult[] {
 function extractXHandleFromQuery(query: string | null): string | null {
   if (!query) return null;
   const m = query.trim().match(/^from:([A-Za-z0-9_]{1,30})(?:\s|$)/);
+  return m ? m[1] : null;
+}
+
+function extractXHandleFromPostUrl(url: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,30})\/status\/\d+/);
   return m ? m[1] : null;
 }
 
@@ -1002,6 +1021,7 @@ function padRight(value: string, width: number): string {
 
 type SignalDebugTableRow = {
   fetched: string;
+  kind: string;
   who: string;
   results: string;
   text: string;
@@ -1011,6 +1031,7 @@ type SignalDebugTableRow = {
 function printSignalDebugTable(rows: SignalDebugTableRow[]): void {
   const columns: Array<{ key: keyof SignalDebugTableRow; label: string; maxWidth: number }> = [
     { key: "fetched", label: "fetched", maxWidth: 16 },
+    { key: "kind", label: "kind", maxWidth: 6 },
     { key: "who", label: "who", maxWidth: 16 },
     { key: "results", label: "results", maxWidth: 7 },
     { key: "text", label: "text", maxWidth: 100 },
@@ -1050,19 +1071,25 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       return;
     }
 
+    let kindSql = "";
+    if (opts.kind === "post") kindSql = " and canonical_url is not null";
+    if (opts.kind === "bundle") kindSql = " and canonical_url is null";
+
     const signalItems = await db.query<{
       id: string;
       title: string | null;
       body_text: string | null;
+      canonical_url: string | null;
       fetched_at: unknown;
       metadata_json: Record<string, unknown>;
       raw_json: unknown | null;
     }>(
-      `select id, title, body_text, fetched_at, metadata_json, raw_json
+      `select id, title, body_text, canonical_url, fetched_at, metadata_json, raw_json
        from content_items
        where user_id = $1
          and deleted_at is null
          and source_type = 'signal'
+         ${kindSql}
        order by fetched_at desc
        limit $2`,
       [user.id, opts.limit]
@@ -1099,11 +1126,15 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
 
     const normalized = signalItems.rows.map((row) => {
       const meta = row.metadata_json ?? {};
+      const canonicalUrl = asString(row.canonical_url) ?? null;
+      const metaKind = asString((meta as Record<string, unknown>).kind);
+      const kind = metaKind ?? (canonicalUrl ? "signal_post_v1" : "signal_bundle_v1");
       const signalResults = asSignalResults((meta as Record<string, unknown>).signal_results);
       return {
         id: row.id,
         fetchedAt: row.fetched_at,
         title: row.title,
+        kind,
         query: asString((meta as Record<string, unknown>).query),
         dayBucket: asString((meta as Record<string, unknown>).day_bucket),
         windowStart: asString((meta as Record<string, unknown>).window_start),
@@ -1117,6 +1148,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
           : [],
         signalResults,
         bodyText: row.body_text,
+        canonicalUrl,
         raw: opts.raw ? row.raw_json : undefined,
       };
     });
@@ -1127,6 +1159,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
           {
             userId: user.id,
             generatedAt: new Date().toISOString(),
+            kind: opts.kind,
             signalItems: normalized,
             providerCalls: providerCalls.rows,
           },
@@ -1138,22 +1171,38 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
     }
 
     const tableRows: SignalDebugTableRow[] = normalized.map((item) => {
-      const handle = extractXHandleFromQuery(item.query);
-      const who = handle ? `@${handle}` : item.query ? clip(item.query, 16) : "(signal)";
-      const rc = typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
+      const isPost = item.canonicalUrl !== null;
+      const kind = isPost ? "post" : "bundle";
+      const handleFromUrl = extractXHandleFromPostUrl(item.canonicalUrl);
+      const handleFromQuery = extractXHandleFromQuery(item.query);
+      const who = handleFromUrl
+        ? `@${handleFromUrl}`
+        : handleFromQuery
+          ? `@${handleFromQuery}`
+          : item.query
+            ? clip(item.query, 16)
+            : "(signal)";
+      const rc = isPost ? 1 : typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
       const topTextRaw =
-        item.signalResults.length > 0
-          ? (item.signalResults[0]?.text ?? "")
-          : typeof item.bodyText === "string"
+        isPost
+          ? typeof item.bodyText === "string"
             ? item.bodyText
-            : "";
+            : ""
+          : item.signalResults.length > 0
+            ? (item.signalResults[0]?.text ?? "")
+            : typeof item.bodyText === "string"
+              ? item.bodyText
+              : "";
       const topText = topTextRaw.replaceAll("\n", " ").trim();
       const link =
         item.primaryUrl && !isXLikeUrl(item.primaryUrl)
           ? item.primaryUrl
-          : (item.extractedUrls.find((u) => typeof u === "string" && !isXLikeUrl(u)) ?? "");
+          : item.extractedUrls.find((u) => typeof u === "string" && !isXLikeUrl(u)) ??
+            item.canonicalUrl ??
+            "";
       return {
         fetched: formatShortLocalTimestamp(item.fetchedAt),
+        kind,
         who,
         results: String(rc),
         text: topText,
@@ -1161,27 +1210,29 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       };
     });
 
-    console.log(`Signal debug (latest ${normalized.length}):`);
+    console.log(`Signal debug (kind=${opts.kind}, latest ${normalized.length}):`);
     printSignalDebugTable(tableRows);
 
     if (!opts.verbose) {
       console.log("");
       console.log(
-        "Tip: add --verbose to print full results and recent provider calls; use --json for structured output. For paging: append `| less -R`."
+        'Tip: add --verbose to print full results and recent provider calls; use --json for structured output; filter with --kind post|bundle|all. For paging: append `| less -R`.'
       );
       return;
     }
 
     for (const item of normalized) {
       const q = item.query ?? "(unknown query)";
-      const handle = extractXHandleFromQuery(q);
-      const who = handle ? `@${handle}` : q;
-      const rc = typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
-      const topPost = item.signalResults.length > 0 ? (item.signalResults[0]?.url ?? null) : null;
-      const primary = item.primaryUrl;
+      const handleFromUrl = extractXHandleFromPostUrl(item.canonicalUrl);
+      const handleFromQuery = extractXHandleFromQuery(q);
+      const who = handleFromUrl ? `@${handleFromUrl}` : handleFromQuery ? `@${handleFromQuery}` : q;
+      const isPost = item.canonicalUrl !== null;
+      const rc = isPost ? 1 : typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
+      const topPost = item.signalResults.length > 0 ? (item.signalResults[0]?.url ?? null) : item.canonicalUrl;
+      const primary = item.primaryUrl ?? item.canonicalUrl;
 
       console.log("");
-      console.log(`- ${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`);
+      console.log(`- kind=${item.kind} who=${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`);
       if (topPost) console.log(`  top_post: ${topPost}`);
       if (primary) console.log(`  primary_url: ${primary}`);
 
@@ -1202,7 +1253,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
           const text = r.text ? r.text.replaceAll("\n", " ").trim() : "(no text)";
           console.log(`    ${i + 1}. ${date} ${text}`);
         }
-      } else {
+      } else if (!isPost) {
         console.log("  (no parsed signal_results on this item)");
       }
 
@@ -1227,6 +1278,251 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
         );
       }
     }
+  } finally {
+    await db.close();
+  }
+}
+
+type SignalExplodeOptions = {
+  limitBundles: number;
+  dryRun: boolean;
+  deleteBundles: boolean;
+};
+
+function parseSignalExplodeArgs(args: string[]): SignalExplodeOptions {
+  let limitBundles = 50;
+  let dryRun = false;
+  let deleteBundles = false;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+    if (a === "--delete-bundles") {
+      deleteBundles = true;
+      continue;
+    }
+    if (a === "--limit") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error("Invalid --limit (expected a positive integer)");
+      }
+      limitBundles = parsed;
+      i += 1;
+      continue;
+    }
+  }
+
+  return { limitBundles, dryRun, deleteBundles };
+}
+
+function looksLikeUrl(s: string): boolean {
+  return s.startsWith("http://") || s.startsWith("https://");
+}
+
+function extractUrlsFromText(text: string): string[] {
+  const matches = text.match(/https?:\/\/[^\s"'<>]+/g) ?? [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of matches) {
+    const cleaned = raw.replace(/[)\].,;!?]+$/g, "");
+    if (!looksLikeUrl(cleaned)) continue;
+    if (seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+    if (out.length >= 100) break;
+  }
+  return out;
+}
+
+function parseXStatusId(url: string): string | null {
+  const m = url.match(/\/status\/(\d+)/);
+  return m ? m[1] ?? null : null;
+}
+
+function parseXHandle(url: string): string | null {
+  const m = url.match(/\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,30})\/status\/\d+/);
+  return m ? m[1] ?? null : null;
+}
+
+/**
+ * Backfill helper: convert existing stored signal bundles (canonical_url is null, metadata.signal_results exists)
+ * into per-post `signal_post_v1` content items. This avoids re-calling the signal provider.
+ *
+ * Notes:
+ * - Posts are upserted via canonical URL hash (x.com status URL) and linked back to the same source_id.
+ * - New posts will have fresh fetched_at timestamps (because upsert sets fetched_at=now()).
+ * - Bundles can optionally be soft-deleted after backfill.
+ */
+export async function adminSignalExplodeBundlesCommand(args: string[] = []): Promise<void> {
+  const opts = parseSignalExplodeArgs(args);
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getFirstUser();
+    if (!user) {
+      console.log("No user found yet. Run `admin:run-now` after creating sources.");
+      return;
+    }
+
+    const bundles = await db.query<{
+      id: string;
+      source_id: string;
+      fetched_at: string;
+      metadata_json: Record<string, unknown>;
+    }>(
+      `select id, source_id, fetched_at::text as fetched_at, metadata_json
+       from content_items
+       where user_id = $1
+         and deleted_at is null
+         and source_type = 'signal'
+         and canonical_url is null
+       order by fetched_at desc
+       limit $2`,
+      [user.id, opts.limitBundles]
+    );
+
+    let bundlesScanned = 0;
+    let bundlesMarked = 0;
+    let bundlesDeleted = 0;
+    let postsAttempted = 0;
+    let postsUpserted = 0;
+    let postsInserted = 0;
+    let errors = 0;
+
+    for (const b of bundles.rows) {
+      bundlesScanned += 1;
+      const meta = b.metadata_json ?? {};
+      const provider = asString((meta as Record<string, unknown>).provider) ?? "x_search";
+      const vendor = asString((meta as Record<string, unknown>).vendor) ?? "grok";
+      const query = asString((meta as Record<string, unknown>).query) ?? "signal";
+      const dayBucket = asString((meta as Record<string, unknown>).day_bucket) ?? b.fetched_at.slice(0, 10);
+
+      const results = asSignalResults((meta as Record<string, unknown>).signal_results);
+      if (results.length === 0) continue;
+
+      for (const r of results) {
+        const url = r.url;
+        if (!url || !looksLikeUrl(url)) continue;
+        let canon: string;
+        try {
+          canon = canonicalizeUrl(url);
+        } catch {
+          continue;
+        }
+
+        const hashUrl = sha256Hex(canon);
+
+        const statusId = parseXStatusId(canon);
+        const handle = parseXHandle(canon);
+        const text = r.text ? r.text.replaceAll("\n", " ").trim() : null;
+        const extractedUrls = text ? extractUrlsFromText(text).filter((u) => u !== canon) : [];
+        const primaryUrl = extractedUrls[0] ?? canon;
+        const externalId = statusId ?? sha256Hex([provider, vendor, query, dayBucket, canon].join("|"));
+
+        postsAttempted += 1;
+        if (opts.dryRun) continue;
+
+        try {
+          const upsertRes = await db.contentItems.upsert({
+            userId: user.id,
+            sourceId: b.source_id,
+            sourceType: "signal",
+            externalId,
+            canonicalUrl: canon,
+            title: null,
+            bodyText: text,
+            author: handle ? `@${handle}` : null,
+            publishedAt: null,
+            language: null,
+            metadata: {
+              kind: "signal_post_v1",
+              provider,
+              vendor,
+              query,
+              day_bucket: dayBucket,
+              window_start: asString((meta as Record<string, unknown>).window_start),
+              window_end: asString((meta as Record<string, unknown>).window_end),
+              post_url: canon,
+              extracted_urls: extractedUrls,
+              primary_url: primaryUrl,
+              origin_bundle_content_item_id: b.id,
+            },
+            raw: {
+              kind: "signal_post_v1",
+              origin_bundle_content_item_id: b.id,
+              day_bucket: dayBucket,
+            },
+            hashUrl,
+            hashText: null,
+          });
+          postsUpserted += 1;
+          if (upsertRes.inserted) postsInserted += 1;
+
+          try {
+            await db.contentItemSources.upsert({ contentItemId: upsertRes.id, sourceId: b.source_id });
+          } catch (err) {
+            errors += 1;
+            console.warn("content_item_sources upsert failed (signal explode)", err);
+          }
+        } catch (err) {
+          errors += 1;
+          console.warn("content_items upsert failed (signal explode)", err);
+        }
+      }
+
+      if (!opts.dryRun) {
+        // Mark the bundle as signal_bundle_v1 for clarity (if it wasn't already).
+        try {
+          const updated = await db.query<{ updated: boolean }>(
+            `update content_items
+             set metadata_json = jsonb_set(metadata_json, '{kind}', '"signal_bundle_v1"'::jsonb, true)
+             where id = $1::uuid
+               and (metadata_json->>'kind') is null
+             returning true as updated`,
+            [b.id]
+          );
+          if (updated.rows.length > 0) bundlesMarked += 1;
+        } catch (err) {
+          errors += 1;
+          console.warn("bundle kind mark failed (signal explode)", err);
+        }
+      }
+    }
+
+    if (!opts.dryRun && opts.deleteBundles && bundles.rows.length > 0) {
+      try {
+        const ids = bundles.rows.map((r) => r.id);
+        const res = await db.query<{ id: string }>(
+          `update content_items
+           set deleted_at = now()
+           where id = any($1::uuid[])
+           returning id::text as id`,
+          [ids]
+        );
+        bundlesDeleted = res.rows.length;
+      } catch (err) {
+        errors += 1;
+        console.warn("bundle delete failed (signal explode)", err);
+      }
+    }
+
+    console.log("Signal bundle explode:");
+    console.log(`- dry_run:          ${opts.dryRun ? "yes" : "no"}`);
+    console.log(`- bundles_scanned:  ${bundlesScanned}`);
+    console.log(`- bundles_marked:   ${opts.dryRun ? "(dry-run)" : String(bundlesMarked)}`);
+    console.log(`- bundles_deleted:  ${opts.dryRun ? "(dry-run)" : String(bundlesDeleted)}`);
+    console.log(`- posts_attempted:  ${postsAttempted}`);
+    console.log(`- posts_upserted:   ${opts.dryRun ? "(dry-run)" : String(postsUpserted)}`);
+    console.log(`- posts_inserted:   ${opts.dryRun ? "(dry-run)" : String(postsInserted)}`);
+    console.log(`- errors:           ${errors}`);
+    console.log("");
+    console.log("Next:");
+    console.log("- Inspect: pnpm dev:cli -- admin:signal-debug --kind post --limit 20 --verbose");
+    console.log("- Re-run digest: pnpm dev:cli -- admin:run-now --source-type signal");
   } finally {
     await db.close();
   }

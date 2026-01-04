@@ -10,6 +10,7 @@ import {
   adminEmbedNowCommand,
   adminRunNowCommand,
   adminSignalDebugCommand,
+  adminSignalExplodeBundlesCommand,
   adminSignalResetCursorCommand,
   adminSourcesSetTopicCommand,
   adminSourcesAddCommand,
@@ -113,7 +114,8 @@ function printHelp(): void {
   console.log("  admin:sources-list");
   console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
   console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
-  console.log("  admin:signal-debug [--limit N] [--verbose] [--json] [--raw]");
+  console.log('  admin:signal-debug [--kind post|bundle|all] [--limit N] [--verbose] [--json] [--raw]');
+  console.log("  admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
 
@@ -151,6 +153,9 @@ async function main(): Promise<void> {
       break;
     case "admin:signal-debug":
       result = adminSignalDebugCommand(rest);
+      break;
+    case "admin:signal-explode-bundles":
+      result = adminSignalExplodeBundlesCommand(rest);
       break;
     case "admin:signal-reset-cursor":
       result = adminSignalResetCursorCommand(rest);

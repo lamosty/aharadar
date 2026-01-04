@@ -322,6 +322,7 @@ export async function persistDigestFromContentItems(params: {
        where ci.user_id = $1
          and ci.deleted_at is null
          and ci.duplicate_of_content_item_id is null
+         and not (ci.source_type = 'signal' and ci.canonical_url is null)
          and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
          and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
      ),
