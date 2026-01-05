@@ -8,7 +8,7 @@
 import type { FetchParams, FetchResult, ProviderCallDraft } from "@aharadar/shared";
 
 import type { XPostsSourceConfig } from "./config";
-import { grokXSearch } from "../signal/provider";
+import { grokXSearch } from "../x_shared/grok_x_search";
 
 let lastRunKey: string | null = null;
 let runSearchCallsUsed = 0;
