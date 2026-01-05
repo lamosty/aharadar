@@ -18,6 +18,12 @@ This repo is currently **spec-first**. The goal is to lock down concrete MVP con
 11. `sessions/*` — session recaps / audit log for AI-assisted development (handoff notes).
 12. `learnings/*` - research notes / blog-draft material (informational).
 
+## Collaboration workflow (AI-assisted development)
+
+- Workflow: `workflows/ai-collab.md`
+- Task template: `workflows/task-template.md`
+- Current Opus worklist: `_session/opus-worklist.md`
+
 ## Status legend
 
 - **Proposed**: documented, not yet confirmed.

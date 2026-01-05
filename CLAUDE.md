@@ -72,3 +72,8 @@ Write handoff recap to `docs/sessions/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
 - `docs/pipeline.md` — stages + ranking
 - `docs/connectors.md` — connector contracts
 - `docs/adr/*` — decisions
+
+## Collaboration workflow (Opus implementer + GPT reviewer)
+
+- `docs/workflows/ai-collab.md`
+- `docs/_session/opus-worklist.md`
