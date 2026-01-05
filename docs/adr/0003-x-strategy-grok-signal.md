@@ -1,7 +1,9 @@
 # ADR 0003: X/Twitter — “Signal source” via a search provider (default: Grok)
 
-- **Status**: Accepted
+- **Status**: Superseded
 - **Date**: 2025-12-17
+
+> Superseded by ADR `0010-x-posts-canonical-via-grok.md`, which introduces `type="x_posts"` for canonical post-level ingestion while keeping `type="signal"` for derived alert/trend semantics.
 
 ## Context
 
