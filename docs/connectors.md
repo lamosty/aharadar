@@ -356,7 +356,7 @@ Ingest channel uploads; optionally fetch transcripts.
 
 **Fetch**
 
-- Proposed MVP approach: use YouTube’s channel RSS feed for uploads.
+- Proposed MVP approach: use YouTube's channel RSS feed for uploads.
 - Transcripts are optional and should be behind config + budget dial.
 
 **Normalize**
@@ -368,6 +368,82 @@ Ingest channel uploads; optionally fetch transcripts.
 - `author`: channel name
 - `published_at`: published date
 - `metadata_json`: channel id, duration (if available), etc.
+
+### X/Twitter posts (`type = "x_posts"`) — canonical
+
+**Purpose**
+Ingest X/Twitter posts as canonical content items, using a provider-backed access method (initially Grok).
+
+See ADR `0010-x-posts-canonical-via-grok.md` for background on why we use a provider abstraction rather than the official X API directly.
+
+**config_json**
+
+```json
+{
+  "vendor": "grok",
+  "accounts": ["someaccount", "anotheraccount"],
+  "keywords": ["optional keywords"],
+  "queries": ["optional advanced queries"],
+  "maxResultsPerQuery": 20,
+  "excludeReplies": true,
+  "excludeRetweets": true,
+  "cadence": { "mode": "interval", "every_minutes": 1440 }
+}
+```
+
+Notes:
+
+- `vendor`: provider adapter id (currently `"grok"`); allows swapping to official X API later.
+- `accounts`: list of X handles to follow (without `@`).
+- `keywords`: optional topic keywords to monitor.
+- `queries`: advanced escape hatch; if present, used directly instead of compiling from `accounts`/`keywords`.
+- `cadence`: per-source cadence (see ADR 0009); `x_posts` defaults to daily (1440 minutes).
+
+**cursor_json**
+
+```json
+{
+  "since_id": null,
+  "since_time": "2025-12-17T08:00:00Z",
+  "last_fetch_at": "2025-12-17T08:00:00Z"
+}
+```
+
+Notes:
+
+- `since_time` is advanced to `windowEnd` after a successful fetch.
+- `last_fetch_at` is updated only after a successful fetch and is used for cadence gating.
+
+**Fetch**
+
+- Use the provider client (e.g., Grok) to search for posts matching the compiled queries.
+- The fetch function returns `rawItems` **one per post** (not bundles).
+- Respect `limits.maxItems` as the total cap across all queries.
+
+**Normalize**
+
+Each post becomes one `ContentItemDraft`:
+
+- `source_type`: `"x_posts"`
+- `canonical_url`: the status URL (`https://x.com/<handle>/status/<id>`)
+- `external_id`: status id parsed from URL; fallback to `sha256_hex(vendor|query|day_bucket|url)`
+- `title`: `null` (short-form content)
+- `body_text`: post text excerpt (no paraphrasing)
+- `author`: `@<handle>` when parseable
+- `published_at`: best-effort; keep `null` if only a day bucket is available (do not fabricate a timestamp)
+- `metadata_json`:
+  - `vendor`: the vendor adapter used (e.g., `"grok"`)
+  - `query`: the query string used for this fetch
+  - `day_bucket`: `YYYY-MM-DD` derived from `windowEnd`
+  - `window_start`, `window_end`: ISO timestamps
+  - `extracted_urls`: URLs extracted from the post text
+  - `primary_url`: best click target (prefer `extracted_urls[0]`, else the post URL)
+
+**Relationship to `signal`**
+
+- `x_posts` is **canonical content**: posts are first-class items that flow through embedding, clustering, ranking, and digests.
+- `signal` remains a **derived/amplifier** connector for search/trend/alert semantics (bundles, not canonical ingestion).
+- If a user wants both canonical X posts and search-based signals, they can configure separate sources with each type.
 
 ### Signals (`type = "signal"`) — search/trend/alerts
 

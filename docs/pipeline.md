@@ -53,7 +53,30 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 - Source failures must not abort the entire run:
   - mark `fetch_runs.status = error`
   - continue remaining sources
-  - later: show “missing source” indicators in admin output (optional)
+  - later: show "missing source" indicators in admin output (optional)
+
+**Cadence gating (ADR 0009)**
+
+Before calling `connector.fetch()` for a source, ingest checks whether the source is "due" based on its configured cadence:
+
+- Parse `cadence` from `source.config_json` (optional field).
+- If `cadence` is missing: the source is always due (fetch whenever ingest runs).
+- If `cadence` is present (e.g., `{ "mode": "interval", "every_minutes": 480 }`):
+  - Let `now` = the pipeline run's `windowEnd` (ISO timestamp).
+  - Let `last_fetch_at` = `source.cursor_json.last_fetch_at` (ISO timestamp, may be missing).
+  - The source is due if `last_fetch_at` is missing OR `now - last_fetch_at >= every_minutes`.
+
+When a source is **not due**:
+
+- Do not call `connector.fetch()`.
+- Do not start a `fetch_runs` row.
+- Return a per-source result with `status="skipped"` and a clear reason (e.g., `"not_due"`).
+
+When a source is due and fetch succeeds:
+
+- Merge `last_fetch_at: windowEnd` into the cursor persisted via `db.sources.updateCursor()`.
+
+This mechanism allows different source types to have different natural frequencies (e.g., `x_posts` daily, RSS 3×/day) while running the pipeline on a single schedule.
 
 ### 2) Embed
 
@@ -121,9 +144,10 @@ Pick what we will triage/rank for the digest window.
 - If clustering is disabled or fails, fall back to item-based candidates:
   - select content_items in the window not marked duplicate **scoped to the topic** via `content_item_sources → sources(topic_id)`
 
-**Signals vs canonical content (important)**
+**Canonical vs signal content (important)**
 
-- Canonical connectors (`reddit|hn|rss|youtube|...` and future `web`) produce items that are the thing the user reads/watches.
+- Canonical connectors (`reddit|hn|rss|youtube|x_posts|...` and future `web`) produce items that are the thing the user reads/watches.
+  - `x_posts` items are canonical and participate fully in embedding, clustering, dedupe, ranking, and digests (see ADR 0010).
 - The `signal` connector produces **derived** items (search/trend/alerts), but in MVP we distinguish two kinds (see `docs/connectors.md`):
   - `signal_post_v1`: first-class, post-level items; eligible for clustering and can be shown in digests/review.
   - `signal_bundle_v1`: debug/audit bundles; must be excluded from candidate selection and digests.
