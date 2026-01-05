@@ -30,12 +30,12 @@ export interface IngestSourceResult {
 
 // Cadence gating (ADR 0009)
 
-interface CadenceConfig {
+export interface CadenceConfig {
   mode: "interval";
   every_minutes: number;
 }
 
-function parseCadence(config: Record<string, unknown>): CadenceConfig | null {
+export function parseCadence(config: Record<string, unknown>): CadenceConfig | null {
   const cadence = config.cadence;
   if (!cadence || typeof cadence !== "object" || Array.isArray(cadence)) return null;
   const c = cadence as Record<string, unknown>;
@@ -45,14 +45,14 @@ function parseCadence(config: Record<string, unknown>): CadenceConfig | null {
   return { mode: "interval", every_minutes: every };
 }
 
-function parseLastFetchAt(cursor: Record<string, unknown>): Date | null {
+export function parseLastFetchAt(cursor: Record<string, unknown>): Date | null {
   const raw = cursor.last_fetch_at;
   if (typeof raw !== "string") return null;
   const d = new Date(raw);
   return isNaN(d.getTime()) ? null : d;
 }
 
-function isSourceDue(cadence: CadenceConfig | null, lastFetchAt: Date | null, windowEnd: Date): boolean {
+export function isSourceDue(cadence: CadenceConfig | null, lastFetchAt: Date | null, windowEnd: Date): boolean {
   // No cadence = always due
   if (!cadence) return true;
   // Never fetched = due

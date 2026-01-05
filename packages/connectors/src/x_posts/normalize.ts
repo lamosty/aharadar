@@ -16,7 +16,7 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function parseXStatusUrl(url: string): { handle: string | null; statusId: string | null } {
+export function parseXStatusUrl(url: string): { handle: string | null; statusId: string | null } {
   // Examples:
   // - https://x.com/<handle>/status/<id>
   // - https://twitter.com/<handle>/status/<id>
