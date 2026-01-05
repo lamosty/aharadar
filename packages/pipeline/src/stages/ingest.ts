@@ -12,7 +12,7 @@ export interface IngestSourceFilter {
   onlySourceIds?: string[];
 }
 
-export type IngestSourceStatus = "ok" | "partial" | "error";
+export type IngestSourceStatus = "ok" | "partial" | "error" | "skipped";
 
 export interface IngestSourceResult {
   sourceId: string;
@@ -25,12 +25,49 @@ export interface IngestSourceResult {
   inserted: number;
   errors: number;
   error?: { message: string };
+  skipReason?: string;
+}
+
+// Cadence gating (ADR 0009)
+
+interface CadenceConfig {
+  mode: "interval";
+  every_minutes: number;
+}
+
+function parseCadence(config: Record<string, unknown>): CadenceConfig | null {
+  const cadence = config.cadence;
+  if (!cadence || typeof cadence !== "object" || Array.isArray(cadence)) return null;
+  const c = cadence as Record<string, unknown>;
+  if (c.mode !== "interval") return null;
+  const every = c.every_minutes;
+  if (typeof every !== "number" || every <= 0) return null;
+  return { mode: "interval", every_minutes: every };
+}
+
+function parseLastFetchAt(cursor: Record<string, unknown>): Date | null {
+  const raw = cursor.last_fetch_at;
+  if (typeof raw !== "string") return null;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isSourceDue(cadence: CadenceConfig | null, lastFetchAt: Date | null, windowEnd: Date): boolean {
+  // No cadence = always due
+  if (!cadence) return true;
+  // Never fetched = due
+  if (!lastFetchAt) return true;
+  // Check interval
+  const elapsedMs = windowEnd.getTime() - lastFetchAt.getTime();
+  const intervalMs = cadence.every_minutes * 60 * 1000;
+  return elapsedMs >= intervalMs;
 }
 
 export interface IngestRunResult {
   perSource: IngestSourceResult[];
   totals: {
     sources: number;
+    skipped: number;
     fetched: number;
     normalized: number;
     upserted: number;
@@ -189,6 +226,7 @@ export async function ingestEnabledSources(params: {
 
   const totals = {
     sources: sources.length,
+    skipped: 0,
     fetched: 0,
     normalized: 0,
     upserted: 0,
@@ -217,6 +255,21 @@ export async function ingestEnabledSources(params: {
       inserted: 0,
       errors: 0,
     };
+
+    // Cadence gating (ADR 0009): check if source is due before fetching
+    const sourceConfig = asRecord(source.config_json);
+    const sourceCursor = asRecord(source.cursor_json);
+    const cadence = parseCadence(sourceConfig);
+    const lastFetchAt = parseLastFetchAt(sourceCursor);
+    const windowEndDate = new Date(params.windowEnd);
+
+    if (!isSourceDue(cadence, lastFetchAt, windowEndDate)) {
+      baseResult.status = "skipped";
+      baseResult.skipReason = "not_due";
+      perSource.push(baseResult);
+      totals.skipped += 1;
+      continue;
+    }
 
     const fetchRun = await params.db.fetchRuns.start(source.id, asRecord(source.cursor_json));
 
@@ -282,12 +335,17 @@ export async function ingestEnabledSources(params: {
       baseResult.status = baseResult.errors > 0 ? "partial" : "ok";
 
       // Cursor updates happen only after a successful fetch call (ok/partial).
-      await params.db.sources.updateCursor(source.id, asRecord(fetchResult.nextCursor));
+      // Merge last_fetch_at for cadence gating (ADR 0009).
+      const updatedCursor = {
+        ...asRecord(fetchResult.nextCursor),
+        last_fetch_at: params.windowEnd,
+      };
+      await params.db.sources.updateCursor(source.id, updatedCursor);
 
       await params.db.fetchRuns.finish({
         fetchRunId: fetchRun.id,
         status: baseResult.status,
-        cursorOut: asRecord(fetchResult.nextCursor),
+        cursorOut: updatedCursor,
         counts: {
           fetched: baseResult.fetched,
           normalized: baseResult.normalized,

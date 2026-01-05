@@ -331,6 +331,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     console.log("");
     console.log("Ingest summary:");
     console.log(`- sources:    ${ingest.totals.sources}`);
+    console.log(`- skipped:    ${ingest.totals.skipped} (cadence not due)`);
     console.log(`- fetched:    ${ingest.totals.fetched}`);
     console.log(`- normalized: ${ingest.totals.normalized}`);
     console.log(`- upserted:   ${ingest.totals.upserted}`);
