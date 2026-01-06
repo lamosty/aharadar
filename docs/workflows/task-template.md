@@ -63,6 +63,9 @@ Commit instructions:
 - Make exactly **one commit** per task spec (unless the spec explicitly asks for multiple).
 - If you had to touch files outside **Scope**, stop and ask before committing.
 - If you believe the task’s decisions are outdated/risky, raise it (see “Open questions / uncertainties”) and ask the driver before deviating.
+- Subagents / skills:
+  - If you spawn subagents, they may not reliably perform git commits.
+  - The **main Opus loop** must always be the one to run `git add` / `git commit` and write the report files.
 
 ### Final step (required): write task report files (no copy/paste)
 
@@ -90,6 +93,7 @@ Repo: /Users/lamosty/projects/aharadar
 Branch: <branch-name>
 Commit(s): <commit-hash(es)>
 Commit message: <type(scope)>: <message>
+Subagents used (if any): <none | list skill/subagent names>
 
 Task spec followed:
 - <path to this task spec>

@@ -65,6 +65,13 @@ Rules for Opus:
 - If a task spec’s decision seems **outdated / risky / not best practice in 2025**, do **not** blindly follow it:
   - write a short “pushback” note in the task report with 1–2 better options and why
   - if it changes behavior/contracts, **stop and ask the driver** before implementing the alternative
+- Subagents / skills (important edge case):
+  - Treat subagents as **advisors/drafters** only.
+  - Subagents may propose code or even edit files, but they often **won’t** follow repo-specific git/reporting rituals.
+  - The **top-level Opus run remains responsible** for:
+    - staging + committing (one task → one commit)
+    - writing the required report files under `docs/_session/results/`
+  - If a subagent suggests running git commands, ignore that and do it in the main loop.
 
 ### 3) Opus runs checks + smoke test
 
