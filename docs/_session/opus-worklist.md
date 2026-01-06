@@ -157,3 +157,47 @@ Every task must end with:
 32. **Task 032**: integration test for Redis + BullMQ worker end-to-end
 
 - `docs/_session/tasks/task-032-integration-queue-worker.md`
+
+---
+
+## Web UI/UX batch (Next.js)
+
+34. **Task 034**: UI/UX spec (routes + requirements)
+
+- `docs/_session/tasks/task-034-web-ui-spec.md`
+
+35. **Task 035**: scaffold web app + design system + shell
+
+- `docs/_session/tasks/task-035-web-scaffold.md`
+
+36. **Task 036**: data layer (API client + caching + offline basics)
+
+- `docs/_session/tasks/task-036-web-data-layer.md`
+
+37. **Task 037**: digests list (condensed + reader modes)
+
+- `docs/_session/tasks/task-037-web-digests-list.md`
+
+38. **Task 038**: digest detail + why shown + feedback
+
+- `docs/_session/tasks/task-038-web-digest-detail.md`
+
+39. **Task 039**: item detail page
+
+- `docs/_session/tasks/task-039-web-item-detail.md`
+
+40. **Task 040**: add admin sources endpoints for UI
+
+- `docs/_session/tasks/task-040-api-admin-sources.md`
+
+41. **Task 041**: add budgets/status endpoint for UI
+
+- `docs/_session/tasks/task-041-api-admin-budgets.md`
+
+42. **Task 042**: admin UI (sources + budgets + run now)
+
+- `docs/_session/tasks/task-042-web-admin-ui.md`
+
+43. **Task 043**: Playwright E2E (hermetic via API mocking)
+
+- `docs/_session/tasks/task-043-web-e2e-playwright.md`

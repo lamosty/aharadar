@@ -43,3 +43,13 @@ Task files (in recommended order):
 31. `task-031-api-admin-run.md`
 32. `task-032-integration-queue-worker.md`
 33. `task-033-shared-queues-package.md`
+34. `task-034-web-ui-spec.md`
+35. `task-035-web-scaffold.md`
+36. `task-036-web-data-layer.md`
+37. `task-037-web-digests-list.md`
+38. `task-038-web-digest-detail.md`
+39. `task-039-web-item-detail.md`
+40. `task-040-api-admin-sources.md`
+41. `task-041-api-admin-budgets.md`
+42. `task-042-web-admin-ui.md`
+43. `task-043-web-e2e-playwright.md`
