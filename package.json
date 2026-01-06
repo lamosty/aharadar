@@ -11,6 +11,7 @@
     "dev": "pnpm dev:cli",
     "dev:all": "pnpm -r dev",
     "dev:cli": "pnpm build:cli && node packages/cli/dist/main.js",
+    "dev:web": "pnpm --filter @aharadar/web dev",
     "dev:services": "./scripts/dev.sh",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",

@@ -1,0 +1,104 @@
+{
+  "common": {
+    "appName": "Aha Radar",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "digests": "Digests",
+    "sources": "Sources",
+    "settings": "Settings",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "landing": {
+    "hero": {
+      "title": "Surface signal from noise",
+      "subtitle": "Aha Radar monitors your chosen sources and delivers personalized digests of only the most relevant content.",
+      "cta": "Get Started"
+    },
+    "features": {
+      "title": "How it works",
+      "personalized": {
+        "title": "Personalized",
+        "description": "Your preferences shape what surfaces. Like and dislike to train your radar."
+      },
+      "multiSource": {
+        "title": "Multi-source",
+        "description": "Reddit, Hacker News, RSS, YouTube, and more. All normalized and deduplicated."
+      },
+      "budgetAware": {
+        "title": "Budget-aware",
+        "description": "Control your processing costs with configurable daily and monthly limits."
+      }
+    }
+  },
+  "login": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to your account",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "sendLink": "Send magic link",
+    "checkEmail": "Check your email",
+    "checkEmailDescription": "We sent a login link to {email}",
+    "backToLogin": "Back to login"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to your radar",
+    "recentDigests": "Recent Digests",
+    "noDigests": "No digests yet. Configure your sources to get started.",
+    "viewAll": "View all"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "themeDescription": "Choose your visual style",
+      "colorMode": "Color mode",
+      "colorModeDescription": "Light, dark, or match your system",
+      "layout": "Layout",
+      "layoutDescription": "How content is displayed",
+      "themes": {
+        "professional": "Professional",
+        "warm": "Warm",
+        "minimal": "Minimal"
+      },
+      "colorModes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "layouts": {
+        "condensed": "Condensed",
+        "reader": "Reader",
+        "timeline": "Timeline"
+      }
+    }
+  },
+  "toast": {
+    "error": "Something went wrong",
+    "success": "Success!",
+    "settingsSaved": "Settings saved",
+    "linkSent": "Magic link sent! Check your email."
+  },
+  "accessibility": {
+    "skipToContent": "Skip to main content",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "toggleTheme": "Toggle theme",
+    "toggleColorMode": "Toggle color mode"
+  }
+}

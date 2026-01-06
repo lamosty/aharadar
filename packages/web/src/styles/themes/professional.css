@@ -1,0 +1,132 @@
+/**
+ * Professional Theme - Default
+ * Clean, neutral palette with system fonts and minimal decoration.
+ */
+
+[data-theme="professional"] {
+  /* Colors - Light Mode */
+  --color-bg: #ffffff;
+  --color-surface: #f8f9fa;
+  --color-surface-elevated: #ffffff;
+  --color-border: #dee2e6;
+  --color-border-subtle: #e9ecef;
+
+  --color-text-primary: #212529;
+  --color-text-secondary: #495057;
+  --color-text-muted: #6c757d;
+  --color-text-inverse: #ffffff;
+
+  --color-primary: #0d6efd;
+  --color-primary-hover: #0b5ed7;
+  --color-primary-active: #0a58ca;
+  --color-primary-subtle: #cfe2ff;
+
+  --color-success: #198754;
+  --color-success-subtle: #d1e7dd;
+  --color-warning: #ffc107;
+  --color-warning-subtle: #fff3cd;
+  --color-error: #dc3545;
+  --color-error-subtle: #f8d7da;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* Spacing */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+
+  /* Focus Ring */
+  --focus-ring-color: rgba(13, 110, 253, 0.5);
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* Z-Index */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+}
+
+/* Dark Mode */
+[data-theme="professional"][data-mode="dark"] {
+  --color-bg: #1a1d21;
+  --color-surface: #212529;
+  --color-surface-elevated: #2b3035;
+  --color-border: #495057;
+  --color-border-subtle: #343a40;
+
+  --color-text-primary: #f8f9fa;
+  --color-text-secondary: #ced4da;
+  --color-text-muted: #adb5bd;
+  --color-text-inverse: #212529;
+
+  --color-primary: #6ea8fe;
+  --color-primary-hover: #8bb9fe;
+  --color-primary-active: #9ec5fe;
+  --color-primary-subtle: #084298;
+
+  --color-success: #75b798;
+  --color-success-subtle: #0f5132;
+  --color-warning: #ffda6a;
+  --color-warning-subtle: #664d03;
+  --color-error: #ea868f;
+  --color-error-subtle: #842029;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+
+  --focus-ring-color: rgba(110, 168, 254, 0.5);
+}
