@@ -539,4 +539,4 @@ Debugging:
 
 **Migration from legacy signal-stored X content**
 
-If your local/dev DB contains old `signal_post_v1` items from before `x_posts` was introduced, see `docs/_session/migration-signal-x-to-x_posts.md` for the recommended approach (reset + re-ingest).
+If your local/dev DB contains old `signal_post_v1` items from before `x_posts` was introduced, see `docs/migrations/migration-signal-x-to-x-posts.md` for the recommended approach (reset + re-ingest).

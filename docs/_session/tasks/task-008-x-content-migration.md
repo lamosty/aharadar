@@ -27,7 +27,7 @@ This task is intentionally **docs-only** unless the driver explicitly requests a
 ## Scope (allowed files)
 
 - `docs/connectors.md`
-- `docs/_session/migration-signal-x-to-x_posts.md` (new)
+- `docs/migrations/migration-signal-x-to-x-posts.md` (new)
 
 If you think you need to change code (CLI/db/pipeline), **stop and ask** before editing.
 
@@ -39,7 +39,7 @@ If you think you need to change code (CLI/db/pipeline), **stop and ask** before 
 
 ## Implementation steps (ordered)
 
-1. Add a new short doc: `docs/_session/migration-signal-x-to-x_posts.md` containing:
+1. Add a new short doc: `docs/migrations/migration-signal-x-to-x-posts.md` containing:
    - the problem statement (“old X content may exist as `signal_*` items”)
    - recommended dev approach (reset/re-ingest) with exact commands:
      - `./scripts/reset.sh`
@@ -48,7 +48,7 @@ If you think you need to change code (CLI/db/pipeline), **stop and ask** before 
    - explicitly state: **no backfill story is supported by default** (per repo velocity rule)
    - include “If we later need backfill…” as a short outline (what it would do, and why it’s risky)
 2. Update `docs/connectors.md` in the `x_posts` ↔ `signal` relationship section:
-   - add a brief note pointing to the `_session` migration doc
+   - add a brief note pointing to the migrations doc
    - keep it topic-agnostic and vendor-agnostic
 
 ## Acceptance criteria
@@ -68,7 +68,7 @@ pnpm -r typecheck
 - **Message**: `docs(connectors): document migration strategy for legacy signal-stored X content`
 - **Files expected**:
   - `docs/connectors.md`
-  - `docs/_session/migration-signal-x-to-x_posts.md`
+  - `docs/migrations/migration-signal-x-to-x-posts.md`
 
 ## Final step (required): print GPT‑5.2 review prompt
 

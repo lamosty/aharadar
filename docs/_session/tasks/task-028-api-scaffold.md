@@ -44,15 +44,11 @@ If anything else seems required (DB migrations, cross-package refactors), **stop
   - No OAuth/sessions for MVP (see `docs/api.md` Non-goals)
 - **Already decided (driver)**:
   - Use `fastify` for the HTTP server framework (fits our CommonJS TS build/runtime).
-- **DRIVER MUST ANSWER BEFORE IMPLEMENTATION**:
-  1. Port / listen behavior:
-     - default `PORT=3000` (typical) unless driver prefers another
-  2. Should `GET /api/health` require auth?
-     - **Already decided**: **no** (unauthenticated)
+  - Use `PORT=3000` as the default listen port (override via env).
 
 ## Implementation steps (ordered)
 
-1. Pick the HTTP framework (per driver decision) and add deps to `packages/api/package.json`.
+1. Add `fastify` dependencies to `packages/api/package.json`.
 2. Implement a small server in `packages/api/src/main.ts`:
    - mount routes under `/api`
    - implement `GET /api/health` returning `{ ok: true }`
