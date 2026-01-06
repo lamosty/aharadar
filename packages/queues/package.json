@@ -1,0 +1,17 @@
+{
+  "name": "@aharadar/queues",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "echo \"queues: no tests yet\"",
+    "lint": "echo \"queues: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@aharadar/shared": "workspace:*",
+    "bullmq": "^5.34.8"
+  }
+}

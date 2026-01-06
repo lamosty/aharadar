@@ -1,2 +1,201 @@
-// Digests routes stub.
-export {};
+import type { FastifyInstance } from "fastify";
+import { getDb, getSingletonContext } from "../lib/db.js";
+
+interface DigestListRow {
+  id: string;
+  mode: string;
+  window_start: string;
+  window_end: string;
+  created_at: string;
+}
+
+interface DigestDetailRow {
+  id: string;
+  user_id: string;
+  topic_id: string;
+  mode: string;
+  window_start: string;
+  window_end: string;
+  created_at: string;
+}
+
+interface DigestItemRow {
+  rank: number;
+  score: number;
+  content_item_id: string | null;
+  cluster_id: string | null;
+  triage_json: Record<string, unknown> | null;
+  summary_json: Record<string, unknown> | null;
+  entities_json: Record<string, unknown> | null;
+  item_title: string | null;
+  item_url: string | null;
+  item_author: string | null;
+  item_published_at: string | null;
+  item_source_type: string | null;
+}
+
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const d = new Date(value);
+  return !isNaN(d.getTime());
+}
+
+export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
+  fastify.get<{ Querystring: { from?: string; to?: string } }>("/digests", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { from, to } = request.query;
+
+    if (from !== undefined && !isValidIsoDate(from)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "Invalid 'from' parameter: must be ISO date string",
+        },
+      });
+    }
+
+    if (to !== undefined && !isValidIsoDate(to)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "Invalid 'to' parameter: must be ISO date string",
+        },
+      });
+    }
+
+    const db = getDb();
+    const now = new Date();
+    const defaultFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const defaultTo = now.toISOString();
+
+    const fromDate = from ?? defaultFrom;
+    const toDate = to ?? defaultTo;
+
+    const result = await db.query<DigestListRow>(
+      `SELECT id, mode, window_start::text, window_end::text, created_at::text
+       FROM digests
+       WHERE user_id = $1 AND topic_id = $2::uuid
+         AND created_at >= $3::timestamptz AND created_at <= $4::timestamptz
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [ctx.userId, ctx.topicId, fromDate, toDate]
+    );
+
+    return {
+      ok: true,
+      digests: result.rows.map((row) => ({
+        id: row.id,
+        mode: row.mode,
+        windowStart: row.window_start,
+        windowEnd: row.window_end,
+        createdAt: row.created_at,
+      })),
+    };
+  });
+
+  fastify.get<{ Params: { id: string } }>("/digests/:id", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+    const db = getDb();
+
+    const digestResult = await db.query<DigestDetailRow>(
+      `SELECT id, user_id, topic_id::text, mode, window_start::text, window_end::text, created_at::text
+       FROM digests
+       WHERE id = $1`,
+      [id]
+    );
+
+    const digest = digestResult.rows[0];
+    if (!digest) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Digest not found",
+        },
+      });
+    }
+
+    if (digest.user_id !== ctx.userId || digest.topic_id !== ctx.topicId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Digest does not belong to current user/topic",
+        },
+      });
+    }
+
+    const itemsResult = await db.query<DigestItemRow>(
+      `SELECT
+         di.rank,
+         di.score,
+         di.content_item_id,
+         di.cluster_id,
+         di.triage_json,
+         di.summary_json,
+         di.entities_json,
+         ci.title as item_title,
+         ci.canonical_url as item_url,
+         ci.author as item_author,
+         ci.published_at::text as item_published_at,
+         ci.source_type as item_source_type
+       FROM digest_items di
+       LEFT JOIN content_items ci ON ci.id = di.content_item_id
+       WHERE di.digest_id = $1
+       ORDER BY di.rank ASC`,
+      [id]
+    );
+
+    return {
+      ok: true,
+      digest: {
+        id: digest.id,
+        mode: digest.mode,
+        windowStart: digest.window_start,
+        windowEnd: digest.window_end,
+        createdAt: digest.created_at,
+      },
+      items: itemsResult.rows.map((row) => ({
+        rank: row.rank,
+        score: row.score,
+        contentItemId: row.content_item_id,
+        clusterId: row.cluster_id,
+        triageJson: row.triage_json,
+        summaryJson: row.summary_json,
+        entitiesJson: row.entities_json,
+        item: row.content_item_id
+          ? {
+              title: row.item_title,
+              url: row.item_url,
+              author: row.item_author,
+              publishedAt: row.item_published_at,
+              sourceType: row.item_source_type,
+            }
+          : null,
+      })),
+    };
+  });
+}

@@ -7,8 +7,16 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "echo \"api: not implemented\"",
+    "start": "node dist/main.js",
     "test": "echo \"api: no tests yet\"",
     "lint": "echo \"api: no lint yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@aharadar/db": "workspace:*",
+    "@aharadar/queues": "workspace:*",
+    "@aharadar/shared": "workspace:*",
+    "bullmq": "^5.34.8",
+    "fastify": "^5.2.1"
   }
 }
