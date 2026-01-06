@@ -153,5 +153,3 @@ Recent commits since last recap:
   - in the pipeline/worker (more robust, less UI coupling)?
 - Do we keep a global `user_preference_profiles` table at all, or fully switch to `topic_preference_profiles`?
 - Do we want embedding model tiering (low/normal/high) for embeddings, or keep embeddings model constant across tiers to avoid churn?
-
-

@@ -8,24 +8,24 @@ Build a minimal, fast, and accessible web interface that lets users review perso
 
 ### Marketing Routes (public)
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Landing page (SEO-optimized, explains product value) |
-| `/login` | Login UI (magic-link email form, no backend yet) |
+| Route    | Purpose                                              |
+| -------- | ---------------------------------------------------- |
+| `/`      | Landing page (SEO-optimized, explains product value) |
+| `/login` | Login UI (magic-link email form, no backend yet)     |
 
 ### App Routes (authenticated)
 
-| Route | Purpose |
-|-------|---------|
-| `/app` | Dashboard shell / home (redirects to digests) |
-| `/app/digests` | List of recent digests |
-| `/app/digests/:id` | Digest detail with ranked items |
-| `/app/items/:id` | Content item detail |
-| `/app/admin` | Admin section home |
-| `/app/admin/run` | Run now form |
-| `/app/admin/sources` | Sources management |
-| `/app/admin/budgets` | Budget status |
-| `/app/settings` | User preferences (theme, layout, dev settings) |
+| Route                | Purpose                                        |
+| -------------------- | ---------------------------------------------- |
+| `/app`               | Dashboard shell / home (redirects to digests)  |
+| `/app/digests`       | List of recent digests                         |
+| `/app/digests/:id`   | Digest detail with ranked items                |
+| `/app/items/:id`     | Content item detail                            |
+| `/app/admin`         | Admin section home                             |
+| `/app/admin/run`     | Run now form                                   |
+| `/app/admin/sources` | Sources management                             |
+| `/app/admin/budgets` | Budget status                                  |
+| `/app/settings`      | User preferences (theme, layout, dev settings) |
 
 **Future note (Astro migration):** Marketing pages (`/`, `/login`) may move to Astro later for better content/SEO performance. Keep design tokens, typography, and icons portable via CSS variables and shared assets.
 
@@ -262,9 +262,9 @@ Architecture supports multiple nav presentations (only sidebar implemented initi
 
 ```tsx
 <AppShell>
-  <AppShell.Nav />        {/* Slot: nav component */}
-  <AppShell.Header />     {/* Slot: page header */}
-  <AppShell.Main />       {/* Slot: page content */}
+  <AppShell.Nav /> {/* Slot: nav component */}
+  <AppShell.Header /> {/* Slot: page header */}
+  <AppShell.Main /> {/* Slot: page content */}
 </AppShell>
 ```
 

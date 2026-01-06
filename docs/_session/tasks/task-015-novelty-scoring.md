@@ -110,5 +110,3 @@ How to validate:
 What I’m unsure about / decisions I made:
 - ...
 ```
-
-

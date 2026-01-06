@@ -9,7 +9,7 @@ Different connectors have different “natural” frequencies:
 
 - RSS feeds and some communities can be fetched multiple times per day.
 - Other sources are noisy or costly and should be fetched less often (e.g. daily or weekly).
-- We also want to run the *pipeline* on a schedule (or manually) without being forced to fetch every source every run.
+- We also want to run the _pipeline_ on a schedule (or manually) without being forced to fetch every source every run.
 
 We already have:
 
@@ -65,5 +65,3 @@ If a source is skipped due to cadence, it must **not** update `last_fetch_at`.
 
 - Complex cron expressions (may be added later; MVP uses interval cadence).
 - A global scheduler implementation (this ADR only defines source-level cadence semantics; scheduling is a separate concern).
-
-

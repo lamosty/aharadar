@@ -98,5 +98,3 @@ Then:
 2) If changes required, give exact edits (files + what to change)
 3) Suggest follow-up tasks (if any)
 ```
-
-

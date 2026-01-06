@@ -115,5 +115,3 @@ How to validate:
 Open questions / uncertainties:
 - ...
 ```
-
-

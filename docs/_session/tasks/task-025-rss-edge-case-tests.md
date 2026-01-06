@@ -39,7 +39,7 @@ If anything else seems required, **stop and ask**.
 1. Add an RSS fixture item that includes BOTH:
    - `<content:encoded><![CDATA[...]]></content:encoded>`
    - `<description>...</description>`
-   And assert `parseFeed(...)` extracts:
+     And assert `parseFeed(...)` extracts:
    - `contentHtml` from `content:encoded`
    - `summary` from `description`
 2. Add tests for missing and invalid dates:
@@ -102,5 +102,3 @@ How to validate:
 What I’m unsure about / decisions I made:
 - ...
 ```
-
-

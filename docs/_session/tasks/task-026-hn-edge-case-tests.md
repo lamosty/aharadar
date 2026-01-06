@@ -43,7 +43,7 @@ If anything else seems required, **stop and ask**.
    - `<script>...</script>` and `<style>...</style>`
    - HTML entities (`&amp;`, `&#x27;`, etc.)
    - block tags (`<p>`, `<br>`)
-   Assert `bodyText` is clean and deterministic.
+     Assert `bodyText` is clean and deterministic.
 
 ## Acceptance criteria
 
@@ -94,5 +94,3 @@ How to validate:
 - pnpm -r typecheck
 - pnpm test
 ```
-
-

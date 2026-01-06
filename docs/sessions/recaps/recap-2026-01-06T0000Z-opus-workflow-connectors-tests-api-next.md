@@ -27,6 +27,7 @@
 - Updated `AGENTS.md` to explicitly describe the “GPT plans / Opus builds / human drives” parallel workflow.
 
 Key commits:
+
 - `963a48a docs(workflows): add Driver Q&A gate for Opus task generation`
 
 ### 2) Scheduler + queue wiring (BullMQ) landed
@@ -38,6 +39,7 @@ Key commits:
 - Worker uses a single pipeline worker (concurrency 1) for MVP simplicity.
 
 Key commits:
+
 - `e2659d7 feat(worker): wire BullMQ scheduler + pipeline runner`
 - `e92df17 fix(worker): address review feedback`
 
@@ -47,10 +49,11 @@ Key commits:
 - Source weights:
   - per-source: `sources.config_json.weight`
   - per-type: `SOURCE_TYPE_WEIGHTS_JSON`
-  - effective weight = clamp(type * source) in `[0.1, 3.0]`
+  - effective weight = clamp(type \* source) in `[0.1, 3.0]`
 - CLI review details now shows ranking breakdown from `triage_json.system_features.*`.
 
 Key commits:
+
 - `f95d082 feat(pipeline): add novelty feature to ranking`
 - `ec2cd1c feat(cli+pipeline): source weights + bulk source admin helpers`
 - `8a9ce14 feat(cli): show ranking breakdown in review details`
@@ -59,6 +62,7 @@ Key commits:
 ### 4) Budgets + signal corroboration + cadence admin UX landed (from earlier follow-ups)
 
 Key commits:
+
 - `39f96e0 feat(budgets): enforce credits exhaustion (warn + fallback_low)`
 - `942df11 feat(pipeline): add URL-only signal corroboration boost`
 - `f2a190b feat(cli): add helper to set per-source cadence`
@@ -73,6 +77,7 @@ Key commits:
 - YouTube ingestion intentionally deferred (channel discovery + “video content” needs a separate UX/enrichment plan).
 
 Key commits:
+
 - `e2da433 feat(rss): implement RSS/Atom fetch + normalization`
 - `4885845 feat(hn): ingest stories via Firebase API`
 - `99b7720 test(connectors): add hermetic tests for rss/hn`
@@ -194,5 +199,3 @@ Key env vars (names only; no secrets):
   - API key header vs session auth vs OAuth (likely API key for MVP, but decide explicitly in API planning).
 - **Budget-degraded UX**: exact copy + UI behavior when heuristics-only (show a banner/warning so users don’t judge the full system on degraded mode).
 - **Integration tests**: when to introduce `pnpm test:integration` (now vs after API).
-
-

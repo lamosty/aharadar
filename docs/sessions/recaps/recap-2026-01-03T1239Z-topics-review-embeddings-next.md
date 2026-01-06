@@ -204,5 +204,3 @@ Goal: implement embeddings end-to-end, then use them for semantic search and as 
 - Embeddings provider choice and endpoint/env var naming (keep provider-agnostic).
 - Whether preference profiles are stored per topic (recommended) vs global per user.
 - Whether to wire embed into `admin:run-now` immediately vs separate `admin:embed-now` command first.
-
-

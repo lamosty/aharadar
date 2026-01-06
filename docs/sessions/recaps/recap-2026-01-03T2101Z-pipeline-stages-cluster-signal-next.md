@@ -194,5 +194,3 @@ Concrete steps:
 - Do we keep storing `signal_bundle_v1` rows in `content_items` at all, or move them to `raw_json`/audit-only storage?
 - For `signal_post_v1`, should `canonical_url` be the X status URL (recommended), or the extracted external URL when present?
 - Should dedupe run on signal posts at all (risk: collapsing distinct-but-similar tweets)?
-
-

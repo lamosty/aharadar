@@ -97,5 +97,3 @@ Scheduler/windows:
 ```
 
 Then, after answers arrive, update the task specs and explicitly mark decisions as “already decided”.
-
-

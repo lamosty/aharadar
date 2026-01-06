@@ -144,4 +144,3 @@ Recent commits since the prior recap (newest first):
 - TypeScript monorepo gotcha: when adding methods to `@aharadar/db` or `@aharadar/pipeline`, consumers may see stale `.d.ts` during `typecheck`. Fix by rebuilding the dependency first:
   - `pnpm --filter @aharadar/db build`
   - `pnpm --filter @aharadar/pipeline build`
-

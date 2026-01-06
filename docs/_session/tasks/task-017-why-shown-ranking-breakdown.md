@@ -99,5 +99,3 @@ How to validate:
 - pnpm -r typecheck
 - <CLI smoke commands you ran>
 ```
-
-

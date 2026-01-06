@@ -96,5 +96,3 @@ pnpm -r build
 ## Final step (required): write task report files (no copy/paste)
 
 Follow `docs/workflows/task-template.md`.
-
-

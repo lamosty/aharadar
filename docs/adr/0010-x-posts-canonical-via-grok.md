@@ -13,7 +13,7 @@ MVP constraints:
 - We still need provider-agnosticism (a swap later should not require refactoring pipeline core).
 - We need budget/cadence controls so X does not dominate cost or overwhelm the user.
 
-Previously (ADR 0003), we treated X primarily as a **signal amplifier** (derived search/trend ingestion). In practice, tweet-level content often *is* the meaningful unit we want to read/review.
+Previously (ADR 0003), we treated X primarily as a **signal amplifier** (derived search/trend ingestion). In practice, tweet-level content often _is_ the meaningful unit we want to read/review.
 
 ## Decision
 
@@ -48,5 +48,3 @@ Keep `type = "signal"` as a separate concept for derived alert/trend semantics (
 
 - Update connector specs in `docs/connectors.md` to define `x_posts` config/cursor/normalize.
 - Update pipeline spec in `docs/pipeline.md` to clarify how `x_posts` interacts with signals and cadence gating.
-
-

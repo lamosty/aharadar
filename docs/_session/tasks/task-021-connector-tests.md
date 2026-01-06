@@ -88,5 +88,3 @@ How to validate:
 - pnpm -r typecheck
 - pnpm test
 ```
-
-

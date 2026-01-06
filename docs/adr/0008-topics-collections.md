@@ -45,5 +45,3 @@ To preserve topic membership and provenance even with URL dedupe:
 
 - Update `docs/data-model.md`, `docs/pipeline.md`, and `docs/cli.md` to reflect topic-scoped behavior.
 - Implement DB migration + repos + CLI topic tooling.
-
-

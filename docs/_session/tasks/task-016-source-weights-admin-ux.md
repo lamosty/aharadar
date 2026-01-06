@@ -8,8 +8,8 @@
 
 Add a practical UX layer for tuning sources without hand-editing JSON:
 
-1) **Source weights** (affect ranking)  
-2) **Bulk enable/disable** sources (admin UX)
+1. **Source weights** (affect ranking)
+2. **Bulk enable/disable** sources (admin UX)
 
 ## Read first (required)
 
@@ -136,5 +136,3 @@ How to validate:
 - pnpm -r typecheck
 - <CLI smoke commands you ran>
 ```
-
-

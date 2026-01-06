@@ -60,5 +60,3 @@ If a production scenario requires migrating existing `signal_post_v1` rows to `x
 
 - `docs/connectors.md` — x_posts and signal connector semantics
 - `docs/adr/0010-x-posts-canonical-via-grok.md` — why x_posts is canonical
-
-
