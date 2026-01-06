@@ -371,6 +371,48 @@ function renderItem(params: {
       }
     }
 
+    // Display ranking breakdown from system_features
+    const systemFeatures = asRecord(params.item.triageRaw?.system_features);
+    if (Object.keys(systemFeatures).length > 0) {
+      console.log("");
+      console.log("ranking_breakdown:");
+
+      // Novelty feature
+      const novelty = asRecord(systemFeatures.novelty_v1);
+      if (Object.keys(novelty).length > 0) {
+        const lookbackDays = asFiniteNumber(novelty.lookback_days);
+        const maxSim = asFiniteNumber(novelty.max_similarity);
+        const novelty01 = asFiniteNumber(novelty.novelty01);
+        console.log(
+          `- novelty: novelty01=${novelty01 !== null ? novelty01.toFixed(3) : "-"} ` +
+            `(max_sim=${maxSim !== null ? maxSim.toFixed(3) : "-"}, lookback=${lookbackDays ?? "-"}d)`
+        );
+      }
+
+      // Source weight feature
+      const srcWeight = asRecord(systemFeatures.source_weight_v1);
+      if (Object.keys(srcWeight).length > 0) {
+        const typeW = asFiniteNumber(srcWeight.type_weight);
+        const srcW = asFiniteNumber(srcWeight.source_weight);
+        const effW = asFiniteNumber(srcWeight.effective_weight);
+        console.log(
+          `- source_weight: effective=${effW !== null ? effW.toFixed(2) : "-"} ` +
+            `(type=${typeW !== null ? typeW.toFixed(2) : "-"}, source=${srcW !== null ? srcW.toFixed(2) : "-"})`
+        );
+      }
+
+      // Signal corroboration feature
+      const signalCorr = asRecord(systemFeatures.signal_corroboration_v1);
+      if (Object.keys(signalCorr).length > 0) {
+        const matched = signalCorr.matched === true;
+        const matchedUrl = asString(signalCorr.matched_url);
+        console.log(
+          `- signal_corroboration: matched=${matched}` +
+            (matchedUrl ? ` url=${clip(matchedUrl, 80)}` : "")
+        );
+      }
+    }
+
     if (params.item.categories.length > 0) {
       console.log(`categories: ${params.item.categories.join(", ")}`);
     }
