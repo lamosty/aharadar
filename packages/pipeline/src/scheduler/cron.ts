@@ -108,21 +108,24 @@ export async function generateDueWindows(params: {
   // fixed_3x_daily mode
   const { windowStart, windowEnd } = getCurrentFixedWindow(now);
 
-  // Check if digest already exists for this window
-  // We use the DB uniqueness constraint: (user_id, topic_id, window_start, window_end, mode)
-  // For idempotency, we query if a digest exists for this exact window
+  // Scheduled runs use 'normal' mode by default
+  const scheduledMode = "normal";
+
+  // Check if digest already exists for this exact window + mode
+  // This allows catch_up runs to coexist with scheduled runs
   const existingDigest = await db.query<{ id: string }>(
     `SELECT id FROM digests
      WHERE user_id = $1
        AND topic_id = $2::uuid
        AND window_start = $3::timestamptz
        AND window_end = $4::timestamptz
+       AND mode = $5
      LIMIT 1`,
-    [userId, topicId, windowStart.toISOString(), windowEnd.toISOString()]
+    [userId, topicId, windowStart.toISOString(), windowEnd.toISOString(), scheduledMode]
   );
 
   if (existingDigest.rows.length > 0) {
-    // Window already processed
+    // Window already processed for this mode
     return [];
   }
 
@@ -132,6 +135,7 @@ export async function generateDueWindows(params: {
       topicId,
       windowStart: windowStart.toISOString(),
       windowEnd: windowEnd.toISOString(),
+      mode: scheduledMode,
     },
   ];
 }

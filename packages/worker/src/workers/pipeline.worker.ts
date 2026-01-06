@@ -3,7 +3,7 @@ import { createDb, type Db } from "@aharadar/db";
 import { runPipelineOnce, type PipelineRunResult } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
-import { PIPELINE_QUEUE_NAME, type RunWindowJobData } from "../queues";
+import { PIPELINE_QUEUE_NAME, parseRedisConnection, type RunWindowJobData } from "../queues";
 
 /**
  * Log a concise summary of the pipeline run result.
@@ -28,7 +28,6 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
 
-  const url = new URL(redisUrl);
   const worker = new Worker<RunWindowJobData>(
     PIPELINE_QUEUE_NAME,
     async (job: Job<RunWindowJobData>) => {
@@ -53,11 +52,7 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
       return result;
     },
     {
-      connection: {
-        host: url.hostname,
-        port: Number.parseInt(url.port || "6379", 10),
-        password: url.password || undefined,
-      },
+      connection: parseRedisConnection(redisUrl),
       concurrency: 1, // Process one pipeline at a time for MVP
     }
   );

@@ -10,10 +10,19 @@ import { createPipelineQueue } from "./queues";
 import { createPipelineWorker } from "./workers/pipeline.worker";
 
 /**
- * Scheduler interval in milliseconds.
- * Default: 5 minutes (for MVP; can be configured later).
+ * Parse scheduler tick interval from env.
+ * Default: 5 minutes.
  */
-const SCHEDULER_INTERVAL_MS = 5 * 60 * 1000;
+function getSchedulerIntervalMs(): number {
+  const raw = process.env.SCHEDULER_TICK_MINUTES;
+  if (raw) {
+    const minutes = Number.parseFloat(raw);
+    if (Number.isFinite(minutes) && minutes > 0) {
+      return minutes * 60 * 1000;
+    }
+  }
+  return 5 * 60 * 1000; // default 5 min
+}
 
 async function runSchedulerTick(
   db: ReturnType<typeof createDb>,
@@ -57,8 +66,9 @@ async function main(): Promise<void> {
 
   const env = loadRuntimeEnv();
   const schedulerConfig = parseSchedulerConfig();
+  const tickIntervalMs = getSchedulerIntervalMs();
 
-  console.log(`[worker] Scheduler mode: ${schedulerConfig.windowMode}`);
+  console.log(`[worker] Scheduler mode: ${schedulerConfig.windowMode}, tick: ${tickIntervalMs / 60000}min`);
 
   // Create DB connection for scheduler
   const schedulerDb = createDb(env.databaseUrl);
@@ -81,7 +91,7 @@ async function main(): Promise<void> {
     } catch (err) {
       console.error("[scheduler] Error during tick:", err);
     }
-  }, SCHEDULER_INTERVAL_MS);
+  }, tickIntervalMs);
 
   // Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
