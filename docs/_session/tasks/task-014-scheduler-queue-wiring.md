@@ -21,7 +21,7 @@ Keep it small, deterministic, and aligned with MVP constraints (single-user is O
 - `docs/architecture.md` (Scheduler + Queue + Worker responsibilities)
 - `docs/pipeline.md` (stage order + window semantics)
 - `docs/README.md` (Scheduling & windows decisions are not fully locked)
-- `docs/adr/0004-queue-redis-bullmq.md` (status is Proposed; confirm before implementing)
+- `docs/adr/0004-queue-redis-bullmq.md`
 - `docs/sessions/recaps/recap-2026-01-05T2133Z-x-posts-cadence-tests-workflow.md` (backlog item)
 - Code:
   - `packages/pipeline/src/scheduler/run.ts` (`runPipelineOnce`)
@@ -31,6 +31,7 @@ Keep it small, deterministic, and aligned with MVP constraints (single-user is O
 
 ## Scope (allowed files)
 
+- `docs/adr/0004-queue-redis-bullmq.md` (update status to Accepted)
 - `packages/worker/package.json` (add BullMQ deps)
 - `packages/worker/src/main.ts`
 - `packages/worker/src/queues.ts`
@@ -41,34 +42,35 @@ Keep it small, deterministic, and aligned with MVP constraints (single-user is O
 
 If you think you need to change Docker, DB schema, or many other packages, **stop and ask**.
 
-## Decisions (stop and ask if unresolved)
+## Decisions (already decided)
 
-Before coding, confirm with the driver:
-
-- **Queue choice**: adopt ADR 0004 (Redis + BullMQ) now?
-- **Window semantics** (from `docs/README.md`):
-  - fixed windows (e.g., 3× daily) vs “since last run”
-- **Default schedule**:
-  - fixed 3× daily vs templates (defer templates if needed)
-
-If these are not decided, STOP and ask.
+- **Queue choice**: adopt ADR 0004 (Redis + BullMQ) now.
+  - In this task, update `docs/adr/0004-queue-redis-bullmq.md` to **Status: Accepted**.
+- **Window semantics**: make configurable via env:
+  - default: fixed **3× daily** windows in **UTC**
+  - optional: “since last run” mode (also UTC for now)
+- **Templates**: defer; fixed schedule is fine for MVP.
 
 ## Implementation steps (ordered)
 
-1. Add BullMQ dependencies to `@aharadar/worker`.
-2. Implement a queue (MVP suggestion):
+1. Update ADR 0004 status to **Accepted**.
+2. Add BullMQ dependencies to `@aharadar/worker`.
+3. Implement a queue (MVP suggestion):
    - queue name: `pipeline`
    - job name: `run_window`
    - payload: `{ userId, topicId, windowStart, windowEnd, mode? }`
-3. Implement worker handler that:
+4. Implement worker handler that:
    - loads DB using `DATABASE_URL`
    - calls `runPipelineOnce(db, { userId, topicId, windowStart, windowEnd, mode })`
    - logs a concise summary (ingest/embed/cluster/digest counts)
-4. Implement `packages/pipeline/src/scheduler/cron.ts`:
-   - generate the next due window(s) deterministically
+5. Implement `packages/pipeline/src/scheduler/cron.ts`:
+   - read `SCHEDULER_WINDOW_MODE`:
+     - `fixed_3x_daily` (default): UTC windows `[00:00,08:00)`, `[08:00,16:00)`, `[16:00,24:00)`
+     - `since_last_run`: windowStart = last digest window_end (or now-24h if none), windowEnd = now
+   - generate the next due window(s) deterministically (UTC for now)
    - enqueue `run_window` jobs via the queue
    - ensure idempotency: re-enqueueing the same window should not create duplicate digests (DB uniqueness already enforces this)
-5. Keep the first slice simple:
+6. Keep the first slice simple:
    - single-user is acceptable for MVP (e.g., schedule only the singleton user and their default topic), but preserve user/topic ids in job payload.
 
 ## Acceptance criteria
@@ -140,5 +142,3 @@ Then:
 2) If changes required, give exact edits (files + what to change)
 3) Suggest follow-up tasks (if any)
 ```
-
-

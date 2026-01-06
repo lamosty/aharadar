@@ -31,6 +31,12 @@ This should make it easy to set `x_posts` daily cadence (1440 minutes) while all
 
 If anything else seems required, **stop and ask**.
 
+## Decisions (already decided)
+
+- The CLI helper must support:
+  - single-source updates via `--source-id`
+  - bulk updates via `--topic` + `--source-type` (for real human UX)
+
 ## Contract (do not improvise)
 
 From ADR 0009:
@@ -44,9 +50,12 @@ From ADR 0009:
 ## Implementation steps (ordered)
 
 1. Add a new admin command (name suggestion):
-   - `admin:sources-set-cadence --source-id <uuid> (--every-minutes <int> | --clear)`
+   - `admin:sources-set-cadence (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) (--every-minutes <int> | --clear) [--dry-run]`
 2. Implementation:
-   - load the source row by id (or update directly via SQL if you prefer, but keep it safe)
+   - resolve the target sources:
+     - if `--source-id` is set: target exactly that source
+     - else: require `--topic` and `--source-type` and target all matching sources in that topic
+   - support `--dry-run` that prints what would change but does not write to DB
    - parse and validate `every_minutes` (positive integer)
    - update `config_json`:
      - set: `cadence: { mode: "interval", every_minutes }`
@@ -61,6 +70,7 @@ From ADR 0009:
 
 - [ ] `pnpm -r typecheck` passes.
 - [ ] You can set cadence on an existing source id and confirm it is persisted (via `admin:sources-list` output).
+- [ ] You can set cadence in bulk for a topic + source type (e.g. all `x_posts` sources in a topic).
 - [ ] Running `admin:run-now` twice respects cadence (second run shows “skipped … not_due” for that source).
 
 ## Test plan (copy/paste)
@@ -73,6 +83,9 @@ pnpm dev:cli -- admin:sources-list
 
 # Set cadence (example: daily):
 pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440
+
+# Bulk set cadence (example: daily for all x_posts sources in a topic):
+pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440
 
 # Run twice and confirm second ingest skips due to cadence:
 pnpm dev:cli -- admin:run-now --source-id <uuid> --max-items-per-source 1
@@ -122,5 +135,3 @@ Then:
 2) If changes required, give exact edits (files + what to change)
 3) Suggest follow-up tasks (if any)
 ```
-
-

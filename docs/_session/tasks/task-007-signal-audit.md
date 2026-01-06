@@ -37,10 +37,10 @@ Now that `x_posts` is the canonical way to ingest X/Twitter posts, make `signal`
 
 If you think anything else is required, **stop and ask** before editing.
 
-## Decisions (stop and ask if unresolved)
+## Decisions (already decided)
 
-- Confirm we are intentionally making `signal` **bundle-only** going forward (no new `signal_post_v1` rows).
-  - If the driver wants to keep `signal_post_v1` as user-facing items, **STOP and ask** for a different task spec.
+- `signal` is **bundle-only for now** (no new `signal_post_v1` rows). `x_posts` is the canonical X post ingestion path.
+- Do **not** add backfill/compat logic for old DB rows in this task. If local/dev data contains legacy `signal_post_v1`, prefer reset + re-ingest.
 
 ## Implementation steps (ordered)
 

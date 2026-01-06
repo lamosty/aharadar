@@ -26,6 +26,7 @@
 - Keeps provider-agnostic architecture: Grok is the initial vendor, but the connector is canonical-content semantics.
 
 Key commit:
+
 - `682b50f feat(connectors): add x_posts canonical connector via Grok`
 
 ### 2) Per-source cadence gating (ADR 0009)
@@ -34,6 +35,7 @@ Key commit:
 - Cadence is configured in `sources.config_json.cadence` and uses `sources.cursor_json.last_fetch_at` as state.
 
 Key commit:
+
 - `775a6c0 feat(pipeline): implement per-source cadence gating in ingest`
 
 ### 3) Workflow docs + Opus task specs (repeatable dev loop)
@@ -42,6 +44,7 @@ Key commit:
 - Added a current worklist and split tasks into copy/paste-ready specs under `docs/_session/tasks/`.
 
 Key commits:
+
 - `3af6344 docs(workflows): add Opus↔GPT review flow + worklist`
 - `567d844 docs(session): add Opus task specs for cadence + x_posts`
 
@@ -55,6 +58,7 @@ Key commits:
   - Vitest fork pool caused noisy teardown errors in restricted environments → switched to thread pool.
 
 Key commits:
+
 - `6ab8c83 test: add minimal unit tests for cadence + x_posts parsing`
 - `8626884 test: make vitest hermetic (no root .env)`
 
@@ -132,5 +136,3 @@ Key commits:
 - Should `signal` remain only for derived trend/alert bundles now that `x_posts` is canonical?
 - Do we want a “backfill/migrate” command for existing X content, or is “reset local DB + re-ingest” acceptable for now?
 - Do we want cadence to support cron expressions later, or keep interval-only for MVP?
-
-

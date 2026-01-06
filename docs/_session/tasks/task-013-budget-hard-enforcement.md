@@ -41,6 +41,18 @@ Keep it deterministic, topic-agnostic, and provider-agnostic.
 
 If you think you need to change DB schema/migrations, **stop and ask**.
 
+## Decisions (already decided)
+
+- Credits accounting uses **only successful** provider calls:
+  - sum `provider_calls.cost_estimate_credits` where `status = 'ok'`
+  - note for future: we may choose to count some errors too (retries/timeouts) if needed.
+- Daily throttle boundaries use **UTC for now** (no user accounts/timezones yet).
+  - note for future: use per-user timezone (or `APP_TIMEZONE`) once accounts exist.
+- When exhausted:
+  - continue ingesting **non-paid connectors** (reddit/rss/hn/etc.) so the inbox still updates
+  - skip paid provider calls (LLM + embeddings + provider-backed connectors like `signal`/`x_posts`)
+  - still persist a digest using heuristic scoring (triage_json may be null); users can still open links.
+
 ## Contract (do not improvise)
 
 From `docs/budgets.md` + `docs/pipeline.md`:
@@ -55,15 +67,17 @@ From `docs/budgets.md` + `docs/pipeline.md`:
 ## Implementation steps (ordered)
 
 1. Add a “credits status” helper that can compute:
-   - monthly used credits (sum of `provider_calls.cost_estimate_credits` in the current month)
-   - daily used credits if `DAILY_THROTTLE_CREDITS` is set (sum within current day)
+   - monthly used credits (sum of `provider_calls.cost_estimate_credits` where `status='ok'` in the current month; use UTC boundaries for MVP)
+   - daily used credits if `DAILY_THROTTLE_CREDITS` is set (sum where `status='ok'` within current day; UTC boundaries for MVP)
    - remaining monthly/daily credits
    - a boolean: `paidCallsAllowed`
    - an effective tier override: if exhausted, force `low`
 2. Integrate budget gating into pipeline execution:
-   - Ingest: skip provider-backed connectors when `paidCallsAllowed=false` (at minimum: `source.type in ("signal","x_posts")`)
+   - Ingest:
+     - continue fetching non-paid connectors as normal
+     - skip provider-backed connectors when `paidCallsAllowed=false` (at minimum: `source.type in ("signal","x_posts")`)
    - Embed: if `paidCallsAllowed=false`, skip actual embedding calls but still allow hash-only backfills
-   - Digest triage: if `paidCallsAllowed=false`, skip LLM triage (heuristic-only scoring)
+   - Digest triage: if `paidCallsAllowed=false`, skip LLM triage (heuristic-only scoring; `triage_json` stays null)
    - Deep summary: if `paidCallsAllowed=false` or tier is `low`, skip
 3. Warnings:
    - on each run, print a concise warning when crossing thresholds (e.g., >=80% or >=95% used)
@@ -74,6 +88,7 @@ From `docs/budgets.md` + `docs/pipeline.md`:
 ## Acceptance criteria
 
 - [ ] When credits are exhausted, the pipeline produces a digest without making paid calls (no new `provider_calls` for triage/deep_summary/embedding/signal/x_posts).
+- [ ] When credits are exhausted, non-paid connectors can still ingest (pipeline still updates content_items).
 - [ ] When credits are exhausted, tier is forced to `low`.
 - [ ] When credits are near exhaustion, warnings are printed in CLI logs (or a debug command exposes status).
 - [ ] `pnpm -r typecheck` passes.
@@ -140,5 +155,3 @@ Then:
 2) If changes required, give exact edits (files + what to change)
 3) Suggest follow-up tasks (if any)
 ```
-
-

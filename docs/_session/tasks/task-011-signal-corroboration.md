@@ -42,9 +42,12 @@ If anything else seems required, **stop and ask**.
    - `metadata.primary_url` (string)
    - `metadata.extracted_urls` (string[])
    - `metadata.signal_results[].url` (string) if present
+   - filter to **external URLs only**:
+     - ignore X-like URLs (`x.com`, `twitter.com`, `t.co`) so “corroboration” boosts canonical external content, not X posts themselves
    - canonicalize URLs (use shared canonicalization) and hash them (`sha256Hex`) for stable matching
 3. For each candidate (cluster or item), compute a `signal_corroboration_v1` feature:
    - determine the candidate primary URL using the existing “primary url” logic (canonical_url > metadata.primary_url > metadata.extracted_urls[0])
+   - if the candidate primary URL is X-like (`x.com|twitter.com|t.co`), treat as **not eligible** for corroboration in MVP
    - canonicalize + hash and test membership in the signal URL set
    - output a numeric feature `signalCorroboration01` (0 or 1 for MVP)
 4. Update `rankCandidates()` to incorporate this new feature with a small default weight (e.g. `wSignal = 0.05`):
