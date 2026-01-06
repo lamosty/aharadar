@@ -1,0 +1,328 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// Mock the stage functions before importing
+vi.mock("../stages/ingest", () => ({
+  ingestEnabledSources: vi.fn(),
+}));
+
+vi.mock("../stages/embed", () => ({
+  embedTopicContentItems: vi.fn(),
+}));
+
+vi.mock("../stages/dedupe", () => ({
+  dedupeTopicContentItems: vi.fn(),
+}));
+
+vi.mock("../stages/cluster", () => ({
+  clusterTopicContentItems: vi.fn(),
+}));
+
+vi.mock("../stages/digest", () => ({
+  persistDigestFromContentItems: vi.fn(),
+}));
+
+vi.mock("../budgets/credits", () => ({
+  computeCreditsStatus: vi.fn(),
+  printCreditsWarning: vi.fn(),
+}));
+
+import type { Db } from "@aharadar/db";
+import { runPipelineOnce } from "./run";
+import { ingestEnabledSources } from "../stages/ingest";
+import { embedTopicContentItems } from "../stages/embed";
+import { dedupeTopicContentItems } from "../stages/dedupe";
+import { clusterTopicContentItems } from "../stages/cluster";
+import { persistDigestFromContentItems } from "../stages/digest";
+import { computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
+
+describe("runPipelineOnce", () => {
+  const mockDb = {} as Db;
+
+  const baseParams = {
+    userId: "user-1",
+    topicId: "topic-1",
+    windowStart: "2024-06-15T00:00:00Z",
+    windowEnd: "2024-06-15T08:00:00Z",
+  };
+
+  const mockIngestResult = { sourcesProcessed: 1, itemsIngested: 5 };
+  const mockEmbedResult = { itemsEmbedded: 5 };
+  const mockDedupeResult = { deduplicatedCount: 0 };
+  const mockClusterResult = { clustersCreated: 1 };
+  const mockDigestResult = { digestId: "digest-1", itemsIncluded: 5 };
+
+  beforeEach(() => {
+    vi.mocked(ingestEnabledSources).mockResolvedValue(mockIngestResult as never);
+    vi.mocked(embedTopicContentItems).mockResolvedValue(mockEmbedResult as never);
+    vi.mocked(dedupeTopicContentItems).mockResolvedValue(mockDedupeResult as never);
+    vi.mocked(clusterTopicContentItems).mockResolvedValue(mockClusterResult as never);
+    vi.mocked(persistDigestFromContentItems).mockResolvedValue(mockDigestResult as never);
+    vi.mocked(printCreditsWarning).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("without budget config", () => {
+    it("does not call computeCreditsStatus when no budget provided", async () => {
+      await runPipelineOnce(mockDb, baseParams);
+
+      expect(computeCreditsStatus).not.toHaveBeenCalled();
+    });
+
+    it("passes paidCallsAllowed=true to all stages", async () => {
+      await runPipelineOnce(mockDb, baseParams);
+
+      expect(ingestEnabledSources).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true })
+      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true })
+      );
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true })
+      );
+    });
+
+    it("uses normal mode for digest by default", async () => {
+      await runPipelineOnce(mockDb, baseParams);
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "normal" })
+      );
+    });
+
+    it("resolves tier to high for catch_up mode", async () => {
+      await runPipelineOnce(mockDb, { ...baseParams, mode: "catch_up" });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "high" })
+      );
+    });
+  });
+
+  describe("with budget config - paidCallsAllowed=true", () => {
+    beforeEach(() => {
+      vi.mocked(computeCreditsStatus).mockResolvedValue({
+        monthlyUsed: 500,
+        monthlyLimit: 1000,
+        monthlyRemaining: 500,
+        dailyUsed: 50,
+        dailyLimit: null,
+        dailyRemaining: null,
+        paidCallsAllowed: true,
+        warningLevel: "none",
+      });
+    });
+
+    it("calls computeCreditsStatus with budget params", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000, dailyThrottleCredits: 100 },
+      });
+
+      expect(computeCreditsStatus).toHaveBeenCalledWith({
+        db: mockDb,
+        userId: "user-1",
+        monthlyCredits: 1000,
+        dailyThrottleCredits: 100,
+        windowEnd: "2024-06-15T08:00:00Z",
+      });
+    });
+
+    it("passes paidCallsAllowed=true to stages", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(ingestEnabledSources).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true })
+      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true })
+      );
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true })
+      );
+    });
+
+    it("uses normal mode for digest when mode not specified", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "normal" })
+      );
+    });
+
+    it("uses specified mode for digest when provided", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "high",
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "high" })
+      );
+    });
+
+    it("includes creditsStatus in result", async () => {
+      const result = await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(result.creditsStatus).toBeDefined();
+      expect(result.creditsStatus?.monthlyUsed).toBe(500);
+    });
+  });
+
+  describe("with budget config - paidCallsAllowed=false (credits exhausted)", () => {
+    beforeEach(() => {
+      vi.mocked(computeCreditsStatus).mockResolvedValue({
+        monthlyUsed: 1000,
+        monthlyLimit: 1000,
+        monthlyRemaining: 0,
+        dailyUsed: 100,
+        dailyLimit: 100,
+        dailyRemaining: 0,
+        paidCallsAllowed: false,
+        warningLevel: "critical",
+      });
+    });
+
+    it("passes paidCallsAllowed=false to ingest", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(ingestEnabledSources).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: false })
+      );
+    });
+
+    it("passes paidCallsAllowed=false to embed", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: false })
+      );
+    });
+
+    it("passes paidCallsAllowed=false to digest", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: false })
+      );
+    });
+
+    it("forces tier to low for embed when credits exhausted", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "high", // Even if user requests high, should be forced to low
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "low" })
+      );
+    });
+
+    it("forces mode to low for digest when credits exhausted", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "high", // Even if user requests high, should be forced to low
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "low" })
+      );
+    });
+
+    it("calls printCreditsWarning", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(printCreditsWarning).toHaveBeenCalled();
+    });
+  });
+
+  describe("tier resolution", () => {
+    beforeEach(() => {
+      vi.mocked(computeCreditsStatus).mockResolvedValue({
+        monthlyUsed: 100,
+        monthlyLimit: 1000,
+        monthlyRemaining: 900,
+        dailyUsed: 10,
+        dailyLimit: null,
+        dailyRemaining: null,
+        paidCallsAllowed: true,
+        warningLevel: "none",
+      });
+    });
+
+    it("uses low tier when mode is low", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "low",
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "low" })
+      );
+    });
+
+    it("uses normal tier when mode is normal", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "normal",
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "normal" })
+      );
+    });
+
+    it("uses high tier when mode is high", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "high",
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "high" })
+      );
+    });
+
+    it("uses high tier when mode is catch_up", async () => {
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        mode: "catch_up",
+        budget: { monthlyCredits: 1000 },
+      });
+
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "high" })
+      );
+    });
+  });
+});
