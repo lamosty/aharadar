@@ -47,3 +47,6 @@ Thumbs.db
 
 # Docker
 docker-data/
+
+# Opus/GPT session artifacts (do not commit)
+docs/_session/results/

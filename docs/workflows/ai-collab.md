@@ -73,56 +73,21 @@ pnpm -r typecheck
 
 Plus a task-specific CLI smoke test (e.g., `pnpm dev:cli -- admin:run-now ...`).
 
-### 4) Opus prints a task report (required) + final recap for batch runs
+### 4) Opus writes task reports to files (required; no copy/paste)
 
-After each commit, Opus must print a copy/paste-ready **task report** (no special “review prompt” preamble needed):
+To minimize driver effort and avoid scrolling terminal output, Opus must write reports to:
 
-```text
-TASK REPORT (copy/paste to driver chat)
+- `docs/_session/results/latest.md` — overwritten after each task/commit
+- `docs/_session/results/final-recap.md` — written once at the end of a multi-task run (optional)
 
-Repo: /Users/lamosty/projects/aharadar
-Branch: <branch-name>
-Commit(s): <commit-hash(es)>
-
-Task spec followed:
-- <path to task spec>
-- <ADR paths if relevant>
-
-What I changed (1–3 bullets):
-- ...
-
-Files changed:
-- <list>
-
-How to validate:
-- pnpm -r typecheck
-- <any CLI smoke commands>
-
-Open questions / uncertainties:
-- ...
-```
-
-If Opus executes **multiple tasks back-to-back** in one run, Opus must also print a single **FINAL RECAP** block once at the end, so the driver can copy/paste just once:
+After writing, Opus should print only the path(s), e.g.:
 
 ```text
-FINAL RECAP (copy/paste once)
-
-Tasks completed (in order):
-1) <task spec path> — <commit> — <1-line summary>
-2) ...
-
-Files changed (union):
-- ...
-
-How to validate (full):
-- pnpm -r typecheck
-- pnpm test
-- pnpm test:integration (if applicable)
-- <any required smoke commands>
-
-Open questions / uncertainties (all tasks):
-- ...
+WROTE REPORT: docs/_session/results/latest.md
+WROTE FINAL RECAP: docs/_session/results/final-recap.md
 ```
+
+The report formats are defined in `docs/workflows/task-template.md`.
 
 ### 5) GPT‑5.2 reviews → Opus applies fixes
 

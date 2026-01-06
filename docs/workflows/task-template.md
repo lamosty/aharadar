@@ -58,12 +58,27 @@ pnpm -r typecheck
 - **Message**: `<type(scope)>: <message>`
 - **Files expected**: <list>
 
-### Final step (required): print task report (and final recap for batch runs)
+### Final step (required): write task report files (no copy/paste)
 
-After committing, print this block **filled in**:
+After committing, write a short task report to:
+
+- `docs/_session/results/latest.md` (overwrite each task)
+
+If you execute multiple tasks back-to-back, also write a single end-of-run recap to:
+
+- `docs/_session/results/final-recap.md` (overwrite once at the end)
+
+Then print only the file path(s) you wrote (so the driver can open them), e.g.:
 
 ```text
-TASK REPORT (copy/paste to driver chat)
+WROTE REPORT: docs/_session/results/latest.md
+WROTE FINAL RECAP: docs/_session/results/final-recap.md
+```
+
+`latest.md` format:
+
+```text
+TASK REPORT
 
 Repo: /Users/lamosty/projects/aharadar
 Branch: <branch-name>
@@ -87,20 +102,10 @@ Open questions / uncertainties:
 - ...
 ```
 
-#### Batch runs (important): final recap
-
-If you execute **multiple tasks back-to-back** in one Opus session, also print a single **FINAL RECAP** block **once at the very end** (after the last task/commit), so the driver can copy/paste just once.
-
-During the run, you may print only a short progress line after each task, e.g.:
+`final-recap.md` format (batch runs only):
 
 ```text
-COMMITTED: <hash> — <task spec path> — <short summary>
-```
-
-Final recap format:
-
-```text
-FINAL RECAP (copy/paste once)
+FINAL RECAP
 
 Tasks completed (in order):
 1) <task spec path> — <commit> — <1-line summary>
