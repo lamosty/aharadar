@@ -110,40 +110,6 @@ function getResultsCount(assistantJson: Record<string, unknown> | undefined): nu
   return Array.isArray(results) ? results.length : null;
 }
 
-function extractPostRawItems(params: {
-  assistantJson: Record<string, unknown> | undefined;
-  provider: string;
-  vendor: string;
-  query: string;
-  dayBucket: string;
-  windowStart: string;
-  windowEnd: string;
-}): unknown[] {
-  const results = params.assistantJson?.results;
-  if (!Array.isArray(results) || results.length === 0) return [];
-
-  const out: unknown[] = [];
-  for (const entry of results) {
-    const r = asRecord(entry);
-    out.push({
-      kind: "signal_post_v1",
-      provider: params.provider,
-      vendor: params.vendor,
-      query: params.query,
-      day_bucket: params.dayBucket,
-      windowStart: params.windowStart,
-      windowEnd: params.windowEnd,
-      date: asString(r.date),
-      url: asString(r.url),
-      text: asString(r.text),
-    });
-    // Hard bound for safety (provider should already cap, but keep this defensive).
-    if (out.length >= 200) break;
-  }
-
-  return out;
-}
-
 function getCursorString(cursor: Record<string, unknown>, key: string): string | undefined {
   const v = cursor[key];
   return typeof v === "string" && v.length > 0 ? v : undefined;
@@ -262,20 +228,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
       // Successful provider call (even if it returns 0 results) should advance cursors.
       anySuccess = true;
 
-      // Don't store empty signal items; they create noisy inbox entries.
-      if (resultsCount && resultsCount > 0) {
-        rawItems.push(
-          ...extractPostRawItems({
-            assistantJson: result.assistantJson,
-            provider: config.provider,
-            vendor: config.vendor,
-            query,
-            dayBucket,
-            windowStart: params.windowStart,
-            windowEnd: params.windowEnd,
-          })
-        );
-      }
+      // Signal connector is now bundle-only (see docs/connectors.md).
+      // We do not emit per-post signal_post_v1 items; use x_posts for canonical X content.
 
       // Optional: store the query-level bundle item for debugging/audit.
       // Always store unparseable responses so we can debug parsing/provider changes without manual DB queries.

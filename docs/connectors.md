@@ -445,17 +445,19 @@ Each post becomes one `ContentItemDraft`:
 - `signal` remains a **derived/amplifier** connector for search/trend/alert semantics (bundles, not canonical ingestion).
 - If a user wants both canonical X posts and search-based signals, they can configure separate sources with each type.
 
-### Signals (`type = "signal"`) — search/trend/alerts
+### Signals (`type = "signal"`) — derived/amplifier (bundle-only)
 
 **Purpose**
-Ingest summarized signals from a signal provider (search/trend/alerts). Initial MVP adapter can be X/Twitter search (ADR 0003), but the connector type is generic.
+Store summarized signals from a signal provider (search/trend/alerts) for debugging, auditing, and future corroboration. The `signal` connector is a **derived/amplifier** connector — it does **not** produce canonical content items that appear in user digests.
+
+For canonical X/Twitter post ingestion, use `x_posts` instead (see above).
 
 Provider abstraction (recommended):
 
 - define a `SignalProvider` interface (X search, official APIs, other vendors, etc.)
 - the connector depends on the interface, not on a specific vendor
 
-**config_json (Proposed)**
+**config_json**
 
 ```json
 {
@@ -472,14 +474,13 @@ Provider abstraction (recommended):
 }
 ```
 
-Notes (Proposed):
+Notes:
 
-- `accounts` is the primary UX for “follow these accounts”.
-- `keywords` supports “monitor a topic” and the “deep dive into a theme” journey.
+- `accounts` is the primary UX for "follow these accounts".
+- `keywords` supports "monitor a topic" and the "deep dive into a theme" journey.
 - `queries` is an advanced escape hatch; if present, it is used directly. Otherwise, the connector compiles queries from `accounts`/`keywords`.
-- Tier note (future/policy): in `high` tier we may choose to set `excludeReplies=false`, `excludeRetweets=false`, and raise `maxResultsPerQuery` (e.g. 20) to increase recall at higher cost.
 
-**cursor_json (Proposed)**
+**cursor_json**
 
 ```json
 {
@@ -488,44 +489,22 @@ Notes (Proposed):
 }
 ```
 
-Notes (MVP):
+Notes:
 
 - `since_time` is advanced to the pipeline `windowEnd` after a successful fetch.
-- To control cost/noise, the connector may skip fetching more than once per day per source (based on `since_time` day bucket).
+- To control cost/noise, the connector skips fetching more than once per day per source (based on `since_time` day bucket).
 - Use CLI `admin:signal-reset-cursor --clear` to force a wider re-fetch window in local dev.
 
 **Normalize**
 
-The `signal` connector may emit two **kinds** of normalized items, both stored in `content_items` with `source_type = "signal"`.
+The `signal` connector emits **bundle items only** (`signal_bundle_v1`), stored in `content_items` with `source_type = "signal"`.
 
-#### 1) `signal_post_v1` (user-facing; first-class items)
+#### `signal_bundle_v1` (debug/audit)
 
-One `ContentItemDraft` per returned post/result. These are intended to be **eligible for clustering and digests** (i.e. shown in inbox/review like other content items).
+One `ContentItemDraft` per `(source_id, query, day_bucket)`. Bundles are **not shown** in digests/review; they exist for:
 
-Field mapping:
-
-- `canonical_url`: the post URL when available (e.g. `https://x.com/<user>/status/<id>`). This is the stable identity for dedupe/idempotency.
-- `external_id`: stable; prefer parsing the status id from the post URL. Fallback: `sha256_hex(provider|vendor|query|day_bucket|url)`.
-- `title`: null (signals are short-form; avoid paraphrasing into a synthetic title).
-- `body_text`: the post excerpt, as returned by the provider (no paraphrasing).
-- `published_at`: best-effort (may be null; providers often only return a day bucket, not a full timestamp).
-
-Required `metadata_json` keys:
-
-- `kind`: `"signal_post_v1"`
-- `provider`: signal provider id (e.g. `"x_search"`)
-- `vendor`: vendor adapter id (e.g. `"grok"`)
-- `query`: the compiled query string used for the call
-- `day_bucket`: `YYYY-MM-DD` (derived from `windowEnd`)
-- `window_start`: pipeline window start (ISO string)
-- `window_end`: pipeline window end (ISO string)
-- `post_url`: the post URL (redundant with `canonical_url`, but convenient for tooling)
-- `extracted_urls`: URLs extracted from the post text (best-effort)
-- `primary_url`: “best click target” URL (prefer `extracted_urls[0]`, else the post URL, else null)
-
-#### 2) `signal_bundle_v1` (debug/audit; optional)
-
-One `ContentItemDraft` per `(source_id, query, day_bucket)`. This is **not shown** in digests/review; it exists for debugging and auditability (e.g. “what did the provider return for this query today?”).
+- debugging and auditability ("what did the provider return for this query today?")
+- future signal corroboration (boosting clusters whose URLs appear in recent signal bundles)
 
 Field mapping:
 
@@ -541,7 +520,7 @@ Required `metadata_json` keys:
 - `result_count`: number of results in `signal_results` (int)
 - `signal_results`: array of objects `{ date, url, text }` (top N results returned by the provider)
 - `extracted_urls`: URLs extracted from the `signal_results[].text` fields (best-effort)
-- `primary_url`: “best click target” URL (prefer `extracted_urls[0]`, else first `signal_results[].url`, else null)
+- `primary_url`: "best click target" URL (prefer `extracted_urls[0]`, else first `signal_results[].url`, else null)
 
 `raw_json` retention (dev-friendly):
 
@@ -549,15 +528,11 @@ Required `metadata_json` keys:
 
 Debugging:
 
-- Use the CLI `admin:signal-debug --kind post|bundle|all` command to view recent `signal_post_v1` and/or `signal_bundle_v1` rows without manual DB queries.
+- Use the CLI `admin:signal-debug --kind bundle --limit N` command to view recent `signal_bundle_v1` rows.
 - By default, bundles are only stored for **unparseable** provider responses. To also persist `signal_bundle_v1` rows for debugging/audit, set `SIGNAL_STORE_BUNDLES=1`.
-- To backfill `signal_post_v1` items from already-stored bundles (without calling the provider again), use `admin:signal-explode-bundles` (CLI).
 
-**Future: “X posts” as canonical connector**
+**Relationship to `x_posts`**
 
-If/when X provides a normal pay-as-you-go REST API suitable for canonical ingestion, we can add a **separate connector**:
-
-- `type = "x_posts"` (canonical content)
-- It would fetch posts/timelines like other canonical connectors (stable IDs, URLs), and it can coexist with `signal`.
-
-This requires **no refactor** if we keep the connector interface stable; it’s just a new connector module and source type.
+- `x_posts` is the **canonical** connector for X/Twitter posts: posts are first-class items that flow through embedding, clustering, ranking, and digests.
+- `signal` is a **derived/amplifier** connector: bundles are stored for auditing and (future) corroboration, but do not appear in user digests.
+- If a user wants both canonical X posts and search-based signal bundles, they can configure separate sources with each type.

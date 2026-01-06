@@ -148,17 +148,14 @@ Pick what we will triage/rank for the digest window.
 
 - Canonical connectors (`reddit|hn|rss|youtube|x_posts|...` and future `web`) produce items that are the thing the user reads/watches.
   - `x_posts` items are canonical and participate fully in embedding, clustering, dedupe, ranking, and digests (see ADR 0010).
-- The `signal` connector produces **derived** items (search/trend/alerts), but in MVP we distinguish two kinds (see `docs/connectors.md`):
-  - `signal_post_v1`: first-class, post-level items; eligible for clustering and can be shown in digests/review.
-  - `signal_bundle_v1`: debug/audit bundles; must be excluded from candidate selection and digests.
-- Signal items often work best as **amplifiers**:
-  - extract URLs/entities/topics
-  - boost ranking of corroborated clusters
-  - optionally display as triage-only items when they are high-aha but not yet corroborated
+- The `signal` connector is a **derived/amplifier** connector (see `docs/connectors.md`):
+  - It produces only `signal_bundle_v1` items for debugging, auditing, and future corroboration.
+  - Signal bundles are **excluded** from candidate selection, clustering, dedupe, and digests.
+  - Signal bundles work as **amplifiers**: extract URLs/entities/topics and boost ranking of corroborated clusters (future).
 
 Optional (Proposed, later):
 
-- If a signal item contains high-confidence external URLs that we haven’t ingested yet, enqueue a follow-up `web` ingestion for those URLs (budget-capped).
+- If a signal bundle contains high-confidence external URLs that we haven't ingested yet, enqueue a follow-up `web` ingestion for those URLs (budget-capped).
 
 ### 6) Triage (LLM)
 

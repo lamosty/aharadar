@@ -51,7 +51,7 @@ function clamp01(x: number): number {
  * - this stage optionally marks *near duplicates* using embeddings similarity, scoped to the topic.
  *
  * Notes:
- * - We exclude signal *bundles* from near-duplicate marking; signal posts (`signal_post_v1`) are eligible like other content.
+ * - All signal items are excluded (signal connector is bundle-only; see docs/connectors.md).
  * - We only mark duplicates where the nearest older neighbor similarity is above a very high threshold.
  */
 export async function dedupeTopicContentItems(params: {
@@ -98,10 +98,7 @@ export async function dedupeTopicContentItems(params: {
        where ci.user_id = $1
          and ci.deleted_at is null
          and ci.duplicate_of_content_item_id is null
-         and (
-           ci.source_type <> 'signal'
-           or ci.metadata_json->>'kind' = 'signal_post_v1'
-         )
+         and ci.source_type <> 'signal'
          and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
          and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
        order by coalesce(ci.published_at, ci.fetched_at) desc
@@ -123,10 +120,7 @@ export async function dedupeTopicContentItems(params: {
          where ci2.user_id = $1
            and ci2.deleted_at is null
            and ci2.duplicate_of_content_item_id is null
-           and (
-             ci2.source_type <> 'signal'
-             or ci2.metadata_json->>'kind' = 'signal_post_v1'
-           )
+           and ci2.source_type <> 'signal'
            and ci2.id <> c.id
            and coalesce(ci2.published_at, ci2.fetched_at) < c.t
            and coalesce(ci2.published_at, ci2.fetched_at) >= $6::timestamptz
