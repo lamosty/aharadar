@@ -49,4 +49,6 @@ Thumbs.db
 docker-data/
 
 # Opus/GPT session artifacts (do not commit)
-docs/_session/results/
+# Keep the README committed, ignore generated run outputs.
+docs/_session/results/*
+!docs/_session/results/README.md
