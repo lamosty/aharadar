@@ -10,6 +10,7 @@
     "build:cli": "pnpm --filter @aharadar/cli... build",
     "dev": "pnpm dev:cli",
     "dev:all": "pnpm -r dev",
+    "dev:api": "pnpm --filter @aharadar/api build && node packages/api/dist/main.js",
     "dev:cli": "pnpm build:cli && node packages/cli/dist/main.js",
     "dev:web": "pnpm --filter @aharadar/web dev",
     "dev:services": "./scripts/dev.sh",

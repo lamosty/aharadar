@@ -1,13 +1,18 @@
 import type { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from "fastify";
-import { loadRuntimeEnv } from "@aharadar/shared";
+import { loadRuntimeEnv, type RuntimeEnv } from "@aharadar/shared";
 
-const env = loadRuntimeEnv();
+let _env: RuntimeEnv | null = null;
+function getEnv(): RuntimeEnv {
+  if (!_env) _env = loadRuntimeEnv();
+  return _env;
+}
 
 export function apiKeyAuth(
   request: FastifyRequest,
   reply: FastifyReply,
   done: HookHandlerDoneFunction
 ): void {
+  const env = getEnv();
   const providedKey = request.headers["x-api-key"];
 
   if (!env.adminApiKey) {

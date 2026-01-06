@@ -6,7 +6,7 @@
   "types": "dist/main.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "dev": "echo \"api: not implemented\"",
+    "dev": "pnpm build && node dist/main.js",
     "start": "node dist/main.js",
     "test": "echo \"api: no tests yet\"",
     "lint": "echo \"api: no lint yet\"",
@@ -17,6 +17,7 @@
     "@aharadar/pipeline": "workspace:*",
     "@aharadar/queues": "workspace:*",
     "@aharadar/shared": "workspace:*",
+    "@fastify/cors": "^11.2.0",
     "bullmq": "^5.34.8",
     "fastify": "^5.2.1"
   }

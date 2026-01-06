@@ -1,4 +1,6 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
+import { loadDotEnvIfPresent } from "@aharadar/shared";
 import { apiKeyAuth } from "./auth/api_key.js";
 import { closePipelineQueue } from "./lib/queue.js";
 import { adminRoutes } from "./routes/admin.js";
@@ -7,7 +9,10 @@ import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
 import { itemsRoutes } from "./routes/items.js";
 
-const PORT = parseInt(process.env.PORT ?? "3000", 10);
+// Load .env and .env.local files (must happen before reading env vars)
+loadDotEnvIfPresent();
+
+const PORT = parseInt(process.env.API_PORT ?? process.env.PORT ?? "3001", 10);
 
 interface ErrorEnvelope {
   ok: false;
@@ -20,6 +25,12 @@ interface ErrorEnvelope {
 async function buildServer() {
   const fastify = Fastify({
     logger: true,
+  });
+
+  // Enable CORS for local development (web app on port 3000, API on port 3001)
+  await fastify.register(cors, {
+    origin: true, // Allow all origins in dev; restrict in production
+    credentials: true,
   });
 
   fastify.setErrorHandler((error: Error & { statusCode?: number; code?: string }, _request, reply) => {

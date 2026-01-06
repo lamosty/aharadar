@@ -21,6 +21,8 @@ Core loop: ingest → normalize → dedupe/cluster → triage → rank → enric
 pnpm dev:services     # Start Postgres+Redis (Docker)
 pnpm build            # Build all packages
 pnpm dev              # Build + run CLI
+pnpm dev:api          # Build + run API server (reads .env)
+pnpm dev:web          # Run Next.js dev server
 pnpm typecheck        # TypeScript strict check
 pnpm format           # Prettier
 pnpm migrate          # Run DB migrations
@@ -57,6 +59,7 @@ pnpm reset            # Reset DB
 Conventional commits: `feat|fix|docs|refactor|chore|test(<scope>): message`
 
 One logical change per commit. After finishing:
+
 1. Summary of changes
 2. Suggested commit with file list and copy/paste commands
 
