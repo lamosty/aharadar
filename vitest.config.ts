@@ -11,5 +11,7 @@ export default defineConfig({
     // restrict process termination syscalls, which can cause noisy shutdown errors).
     pool: "threads",
     include: ["packages/**/src/**/*.test.ts"],
+    // Exclude integration tests from default test run (they require Docker)
+    exclude: ["**/node_modules/**", "**/*.int.test.ts"],
   },
 });
