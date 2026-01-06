@@ -122,10 +122,10 @@ describe("persistDigestFromContentItems integration", () => {
       contentItemIds.push(result.rows[0].id);
 
       // Link content item to source
-      await db.query(
-        `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
-        [result.rows[0].id, sourceId]
-      );
+      await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
+        result.rows[0].id,
+        sourceId,
+      ]);
     }
   }
 
@@ -181,10 +181,10 @@ describe("persistDigestFromContentItems integration", () => {
        RETURNING id`,
       [userId, sourceId]
     );
-    await db.query(
-      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
-      [newItemResult.rows[0].id, sourceId]
-    );
+    await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
+      newItemResult.rows[0].id,
+      sourceId,
+    ]);
 
     const result = await persistDigestFromContentItems({
       db,

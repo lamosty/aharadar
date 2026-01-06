@@ -71,11 +71,7 @@ function getServerSnapshot(): boolean {
  */
 export function useNetworkStatus(): NetworkStatus {
   // Use useSyncExternalStore for browser online/offline status
-  const isOnline = useSyncExternalStore(
-    subscribeToOnlineStatus,
-    getOnlineStatus,
-    getServerSnapshot
-  );
+  const isOnline = useSyncExternalStore(subscribeToOnlineStatus, getOnlineStatus, getServerSnapshot);
 
   // Track recent fetch errors
   const [hasRecentErrors, setHasRecentErrors] = useState(false);
@@ -135,9 +131,5 @@ export function useNetworkStatus(): NetworkStatus {
  * Lightweight alternative when you don't need error tracking.
  */
 export function useIsOnline(): boolean {
-  return useSyncExternalStore(
-    subscribeToOnlineStatus,
-    getOnlineStatus,
-    getServerSnapshot
-  );
+  return useSyncExternalStore(subscribeToOnlineStatus, getOnlineStatus, getServerSnapshot);
 }

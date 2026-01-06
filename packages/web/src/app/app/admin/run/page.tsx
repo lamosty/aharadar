@@ -98,11 +98,7 @@ export default function AdminRunPage() {
             <Link href="/app/digests" className={styles.primaryButton}>
               {t("admin.run.viewDigests")}
             </Link>
-            <button
-              type="button"
-              onClick={handleReset}
-              className={styles.secondaryButton}
-            >
+            <button type="button" onClick={handleReset} className={styles.secondaryButton}>
               {t("admin.run.submit")}
             </button>
           </div>
@@ -177,11 +173,7 @@ export default function AdminRunPage() {
           )}
 
           <div className={styles.formActions}>
-            <button
-              type="submit"
-              className={styles.submitButton}
-              disabled={isLoading}
-            >
+            <button type="submit" className={styles.submitButton} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <LoadingSpinner />

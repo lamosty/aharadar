@@ -114,13 +114,7 @@ function ItemSkeleton() {
   );
 }
 
-function ErrorState({
-  error,
-  onRetry,
-}: {
-  error: Error;
-  onRetry: () => void;
-}) {
+function ErrorState({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
     <div className={styles.error} role="alert">
       <ErrorIcon />
@@ -186,10 +180,7 @@ export default function ItemDetailPage() {
             <span className={styles.breadcrumbSeparator} aria-hidden="true">
               /
             </span>
-            <Link
-              href={`/app/digests/${item.digestId}`}
-              className={styles.breadcrumbLink}
-            >
+            <Link href={`/app/digests/${item.digestId}`} className={styles.breadcrumbLink}>
               Digest
             </Link>
           </>
@@ -222,9 +213,7 @@ export default function ItemDetailPage() {
               <dt className="sr-only">{t("item.publishedAt")}</dt>
               <dd className={styles.metaValue}>
                 <CalendarIcon />
-                <time dateTime={item.publishedAt}>
-                  {formatDate(item.publishedAt)}
-                </time>
+                <time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
               </dd>
             </div>
           )}

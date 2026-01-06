@@ -208,7 +208,9 @@ function printRunNowUsage(): void {
   );
   console.log("");
   console.log("Example:");
-  console.log("  pnpm dev:cli -- admin:run-now --topic finance --source-type reddit --max-items-per-source 200");
+  console.log(
+    "  pnpm dev:cli -- admin:run-now --topic finance --source-type reddit --max-items-per-source 200"
+  );
   console.log("  pnpm dev:cli -- admin:run-now --source-type signal");
 }
 
@@ -488,7 +490,9 @@ export async function adminEmbedNowCommand(args: string[] = []): Promise<void> {
 
     console.log("");
     console.log("Next:");
-    console.log(`- semantic search: pnpm dev:cli -- search --topic ${JSON.stringify(topic.name)} "your query"`);
+    console.log(
+      `- semantic search: pnpm dev:cli -- search --topic ${JSON.stringify(topic.name)} "your query"`
+    );
   } finally {
     await db.close();
   }
@@ -736,7 +740,9 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
 
     if (!type || !name) {
       console.log("Usage:");
-      console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
+      console.log(
+        "  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]"
+      );
       console.log("");
       console.log("Example (reddit):");
       console.log(
@@ -748,7 +754,15 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
     const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
     const config = parseJsonObjectFlag(configStr);
     const cursor = parseJsonObjectFlag(cursorStr);
-    const res = await db.sources.create({ userId: user.id, topicId: topic.id, type, name, config, cursor, isEnabled: true });
+    const res = await db.sources.create({
+      userId: user.id,
+      topicId: topic.id,
+      type,
+      name,
+      config,
+      cursor,
+      isEnabled: true,
+    });
 
     console.log("Created source:");
     console.log(`- id: ${res.id}`);
@@ -861,23 +875,31 @@ export async function adminSourcesSetTopicCommand(args: string[]): Promise<void>
 
 function printSourcesSetCadenceUsage(): void {
   console.log("Usage:");
-  console.log("  admin:sources-set-cadence (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) (--every-minutes <int> | --clear) [--dry-run]");
+  console.log(
+    "  admin:sources-set-cadence (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) (--every-minutes <int> | --clear) [--dry-run]"
+  );
   console.log("");
   console.log("Examples:");
   console.log("  # Set daily cadence for a single source:");
   console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440");
   console.log("");
   console.log("  # Set daily cadence for all x_posts sources in a topic:");
-  console.log("  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440"
+  );
   console.log("");
   console.log("  # Set 8-hour cadence for multiple source types:");
-  console.log("  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type rss,reddit --every-minutes 480");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type rss,reddit --every-minutes 480"
+  );
   console.log("");
   console.log("  # Clear cadence (fetch on every run):");
   console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --clear");
   console.log("");
   console.log("  # Dry run (preview changes without persisting):");
-  console.log("  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440 --dry-run");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440 --dry-run"
+  );
   console.log("");
   console.log("Tip: list sources with `admin:sources-list`.");
 }
@@ -984,7 +1006,9 @@ export async function adminSourcesSetCadenceCommand(args: string[]): Promise<voi
         .map((s) => ({ id: s.id, type: s.type, name: s.name }));
 
       if (targetSources.length === 0) {
-        console.log(`No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`);
+        console.log(
+          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`
+        );
         return;
       }
     }
@@ -1000,7 +1024,9 @@ export async function adminSourcesSetCadenceCommand(args: string[]): Promise<voi
         const currentCadence = current?.config_json?.cadence;
         console.log(`- ${source.id} ${source.type}:${source.name}`);
         console.log(`  previous: ${currentCadence ? JSON.stringify(currentCadence) : "(none)"}`);
-        console.log(`  new: ${cadence ? JSON.stringify({ mode: cadence.mode, every_minutes: cadence.everyMinutes }) : "(cleared)"}`);
+        console.log(
+          `  new: ${cadence ? JSON.stringify({ mode: cadence.mode, every_minutes: cadence.everyMinutes }) : "(cleared)"}`
+        );
       } else {
         const result = await db.sources.updateConfigCadence({
           sourceId: source.id,
@@ -1343,24 +1369,27 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
           : item.query
             ? clip(item.query, 16)
             : "(signal)";
-      const rc = isPost ? 1 : typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
-      const topTextRaw =
-        isPost
-          ? typeof item.bodyText === "string"
+      const rc = isPost
+        ? 1
+        : typeof item.resultCount === "number"
+          ? item.resultCount
+          : item.signalResults.length;
+      const topTextRaw = isPost
+        ? typeof item.bodyText === "string"
+          ? item.bodyText
+          : ""
+        : item.signalResults.length > 0
+          ? (item.signalResults[0]?.text ?? "")
+          : typeof item.bodyText === "string"
             ? item.bodyText
-            : ""
-          : item.signalResults.length > 0
-            ? (item.signalResults[0]?.text ?? "")
-            : typeof item.bodyText === "string"
-              ? item.bodyText
-              : "";
+            : "";
       const topText = topTextRaw.replaceAll("\n", " ").trim();
       const link =
         item.primaryUrl && !isXLikeUrl(item.primaryUrl)
           ? item.primaryUrl
-          : item.extractedUrls.find((u) => typeof u === "string" && !isXLikeUrl(u)) ??
+          : (item.extractedUrls.find((u) => typeof u === "string" && !isXLikeUrl(u)) ??
             item.canonicalUrl ??
-            "";
+            "");
       return {
         fetched: formatShortLocalTimestamp(item.fetchedAt),
         kind,
@@ -1377,7 +1406,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
     if (!opts.verbose) {
       console.log("");
       console.log(
-        'Tip: add --verbose to print full results and recent provider calls; use --json for structured output; filter with --kind post|bundle|all. For paging: append `| less -R`.'
+        "Tip: add --verbose to print full results and recent provider calls; use --json for structured output; filter with --kind post|bundle|all. For paging: append `| less -R`."
       );
       return;
     }
@@ -1388,12 +1417,19 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
       const handleFromQuery = extractXHandleFromQuery(q);
       const who = handleFromUrl ? `@${handleFromUrl}` : handleFromQuery ? `@${handleFromQuery}` : q;
       const isPost = item.canonicalUrl !== null;
-      const rc = isPost ? 1 : typeof item.resultCount === "number" ? item.resultCount : item.signalResults.length;
-      const topPost = item.signalResults.length > 0 ? (item.signalResults[0]?.url ?? null) : item.canonicalUrl;
+      const rc = isPost
+        ? 1
+        : typeof item.resultCount === "number"
+          ? item.resultCount
+          : item.signalResults.length;
+      const topPost =
+        item.signalResults.length > 0 ? (item.signalResults[0]?.url ?? null) : item.canonicalUrl;
       const primary = item.primaryUrl ?? item.canonicalUrl;
 
       console.log("");
-      console.log(`- kind=${item.kind} who=${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`);
+      console.log(
+        `- kind=${item.kind} who=${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`
+      );
       if (topPost) console.log(`  top_post: ${topPost}`);
       if (primary) console.log(`  primary_url: ${primary}`);
 
@@ -1501,12 +1537,12 @@ function extractUrlsFromText(text: string): string[] {
 
 function parseXStatusId(url: string): string | null {
   const m = url.match(/\/status\/(\d+)/);
-  return m ? m[1] ?? null : null;
+  return m ? (m[1] ?? null) : null;
 }
 
 function parseXHandle(url: string): string | null {
   const m = url.match(/\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,30})\/status\/\d+/);
-  return m ? m[1] ?? null : null;
+  return m ? (m[1] ?? null) : null;
 }
 
 /**
@@ -1691,7 +1727,9 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
 
 function printSourcesSetWeightUsage(): void {
   console.log("Usage:");
-  console.log("  admin:sources-set-weight (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --weight <number> [--dry-run]");
+  console.log(
+    "  admin:sources-set-weight (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --weight <number> [--dry-run]"
+  );
   console.log("");
   console.log("Notes:");
   console.log("- Weight is clamped to [0.1, 3.0]. Default is 1.0.");
@@ -1705,7 +1743,9 @@ function printSourcesSetWeightUsage(): void {
   console.log("  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type rss --weight 1.5");
   console.log("");
   console.log("  # Dry run (preview changes without persisting):");
-  console.log("  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type x_posts --weight 0.8 --dry-run");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type x_posts --weight 0.8 --dry-run"
+  );
 }
 
 export async function adminSourcesSetWeightCommand(args: string[]): Promise<void> {
@@ -1804,7 +1844,9 @@ export async function adminSourcesSetWeightCommand(args: string[]): Promise<void
         .map((s) => ({ id: s.id, type: s.type, name: s.name }));
 
       if (targetSources.length === 0) {
-        console.log(`No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`);
+        console.log(
+          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`
+        );
         return;
       }
     }
@@ -1841,7 +1883,9 @@ export async function adminSourcesSetWeightCommand(args: string[]): Promise<void
     }
 
     console.log("");
-    console.log(`Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, unchanged=${unchanged})`}.`);
+    console.log(
+      `Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, unchanged=${unchanged})`}.`
+    );
   } finally {
     await db.close();
   }
@@ -1849,20 +1893,28 @@ export async function adminSourcesSetWeightCommand(args: string[]): Promise<void
 
 function printSourcesSetEnabledUsage(): void {
   console.log("Usage:");
-  console.log("  admin:sources-set-enabled (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --enabled <true|false> [--dry-run]");
+  console.log(
+    "  admin:sources-set-enabled (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --enabled <true|false> [--dry-run]"
+  );
   console.log("");
   console.log("Examples:");
   console.log("  # Disable a single source:");
   console.log("  pnpm dev:cli -- admin:sources-set-enabled --source-id <uuid> --enabled false");
   console.log("");
   console.log("  # Disable all rss sources in a topic:");
-  console.log("  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type rss --enabled false");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type rss --enabled false"
+  );
   console.log("");
   console.log("  # Re-enable all x_posts sources:");
-  console.log("  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type x_posts --enabled true");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type x_posts --enabled true"
+  );
   console.log("");
   console.log("  # Dry run:");
-  console.log("  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type signal --enabled false --dry-run");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type signal --enabled false --dry-run"
+  );
 }
 
 export async function adminSourcesSetEnabledCommand(args: string[]): Promise<void> {
@@ -1963,13 +2015,17 @@ export async function adminSourcesSetEnabledCommand(args: string[]): Promise<voi
         .map((s) => ({ id: s.id, type: s.type, name: s.name, isEnabled: s.is_enabled }));
 
       if (targetSources.length === 0) {
-        console.log(`No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`);
+        console.log(
+          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`
+        );
         return;
       }
     }
 
     // Apply changes
-    console.log(dryRun ? "Dry run (no changes will be persisted):" : `${enabled ? "Enabling" : "Disabling"} sources:`);
+    console.log(
+      dryRun ? "Dry run (no changes will be persisted):" : `${enabled ? "Enabling" : "Disabling"} sources:`
+    );
     console.log("");
 
     let changed = 0;
@@ -2000,7 +2056,9 @@ export async function adminSourcesSetEnabledCommand(args: string[]): Promise<voi
     }
 
     console.log("");
-    console.log(`Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, already_${enabled ? "enabled" : "disabled"}=${alreadyInState})`}.`);
+    console.log(
+      `Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, already_${enabled ? "enabled" : "disabled"}=${alreadyInState})`}.`
+    );
   } finally {
     await db.close();
   }

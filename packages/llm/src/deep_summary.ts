@@ -79,7 +79,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     "You are a strict JSON generator for deep summaries.\n" +
     `${retryNote}\n` +
     "Output must match this schema (no extra keys, no markdown):\n" +
-    '{\n' +
+    "{\n" +
     '  "schema_version": "deep_summary_v1",\n' +
     '  "prompt_id": "deep_summary_v1",\n' +
     `  "provider": "${ref.provider}",\n` +
@@ -120,7 +120,8 @@ function buildUserPrompt(candidate: DeepSummaryCandidateInput, tier: BudgetTier)
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(text) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      return parsed as Record<string, unknown>;
     return null;
   } catch {
     return null;
@@ -247,5 +248,3 @@ export async function deepSummarizeCandidate(params: {
     };
   }
 }
-
-

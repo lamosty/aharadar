@@ -92,7 +92,8 @@ export async function clusterTopicContentItems(params: {
   limits?: Partial<ClusterLimits>;
 }): Promise<ClusterRunResult> {
   const maxItems = params.limits?.maxItems ?? parseIntEnv(process.env.CLUSTER_MAX_ITEMS_PER_RUN) ?? 500;
-  const clusterLookbackDays = params.limits?.clusterLookbackDays ?? parseIntEnv(process.env.CLUSTER_LOOKBACK_DAYS) ?? 7;
+  const clusterLookbackDays =
+    params.limits?.clusterLookbackDays ?? parseIntEnv(process.env.CLUSTER_LOOKBACK_DAYS) ?? 7;
   const similarityThreshold =
     params.limits?.similarityThreshold ?? parseFloatEnv(process.env.CLUSTER_SIM_THRESHOLD) ?? 0.86;
   const updateCentroid = params.limits?.updateCentroid ?? process.env.CLUSTER_UPDATE_CENTROID !== "false";
@@ -140,7 +141,8 @@ export async function clusterTopicContentItems(params: {
   );
 
   const candidates = candidatesRes.rows;
-  if (candidates.length === 0) return { attempted: 0, attachedToExisting: 0, created: 0, skipped: 0, errors: 0 };
+  if (candidates.length === 0)
+    return { attempted: 0, attachedToExisting: 0, created: 0, skipped: 0, errors: 0 };
 
   let attempted = 0;
   let attachedToExisting = 0;
@@ -257,4 +259,3 @@ export async function clusterTopicContentItems(params: {
 
   return { attempted, attachedToExisting, created, skipped, errors };
 }
-

@@ -120,5 +120,3 @@ export function createEmbeddingsRepo(db: Queryable) {
     },
   };
 }
-
-

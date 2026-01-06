@@ -33,12 +33,15 @@ function resolveEndpoint(env: NodeJS.ProcessEnv): string {
 
   const legacy = firstEnv(env, ["OPENAI_ENDPOINT"]);
   if (!legacy) {
-    throw new Error("Missing required env var: OPENAI_EMBED_ENDPOINT (or OPENAI_BASE_URL or OPENAI_ENDPOINT)");
+    throw new Error(
+      "Missing required env var: OPENAI_EMBED_ENDPOINT (or OPENAI_BASE_URL or OPENAI_ENDPOINT)"
+    );
   }
 
   // If OPENAI_ENDPOINT points at responses/chat-completions, derive embeddings.
   if (legacy.includes("/v1/responses")) return legacy.replace("/v1/responses", "/v1/embeddings");
-  if (legacy.includes("/v1/chat/completions")) return legacy.replace("/v1/chat/completions", "/v1/embeddings");
+  if (legacy.includes("/v1/chat/completions"))
+    return legacy.replace("/v1/chat/completions", "/v1/embeddings");
   return legacy;
 }
 
@@ -118,5 +121,3 @@ export function createEnvEmbeddingsClient(env: NodeJS.ProcessEnv = process.env):
     },
   };
 }
-
-

@@ -25,7 +25,10 @@ function formatOsc8Link(label: string, url: string): string {
   return `${osc}${url}${st}${label}${osc}${st}`;
 }
 
-function getPrimaryUrl(item: { canonical_url: string | null; metadata_json: Record<string, unknown> }): string | null {
+function getPrimaryUrl(item: {
+  canonical_url: string | null;
+  metadata_json: Record<string, unknown>;
+}): string | null {
   if (item.canonical_url) return item.canonical_url;
   const meta = item.metadata_json;
   const primary = meta.primary_url;
@@ -91,7 +94,7 @@ function printSearchUsage(): void {
   console.log("Examples:");
   console.log('  pnpm dev:cli -- search "vector database indexing"');
   console.log('  pnpm dev:cli -- search --topic default "faster ingestion"');
-  console.log("  pnpm dev:cli -- search --topic <uuid> --limit 20 \"ranking heuristic\"");
+  console.log('  pnpm dev:cli -- search --topic <uuid> --limit 20 "ranking heuristic"');
 }
 
 const EXPECTED_DIMS = 1536;
@@ -208,7 +211,10 @@ export async function searchCommand(args: string[] = []): Promise<void> {
       for (let i = 0; i < rows.rows.length; i += 1) {
         const r = rows.rows[i]!;
         const title = (r.title ?? "(no title)").replace(/\s+/g, " ").trim();
-        const url = getPrimaryUrl({ canonical_url: r.canonical_url, metadata_json: asRecord(r.metadata_json) });
+        const url = getPrimaryUrl({
+          canonical_url: r.canonical_url,
+          metadata_json: asRecord(r.metadata_json),
+        });
         const sim = Number.isFinite(r.similarity) ? r.similarity.toFixed(3) : String(r.similarity);
         const source = r.source_type + (r.source_name ? `:${r.source_name}` : "");
         console.log(`${i + 1}. sim=${sim} [${source}] ${clampText(title, 120)}`);

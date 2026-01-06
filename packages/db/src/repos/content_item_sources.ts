@@ -17,5 +17,3 @@ export function createContentItemSourcesRepo(db: Queryable) {
     },
   };
 }
-
-

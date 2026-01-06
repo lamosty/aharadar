@@ -114,12 +114,8 @@ export default function AdminBudgetsPage() {
         <div className={styles.degradedBanner} role="alert">
           <WarningIcon />
           <div className={styles.degradedContent}>
-            <h2 className={styles.degradedTitle}>
-              {t("admin.budgets.degradedMode")}
-            </h2>
-            <p className={styles.degradedDescription}>
-              {t("admin.budgets.degradedModeDescription")}
-            </p>
+            <h2 className={styles.degradedTitle}>{t("admin.budgets.degradedMode")}</h2>
+            <p className={styles.degradedDescription}>{t("admin.budgets.degradedModeDescription")}</p>
           </div>
         </div>
       )}
@@ -146,38 +142,25 @@ export default function AdminBudgetsPage() {
                 className={styles.progressFill}
                 style={{
                   width: `${Math.min(monthlyPercentage, 100)}%`,
-                  backgroundColor: getProgressColor(
-                    budgets.monthlyUsed,
-                    budgets.monthlyLimit
-                  ),
+                  backgroundColor: getProgressColor(budgets.monthlyUsed, budgets.monthlyLimit),
                 }}
               />
             </div>
-            <span className={styles.progressPercentage}>
-              {monthlyPercentage.toFixed(1)}%
-            </span>
+            <span className={styles.progressPercentage}>{monthlyPercentage.toFixed(1)}%</span>
           </div>
 
           <div className={styles.stats}>
             <div className={styles.stat}>
               <span className={styles.statLabel}>{t("admin.budgets.used")}</span>
-              <span className={styles.statValue}>
-                {formatCredits(budgets.monthlyUsed)}
-              </span>
+              <span className={styles.statValue}>{formatCredits(budgets.monthlyUsed)}</span>
             </div>
             <div className={styles.stat}>
               <span className={styles.statLabel}>{t("admin.budgets.limit")}</span>
-              <span className={styles.statValue}>
-                {formatCredits(budgets.monthlyLimit)}
-              </span>
+              <span className={styles.statValue}>{formatCredits(budgets.monthlyLimit)}</span>
             </div>
             <div className={styles.stat}>
-              <span className={styles.statLabel}>
-                {t("admin.budgets.remaining")}
-              </span>
-              <span className={styles.statValue}>
-                {formatCredits(budgets.monthlyRemaining)}
-              </span>
+              <span className={styles.statLabel}>{t("admin.budgets.remaining")}</span>
+              <span className={styles.statValue}>{formatCredits(budgets.monthlyRemaining)}</span>
             </div>
           </div>
         </div>
@@ -208,42 +191,25 @@ export default function AdminBudgetsPage() {
                     className={styles.progressFill}
                     style={{
                       width: `${Math.min(dailyPercentage ?? 0, 100)}%`,
-                      backgroundColor: getProgressColor(
-                        budgets.dailyUsed ?? 0,
-                        budgets.dailyLimit
-                      ),
+                      backgroundColor: getProgressColor(budgets.dailyUsed ?? 0, budgets.dailyLimit),
                     }}
                   />
                 </div>
-                <span className={styles.progressPercentage}>
-                  {dailyPercentage?.toFixed(1)}%
-                </span>
+                <span className={styles.progressPercentage}>{dailyPercentage?.toFixed(1)}%</span>
               </div>
 
               <div className={styles.stats}>
                 <div className={styles.stat}>
-                  <span className={styles.statLabel}>
-                    {t("admin.budgets.used")}
-                  </span>
-                  <span className={styles.statValue}>
-                    {formatCredits(budgets.dailyUsed ?? 0)}
-                  </span>
+                  <span className={styles.statLabel}>{t("admin.budgets.used")}</span>
+                  <span className={styles.statValue}>{formatCredits(budgets.dailyUsed ?? 0)}</span>
                 </div>
                 <div className={styles.stat}>
-                  <span className={styles.statLabel}>
-                    {t("admin.budgets.limit")}
-                  </span>
-                  <span className={styles.statValue}>
-                    {formatCredits(budgets.dailyLimit)}
-                  </span>
+                  <span className={styles.statLabel}>{t("admin.budgets.limit")}</span>
+                  <span className={styles.statValue}>{formatCredits(budgets.dailyLimit)}</span>
                 </div>
                 <div className={styles.stat}>
-                  <span className={styles.statLabel}>
-                    {t("admin.budgets.remaining")}
-                  </span>
-                  <span className={styles.statValue}>
-                    {formatCredits(budgets.dailyRemaining ?? 0)}
-                  </span>
+                  <span className={styles.statLabel}>{t("admin.budgets.remaining")}</span>
+                  <span className={styles.statValue}>{formatCredits(budgets.dailyRemaining ?? 0)}</span>
                 </div>
               </div>
             </>
@@ -262,9 +228,7 @@ export default function AdminBudgetsPage() {
               className={`${styles.statusDot} ${budgets.paidCallsAllowed ? styles.statusAllowed : styles.statusBlocked}`}
             />
             <span className={styles.statusText}>
-              {budgets.paidCallsAllowed
-                ? t("admin.budgets.allowed")
-                : t("admin.budgets.blocked")}
+              {budgets.paidCallsAllowed ? t("admin.budgets.allowed") : t("admin.budgets.blocked")}
             </span>
           </div>
         </div>

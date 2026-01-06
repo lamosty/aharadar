@@ -23,9 +23,9 @@ export function FeedbackButtons({
   variant = "default",
 }: FeedbackButtonsProps) {
   const { addToast } = useToast();
-  const [optimisticFeedback, setOptimisticFeedback] = useState<
-    FeedbackAction | null | undefined
-  >(currentFeedback);
+  const [optimisticFeedback, setOptimisticFeedback] = useState<FeedbackAction | null | undefined>(
+    currentFeedback
+  );
   const [isPending, setIsPending] = useState(false);
 
   const handleFeedback = useCallback(
@@ -104,13 +104,7 @@ interface FeedbackButtonProps {
   compact: boolean;
 }
 
-function FeedbackButton({
-  action,
-  isActive,
-  isPending,
-  onClick,
-  compact,
-}: FeedbackButtonProps) {
+function FeedbackButton({ action, isActive, isPending, onClick, compact }: FeedbackButtonProps) {
   const labels: Record<FeedbackAction, string> = {
     like: t("digests.feedback.like"),
     dislike: t("digests.feedback.dislike"),
@@ -139,20 +133,13 @@ function FeedbackButton({
       data-testid={`feedback-${action}`}
     >
       <Icon filled={isActive} />
-      {!compact && (
-        <span className={styles.label}>
-          {isActive ? activeLabels[action] : labels[action]}
-        </span>
-      )}
+      {!compact && <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>}
     </button>
   );
 }
 
 // Icon components
-const feedbackIcons: Record<
-  FeedbackAction,
-  React.FC<{ filled: boolean }>
-> = {
+const feedbackIcons: Record<FeedbackAction, React.FC<{ filled: boolean }>> = {
   like: LikeIcon,
   dislike: DislikeIcon,
   save: SaveIcon,

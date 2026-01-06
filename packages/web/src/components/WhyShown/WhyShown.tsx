@@ -47,14 +47,10 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
               {features.aha_score && (
                 <FeatureSection title={t("digests.whyShown.ahaScore")}>
                   <div className={styles.scoreRow}>
-                    <span className={styles.scoreValue}>
-                      {features.aha_score.score}
-                    </span>
+                    <span className={styles.scoreValue}>{features.aha_score.score}</span>
                     <span className={styles.scoreMax}>/100</span>
                   </div>
-                  {features.aha_score.reason && (
-                    <p className={styles.reason}>{features.aha_score.reason}</p>
-                  )}
+                  {features.aha_score.reason && <p className={styles.reason}>{features.aha_score.reason}</p>}
                 </FeatureSection>
               )}
 
@@ -86,9 +82,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                     </div>
                     <div className={styles.metaItem}>
                       <dt>{t("digests.whyShown.sourceType")}</dt>
-                      <dd className={styles.sourceType}>
-                        {features.source_weight_v1.source_type}
-                      </dd>
+                      <dd className={styles.sourceType}>{features.source_weight_v1.source_type}</dd>
                     </div>
                     <div className={styles.metaItem}>
                       <dt>{t("digests.whyShown.weight")}</dt>
@@ -102,47 +96,34 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                 <FeatureSection title={t("digests.whyShown.corroboration")}>
                   <div className={styles.metaItem}>
                     <dt>{t("digests.whyShown.corroborationScore")}</dt>
-                    <dd>
-                      {(features.signal_corroboration_v1.score * 100).toFixed(0)}%
-                    </dd>
+                    <dd>{(features.signal_corroboration_v1.score * 100).toFixed(0)}%</dd>
                   </div>
 
-                  {features.signal_corroboration_v1.corroborating_topics.length >
-                    0 && (
+                  {features.signal_corroboration_v1.corroborating_topics.length > 0 && (
                     <div className={styles.tagSection}>
                       <dt>{t("digests.whyShown.corroboratingTopics")}</dt>
                       <dd className={styles.tagList}>
-                        {features.signal_corroboration_v1.corroborating_topics.map(
-                          (topic) => (
-                            <span key={topic} className={styles.tag}>
-                              {topic}
-                            </span>
-                          )
-                        )}
+                        {features.signal_corroboration_v1.corroborating_topics.map((topic) => (
+                          <span key={topic} className={styles.tag}>
+                            {topic}
+                          </span>
+                        ))}
                       </dd>
                     </div>
                   )}
 
-                  {features.signal_corroboration_v1.corroborating_urls.length >
-                    0 && (
+                  {features.signal_corroboration_v1.corroborating_urls.length > 0 && (
                     <div className={styles.urlSection}>
                       <dt>{t("digests.whyShown.corroboratingUrls")}</dt>
                       <dd>
                         <ul className={styles.urlList}>
-                          {features.signal_corroboration_v1.corroborating_urls.map(
-                            (url) => (
-                              <li key={url}>
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={styles.url}
-                                >
-                                  {truncateUrl(url)}
-                                </a>
-                              </li>
-                            )
-                          )}
+                          {features.signal_corroboration_v1.corroborating_urls.map((url) => (
+                            <li key={url}>
+                              <a href={url} target="_blank" rel="noopener noreferrer" className={styles.url}>
+                                {truncateUrl(url)}
+                              </a>
+                            </li>
+                          ))}
                         </ul>
                       </dd>
                     </div>
@@ -158,9 +139,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                 )
                 .map(([key, value]) => (
                   <FeatureSection key={key} title={key}>
-                    <pre className={styles.rawJson}>
-                      {JSON.stringify(value, null, 2)}
-                    </pre>
+                    <pre className={styles.rawJson}>{JSON.stringify(value, null, 2)}</pre>
                   </FeatureSection>
                 ))}
             </dl>

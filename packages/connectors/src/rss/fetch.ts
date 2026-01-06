@@ -31,9 +31,7 @@ function asString(value: unknown): string | null {
 
 function asStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value
-      .map((v) => asString(v))
-      .filter((v): v is string => v !== null);
+    return value.map((v) => asString(v)).filter((v): v is string => v !== null);
   }
   const single = asString(value);
   return single ? [single] : [];
@@ -285,9 +283,7 @@ export async function fetchRss(params: FetchParams): Promise<FetchResult> {
   const xmlText = await fetchFeedXml(config.feedUrl);
   const parsed = parseFeed(xmlText);
 
-  const lastPublishedAt = cursorIn.last_published_at
-    ? new Date(cursorIn.last_published_at)
-    : null;
+  const lastPublishedAt = cursorIn.last_published_at ? new Date(cursorIn.last_published_at) : null;
   const recentGuidsSet = new Set(cursorIn.recent_guids ?? []);
 
   const rawItems: RssRawEntry[] = [];

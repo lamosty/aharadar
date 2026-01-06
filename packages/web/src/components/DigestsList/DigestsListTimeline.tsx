@@ -48,9 +48,7 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
 }
 
 // Group digests by date for timeline rendering
-function groupByDate(
-  digests: DigestSummary[]
-): Map<string, DigestSummary[]> {
+function groupByDate(digests: DigestSummary[]): Map<string, DigestSummary[]> {
   const groups = new Map<string, DigestSummary[]>();
 
   for (const digest of digests) {
@@ -70,10 +68,7 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
       {Array.from(groupedDigests.entries()).map(([dateKey, dateDigests]) => (
         <section key={dateKey} className={styles.dateGroup}>
           <header className={styles.dateHeader}>
-            <time
-              dateTime={new Date(dateKey).toISOString()}
-              className={styles.dateLabel}
-            >
+            <time dateTime={new Date(dateKey).toISOString()} className={styles.dateLabel}>
               {formatTimelineDate(dateDigests[0].createdAt)}
             </time>
             <div className={styles.dateLine} aria-hidden="true" />
@@ -84,9 +79,7 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
               <li key={digest.id} className={styles.timelineItem}>
                 <div className={styles.timelineDot} aria-hidden="true">
                   <div className={styles.dot} />
-                  {index < dateDigests.length - 1 && (
-                    <div className={styles.connector} />
-                  )}
+                  {index < dateDigests.length - 1 && <div className={styles.connector} />}
                 </div>
 
                 <Link
@@ -96,16 +89,13 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
                   data-testid={`digest-item-${digest.id}`}
                 >
                   <div className={styles.digestTime}>
-                    <time dateTime={digest.createdAt}>
-                      {formatTime(digest.createdAt)}
-                    </time>
+                    <time dateTime={digest.createdAt}>{formatTime(digest.createdAt)}</time>
                   </div>
 
                   <div className={styles.digestContent}>
                     <div className={styles.digestHeader}>
                       <span className={styles.windowRange}>
-                        {formatTime(digest.windowStart)} -{" "}
-                        {formatTime(digest.windowEnd)}
+                        {formatTime(digest.windowStart)} - {formatTime(digest.windowEnd)}
                       </span>
                       <span
                         className={`${styles.modeBadge} ${styles[`mode${digest.mode.charAt(0).toUpperCase()}${digest.mode.slice(1).replace("_", "")}`]}`}
@@ -118,9 +108,7 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
                       <span className={styles.itemCount}>
                         <ItemsIcon />
                         {digest.itemCount}{" "}
-                        {digest.itemCount === 1
-                          ? t("digests.list.item")
-                          : t("digests.list.items")}
+                        {digest.itemCount === 1 ? t("digests.list.item") : t("digests.list.items")}
                       </span>
                     </div>
                   </div>
@@ -143,10 +131,7 @@ export function DigestsListTimelineSkeleton() {
     <div className={styles.container}>
       <section className={styles.dateGroup}>
         <header className={styles.dateHeader}>
-          <span
-            className={styles.skeleton}
-            style={{ width: "60px", height: "16px" }}
-          />
+          <span className={styles.skeleton} style={{ width: "60px", height: "16px" }} />
           <div className={styles.dateLine} aria-hidden="true" />
         </header>
 
@@ -160,29 +145,17 @@ export function DigestsListTimelineSkeleton() {
 
               <div className={styles.digestCard} aria-hidden="true">
                 <div className={styles.digestTime}>
-                  <span
-                    className={styles.skeleton}
-                    style={{ width: "60px", height: "14px" }}
-                  />
+                  <span className={styles.skeleton} style={{ width: "60px", height: "14px" }} />
                 </div>
 
                 <div className={styles.digestContent}>
                   <div className={styles.digestHeader}>
-                    <span
-                      className={styles.skeleton}
-                      style={{ width: "120px", height: "16px" }}
-                    />
-                    <span
-                      className={styles.skeleton}
-                      style={{ width: "60px", height: "20px" }}
-                    />
+                    <span className={styles.skeleton} style={{ width: "120px", height: "16px" }} />
+                    <span className={styles.skeleton} style={{ width: "60px", height: "20px" }} />
                   </div>
 
                   <div className={styles.digestMeta}>
-                    <span
-                      className={styles.skeleton}
-                      style={{ width: "80px", height: "14px" }}
-                    />
+                    <span className={styles.skeleton} style={{ width: "80px", height: "14px" }} />
                   </div>
                 </div>
               </div>

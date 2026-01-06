@@ -237,7 +237,9 @@
   border-radius: var(--radius-xl);
   padding: var(--space-8);
   text-align: center;
-  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .featureCard:hover {

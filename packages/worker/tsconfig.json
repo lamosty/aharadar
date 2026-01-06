@@ -1,6 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
-  "references": [{ "path": "../shared" }, { "path": "../db" }, { "path": "../pipeline" }, { "path": "../queues" }],
+  "references": [
+    { "path": "../shared" },
+    { "path": "../db" },
+    { "path": "../pipeline" },
+    { "path": "../queues" }
+  ],
   "compilerOptions": {
     "composite": true,
     "rootDir": "src",

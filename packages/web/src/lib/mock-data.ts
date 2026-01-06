@@ -318,11 +318,7 @@ export function useMockFeedback(): UseFeedbackResult {
 // ============================================================================
 
 import { useDigests, useDigest, useFeedback } from "./hooks";
-import type {
-  DigestListItem,
-  DigestDetailResponse,
-  DigestItem as ApiDigestItem,
-} from "./api";
+import type { DigestListItem, DigestDetailResponse, DigestItem as ApiDigestItem } from "./api";
 
 /**
  * Adapt API DigestListItem to component DigestSummary.

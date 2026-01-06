@@ -15,9 +15,7 @@ function asString(value: unknown): string | null {
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((v) => asString(v))
-    .filter((v): v is string => v !== null);
+  return value.map((v) => asString(v)).filter((v): v is string => v !== null);
 }
 
 /**

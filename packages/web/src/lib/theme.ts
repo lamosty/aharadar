@@ -35,9 +35,7 @@ function isBrowser(): boolean {
  */
 export function getSystemColorMode(): ResolvedColorMode {
   if (!isBrowser()) return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 /**
@@ -124,9 +122,7 @@ export function applyTheme(theme: Theme, colorMode: ColorMode): void {
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
     // Get the background color from CSS custom properties
-    const bgColor = getComputedStyle(document.documentElement)
-      .getPropertyValue("--color-bg")
-      .trim();
+    const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--color-bg").trim();
     metaThemeColor.setAttribute("content", bgColor);
   }
 }

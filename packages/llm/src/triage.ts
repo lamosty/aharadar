@@ -80,7 +80,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     "You are a strict JSON generator for content triage.\n" +
     `${retryNote}\n` +
     "Output must match this schema (no extra keys, no markdown):\n" +
-    '{\n' +
+    "{\n" +
     '  "schema_version": "triage_v1",\n' +
     '  "prompt_id": "triage_v1",\n' +
     `  "provider": "${ref.provider}",\n` +
@@ -123,7 +123,8 @@ function buildUserPrompt(candidate: TriageCandidateInput, tier: BudgetTier): str
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(text) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      return parsed as Record<string, unknown>;
     return null;
   } catch {
     return null;

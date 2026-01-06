@@ -9,10 +9,7 @@ import styles from "./DigestDetailReader.module.css";
 interface DigestDetailReaderProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -36,21 +33,13 @@ function formatSourceType(type: string): string {
   return labels[type] || type;
 }
 
-export function DigestDetailReader({
-  items,
-  digestId,
-  onFeedback,
-}: DigestDetailReaderProps) {
+export function DigestDetailReader({ items, digestId, onFeedback }: DigestDetailReaderProps) {
   return (
     <div className={styles.container} data-testid="digest-detail">
       <ol className={styles.list} role="list">
         {items.map((item) => (
           <li key={item.id}>
-            <DigestItemCard
-              item={item}
-              digestId={digestId}
-              onFeedback={onFeedback}
-            />
+            <DigestItemCard item={item} digestId={digestId} onFeedback={onFeedback} />
           </li>
         ))}
       </ol>
@@ -61,10 +50,7 @@ export function DigestDetailReader({
 interface DigestItemCardProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
@@ -79,17 +65,13 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
       <header className={styles.cardHeader}>
         <div className={styles.rankBadge}>#{item.rank}</div>
         <div className={styles.meta}>
-          <span className={styles.sourceType}>
-            {formatSourceType(item.contentItem.sourceType)}
-          </span>
+          <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
           {item.contentItem.publishedAt && (
             <>
               <span className={styles.metaSeparator} aria-hidden="true">
                 -
               </span>
-              <time dateTime={item.contentItem.publishedAt}>
-                {formatDate(item.contentItem.publishedAt)}
-              </time>
+              <time dateTime={item.contentItem.publishedAt}>{formatDate(item.contentItem.publishedAt)}</time>
             </>
           )}
         </div>
@@ -107,27 +89,19 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
               {item.contentItem.title || "(Untitled)"}
             </a>
           ) : (
-            <span className={styles.titleText}>
-              {item.contentItem.title || "(Untitled)"}
-            </span>
+            <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
           )}
         </h3>
 
-        {item.contentItem.author && (
-          <p className={styles.author}>by {item.contentItem.author}</p>
-        )}
+        {item.contentItem.author && <p className={styles.author}>by {item.contentItem.author}</p>}
 
-        {item.contentItem.triageSummary && (
-          <p className={styles.summary}>{item.contentItem.triageSummary}</p>
-        )}
+        {item.contentItem.triageSummary && <p className={styles.summary}>{item.contentItem.triageSummary}</p>}
       </div>
 
       <footer className={styles.cardFooter}>
         <div className={styles.scoreSection}>
           <span className={styles.scoreLabel}>Relevance</span>
-          <span className={styles.scoreValue}>
-            {(item.score * 100).toFixed(0)}%
-          </span>
+          <span className={styles.scoreValue}>{(item.score * 100).toFixed(0)}%</span>
         </div>
 
         <FeedbackButtons
@@ -152,21 +126,12 @@ export function DigestDetailReaderSkeleton() {
           <li key={i}>
             <article className={styles.card} aria-hidden="true">
               <header className={styles.cardHeader}>
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "40px", height: "24px" }}
-                />
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "120px", height: "16px" }}
-                />
+                <span className={styles.skeleton} style={{ width: "40px", height: "24px" }} />
+                <span className={styles.skeleton} style={{ width: "120px", height: "16px" }} />
               </header>
 
               <div className={styles.cardBody}>
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "80%", height: "28px" }}
-                />
+                <span className={styles.skeleton} style={{ width: "80%", height: "28px" }} />
                 <span
                   className={styles.skeleton}
                   style={{ width: "100px", height: "16px", marginTop: "8px" }}
@@ -178,14 +143,8 @@ export function DigestDetailReaderSkeleton() {
               </div>
 
               <footer className={styles.cardFooter}>
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "80px", height: "32px" }}
-                />
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "160px", height: "36px" }}
-                />
+                <span className={styles.skeleton} style={{ width: "80px", height: "32px" }} />
+                <span className={styles.skeleton} style={{ width: "160px", height: "36px" }} />
               </footer>
             </article>
           </li>

@@ -10,8 +10,7 @@ interface ThemeSwitcherProps {
 }
 
 export function ThemeSwitcher({ showLayout = true }: ThemeSwitcherProps) {
-  const { theme, colorMode, layout, setTheme, setColorMode, setLayout } =
-    useTheme();
+  const { theme, colorMode, layout, setTheme, setColorMode, setLayout } = useTheme();
 
   const themeLabels: Record<Theme, string> = {
     professional: t("settings.appearance.themes.professional"),
@@ -37,9 +36,7 @@ export function ThemeSwitcher({ showLayout = true }: ThemeSwitcherProps) {
         <label className={styles.label} htmlFor="theme-select">
           {t("settings.appearance.theme")}
         </label>
-        <p className={styles.description}>
-          {t("settings.appearance.themeDescription")}
-        </p>
+        <p className={styles.description}>{t("settings.appearance.themeDescription")}</p>
         <select
           id="theme-select"
           className={styles.select}
@@ -59,9 +56,7 @@ export function ThemeSwitcher({ showLayout = true }: ThemeSwitcherProps) {
         <label className={styles.label} htmlFor="mode-select">
           {t("settings.appearance.colorMode")}
         </label>
-        <p className={styles.description}>
-          {t("settings.appearance.colorModeDescription")}
-        </p>
+        <p className={styles.description}>{t("settings.appearance.colorModeDescription")}</p>
         <div className={styles.buttonGroup} role="radiogroup" aria-label={t("settings.appearance.colorMode")}>
           {COLOR_MODES.map((mode) => (
             <button
@@ -88,9 +83,7 @@ export function ThemeSwitcher({ showLayout = true }: ThemeSwitcherProps) {
           <label className={styles.label} htmlFor="layout-select">
             {t("settings.appearance.layout")}
           </label>
-          <p className={styles.description}>
-            {t("settings.appearance.layoutDescription")}
-          </p>
+          <p className={styles.description}>{t("settings.appearance.layoutDescription")}</p>
           <select
             id="layout-select"
             className={styles.select}

@@ -74,9 +74,7 @@ describe("runPipelineOnce", () => {
     it("passes paidCallsAllowed=true to all stages", async () => {
       await runPipelineOnce(mockDb, baseParams);
 
-      expect(ingestEnabledSources).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: true })
-      );
+      expect(ingestEnabledSources).toHaveBeenCalledWith(expect.objectContaining({ paidCallsAllowed: true }));
       expect(embedTopicContentItems).toHaveBeenCalledWith(
         expect.objectContaining({ paidCallsAllowed: true })
       );
@@ -88,17 +86,13 @@ describe("runPipelineOnce", () => {
     it("uses normal mode for digest by default", async () => {
       await runPipelineOnce(mockDb, baseParams);
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: "normal" })
-      );
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "normal" }));
     });
 
     it("resolves tier to high for catch_up mode", async () => {
       await runPipelineOnce(mockDb, { ...baseParams, mode: "catch_up" });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "high" })
-      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }));
     });
   });
 
@@ -137,9 +131,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(ingestEnabledSources).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: true })
-      );
+      expect(ingestEnabledSources).toHaveBeenCalledWith(expect.objectContaining({ paidCallsAllowed: true }));
       expect(embedTopicContentItems).toHaveBeenCalledWith(
         expect.objectContaining({ paidCallsAllowed: true })
       );
@@ -154,9 +146,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: "normal" })
-      );
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "normal" }));
     });
 
     it("uses specified mode for digest when provided", async () => {
@@ -166,9 +156,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: "high" })
-      );
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "high" }));
     });
 
     it("includes creditsStatus in result", async () => {
@@ -202,9 +190,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(ingestEnabledSources).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: false })
-      );
+      expect(ingestEnabledSources).toHaveBeenCalledWith(expect.objectContaining({ paidCallsAllowed: false }));
     });
 
     it("passes paidCallsAllowed=false to embed", async () => {
@@ -236,9 +222,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "low" })
-      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "low" }));
     });
 
     it("forces mode to low for digest when credits exhausted", async () => {
@@ -248,9 +232,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: "low" })
-      );
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "low" }));
     });
 
     it("calls printCreditsWarning", async () => {
@@ -284,9 +266,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "low" })
-      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "low" }));
     });
 
     it("uses normal tier when mode is normal", async () => {
@@ -296,9 +276,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "normal" })
-      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "normal" }));
     });
 
     it("uses high tier when mode is high", async () => {
@@ -308,9 +286,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "high" })
-      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }));
     });
 
     it("uses high tier when mode is catch_up", async () => {
@@ -320,9 +296,7 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "high" })
-      );
+      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }));
     });
   });
 });

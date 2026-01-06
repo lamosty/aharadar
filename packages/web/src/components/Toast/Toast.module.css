@@ -83,7 +83,9 @@
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .closeButton:hover {

@@ -6,5 +6,3 @@ export interface FeedbackEventDraft {
   contentItemId: string;
   action: FeedbackAction;
 }
-
-

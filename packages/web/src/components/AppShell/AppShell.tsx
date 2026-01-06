@@ -34,11 +34,7 @@ export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
           onClick={toggleSidebar}
           aria-expanded={sidebarOpen}
           aria-controls="sidebar"
-          aria-label={
-            sidebarOpen
-              ? t("accessibility.closeMenu")
-              : t("accessibility.openMenu")
-          }
+          aria-label={sidebarOpen ? t("accessibility.closeMenu") : t("accessibility.openMenu")}
         >
           {sidebarOpen ? <CloseIcon /> : <MenuIcon />}
         </button>
@@ -46,13 +42,7 @@ export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
       </header>
 
       {/* Sidebar overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className={styles.overlay}
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
+      {sidebarOpen && <div className={styles.overlay} onClick={closeSidebar} aria-hidden="true" />}
 
       {/* Sidebar */}
       <aside
@@ -71,19 +61,13 @@ export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
           <ul className={styles.navList}>
             {mainNavItems.map((item) => (
               <li key={item.id}>
-                <NavLink
-                  item={item}
-                  isActive={pathname === item.href}
-                  onClick={closeSidebar}
-                />
+                <NavLink item={item} isActive={pathname === item.href} onClick={closeSidebar} />
               </li>
             ))}
           </ul>
         </nav>
 
-        {sidebarFooter && (
-          <div className={styles.sidebarFooter}>{sidebarFooter}</div>
-        )}
+        {sidebarFooter && <div className={styles.sidebarFooter}>{sidebarFooter}</div>}
       </aside>
 
       {/* Main content area */}
@@ -140,9 +124,7 @@ function MobileNavLink({ item, isActive }: Omit<NavLinkProps, "onClick">) {
       <span className={styles.mobileNavIcon}>
         <NavIcon icon={item.icon} />
       </span>
-      <span className={styles.mobileNavLabel}>
-        {t(item.labelKey as Parameters<typeof t>[0])}
-      </span>
+      <span className={styles.mobileNavLabel}>{t(item.labelKey as Parameters<typeof t>[0])}</span>
     </Link>
   );
 }

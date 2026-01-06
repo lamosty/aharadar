@@ -70,7 +70,10 @@ export function createSourcesRepo(db: Queryable) {
     },
 
     async updateTopic(params: { sourceId: string; topicId: string }): Promise<void> {
-      await db.query("update sources set topic_id = $2::uuid where id = $1", [params.sourceId, params.topicId]);
+      await db.query("update sources set topic_id = $2::uuid where id = $1", [
+        params.sourceId,
+        params.topicId,
+      ]);
     },
 
     async updateCursor(sourceId: string, cursor: Record<string, unknown>): Promise<void> {

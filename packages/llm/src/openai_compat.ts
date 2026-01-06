@@ -53,19 +53,22 @@ function extractAssistantContent(response: unknown): string | null {
         if (Array.isArray(content)) {
           for (const part of content) {
             const p = asRecord(part);
-            const text = typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
+            const text =
+              typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
             if (text && text.length > 0) return text;
           }
         } else if (content && typeof content === "object" && !Array.isArray(content)) {
           const c = content as Record<string, unknown>;
-          const text = typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
+          const text =
+            typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
           if (text && text.length > 0) return text;
         } else if (typeof content === "string" && content.length > 0) {
           return content;
         }
       } else if (it.content && typeof it.content === "object" && !Array.isArray(it.content)) {
         const c = it.content as Record<string, unknown>;
-        const text = typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
+        const text =
+          typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
         if (text && text.length > 0) return text;
       } else if (typeof it.content === "string" && it.content.length > 0) {
         return it.content;
@@ -82,7 +85,8 @@ function extractAssistantContent(response: unknown): string | null {
     if (Array.isArray(content)) {
       for (const part of content) {
         const p = asRecord(part);
-        const text = typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
+        const text =
+          typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
         if (text && text.length > 0) return text;
       }
     }

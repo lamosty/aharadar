@@ -51,9 +51,7 @@ describe("BullMQ pipeline worker integration", () => {
     databaseUrl = pgContainer.getConnectionUri();
 
     // Start Redis container
-    redisContainer = await new GenericContainer("redis:7-alpine")
-      .withExposedPorts(6379)
-      .start();
+    redisContainer = await new GenericContainer("redis:7-alpine").withExposedPorts(6379).start();
 
     const redisHost = redisContainer.getHost();
     const redisPort = redisContainer.getMappedPort(6379);

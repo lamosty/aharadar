@@ -1,5 +1,10 @@
 import type { Db } from "@aharadar/db";
-import { createEnvLlmRouter, deepSummarizeCandidate, type DeepSummaryOutput, type TriageOutput } from "@aharadar/llm";
+import {
+  createEnvLlmRouter,
+  deepSummarizeCandidate,
+  type DeepSummaryOutput,
+  type TriageOutput,
+} from "@aharadar/llm";
 import type { BudgetTier, ProviderCallDraft } from "@aharadar/shared";
 
 export interface EnrichLimits {
@@ -26,7 +31,10 @@ function parseIntEnv(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getPrimaryUrl(params: { canonicalUrl: string | null; metadata: Record<string, unknown> }): string | null {
+function getPrimaryUrl(params: {
+  canonicalUrl: string | null;
+  metadata: Record<string, unknown>;
+}): string | null {
   if (params.canonicalUrl) return params.canonicalUrl;
   const primary = params.metadata.primary_url;
   if (typeof primary === "string" && primary.length > 0) return primary;
@@ -63,7 +71,8 @@ export async function enrichTopCandidates(params: {
   }>;
   limits?: Partial<EnrichLimits>;
 }): Promise<{ summaries: Map<string, DeepSummaryOutput>; result: EnrichRunResult }> {
-  const maxCalls = params.limits?.maxCalls ?? parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_CALLS_PER_RUN) ?? 0;
+  const maxCalls =
+    params.limits?.maxCalls ?? parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_CALLS_PER_RUN) ?? 0;
   const limit = Math.max(0, Math.min(500, Math.floor(maxCalls)));
 
   if (params.tier === "low" || limit <= 0 || params.candidates.length === 0) {
@@ -204,7 +213,9 @@ export async function enrichTopCandidates(params: {
       } catch (err) {
         console.warn("provider_calls insert failed (deep_summary error)", err);
       }
-      console.warn(`deep summary failed for candidate ${candidate.candidateId}: ${err instanceof Error ? err.message : String(err)}`);
+      console.warn(
+        `deep summary failed for candidate ${candidate.candidateId}: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 
@@ -213,4 +224,3 @@ export async function enrichTopCandidates(params: {
     result: { attempted, enriched, skipped, errors, providerCallsOk, providerCallsError },
   };
 }
-

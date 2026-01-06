@@ -19,11 +19,7 @@ export interface OptimisticFeedback {
   /** Current feedback state for an item */
   getState: (contentItemId: string) => FeedbackState;
   /** Submit feedback with optimistic update */
-  submitFeedback: (
-    contentItemId: string,
-    action: FeedbackAction,
-    digestId?: string
-  ) => void;
+  submitFeedback: (contentItemId: string, action: FeedbackAction, digestId?: string) => void;
   /** Check if any feedback is pending */
   isPending: boolean;
 }
@@ -43,19 +39,14 @@ export function useOptimisticFeedback(): OptimisticFeedback {
   const { addToast } = useToast();
 
   // Local state tracking feedback per content item
-  const [feedbackStates, setFeedbackStates] = useState<
-    Map<string, FeedbackState>
-  >(new Map());
+  const [feedbackStates, setFeedbackStates] = useState<Map<string, FeedbackState>>(new Map());
 
   // Track pending mutations
   const [pendingItems, setPendingItems] = useState<Set<string>>(new Set());
 
   const mutation = useFeedback({
     onError: (error) => {
-      addToast(
-        error.message || t("toast.feedbackError"),
-        "error"
-      );
+      addToast(error.message || t("toast.feedbackError"), "error");
     },
   });
 

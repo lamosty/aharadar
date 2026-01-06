@@ -36,19 +36,28 @@ export async function normalizeReddit(raw: unknown, _params: FetchParams): Promi
   const url = asString(post.url);
   const permalink = ensureRedditPermalink(asString(post.permalink));
 
-  const canonicalUrl = isSelf ? permalink : url ?? permalink;
+  const canonicalUrl = isSelf ? permalink : (url ?? permalink);
 
   const externalId = asString(post.name) ?? (asString(post.id) ? `t3_${asString(post.id)}` : null);
   const publishedAt = toIsoFromSeconds(post.created_utc);
   const author = asString(post.author);
 
   const topComments = Array.isArray(post._top_comments)
-    ? (post._top_comments as unknown[]).filter((c) => typeof c === "string" && c.trim().length > 0).slice(0, 50)
+    ? (post._top_comments as unknown[])
+        .filter((c) => typeof c === "string" && c.trim().length > 0)
+        .slice(0, 50)
     : [];
 
   const commentsText =
-    topComments.length > 0 ? `\n\nTop comments:\n- ${topComments.map((c) => String(c).replaceAll("\n", " ")).join("\n- ")}` : "";
-  const bodyText = (selftext ?? "").trim().length > 0 ? `${selftext}${commentsText}` : commentsText.trim().length > 0 ? commentsText.trim() : null;
+    topComments.length > 0
+      ? `\n\nTop comments:\n- ${topComments.map((c) => String(c).replaceAll("\n", " ")).join("\n- ")}`
+      : "";
+  const bodyText =
+    (selftext ?? "").trim().length > 0
+      ? `${selftext}${commentsText}`
+      : commentsText.trim().length > 0
+        ? commentsText.trim()
+        : null;
 
   return {
     title,

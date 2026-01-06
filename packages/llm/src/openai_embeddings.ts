@@ -138,5 +138,3 @@ export async function callOpenAiEmbeddingsCompat(params: {
     endpoint: params.endpoint,
   };
 }
-
-

@@ -13,14 +13,7 @@ export const metadata: Metadata = {
   },
   description:
     "Personalized content aggregation that monitors your chosen sources and delivers curated digests of only the most relevant content.",
-  keywords: [
-    "content aggregation",
-    "personalization",
-    "news radar",
-    "digest",
-    "RSS",
-    "content curation",
-  ],
+  keywords: ["content aggregation", "personalization", "news radar", "digest", "RSS", "content curation"],
   authors: [{ name: "Aha Radar" }],
   robots: {
     index: true,
@@ -51,18 +44,12 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Prevent flash of unstyled content by setting theme before paint */}
-        <script
-          dangerouslySetInnerHTML={{ __html: themeInitScript }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         {/* Skip to main content link for accessibility */}

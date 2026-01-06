@@ -233,7 +233,8 @@ export async function fetchSignal(params: FetchParams): Promise<FetchResult> {
 
       // Optional: store the query-level bundle item for debugging/audit.
       // Always store unparseable responses so we can debug parsing/provider changes without manual DB queries.
-      const shouldStoreBundle = resultsCount === null || (storeBundles && resultsCount !== null && resultsCount > 0);
+      const shouldStoreBundle =
+        resultsCount === null || (storeBundles && resultsCount !== null && resultsCount > 0);
       if (shouldStoreBundle) {
         rawItems.push({
           kind: "signal_bundle_v1",

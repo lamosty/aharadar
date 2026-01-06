@@ -96,7 +96,10 @@ function asFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-export function rankCandidates(params: { candidates: RankCandidateInput[]; weights?: Partial<RankWeights> }): RankedCandidate[] {
+export function rankCandidates(params: {
+  candidates: RankCandidateInput[];
+  weights?: Partial<RankWeights>;
+}): RankedCandidate[] {
   const wAha = params.weights?.wAha ?? 0.8;
   const wHeuristic = params.weights?.wHeuristic ?? 0.15;
   const wPref = params.weights?.wPref ?? 0.05;
@@ -179,7 +182,11 @@ export function rankCandidates(params: { candidates: RankCandidateInput[]; weigh
   });
 
   // Sort: score desc, candidateAtMs desc, candidateId asc (deterministic tie-breaker)
-  scored.sort((a, b) => b.score - a.score || b.candidateAtMs - a.candidateAtMs || (a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0));
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      b.candidateAtMs - a.candidateAtMs ||
+      (a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0)
+  );
   return scored;
 }
-

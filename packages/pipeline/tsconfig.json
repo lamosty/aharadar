@@ -1,6 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
-  "references": [{ "path": "../shared" }, { "path": "../db" }, { "path": "../connectors" }, { "path": "../llm" }],
+  "references": [
+    { "path": "../shared" },
+    { "path": "../db" },
+    { "path": "../connectors" },
+    { "path": "../llm" }
+  ],
   "compilerOptions": {
     "composite": true,
     "rootDir": "src",

@@ -199,7 +199,9 @@ describe("parseFeed", () => {
 
     it("extracts contentHtml from content:encoded when both present", () => {
       const result = parseFeed(RSS_WITH_CONTENT_ENCODED);
-      expect(result.entries[0].contentHtml).toBe("<p>This is the <strong>full content</strong> with HTML.</p>");
+      expect(result.entries[0].contentHtml).toBe(
+        "<p>This is the <strong>full content</strong> with HTML.</p>"
+      );
     });
 
     it("extracts summary from description when both present", () => {

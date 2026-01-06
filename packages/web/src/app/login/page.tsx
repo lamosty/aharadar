@@ -75,11 +75,7 @@ export default function LoginPage() {
                   className={`btn btn-primary ${styles.submitButton}`}
                   disabled={isLoading}
                 >
-                  {isLoading ? (
-                    <LoadingSpinner />
-                  ) : (
-                    t("login.sendLink")
-                  )}
+                  {isLoading ? <LoadingSpinner /> : t("login.sendLink")}
                 </button>
               </form>
             </>
@@ -89,9 +85,7 @@ export default function LoginPage() {
                 <CheckIcon />
               </div>
               <h2 className={styles.successTitle}>{t("login.checkEmail")}</h2>
-              <p className={styles.successDescription}>
-                {t("login.checkEmailDescription", { email })}
-              </p>
+              <p className={styles.successDescription}>{t("login.checkEmailDescription", { email })}</p>
               <button
                 type="button"
                 className={`btn btn-secondary ${styles.backButton}`}
@@ -162,13 +156,7 @@ function LoadingSpinner() {
       strokeWidth="2"
       aria-hidden="true"
     >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeOpacity="0.25"
-      />
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" />
       <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" />
     </svg>
   );

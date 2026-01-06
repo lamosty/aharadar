@@ -9,10 +9,7 @@ import styles from "./DigestDetailTimeline.module.css";
 interface DigestDetailTimelineProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function formatTime(dateStr: string | null): string {
@@ -50,31 +47,18 @@ function formatSourceType(type: string): string {
   return labels[type] || type.toUpperCase();
 }
 
-export function DigestDetailTimeline({
-  items,
-  digestId,
-  onFeedback,
-}: DigestDetailTimelineProps) {
+export function DigestDetailTimeline({ items, digestId, onFeedback }: DigestDetailTimelineProps) {
   return (
     <div className={styles.container} data-testid="digest-detail">
       <ol className={styles.timeline} role="list">
         {items.map((item, index) => (
           <li key={item.id} className={styles.timelineItem}>
             <div className={styles.timelineLine}>
-              <div
-                className={`${styles.dot} ${getScoreClass(item.score)}`}
-                aria-hidden="true"
-              />
-              {index < items.length - 1 && (
-                <div className={styles.connector} aria-hidden="true" />
-              )}
+              <div className={`${styles.dot} ${getScoreClass(item.score)}`} aria-hidden="true" />
+              {index < items.length - 1 && <div className={styles.connector} aria-hidden="true" />}
             </div>
 
-            <DigestItemPost
-              item={item}
-              digestId={digestId}
-              onFeedback={onFeedback}
-            />
+            <DigestItemPost item={item} digestId={digestId} onFeedback={onFeedback} />
           </li>
         ))}
       </ol>
@@ -91,10 +75,7 @@ function getScoreClass(score: number): string {
 interface DigestItemPostProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
@@ -109,12 +90,8 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
       <header className={styles.postHeader}>
         <div className={styles.postMeta}>
           <span className={styles.rank}>#{item.rank}</span>
-          <span className={styles.sourceType}>
-            {formatSourceType(item.contentItem.sourceType)}
-          </span>
-          <span className={styles.score}>
-            {(item.score * 100).toFixed(0)}%
-          </span>
+          <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
+          <span className={styles.score}>{(item.score * 100).toFixed(0)}%</span>
         </div>
         {item.contentItem.publishedAt && (
           <time
@@ -139,9 +116,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
               {item.contentItem.title || "(Untitled)"}
             </a>
           ) : (
-            <span className={styles.titleText}>
-              {item.contentItem.title || "(Untitled)"}
-            </span>
+            <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
           )}
         </h3>
 
@@ -152,9 +127,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
           </p>
         )}
 
-        {item.contentItem.triageSummary && (
-          <p className={styles.summary}>{item.contentItem.triageSummary}</p>
-        )}
+        {item.contentItem.triageSummary && <p className={styles.summary}>{item.contentItem.triageSummary}</p>}
       </div>
 
       <footer className={styles.postFooter}>
@@ -197,21 +170,12 @@ export function DigestDetailTimelineSkeleton() {
 
             <article className={styles.post} aria-hidden="true">
               <header className={styles.postHeader}>
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "100px", height: "16px" }}
-                />
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "50px", height: "14px" }}
-                />
+                <span className={styles.skeleton} style={{ width: "100px", height: "16px" }} />
+                <span className={styles.skeleton} style={{ width: "50px", height: "14px" }} />
               </header>
 
               <div className={styles.postContent}>
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "90%", height: "24px" }}
-                />
+                <span className={styles.skeleton} style={{ width: "90%", height: "24px" }} />
                 <span
                   className={styles.skeleton}
                   style={{ width: "80px", height: "14px", marginTop: "8px" }}
@@ -219,10 +183,7 @@ export function DigestDetailTimelineSkeleton() {
               </div>
 
               <footer className={styles.postFooter}>
-                <span
-                  className={styles.skeleton}
-                  style={{ width: "100px", height: "28px" }}
-                />
+                <span className={styles.skeleton} style={{ width: "100px", height: "28px" }} />
               </footer>
             </article>
           </li>

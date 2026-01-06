@@ -169,7 +169,9 @@
 .digestArrow {
   flex-shrink: 0;
   color: var(--color-text-muted);
-  transition: transform var(--transition-fast), color var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .digestCard:hover .digestArrow {

@@ -191,15 +191,16 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         summaryJson: row.summary_json,
         entitiesJson: row.entities_json,
         // Return item if we have any content (direct item or cluster representative)
-        item: row.item_title || row.item_url || row.item_source_type
-          ? {
-              title: row.item_title,
-              url: row.item_url,
-              author: row.item_author,
-              publishedAt: row.item_published_at,
-              sourceType: row.item_source_type,
-            }
-          : null,
+        item:
+          row.item_title || row.item_url || row.item_source_type
+            ? {
+                title: row.item_title,
+                url: row.item_url,
+                author: row.item_author,
+                publishedAt: row.item_published_at,
+                sourceType: row.item_source_type,
+              }
+            : null,
       })),
     };
   });

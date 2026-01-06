@@ -41,7 +41,9 @@ function resetRunBudgetIfNeeded(params: FetchParams): void {
 }
 
 function getMaxSearchCallsPerRun(): number | null {
-  return parseIntEnv(process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN ?? process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN);
+  return parseIntEnv(
+    process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN ?? process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN
+  );
 }
 
 function asStringArray(value: unknown): string[] {

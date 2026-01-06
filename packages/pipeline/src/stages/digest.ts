@@ -3,7 +3,12 @@ import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharada
 import { canonicalizeUrl, sha256Hex, type BudgetTier } from "@aharadar/shared";
 
 import type { IngestSourceFilter } from "./ingest";
-import { rankCandidates, parseSourceTypeWeights, computeEffectiveSourceWeight, type SignalCorroborationFeature } from "./rank";
+import {
+  rankCandidates,
+  parseSourceTypeWeights,
+  computeEffectiveSourceWeight,
+  type SignalCorroborationFeature,
+} from "./rank";
 import { enrichTopCandidates } from "./llm_enrich";
 import { getNoveltyLookbackDays, buildNoveltyFeature, type NoveltyFeature } from "../scoring/novelty";
 
@@ -118,9 +123,13 @@ function isXLikeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase();
-    return host === "x.com" || host === "www.x.com" ||
-           host === "twitter.com" || host === "www.twitter.com" ||
-           host === "t.co";
+    return (
+      host === "x.com" ||
+      host === "www.x.com" ||
+      host === "twitter.com" ||
+      host === "www.twitter.com" ||
+      host === "t.co"
+    );
   } catch {
     return false;
   }
@@ -322,13 +331,19 @@ async function computeNoveltyForCandidates(params: {
       );
 
       const maxSimilarity = result.rows[0]?.max_similarity ?? 0;
-      noveltyMap.set(candidate.candidateId, buildNoveltyFeature({
-        lookbackDays: params.lookbackDays,
-        maxSimilarity: Math.max(0, Math.min(1, maxSimilarity)),
-      }));
+      noveltyMap.set(
+        candidate.candidateId,
+        buildNoveltyFeature({
+          lookbackDays: params.lookbackDays,
+          maxSimilarity: Math.max(0, Math.min(1, maxSimilarity)),
+        })
+      );
     } catch (err) {
       // On error, skip novelty for this candidate (don't break the whole run)
-      console.warn(`novelty query failed for candidate ${candidate.candidateId}:`, err instanceof Error ? err.message : String(err));
+      console.warn(
+        `novelty query failed for candidate ${candidate.candidateId}:`,
+        err instanceof Error ? err.message : String(err)
+      );
     }
   }
 
@@ -346,10 +361,10 @@ function resolveTriageLimit(params: { maxItems: number; candidateCount: number }
   return defaultLimit;
 }
 
-function applyCandidateFilterSql(params: {
-  filter?: IngestSourceFilter;
+function applyCandidateFilterSql(params: { filter?: IngestSourceFilter; args: unknown[] }): {
+  whereSql: string;
   args: unknown[];
-}): { whereSql: string; args: unknown[] } {
+} {
   const onlyTypes = (params.filter?.onlySourceTypes ?? []).filter((t) => t.trim().length > 0);
   const onlyIds = (params.filter?.onlySourceIds ?? []).filter((id) => id.trim().length > 0);
 
@@ -520,7 +535,13 @@ export async function persistDigestFromContentItems(params: {
   const maxItems = params.limits?.maxItems ?? 20;
   const candidatePoolSize = Math.min(500, Math.max(maxItems, maxItems * 10));
 
-  const baseArgs: unknown[] = [params.userId, params.topicId, params.windowStart, params.windowEnd, candidatePoolSize];
+  const baseArgs: unknown[] = [
+    params.userId,
+    params.topicId,
+    params.windowStart,
+    params.windowEnd,
+    candidatePoolSize,
+  ];
   const filtered = applyCandidateFilterSql({ filter: params.filter, args: baseArgs });
 
   const candidates = await params.db.query<CandidateRow>(
@@ -823,8 +844,20 @@ export async function persistDigestFromContentItems(params: {
     const summary = summaries.get(s.candidateId) ?? null;
     const summaryJson = summary ? (summary as unknown as Record<string, unknown>) : null;
     return s.kind === "cluster"
-      ? { clusterId: s.candidateId, contentItemId: null, score: s.score, triageJson: s.triageJson, summaryJson }
-      : { clusterId: null, contentItemId: s.candidateId, score: s.score, triageJson: s.triageJson, summaryJson };
+      ? {
+          clusterId: s.candidateId,
+          contentItemId: null,
+          score: s.score,
+          triageJson: s.triageJson,
+          summaryJson,
+        }
+      : {
+          clusterId: null,
+          contentItemId: s.candidateId,
+          score: s.score,
+          triageJson: s.triageJson,
+          summaryJson,
+        };
   });
 
   const digest = await params.db.tx(async (tx) => {

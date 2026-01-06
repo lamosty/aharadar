@@ -1,7 +1,12 @@
 import type { Db } from "@aharadar/db";
 import type { BudgetTier } from "@aharadar/shared";
 
-import { ingestEnabledSources, type IngestLimits, type IngestRunResult, type IngestSourceFilter } from "../stages/ingest";
+import {
+  ingestEnabledSources,
+  type IngestLimits,
+  type IngestRunResult,
+  type IngestSourceFilter,
+} from "../stages/ingest";
 import { embedTopicContentItems, type EmbedRunResult } from "../stages/embed";
 import { dedupeTopicContentItems, type DedupeRunResult } from "../stages/dedupe";
 import { clusterTopicContentItems, type ClusterRunResult } from "../stages/cluster";

@@ -75,11 +75,7 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
           {digests.map((digest) => (
             <tr key={digest.id} className={styles.row} data-testid={`digest-item-${digest.id}`}>
               <td className={styles.tdWindow}>
-                <Link
-                  href={`/app/digests/${digest.id}`}
-                  className={styles.windowLink}
-                  prefetch={true}
-                >
+                <Link href={`/app/digests/${digest.id}`} className={styles.windowLink} prefetch={true}>
                   {formatWindowRange(digest.windowStart, digest.windowEnd)}
                 </Link>
               </td>
@@ -92,9 +88,7 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
               </td>
               <td className={styles.tdItems}>{digest.itemCount}</td>
               <td className={styles.tdCreated}>
-                <time dateTime={digest.createdAt}>
-                  {formatRelativeTime(digest.createdAt)}
-                </time>
+                <time dateTime={digest.createdAt}>{formatRelativeTime(digest.createdAt)}</time>
               </td>
             </tr>
           ))}

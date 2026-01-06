@@ -20,19 +20,13 @@ export function DevSettingsForm() {
     setIsLoaded(true);
   }, []);
 
-  const handleApiBaseUrlChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSettings((prev) => ({ ...prev, apiBaseUrl: e.target.value }));
-    },
-    []
-  );
+  const handleApiBaseUrlChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSettings((prev) => ({ ...prev, apiBaseUrl: e.target.value }));
+  }, []);
 
-  const handleApiKeyChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSettings((prev) => ({ ...prev, apiKey: e.target.value }));
-    },
-    []
-  );
+  const handleApiKeyChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSettings((prev) => ({ ...prev, apiKey: e.target.value }));
+  }, []);
 
   const handleSave = useCallback(() => {
     setDevSettings(settings);
@@ -88,18 +82,10 @@ export function DevSettingsForm() {
       </div>
 
       <div className={styles.actions}>
-        <button
-          type="button"
-          onClick={handleSave}
-          className={styles.saveButton}
-        >
+        <button type="button" onClick={handleSave} className={styles.saveButton}>
           {t("common.save")}
         </button>
-        <button
-          type="button"
-          onClick={handleClear}
-          className={styles.clearButton}
-        >
+        <button type="button" onClick={handleClear} className={styles.clearButton}>
           {t("settings.dev.clear")}
         </button>
       </div>

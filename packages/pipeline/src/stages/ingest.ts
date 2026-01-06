@@ -52,7 +52,11 @@ export function parseLastFetchAt(cursor: Record<string, unknown>): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-export function isSourceDue(cadence: CadenceConfig | null, lastFetchAt: Date | null, windowEnd: Date): boolean {
+export function isSourceDue(
+  cadence: CadenceConfig | null,
+  lastFetchAt: Date | null,
+  windowEnd: Date
+): boolean {
   // No cadence = always due
   if (!cadence) return true;
   // Never fetched = due
@@ -218,7 +222,10 @@ export async function ingestEnabledSources(params: {
 }): Promise<IngestRunResult> {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
 
-  let sources = await params.db.sources.listEnabledByUserAndTopic({ userId: params.userId, topicId: params.topicId });
+  let sources = await params.db.sources.listEnabledByUserAndTopic({
+    userId: params.userId,
+    topicId: params.topicId,
+  });
 
   const onlyTypes = (params.filter?.onlySourceTypes ?? []).filter((t) => t.trim().length > 0);
   const onlyIds = (params.filter?.onlySourceIds ?? []).filter((id) => id.trim().length > 0);

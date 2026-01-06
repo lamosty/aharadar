@@ -203,10 +203,13 @@ describe("generateDueWindows - fixed_3x_daily", () => {
         now,
       });
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT id FROM digests"),
-        ["user-123", "topic-456", "2024-06-15T08:00:00.000Z", "2024-06-15T16:00:00.000Z", "normal"]
-      );
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("SELECT id FROM digests"), [
+        "user-123",
+        "topic-456",
+        "2024-06-15T08:00:00.000Z",
+        "2024-06-15T16:00:00.000Z",
+        "normal",
+      ]);
     });
   });
 });

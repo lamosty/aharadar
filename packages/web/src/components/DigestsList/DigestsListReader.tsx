@@ -30,9 +30,7 @@ function formatTime(dateStr: string): string {
 function formatWindowDescription(start: string, end: string): string {
   const startDate = new Date(start);
   const endDate = new Date(end);
-  const diffHours = Math.round(
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60)
-  );
+  const diffHours = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
   return `${diffHours}-hour window`;
 }
 
@@ -82,14 +80,10 @@ export function DigestsListReader({ digests }: DigestsListReaderProps) {
 
                 <div className={styles.cardBody}>
                   <h3 className={styles.windowTitle}>
-                    {formatTime(digest.windowStart)} -{" "}
-                    {formatTime(digest.windowEnd)}
+                    {formatTime(digest.windowStart)} - {formatTime(digest.windowEnd)}
                   </h3>
                   <p className={styles.windowDescription}>
-                    {formatWindowDescription(
-                      digest.windowStart,
-                      digest.windowEnd
-                    )}
+                    {formatWindowDescription(digest.windowStart, digest.windowEnd)}
                   </p>
                 </div>
 
@@ -97,15 +91,11 @@ export function DigestsListReader({ digests }: DigestsListReaderProps) {
                   <div className={styles.stat}>
                     <span className={styles.statValue}>{digest.itemCount}</span>
                     <span className={styles.statLabel}>
-                      {digest.itemCount === 1
-                        ? t("digests.list.item")
-                        : t("digests.list.items")}
+                      {digest.itemCount === 1 ? t("digests.list.item") : t("digests.list.items")}
                     </span>
                   </div>
                   <div className={styles.modeInfo}>
-                    <span className={styles.modeDescription}>
-                      {getModeDescription(digest.mode)}
-                    </span>
+                    <span className={styles.modeDescription}>{getModeDescription(digest.mode)}</span>
                   </div>
                 </footer>
               </article>
@@ -129,21 +119,12 @@ export function DigestsListReaderSkeleton() {
             <div className={styles.card} aria-hidden="true">
               <article className={styles.cardContent}>
                 <header className={styles.cardHeader}>
-                  <span
-                    className={styles.skeleton}
-                    style={{ width: "140px", height: "16px" }}
-                  />
-                  <span
-                    className={styles.skeleton}
-                    style={{ width: "80px", height: "24px" }}
-                  />
+                  <span className={styles.skeleton} style={{ width: "140px", height: "16px" }} />
+                  <span className={styles.skeleton} style={{ width: "80px", height: "24px" }} />
                 </header>
 
                 <div className={styles.cardBody}>
-                  <span
-                    className={styles.skeleton}
-                    style={{ width: "180px", height: "24px" }}
-                  />
+                  <span className={styles.skeleton} style={{ width: "180px", height: "24px" }} />
                   <span
                     className={styles.skeleton}
                     style={{ width: "100px", height: "16px", marginTop: "8px" }}
@@ -151,14 +132,8 @@ export function DigestsListReaderSkeleton() {
                 </div>
 
                 <footer className={styles.cardFooter}>
-                  <span
-                    className={styles.skeleton}
-                    style={{ width: "60px", height: "32px" }}
-                  />
-                  <span
-                    className={styles.skeleton}
-                    style={{ width: "140px", height: "16px" }}
-                  />
+                  <span className={styles.skeleton} style={{ width: "60px", height: "32px" }} />
+                  <span className={styles.skeleton} style={{ width: "140px", height: "16px" }} />
                 </footer>
               </article>
             </div>

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import styles from "./Toast.module.css";
 
 type ToastType = "info" | "success" | "warning" | "error";
@@ -73,12 +67,7 @@ function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div
-      className={styles.container}
-      role="region"
-      aria-label="Notifications"
-      aria-live="polite"
-    >
+    <div className={styles.container} role="region" aria-label="Notifications" aria-live="polite">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
       ))}
@@ -93,10 +82,7 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onRemove }: ToastItemProps) {
   return (
-    <div
-      className={`${styles.toast} ${styles[toast.type]}`}
-      role="alert"
-    >
+    <div className={`${styles.toast} ${styles[toast.type]}`} role="alert">
       <span className={styles.icon}>
         {toast.type === "success" && <SuccessIcon />}
         {toast.type === "error" && <ErrorIcon />}

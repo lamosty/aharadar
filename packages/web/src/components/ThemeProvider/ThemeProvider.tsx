@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import {
   type Theme,
   type ColorMode,
@@ -49,8 +42,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
   const [colorMode, setColorModeState] = useState<ColorMode>(DEFAULT_COLOR_MODE);
   const [layout, setLayoutState] = useState<Layout>(DEFAULT_LAYOUT);
-  const [resolvedColorMode, setResolvedColorMode] =
-    useState<ResolvedColorMode>("light");
+  const [resolvedColorMode, setResolvedColorMode] = useState<ResolvedColorMode>("light");
   const [mounted, setMounted] = useState(false);
 
   // Initialize from localStorage on mount
@@ -122,9 +114,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     setLayout,
   };
 
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {

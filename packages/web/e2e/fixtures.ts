@@ -129,12 +129,15 @@ export function createErrorResponse(code: string, message: string) {
  * Set up API mocks for all standard endpoints.
  * By default, returns successful mock responses.
  */
-export async function setupApiMocks(page: Page, options: {
-  digestsResponse?: object;
-  digestDetailResponse?: object;
-  feedbackResponse?: object;
-  feedbackShouldFail?: boolean;
-} = {}) {
+export async function setupApiMocks(
+  page: Page,
+  options: {
+    digestsResponse?: object;
+    digestDetailResponse?: object;
+    feedbackResponse?: object;
+    feedbackShouldFail?: boolean;
+  } = {}
+) {
   const {
     digestsResponse = createDigestsListResponse(),
     digestDetailResponse = createDigestDetailResponse(),

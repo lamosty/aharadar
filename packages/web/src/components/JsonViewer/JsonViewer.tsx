@@ -34,19 +34,10 @@ function truncateString(str: string, maxLength: number): string {
   return str.slice(0, maxLength) + "...";
 }
 
-function JsonNode({
-  value,
-  depth,
-  maxDepth,
-  maxStringLength,
-  maxArrayItems,
-  keyName,
-}: JsonNodeProps) {
+function JsonNode({ value, depth, maxDepth, maxStringLength, maxArrayItems, keyName }: JsonNodeProps) {
   const [isExpanded, setIsExpanded] = useState(depth < 1);
 
-  const keyPrefix = keyName ? (
-    <span className={styles.key}>{keyName}: </span>
-  ) : null;
+  const keyPrefix = keyName ? <span className={styles.key}>{keyName}: </span> : null;
 
   // Null
   if (value === null) {
@@ -128,9 +119,7 @@ function JsonNode({
           <span className={styles.toggleIcon}>{isExpanded ? "-" : "+"}</span>
           {keyPrefix}
           <span className={styles.bracket}>[</span>
-          {!isExpanded && (
-            <span className={styles.preview}>{value.length} items</span>
-          )}
+          {!isExpanded && <span className={styles.preview}>{value.length} items</span>}
         </button>
         {isExpanded && (
           <div className={styles.children}>
@@ -145,11 +134,7 @@ function JsonNode({
                 keyName={String(index)}
               />
             ))}
-            {hasMore && (
-              <div className={styles.more}>
-                ... {value.length - maxArrayItems} more items
-              </div>
-            )}
+            {hasMore && <div className={styles.more}>... {value.length - maxArrayItems} more items</div>}
           </div>
         )}
         {isExpanded && <span className={styles.bracket}>]</span>}
@@ -185,9 +170,7 @@ function JsonNode({
           <span className={styles.toggleIcon}>{isExpanded ? "-" : "+"}</span>
           {keyPrefix}
           <span className={styles.bracket}>{"{"}</span>
-          {!isExpanded && (
-            <span className={styles.preview}>{entries.length} keys</span>
-          )}
+          {!isExpanded && <span className={styles.preview}>{entries.length} keys</span>}
         </button>
         {isExpanded && (
           <div className={styles.children}>
@@ -240,7 +223,9 @@ export function JsonViewer({
   }, [data]);
 
   // Check if data is empty or null
-  const isEmpty = data === null || data === undefined ||
+  const isEmpty =
+    data === null ||
+    data === undefined ||
     (typeof data === "object" && Object.keys(data as object).length === 0);
 
   if (isEmpty) {

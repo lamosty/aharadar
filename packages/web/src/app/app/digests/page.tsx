@@ -30,11 +30,7 @@ export default function DigestsPage() {
         <div className={styles.errorState}>
           <ErrorIcon />
           <h2 className={styles.errorTitle}>{t("digests.list.error")}</h2>
-          <button
-            type="button"
-            className={`btn btn-primary ${styles.retryButton}`}
-            onClick={refetch}
-          >
+          <button type="button" className={`btn btn-primary ${styles.retryButton}`} onClick={refetch}>
             {t("digests.list.retry")}
           </button>
         </div>
@@ -44,9 +40,7 @@ export default function DigestsPage() {
         <div className={styles.emptyState}>
           <EmptyIcon />
           <h2 className={styles.emptyTitle}>{t("digests.list.empty")}</h2>
-          <p className={styles.emptyDescription}>
-            {t("digests.list.emptyDescription")}
-          </p>
+          <p className={styles.emptyDescription}>{t("digests.list.emptyDescription")}</p>
         </div>
       )}
 

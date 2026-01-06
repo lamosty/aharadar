@@ -21,9 +21,7 @@ export default function AdminPage() {
             <PlayIcon />
           </div>
           <h2 className={styles.cardTitle}>{t("admin.cards.run.title")}</h2>
-          <p className={styles.cardDescription}>
-            {t("admin.cards.run.description")}
-          </p>
+          <p className={styles.cardDescription}>{t("admin.cards.run.description")}</p>
         </Link>
 
         <Link href="/app/admin/sources" className={styles.card}>
@@ -31,9 +29,7 @@ export default function AdminPage() {
             <SourcesIcon />
           </div>
           <h2 className={styles.cardTitle}>{t("admin.cards.sources.title")}</h2>
-          <p className={styles.cardDescription}>
-            {t("admin.cards.sources.description")}
-          </p>
+          <p className={styles.cardDescription}>{t("admin.cards.sources.description")}</p>
         </Link>
 
         <Link href="/app/admin/budgets" className={styles.card}>
@@ -41,9 +37,7 @@ export default function AdminPage() {
             <BudgetIcon />
           </div>
           <h2 className={styles.cardTitle}>{t("admin.cards.budgets.title")}</h2>
-          <p className={styles.cardDescription}>
-            {t("admin.cards.budgets.description")}
-          </p>
+          <p className={styles.cardDescription}>{t("admin.cards.budgets.description")}</p>
         </Link>
       </div>
     </div>

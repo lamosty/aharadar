@@ -17,10 +17,7 @@ interface OfflineBannerProps {
  * Displays at the top of the page with a warning about
  * showing cached data.
  */
-export function OfflineBanner({
-  showStaleIndicator = false,
-  lastUpdated,
-}: OfflineBannerProps) {
+export function OfflineBanner({ showStaleIndicator = false, lastUpdated }: OfflineBannerProps) {
   const isOnline = useIsOnline();
 
   // Don't render anything if online and no stale indicator needed
@@ -28,9 +25,7 @@ export function OfflineBanner({
     return null;
   }
 
-  const formattedTime = lastUpdated
-    ? formatRelativeTime(new Date(lastUpdated))
-    : null;
+  const formattedTime = lastUpdated ? formatRelativeTime(new Date(lastUpdated)) : null;
 
   return (
     <div
@@ -39,18 +34,10 @@ export function OfflineBanner({
       aria-live="polite"
     >
       <div className={styles.content}>
-        <span className={styles.icon}>
-          {isOnline ? <StaleIcon /> : <OfflineIcon />}
-        </span>
-        <span className={styles.message}>
-          {isOnline
-            ? t("network.staleData")
-            : t("network.offline")}
-        </span>
+        <span className={styles.icon}>{isOnline ? <StaleIcon /> : <OfflineIcon />}</span>
+        <span className={styles.message}>{isOnline ? t("network.staleData") : t("network.offline")}</span>
         {formattedTime && (
-          <span className={styles.time}>
-            {t("network.lastUpdated", { time: formattedTime })}
-          </span>
+          <span className={styles.time}>{t("network.lastUpdated", { time: formattedTime })}</span>
         )}
       </div>
     </div>
@@ -61,16 +48,12 @@ export function OfflineBanner({
  * Compact stale data indicator for inline use.
  */
 export function StaleIndicator({ lastUpdated }: { lastUpdated?: Date | string | null }) {
-  const formattedTime = lastUpdated
-    ? formatRelativeTime(new Date(lastUpdated))
-    : null;
+  const formattedTime = lastUpdated ? formatRelativeTime(new Date(lastUpdated)) : null;
 
   return (
     <span className={styles.staleIndicator} title={t("network.staleData")}>
       <StaleIcon />
-      {formattedTime && (
-        <span className={styles.staleTime}>{formattedTime}</span>
-      )}
+      {formattedTime && <span className={styles.staleTime}>{formattedTime}</span>}
     </span>
   );
 }

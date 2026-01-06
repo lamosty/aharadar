@@ -10,10 +10,7 @@ import styles from "./DigestDetailCondensed.module.css";
 interface DigestDetailCondensedProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -36,11 +33,7 @@ function formatSourceType(type: string): string {
   return labels[type] || type.toUpperCase();
 }
 
-export function DigestDetailCondensed({
-  items,
-  digestId,
-  onFeedback,
-}: DigestDetailCondensedProps) {
+export function DigestDetailCondensed({ items, digestId, onFeedback }: DigestDetailCondensedProps) {
   return (
     <div className={styles.container} data-testid="digest-detail">
       <table className={styles.table} role="grid">
@@ -68,12 +61,7 @@ export function DigestDetailCondensed({
         </thead>
         <tbody>
           {items.map((item) => (
-            <DigestItemRow
-              key={item.id}
-              item={item}
-              digestId={digestId}
-              onFeedback={onFeedback}
-            />
+            <DigestItemRow key={item.id} item={item} digestId={digestId} onFeedback={onFeedback} />
           ))}
         </tbody>
       </table>
@@ -84,10 +72,7 @@ export function DigestDetailCondensed({
 interface DigestItemRowProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
@@ -113,23 +98,15 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
                 {item.contentItem.title || "(Untitled)"}
               </a>
             ) : (
-              <span className={styles.titleText}>
-                {item.contentItem.title || "(Untitled)"}
-              </span>
+              <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
             )}
-            {item.contentItem.author && (
-              <span className={styles.author}>by {item.contentItem.author}</span>
-            )}
+            {item.contentItem.author && <span className={styles.author}>by {item.contentItem.author}</span>}
           </div>
         </td>
         <td className={styles.tdSource}>
-          <span className={styles.sourceType}>
-            {formatSourceType(item.contentItem.sourceType)}
-          </span>
+          <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
         </td>
-        <td className={styles.tdDate}>
-          {formatDate(item.contentItem.publishedAt)}
-        </td>
+        <td className={styles.tdDate}>{formatDate(item.contentItem.publishedAt)}</td>
         <td className={styles.tdScore}>
           <span className={styles.score}>{(item.score * 100).toFixed(0)}</span>
         </td>

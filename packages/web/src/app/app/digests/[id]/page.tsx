@@ -23,15 +23,11 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   const { id } = use(params);
   const { layout } = useTheme();
   // Using real API with adapter hooks
-  const { data: digest, isLoading, isError, isStale, refetch } =
-    useRealDigestDetail(id);
+  const { data: digest, isLoading, isError, isStale, refetch } = useRealDigestDetail(id);
   // Using real API feedback hook
   const { submitFeedback } = useRealFeedback();
 
-  const handleFeedback = async (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => {
+  const handleFeedback = async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
     await submitFeedback(contentItemId, id, action);
   };
 
@@ -55,11 +51,7 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
         <div className={styles.errorState}>
           <ErrorIcon />
           <h2 className={styles.errorTitle}>{t("digests.detail.error")}</h2>
-          <button
-            type="button"
-            className={`btn btn-primary ${styles.retryButton}`}
-            onClick={refetch}
-          >
+          <button type="button" className={`btn btn-primary ${styles.retryButton}`} onClick={refetch}>
             {t("common.retry")}
           </button>
         </div>
@@ -90,13 +82,9 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
             <div className={styles.headerMeta}>
               <span className={styles.itemCount}>
                 {digest.itemCount}{" "}
-                {digest.itemCount === 1
-                  ? t("digests.detail.item")
-                  : t("digests.detail.items")}
+                {digest.itemCount === 1 ? t("digests.detail.item") : t("digests.detail.items")}
               </span>
-              <span className={styles.createdAt}>
-                Created {formatRelativeTime(digest.createdAt)}
-              </span>
+              <span className={styles.createdAt}>Created {formatRelativeTime(digest.createdAt)}</span>
             </div>
           </header>
 
@@ -105,12 +93,7 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
               {t("digests.detail.rankedItems")}
             </h2>
 
-            <DigestDetail
-              layout={layout}
-              items={digest.items}
-              digestId={id}
-              onFeedback={handleFeedback}
-            />
+            <DigestDetail layout={layout} items={digest.items} digestId={id} onFeedback={handleFeedback} />
           </section>
         </>
       )}
@@ -122,38 +105,17 @@ interface DigestDetailProps {
   layout: "condensed" | "reader" | "timeline";
   items: DigestItem[];
   digestId: string;
-  onFeedback: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip"
-  ) => Promise<void>;
+  onFeedback: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
 }
 
 function DigestDetail({ layout, items, digestId, onFeedback }: DigestDetailProps) {
   switch (layout) {
     case "condensed":
-      return (
-        <DigestDetailCondensed
-          items={items}
-          digestId={digestId}
-          onFeedback={onFeedback}
-        />
-      );
+      return <DigestDetailCondensed items={items} digestId={digestId} onFeedback={onFeedback} />;
     case "reader":
-      return (
-        <DigestDetailReader
-          items={items}
-          digestId={digestId}
-          onFeedback={onFeedback}
-        />
-      );
+      return <DigestDetailReader items={items} digestId={digestId} onFeedback={onFeedback} />;
     case "timeline":
-      return (
-        <DigestDetailTimeline
-          items={items}
-          digestId={digestId}
-          onFeedback={onFeedback}
-        />
-      );
+      return <DigestDetailTimeline items={items} digestId={digestId} onFeedback={onFeedback} />;
   }
 }
 
@@ -176,24 +138,12 @@ function DigestHeaderSkeleton() {
   return (
     <header className={styles.header}>
       <div className={styles.headerMain}>
-        <span
-          className={styles.skeleton}
-          style={{ width: "280px", height: "32px" }}
-        />
-        <span
-          className={styles.skeleton}
-          style={{ width: "80px", height: "28px" }}
-        />
+        <span className={styles.skeleton} style={{ width: "280px", height: "32px" }} />
+        <span className={styles.skeleton} style={{ width: "80px", height: "28px" }} />
       </div>
       <div className={styles.headerMeta}>
-        <span
-          className={styles.skeleton}
-          style={{ width: "60px", height: "16px" }}
-        />
-        <span
-          className={styles.skeleton}
-          style={{ width: "120px", height: "16px" }}
-        />
+        <span className={styles.skeleton} style={{ width: "60px", height: "16px" }} />
+        <span className={styles.skeleton} style={{ width: "120px", height: "16px" }} />
       </div>
     </header>
   );

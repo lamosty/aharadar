@@ -29,7 +29,10 @@ function clip(value: string, maxChars: number): string {
   return `${value.slice(0, maxChars - 1)}…`;
 }
 
-function getPrimaryUrl(item: { canonicalUrl: string | null; metadata: Record<string, unknown> }): string | null {
+function getPrimaryUrl(item: {
+  canonicalUrl: string | null;
+  metadata: Record<string, unknown>;
+}): string | null {
   if (item.canonicalUrl) return item.canonicalUrl;
   const primary = item.metadata.primary_url;
   if (typeof primary === "string" && primary.length > 0) return primary;
@@ -114,14 +117,12 @@ type ViewMode = "item" | "details" | "help";
 
 type WhyShownData = {
   targetHasEmbedding: boolean;
-  profile:
-    | null
-    | {
-        positiveCount: number;
-        negativeCount: number;
-        positiveSim: number | null;
-        negativeSim: number | null;
-      };
+  profile: null | {
+    positiveCount: number;
+    negativeCount: number;
+    positiveSim: number | null;
+    negativeSim: number | null;
+  };
   similarLikes: Array<{
     contentItemId: string;
     action: FeedbackAction;
@@ -297,7 +298,9 @@ function renderItem(params: {
   const busySuffix = params.busy ? " (saving…)" : "";
   const lastAction = params.lastAction ? `last_action=${params.lastAction}` : "last_action=-";
 
-  console.log(`rank=${params.item.rank} score=${params.item.scoreText} aha=${params.item.ahaScore ?? "-"} ${lastAction}${busySuffix}`);
+  console.log(
+    `rank=${params.item.rank} score=${params.item.scoreText} aha=${params.item.ahaScore ?? "-"} ${lastAction}${busySuffix}`
+  );
   console.log(`source=${params.item.sourceType}`);
   console.log("");
 
@@ -352,7 +355,9 @@ function renderItem(params: {
         const posText = posSim !== null && Number.isFinite(posSim) ? posSim.toFixed(3) : "-";
         const negText = negSim !== null && Number.isFinite(negSim) ? negSim.toFixed(3) : "-";
         const pref =
-          posSim !== null && negSim !== null && Number.isFinite(posSim) && Number.isFinite(negSim) ? posSim - negSim : null;
+          posSim !== null && negSim !== null && Number.isFinite(posSim) && Number.isFinite(negSim)
+            ? posSim - negSim
+            : null;
         const prefText = pref !== null && Number.isFinite(pref) ? pref.toFixed(3) : "-";
         console.log(
           `pref_sim=${prefText} (pos_sim=${posText}, pos_n=${data.profile.positiveCount}; neg_sim=${negText}, neg_n=${data.profile.negativeCount})`
@@ -407,8 +412,7 @@ function renderItem(params: {
         const matched = signalCorr.matched === true;
         const matchedUrl = asString(signalCorr.matched_url);
         console.log(
-          `- signal_corroboration: matched=${matched}` +
-            (matchedUrl ? ` url=${clip(matchedUrl, 80)}` : "")
+          `- signal_corroboration: matched=${matched}` + (matchedUrl ? ` url=${clip(matchedUrl, 80)}` : "")
         );
       }
     }
@@ -424,7 +428,9 @@ function renderItem(params: {
     }
     if (!params.item.contentItemIdForFeedback) {
       console.log("");
-      console.log("warning: this digest item has no content_item_id to attach feedback to (likely missing cluster representative).");
+      console.log(
+        "warning: this digest item has no content_item_id to attach feedback to (likely missing cluster representative)."
+      );
     }
   }
 }

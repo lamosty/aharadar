@@ -24,7 +24,9 @@ export default function LandingPage() {
       <main id="main-content">
         <section className={styles.hero} data-testid="hero-section">
           <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle} data-testid="hero-title">{t("landing.hero.title")}</h1>
+            <h1 className={styles.heroTitle} data-testid="hero-title">
+              {t("landing.hero.title")}
+            </h1>
             <p className={styles.heroSubtitle}>{t("landing.hero.subtitle")}</p>
             <div className={styles.heroActions}>
               <Link href="/app" className={`btn btn-primary ${styles.heroCta}`} data-testid="hero-cta">
@@ -42,9 +44,7 @@ export default function LandingPage() {
         {/* Features section */}
         <section className={styles.features} data-testid="features-section">
           <div className={styles.featuresContent}>
-            <h2 className={styles.featuresTitle}>
-              {t("landing.features.title")}
-            </h2>
+            <h2 className={styles.featuresTitle}>{t("landing.features.title")}</h2>
             <div className={styles.featureGrid}>
               <FeatureCard
                 icon={<PersonalizedIcon />}
@@ -69,9 +69,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
-          <p className={styles.footerText}>
-            {t("common.appName")} - Surface signal from noise
-          </p>
+          <p className={styles.footerText}>{t("common.appName")} - Surface signal from noise</p>
         </div>
       </footer>
     </div>
@@ -117,11 +115,7 @@ function RadarIcon() {
 
 function RadarAnimation() {
   return (
-    <svg
-      viewBox="0 0 200 200"
-      className={styles.radarSvg}
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 200 200" className={styles.radarSvg} aria-hidden="true">
       {/* Radar circles */}
       <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-border)" strokeWidth="1" />
       <circle cx="100" cy="100" r="60" fill="none" stroke="var(--color-border)" strokeWidth="1" />

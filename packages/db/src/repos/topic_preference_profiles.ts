@@ -29,7 +29,11 @@ function asVectorLiteral(vector: number[]): string {
   return `[${vector.map((n) => (Number.isFinite(n) ? n : 0)).join(",")}]`;
 }
 
-function meanUpdate(existing: number[] | null, count: number, next: number[]): { vector: number[]; count: number } {
+function meanUpdate(
+  existing: number[] | null,
+  count: number,
+  next: number[]
+): { vector: number[]; count: number } {
   const n = Math.max(0, Math.floor(count));
   if (!existing || existing.length === 0 || n === 0) {
     return { vector: next, count: n + 1 };
@@ -48,7 +52,10 @@ function meanUpdate(existing: number[] | null, count: number, next: number[]): {
 
 export function createTopicPreferenceProfilesRepo(db: Queryable) {
   return {
-    async getByUserAndTopic(params: { userId: string; topicId: string }): Promise<TopicPreferenceProfileRow | null> {
+    async getByUserAndTopic(params: {
+      userId: string;
+      topicId: string;
+    }): Promise<TopicPreferenceProfileRow | null> {
       const res = await db.query<TopicPreferenceProfileRow>(
         `select
            user_id::text as user_id,
@@ -126,5 +133,3 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
     },
   };
 }
-
-

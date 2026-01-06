@@ -30,10 +30,7 @@ type InterpolationParams = Record<string, string | number>;
 /**
  * Get a nested value from an object using dot notation.
  */
-function getNestedValue(
-  obj: Record<string, unknown>,
-  path: string
-): string | undefined {
+function getNestedValue(obj: Record<string, unknown>, path: string): string | undefined {
   const keys = path.split(".");
   let current: unknown = obj;
 

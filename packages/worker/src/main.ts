@@ -1,9 +1,5 @@
 import { createDb } from "@aharadar/db";
-import {
-  parseSchedulerConfig,
-  generateDueWindows,
-  getSchedulableTopics,
-} from "@aharadar/pipeline";
+import { parseSchedulerConfig, generateDueWindows, getSchedulableTopics } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
 import { createPipelineQueue } from "./queues";
@@ -54,9 +50,7 @@ async function runSchedulerTick(
         removeOnFail: 50, // Keep last 50 failed jobs
       });
 
-      console.log(
-        `[scheduler] Enqueued job ${jobId.slice(0, 60)}... for topic=${topicId.slice(0, 8)}...`
-      );
+      console.log(`[scheduler] Enqueued job ${jobId.slice(0, 60)}... for topic=${topicId.slice(0, 8)}...`);
     }
   }
 }

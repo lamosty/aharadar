@@ -300,9 +300,7 @@ describe("printCreditsWarning", () => {
     const result = printCreditsWarning(status);
 
     expect(result).toBe(true);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Credits approaching limit (>=80%)")
-    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Credits approaching limit (>=80%)"));
     expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("850/1000 (85%)"));
   });
 

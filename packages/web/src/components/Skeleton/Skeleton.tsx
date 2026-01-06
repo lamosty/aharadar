@@ -75,21 +75,9 @@ export function SkeletonText({
 /**
  * Avatar/circular skeleton.
  */
-export function SkeletonAvatar({
-  size = "40px",
-  className = "",
-}: {
-  size?: string;
-  className?: string;
-}) {
+export function SkeletonAvatar({ size = "40px", className = "" }: { size?: string; className?: string }) {
   return (
-    <Skeleton
-      width={size}
-      height={size}
-      rounded="full"
-      className={className}
-      aria-label="Loading avatar"
-    />
+    <Skeleton width={size} height={size} rounded="full" className={className} aria-label="Loading avatar" />
   );
 }
 
@@ -106,13 +94,7 @@ export function SkeletonButton({
   className?: string;
 }) {
   return (
-    <Skeleton
-      width={width}
-      height={height}
-      rounded="md"
-      className={className}
-      aria-label="Loading button"
-    />
+    <Skeleton width={width} height={height} rounded="md" className={className} aria-label="Loading button" />
   );
 }
 
@@ -132,13 +114,9 @@ export function SkeletonCard({
 }) {
   return (
     <div className={`${styles.card} ${className}`} role="status" aria-busy="true">
-      {showImage && (
-        <Skeleton height="160px" rounded="lg" aria-label="Loading image" />
-      )}
+      {showImage && <Skeleton height="160px" rounded="lg" aria-label="Loading image" />}
       <div className={styles.cardContent}>
-        {showTitle && (
-          <Skeleton width="70%" height="1.5em" rounded="sm" aria-label="Loading title" />
-        )}
+        {showTitle && <Skeleton width="70%" height="1.5em" rounded="sm" aria-label="Loading title" />}
         <SkeletonText lines={textLines} />
       </div>
     </div>
@@ -237,9 +215,7 @@ export function SkeletonPage({
           <Skeleton width="200px" height="2rem" rounded="sm" aria-label="Loading page title" />
         </div>
       )}
-      <div className={styles.pageContent}>
-        {children}
-      </div>
+      <div className={styles.pageContent}>{children}</div>
     </div>
   );
 }

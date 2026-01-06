@@ -36,7 +36,11 @@ function normalizeText(value: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function buildEmbeddingInput(params: { title: string | null; bodyText: string | null; maxChars: number }): string | null {
+function buildEmbeddingInput(params: {
+  title: string | null;
+  bodyText: string | null;
+  maxChars: number;
+}): string | null {
   const title = normalizeText(params.title);
   const body = normalizeText(params.bodyText);
   if (!title && !body) return null;
@@ -100,7 +104,8 @@ export async function embedTopicContentItems(params: {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_ITEMS_PER_RUN) ?? 100;
   const batchSize = params.limits?.batchSize ?? parseIntEnv(process.env.OPENAI_EMBED_BATCH_SIZE) ?? 16;
-  const maxInputChars = params.limits?.maxInputChars ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_INPUT_CHARS) ?? 8000;
+  const maxInputChars =
+    params.limits?.maxInputChars ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_INPUT_CHARS) ?? 8000;
 
   let client: ReturnType<typeof createEnvEmbeddingsClient> | null = null;
   try {
@@ -139,7 +144,13 @@ export async function embedTopicContentItems(params: {
   let providerCallsOk = 0;
   let providerCallsError = 0;
 
-  const toEmbed: Array<{ contentItemId: string; text: string; hashText: string; sourceId: string; sourceType: string }> = [];
+  const toEmbed: Array<{
+    contentItemId: string;
+    text: string;
+    hashText: string;
+    sourceId: string;
+    sourceType: string;
+  }> = [];
 
   for (const row of candidates) {
     attempted += 1;
@@ -155,7 +166,10 @@ export async function embedTopicContentItems(params: {
     // If we already have an embedding with the target model/dims, we can just backfill hash_text.
     if (row.embedding_model === ref.model && row.embedding_dims === EXPECTED_DIMS && row.hash_text === null) {
       try {
-        await params.db.query(`update content_items set hash_text = $2 where id = $1::uuid`, [row.content_item_id, hashText]);
+        await params.db.query(`update content_items set hash_text = $2 where id = $1::uuid`, [
+          row.content_item_id,
+          hashText,
+        ]);
         updatedHashOnly += 1;
       } catch (err) {
         errors += 1;
@@ -194,14 +208,18 @@ export async function embedTopicContentItems(params: {
       const call = await client.embed(ref, input);
 
       if (call.vectors.length !== batch.length) {
-        throw new Error(`Embedding provider returned ${call.vectors.length} vectors for ${batch.length} inputs`);
+        throw new Error(
+          `Embedding provider returned ${call.vectors.length} vectors for ${batch.length} inputs`
+        );
       }
 
       // Validate dims against the fixed schema contract (vector(1536)).
       for (let i = 0; i < call.vectors.length; i += 1) {
         const vec = call.vectors[i]!;
         if (vec.length !== EXPECTED_DIMS) {
-          throw new Error(`Embedding dims mismatch for batch index ${i}: got ${vec.length}, expected ${EXPECTED_DIMS}`);
+          throw new Error(
+            `Embedding dims mismatch for batch index ${i}: got ${vec.length}, expected ${EXPECTED_DIMS}`
+          );
         }
         for (const n of vec) {
           if (typeof n !== "number" || !Number.isFinite(n)) {
@@ -214,7 +232,10 @@ export async function embedTopicContentItems(params: {
         for (let i = 0; i < batch.length; i += 1) {
           const item = batch[i]!;
           const vector = call.vectors[i]!;
-          await tx.query(`update content_items set hash_text = $2 where id = $1::uuid`, [item.contentItemId, item.hashText]);
+          await tx.query(`update content_items set hash_text = $2 where id = $1::uuid`, [
+            item.contentItemId,
+            item.hashText,
+          ]);
           await tx.embeddings.upsert({
             contentItemId: item.contentItemId,
             model: ref.model,
@@ -312,4 +333,3 @@ export async function embedTopicContentItems(params: {
     providerCallsError,
   };
 }
-
