@@ -859,6 +859,83 @@ export async function adminSourcesSetTopicCommand(args: string[]): Promise<void>
   }
 }
 
+export async function adminSourcesSetCadenceCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    let sourceId: string | null = null;
+    let everyMinutes: number | null = null;
+    let clear = false;
+
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--source-id") {
+        sourceId = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--every-minutes") {
+        const next = args[i + 1];
+        const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          console.error("Invalid --every-minutes (expected a positive integer)");
+          process.exitCode = 1;
+          return;
+        }
+        everyMinutes = parsed;
+        i += 1;
+        continue;
+      }
+      if (a === "--clear") {
+        clear = true;
+        continue;
+      }
+      if (a === "--help" || a === "-h") {
+        sourceId = null;
+      }
+    }
+
+    if (!sourceId || (!clear && everyMinutes === null)) {
+      console.log("Usage:");
+      console.log("  admin:sources-set-cadence --source-id <uuid> (--every-minutes <int> | --clear)");
+      console.log("");
+      console.log("Examples:");
+      console.log("  # Set daily cadence (1440 minutes):");
+      console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440");
+      console.log("");
+      console.log("  # Set 8-hour cadence (480 minutes):");
+      console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 480");
+      console.log("");
+      console.log("  # Clear cadence (fetch on every run):");
+      console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --clear");
+      console.log("");
+      console.log("Tip: list sources with `admin:sources-list`.");
+      return;
+    }
+
+    const source = await db.sources.getById(sourceId);
+    if (!source) {
+      console.error(`Source not found: ${sourceId}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const result = await db.sources.updateConfigCadence({
+      sourceId,
+      cadence: clear ? null : { mode: "interval", everyMinutes: everyMinutes! },
+    });
+
+    console.log("Updated source cadence:");
+    console.log(`- source_id: ${sourceId}`);
+    console.log(`- type: ${source.type}`);
+    console.log(`- name: ${source.name}`);
+    console.log(`- previous: ${result.previous ? JSON.stringify(result.previous) : "(none)"}`);
+    console.log(`- new: ${result.updated ? JSON.stringify(result.updated) : "(cleared)"}`);
+  } finally {
+    await db.close();
+  }
+}
+
 export async function adminSignalResetCursorCommand(args: string[]): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);

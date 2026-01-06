@@ -12,6 +12,7 @@ import {
   adminSignalDebugCommand,
   adminSignalExplodeBundlesCommand,
   adminSignalResetCursorCommand,
+  adminSourcesSetCadenceCommand,
   adminSourcesSetTopicCommand,
   adminSourcesAddCommand,
   adminSourcesListCommand,
@@ -114,7 +115,8 @@ function printHelp(): void {
   console.log("  admin:sources-list");
   console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
   console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
-  console.log('  admin:signal-debug [--kind post|bundle|all] [--limit N] [--verbose] [--json] [--raw]');
+  console.log("  admin:sources-set-cadence --source-id <uuid> (--every-minutes <int> | --clear)");
+  console.log('  admin:signal-debug [--kind bundle] [--limit N] [--verbose] [--json] [--raw]');
   console.log("  admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
@@ -174,6 +176,9 @@ async function main(): Promise<void> {
       break;
     case "admin:sources-set-topic":
       result = adminSourcesSetTopicCommand(rest);
+      break;
+    case "admin:sources-set-cadence":
+      result = adminSourcesSetCadenceCommand(rest);
       break;
     default:
       printHelp();
