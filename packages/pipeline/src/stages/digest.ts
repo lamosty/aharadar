@@ -265,6 +265,15 @@ function computeSignalCorroboration(params: {
  *
  * For each candidate with a vector, we query the nearest neighbor from the
  * historical items in the lookback window (topic-scoped, excluding current window).
+ *
+ * TODO: If this becomes a bottleneck (500 queries × 10ms = 5s), batch with LATERAL:
+ *   SELECT cv.candidate_id, nn.max_similarity
+ *   FROM (SELECT unnest($ids) as candidate_id, unnest($vectors)::vector as vec) cv
+ *   LEFT JOIN LATERAL (
+ *     SELECT (1 - (th.vector <=> cv.vec))::float8 as max_similarity
+ *     FROM topic_history th ORDER BY th.vector <=> cv.vec LIMIT 1
+ *   ) nn ON true
+ * Caveat: verify with EXPLAIN ANALYZE that pgvector uses HNSW index per-row.
  */
 async function computeNoveltyForCandidates(params: {
   db: Db;
