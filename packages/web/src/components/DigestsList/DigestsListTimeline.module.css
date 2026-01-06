@@ -1,0 +1,229 @@
+.container {
+  max-width: var(--content-max-width, 600px);
+}
+
+.dateGroup {
+  margin-bottom: var(--space-8);
+}
+
+.dateGroup:last-child {
+  margin-bottom: 0;
+}
+
+.dateHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.dateLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.dateLine {
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-border-subtle);
+}
+
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.timelineItem {
+  display: flex;
+  gap: var(--space-3);
+  position: relative;
+}
+
+.timelineDot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 0 0 2px var(--color-primary-subtle);
+  z-index: 1;
+}
+
+.connector {
+  flex: 1;
+  width: 2px;
+  background-color: var(--color-border-subtle);
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.digestCard {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.digestCard:hover {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.digestCard:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.digestTime {
+  width: 70px;
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.digestContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.digestHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.windowRange {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.modeBadge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.modeLow {
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.modeNormal {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.modeHigh {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.modeCatchup {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-text-primary);
+}
+
+.digestMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.itemCount {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.digestArrow {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.digestCard:hover .digestArrow {
+  color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+/* Skeleton styles */
+.skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-border-subtle) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .digestCard {
+    flex-wrap: wrap;
+    padding: var(--space-3);
+  }
+
+  .digestTime {
+    width: auto;
+    order: 1;
+  }
+
+  .digestContent {
+    order: 3;
+    width: 100%;
+    margin-top: var(--space-2);
+  }
+
+  .digestArrow {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .digestHeader {
+    flex-wrap: wrap;
+  }
+}
