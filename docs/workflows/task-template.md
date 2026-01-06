@@ -58,6 +58,12 @@ pnpm -r typecheck
 - **Message**: `<type(scope)>: <message>`
 - **Files expected**: <list>
 
+Commit instructions:
+
+- Make exactly **one commit** per task spec (unless the spec explicitly asks for multiple).
+- If you had to touch files outside **Scope**, stop and ask before committing.
+- If you believe the task’s decisions are outdated/risky, raise it (see “Open questions / uncertainties”) and ask the driver before deviating.
+
 ### Final step (required): write task report files (no copy/paste)
 
 After committing, write a short task report to:
@@ -83,6 +89,7 @@ TASK REPORT
 Repo: /Users/lamosty/projects/aharadar
 Branch: <branch-name>
 Commit(s): <commit-hash(es)>
+Commit message: <type(scope)>: <message>
 
 Task spec followed:
 - <path to this task spec>

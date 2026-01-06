@@ -1,4 +1,4 @@
-# Task 037 — `feat(web): digests list (condensed + reader modes)`
+# Task 037 — `feat(web): digests list (layout packs: condensed/reader/timeline)`
 
 - **Owner**: Claude Code Opus 4.5 (implementer)
 - **Reviewer**: GPT‑5.2 xtra high
@@ -11,7 +11,7 @@ Implement the digests list UI with excellent UX:
 - fast navigation
 - responsive layout
 - skeletons
-- “condensed vs reader” view modes
+- 3 layout packs (different templates): condensed / reader / timeline
 
 ## Read first (required)
 
@@ -31,7 +31,10 @@ If anything else seems required, **stop and ask**.
 1. Create `/app/digests` page:
    - list digests (default last 7 days, as API does)
    - show mode + window + createdAt
-   - responsive: table-ish condensed mode, card reader mode
+   - responsive: implement 3 distinct templates:
+     - Condensed: table-ish dense list
+     - Reader: cards/editorial list
+     - Timeline: feed/timeline layout
 2. Skeleton loading states:
    - initial load skeleton
    - empty state
@@ -48,7 +51,7 @@ If anything else seems required, **stop and ask**.
 
 - [ ] `pnpm -r typecheck` passes.
 - [ ] Digests list renders with skeleton/empty/error states.
-- [ ] Condensed vs reader switch changes density/typography without breaking layout.
+- [ ] Layout switch changes **template structure** (not just CSS) without breaking layout.
 
 ## Test plan (copy/paste)
 

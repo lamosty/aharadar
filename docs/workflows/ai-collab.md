@@ -62,6 +62,9 @@ Rules for Opus:
 - Stay within the declared file scope.
 - If a contract is unclear: **stop and ask** (don’t guess).
 - Keep interfaces stable unless the spec/ADR explicitly changes them.
+- If a task spec’s decision seems **outdated / risky / not best practice in 2025**, do **not** blindly follow it:
+  - write a short “pushback” note in the task report with 1–2 better options and why
+  - if it changes behavior/contracts, **stop and ask the driver** before implementing the alternative
 
 ### 3) Opus runs checks + smoke test
 

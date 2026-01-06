@@ -33,6 +33,9 @@ If anything else seems required, **stop and ask**.
 
 ## Decisions (already decided — do not re-ask)
 
+- Frontend stack:
+  - **Option A (chosen)**: Next.js for both marketing + app (single web frontend for now).
+  - **Note (future)**: We may move only the marketing site to [Astro](https://astro.build/) later for content/SEO performance, while keeping the app in Next.js. Keep design tokens/branding portable to support that.
 - **Ship all screens** in v1:
   - landing page
   - app/dashboard shell
@@ -51,6 +54,16 @@ If anything else seems required, **stop and ask**.
   - basic offline/poor-network handling now (improve later)
 - **i18n**: scaffold only (English now; don’t paint into a corner)
 - **Dark mode**: yes (toggle)
+- **Design exploration (early dev)**:
+  - ship **2–3 distinct visual themes** (not just light/dark) so the driver can choose
+  - implement themes as tokenized “theme packs” (CSS variables) so swapping is low-churn
+  - ship **3 distinct layout templates** (different component/markup structures) for core pages so the driver can choose an information architecture feel:
+    - Condensed (dense/table-ish)
+    - Reader (cards/editorial)
+    - Timeline (feed/timeline)
+  - app shell navigation should be designed for future layout variants:
+    - not required to implement multiple nav layouts in v1
+    - but the architecture should make it easy to add sidebar vs top-nav vs mobile-bottom-nav later without refactoring page code
 - **E2E tests**: yes, Playwright from day 1
 - **Deployment**: target is a Hetzner Ubuntu server (Docker-based)
 
@@ -59,13 +72,27 @@ If anything else seems required, **stop and ask**.
 1. Create `docs/web.md` with:
    - Product UI goal (1 paragraph)
    - Route map (marketing vs app)
-   - Screen-by-screen requirements (bulleted)
-   - A11y/perf requirements checklist (MVP)
-   - Loading/offline behaviors
-   - “View density” toggle: condensed vs reader mode behavior
-   - “Why shown” UX requirements (what to show from `system_features`)
-   - API data needs (list endpoints; mark existing vs required-to-add)
-   - Test strategy (unit vs Playwright; keep `pnpm test` hermetic)
+
+- Future note: “Astro for marketing later” (what would need to be kept portable: tokens, typography, icons, brand)
+- Screen-by-screen requirements (bulleted)
+- A11y/perf requirements checklist (MVP)
+- Loading/offline behaviors
+- “View density” toggle: condensed vs reader mode behavior
+- Theming plan:
+  - “theme pack” concept (2–3 options)
+  - how to select/persist theme (local only for now)
+- Layout plan:
+  - “layout pack” concept (3 options above)
+  - requirement: different component trees/HTML structures (not just CSS)
+  - how to select/persist layout
+- App shell/nav plan:
+  - define a `NavModel` (routes + labels + icons) consumed by all nav variants
+  - define a `NavVariant` concept (e.g. sidebar/top/bottom) even if only one is implemented initially
+  - require that pages do not depend on a specific nav structure (only on shared layout slots)
+- “Why shown” UX requirements (what to show from `system_features`)
+- API data needs (list endpoints; mark existing vs required-to-add)
+- Test strategy (unit vs Playwright; keep `pnpm test` hermetic)
+
 2. Keep it topic-agnostic and vendor-agnostic.
 
 ## Acceptance criteria

@@ -11,6 +11,7 @@ Implement the digest detail view:
 - ranked items list
 - “why shown” breakdown (system features)
 - feedback actions with optimistic updates
+- support layout packs (condensed/reader/timeline) for experimentation
 
 ## Read first (required)
 
@@ -32,6 +33,10 @@ If anything else seems required, **stop and ask**.
    - show digest header (window, mode)
    - list ranked items with title/url/author/publishedAt/sourceType
    - show summary/triage if present
+   - implement 3 distinct templates (different markup) aligned with layout mode:
+     - Condensed: dense/table-ish rows
+     - Reader: cards with more whitespace/typography
+     - Timeline: feed-style stacked items
 2. “Why shown” UX:
    - per-item expandable panel (or drawer) reading from `triageJson.system_features.*`
    - include at least:

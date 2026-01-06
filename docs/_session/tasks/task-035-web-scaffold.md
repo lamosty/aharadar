@@ -32,9 +32,11 @@ If anything else seems required, **stop and ask**.
 
 - Framework: **React + Next.js (App Router)** for SSR/SEO and app UX.
 - Package name: `packages/web` (workspace package `@aharadar/web`).
+- Marketing note: build the landing page in Next.js for now; we may move marketing-only pages to [Astro](https://astro.build/) later. Keep tokens portable (CSS variables) so a future split is low-churn.
 - Themes:
   - light + dark (toggle)
-  - density/view mode toggle: **Condensed** vs **Reader**
+  - layout mode toggle: **Condensed** vs **Reader** vs **Timeline** (different markup/templates on key pages)
+  - **2–3 distinct “theme packs”** (aesthetic variants) implemented via CSS tokens, to allow choosing a direction in early dev
 - Auth: **UI-only** (email magic link design), no backend yet.
 - i18n: scaffold only.
 
@@ -43,16 +45,24 @@ If anything else seems required, **stop and ask**.
 1. Scaffold `packages/web` with Next.js + TypeScript.
 2. Add an intentional design system:
    - CSS variables for colors/spacing/typography
+   - **theme packs**: implement 3 distinct presets (name them) with noticeably different typography + palette + surface styling (still serious/trustworthy)
    - dark mode + density toggle persisted locally
+   - theme selection persisted locally (localStorage is fine for MVP)
    - a11y-friendly focus styles and skip-to-content
-   - avoid generic “AI slop” aesthetics; pick a clear, serious-but-human visual direction
+   - avoid generic “AI slop” aesthetics; use the `frontend-design` skill to propose and implement 3 options the driver can choose from
 3. Implement routes:
    - `/` marketing landing page (SEO metadata)
    - `/app` dashboard shell (nav + placeholders)
    - `/login` login UI (magic-link form, no backend call yet)
 4. Add basic layout primitives/components:
    - App shell with responsive nav
+     - implement a slot-based `AppShell` / layout component so nav can be swapped later (sidebar/top/bottom) without refactoring page code
+     - define a `NavModel` (routes + labels + icons) and keep it separate from presentation
    - Toast/notice component for errors (can be simple initially)
+   - Appearance switcher UI (can be small):
+     - Theme pack selector (3 options)
+     - Light/dark toggle
+     - Layout mode selector (Condensed / Reader / Timeline)
 5. Add i18n scaffold:
    - central place for strings (e.g., `messages/en.json` + `t(key)` helper)
 6. Add scripts:
@@ -63,7 +73,9 @@ If anything else seems required, **stop and ask**.
 - [ ] `pnpm -r typecheck` passes.
 - [ ] `pnpm -r build` passes.
 - [ ] Web app runs locally (`pnpm dev:web`) with landing page and app shell.
+- [ ] Theme pack selector works and persists (3 distinct themes).
 - [ ] Dark mode + density toggle work and persist.
+- [ ] Layout mode selector persists (even if full page templates land in later tasks).
 - [ ] Basic a11y: keyboard navigation, visible focus, semantic headings.
 
 ## Test plan (copy/paste)
