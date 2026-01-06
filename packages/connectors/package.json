@@ -8,7 +8,7 @@
     "@aharadar/shared": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b tsconfig.build.json",
     "dev": "echo \"connectors: no dev\"",
     "test": "echo \"connectors: no tests yet\"",
     "lint": "echo \"connectors: no lint yet\"",

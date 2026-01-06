@@ -11,7 +11,7 @@
     "@aharadar/shared": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b tsconfig.build.json",
     "dev": "echo \"pipeline: no dev\"",
     "test": "echo \"pipeline: no tests yet\"",
     "lint": "echo \"pipeline: no lint yet\"",
