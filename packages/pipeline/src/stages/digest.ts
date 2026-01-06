@@ -436,7 +436,10 @@ export async function persistDigestFromContentItems(params: {
   mode: DigestMode;
   limits?: Partial<DigestLimits>;
   filter?: IngestSourceFilter;
+  /** If false, skip LLM triage (heuristic-only scoring; triage_json stays null) */
+  paidCallsAllowed?: boolean;
 }): Promise<DigestRunResult | null> {
+  const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? 20;
   const candidatePoolSize = Math.min(500, Math.max(maxItems, maxItems * 10));
 
@@ -625,16 +628,22 @@ export async function persistDigestFromContentItems(params: {
 
   scored.sort((a, b) => b.heuristicScore - a.heuristicScore || b.candidateAtMs - a.candidateAtMs);
 
-  const triageLimit = resolveTriageLimit({ maxItems, candidateCount: scored.length });
-  const triageMap = await triageCandidates({
-    db: params.db,
-    userId: params.userId,
-    candidates: scored,
-    windowStart: params.windowStart,
-    windowEnd: params.windowEnd,
-    mode: params.mode,
-    maxCalls: triageLimit,
-  });
+  // Skip LLM triage when credits exhausted (heuristic-only scoring)
+  let triageMap: Map<string, TriageOutput>;
+  if (paidCallsAllowed) {
+    const triageLimit = resolveTriageLimit({ maxItems, candidateCount: scored.length });
+    triageMap = await triageCandidates({
+      db: params.db,
+      userId: params.userId,
+      candidates: scored,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      mode: params.mode,
+      maxCalls: triageLimit,
+    });
+  } else {
+    triageMap = new Map();
+  }
 
   // Load signal corroboration URL set from recent signal bundles
   const signalCorr = await loadSignalCorroborationSet({

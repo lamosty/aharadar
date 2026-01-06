@@ -94,7 +94,10 @@ export async function embedTopicContentItems(params: {
   windowEnd?: string;
   tier: BudgetTier;
   limits?: Partial<EmbedLimits>;
+  /** If false, skip actual embedding calls (still allow hash-only backfills) */
+  paidCallsAllowed?: boolean;
 }): Promise<EmbedRunResult> {
+  const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_ITEMS_PER_RUN) ?? 100;
   const batchSize = params.limits?.batchSize ?? parseIntEnv(process.env.OPENAI_EMBED_BATCH_SIZE) ?? 16;
   const maxInputChars = params.limits?.maxInputChars ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_INPUT_CHARS) ?? 8000;
@@ -168,6 +171,19 @@ export async function embedTopicContentItems(params: {
       sourceId: row.source_id,
       sourceType: row.source_type,
     });
+  }
+
+  // Skip actual embedding calls when credits are exhausted (only hash-only backfills were done above)
+  if (!paidCallsAllowed) {
+    return {
+      attempted,
+      embedded: 0,
+      updatedHashOnly,
+      skipped: skipped + toEmbed.length,
+      errors: 0,
+      providerCallsOk: 0,
+      providerCallsError: 0,
+    };
   }
 
   for (const batch of chunk(toEmbed, batchSize)) {

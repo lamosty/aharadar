@@ -199,6 +199,12 @@ function draftToUpsert(draft: ContentItemDraft, source: SourceRow, userId: strin
   };
 }
 
+/**
+ * Connectors that require paid provider calls.
+ * When credits are exhausted, these should be skipped during ingest.
+ */
+const PAID_CONNECTOR_TYPES = new Set(["signal", "x_posts"]);
+
 export async function ingestEnabledSources(params: {
   db: Db;
   userId: string;
@@ -207,7 +213,11 @@ export async function ingestEnabledSources(params: {
   windowEnd: string;
   limits: IngestLimits;
   filter?: IngestSourceFilter;
+  /** If false, skip paid connectors (signal, x_posts) */
+  paidCallsAllowed?: boolean;
 }): Promise<IngestRunResult> {
+  const paidCallsAllowed = params.paidCallsAllowed ?? true;
+
   let sources = await params.db.sources.listEnabledByUserAndTopic({ userId: params.userId, topicId: params.topicId });
 
   const onlyTypes = (params.filter?.onlySourceTypes ?? []).filter((t) => t.trim().length > 0);
@@ -255,6 +265,15 @@ export async function ingestEnabledSources(params: {
       inserted: 0,
       errors: 0,
     };
+
+    // Budget gating: skip paid connectors when credits exhausted
+    if (!paidCallsAllowed && PAID_CONNECTOR_TYPES.has(source.type)) {
+      baseResult.status = "skipped";
+      baseResult.skipReason = "budget_exhausted";
+      perSource.push(baseResult);
+      totals.skipped += 1;
+      continue;
+    }
 
     // Cadence gating (ADR 0009): check if source is due before fetching
     const sourceConfig = asRecord(source.config_json);

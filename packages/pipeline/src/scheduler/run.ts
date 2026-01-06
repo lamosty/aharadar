@@ -6,6 +6,7 @@ import { embedTopicContentItems, type EmbedRunResult } from "../stages/embed";
 import { dedupeTopicContentItems, type DedupeRunResult } from "../stages/dedupe";
 import { clusterTopicContentItems, type ClusterRunResult } from "../stages/cluster";
 import { persistDigestFromContentItems, type DigestRunResult } from "../stages/digest";
+import { computeCreditsStatus, printCreditsWarning, type CreditsStatus } from "../budgets/credits";
 
 export interface PipelineRunParams {
   userId: string;
@@ -16,6 +17,11 @@ export interface PipelineRunParams {
   ingestFilter?: IngestSourceFilter;
   mode?: BudgetTier | "catch_up";
   digest?: { maxItems?: number };
+  /** Budget config (optional; if not provided, paid calls are always allowed) */
+  budget?: {
+    monthlyCredits: number;
+    dailyThrottleCredits?: number;
+  };
 }
 
 export interface PipelineRunResult {
@@ -28,14 +34,35 @@ export interface PipelineRunResult {
   dedupe: DedupeRunResult;
   cluster: ClusterRunResult;
   digest: DigestRunResult | null;
+  creditsStatus?: CreditsStatus;
 }
 
-function resolveTier(mode: BudgetTier | "catch_up" | undefined): BudgetTier {
+function resolveTier(mode: BudgetTier | "catch_up" | undefined, paidCallsAllowed: boolean): BudgetTier {
+  // When credits exhausted, force tier to low
+  if (!paidCallsAllowed) return "low";
   if (!mode || mode === "catch_up") return "high";
   return mode;
 }
 
 export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promise<PipelineRunResult> {
+  // Check credits status if budget config is provided
+  let creditsStatus: CreditsStatus | undefined;
+  let paidCallsAllowed = true;
+
+  if (params.budget) {
+    creditsStatus = await computeCreditsStatus({
+      db,
+      userId: params.userId,
+      monthlyCredits: params.budget.monthlyCredits,
+      dailyThrottleCredits: params.budget.dailyThrottleCredits,
+      windowEnd: params.windowEnd,
+    });
+    paidCallsAllowed = creditsStatus.paidCallsAllowed;
+    printCreditsWarning(creditsStatus);
+  }
+
+  const effectiveTier = resolveTier(params.mode, paidCallsAllowed);
+
   const ingestLimits: IngestLimits = {
     maxItemsPerSource: params.ingest?.maxItemsPerSource ?? 50,
   };
@@ -48,6 +75,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     windowEnd: params.windowEnd,
     limits: ingestLimits,
     filter: params.ingestFilter,
+    paidCallsAllowed,
   });
 
   const embed = await embedTopicContentItems({
@@ -56,7 +84,8 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     topicId: params.topicId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
-    tier: resolveTier(params.mode),
+    tier: effectiveTier,
+    paidCallsAllowed,
   });
 
   const dedupe = await dedupeTopicContentItems({
@@ -81,9 +110,10 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     topicId: params.topicId,
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
-    mode: params.mode ?? "normal",
+    mode: paidCallsAllowed ? (params.mode ?? "normal") : "low",
     limits: { maxItems: params.digest?.maxItems ?? 20 },
     filter: params.ingestFilter,
+    paidCallsAllowed,
   });
 
   return {
@@ -96,5 +126,6 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     dedupe,
     cluster,
     digest,
+    creditsStatus,
   };
 }
