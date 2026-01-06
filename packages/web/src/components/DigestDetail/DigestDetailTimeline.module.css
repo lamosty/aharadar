@@ -1,0 +1,226 @@
+.container {
+  max-width: var(--content-max-width, 600px);
+}
+
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.timelineItem {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.timelineLine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-text-muted);
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.dotHigh {
+  background-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success-subtle);
+}
+
+.dotMedium {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-subtle);
+}
+
+.dotLow {
+  background-color: var(--color-text-muted);
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.connector {
+  flex: 1;
+  width: 2px;
+  min-height: var(--space-4);
+  background-color: var(--color-border-subtle);
+  margin: var(--space-2) 0;
+}
+
+.post {
+  flex: 1;
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.post:hover {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.postHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.postMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rank {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.sourceType {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.score {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.timestamp {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.postContent {
+  margin-bottom: var(--space-3);
+}
+
+.title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.titleLink {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.titleLink:hover {
+  color: var(--color-primary);
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.summary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: var(--space-2) 0 0;
+}
+
+.postFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.openLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.openLink:hover {
+  color: var(--color-primary);
+  background-color: var(--color-surface);
+}
+
+/* Skeleton styles */
+.skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-border-subtle) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .timelineLine {
+    width: 20px;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .post {
+    padding: var(--space-3);
+  }
+
+  .postHeader {
+    flex-wrap: wrap;
+  }
+
+  .postFooter {
+    flex-wrap: wrap;
+  }
+}

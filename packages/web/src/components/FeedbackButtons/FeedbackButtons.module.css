@@ -1,0 +1,116 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.container.compact {
+  gap: var(--space-1);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  background-color: transparent;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.compact .button {
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+}
+
+.button:hover:not(:disabled) {
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Active states - different colors for each action */
+.button.like.active {
+  color: var(--color-success);
+  background-color: var(--color-success-subtle);
+  border-color: var(--color-success);
+}
+
+.button.dislike.active {
+  color: var(--color-error);
+  background-color: var(--color-error-subtle);
+  border-color: var(--color-error);
+}
+
+.button.save.active {
+  color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+}
+
+.button.skip.active {
+  color: var(--color-text-muted);
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* Hover states when active */
+.button.like.active:hover:not(:disabled) {
+  color: var(--color-success);
+  background-color: var(--color-success-subtle);
+}
+
+.button.dislike.active:hover:not(:disabled) {
+  color: var(--color-error);
+  background-color: var(--color-error-subtle);
+}
+
+.button.save.active:hover:not(:disabled) {
+  color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+}
+
+.button.skip.active:hover:not(:disabled) {
+  color: var(--color-text-muted);
+  background-color: var(--color-surface);
+}
+
+.label {
+  display: inline;
+}
+
+/* Hide label on smaller screens in default variant */
+@media (max-width: 640px) {
+  .container:not(.compact) .label {
+    display: none;
+  }
+
+  .container:not(.compact) .button {
+    padding: var(--space-2);
+  }
+}
