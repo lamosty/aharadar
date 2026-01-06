@@ -178,7 +178,7 @@ export function rankCandidates(params: { candidates: RankCandidateInput[]; weigh
     };
   });
 
-  scored.sort((a, b) => b.score - a.score || b.candidateAtMs - a.candidateAtMs);
+  scored.sort((a, b) => b.score - a.score || b.candidateAtMs - a.candidateAtMs || a.candidateId.localeCompare(b.candidateId));
   return scored;
 }
 
