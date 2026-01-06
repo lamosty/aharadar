@@ -42,9 +42,30 @@ Every task must end with:
 6. **Task 006**: add minimal tests
    - `docs/_session/tasks/task-006-tests.md`
 
-## Backlog (don’t start until x_posts + cadence land)
+## Follow-up tasks (next window)
 
-- Prefer canonical cluster representatives in digests (avoid tweet-as-face when canonical exists).
-- URL-only “signal corroboration” boost (optional ranking feature; keep explainable/deterministic).
-- Budget hard enforcement (skip paid calls when credits exhausted; tier dial-down).
-- Real scheduler/queue orchestration (BullMQ + cron windows).
+7. **Task 007**: audit `signal` now that `x_posts` exists (bundle-only amplifier)
+   - `docs/_session/tasks/task-007-signal-audit.md`
+8. **Task 008**: migration strategy for legacy signal-stored X content (docs-only stance)
+   - `docs/_session/tasks/task-008-x-content-migration.md`
+9. **Task 009**: cadence UX CLI helper
+   - `docs/_session/tasks/task-009-cadence-ux.md`
+10. **Task 010**: exclude tests from `dist/` (optional polish)
+
+- `docs/_session/tasks/task-010-exclude-tests-from-dist.md`
+
+11. **Task 011**: URL-only signal corroboration boost
+
+- `docs/_session/tasks/task-011-signal-corroboration.md`
+
+12. **Task 012**: prefer canonical cluster representatives in digests (avoid tweet-as-face)
+
+- `docs/_session/tasks/task-012-canonical-cluster-reps.md`
+
+13. **Task 013**: budget hard enforcement (credits exhaustion → warn + fallback low)
+
+- `docs/_session/tasks/task-013-budget-hard-enforcement.md`
+
+14. **Task 014**: scheduler/queue wiring (BullMQ + real cron windows)
+
+- `docs/_session/tasks/task-014-scheduler-queue-wiring.md`

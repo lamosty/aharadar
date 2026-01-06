@@ -16,5 +16,13 @@ Task files (in recommended order):
 4. `task-004-x-posts-fetch.md`
 5. `task-005-x-posts-normalize.md`
 6. `task-006-tests.md`
+7. `task-007-signal-audit.md`
+8. `task-008-x-content-migration.md`
+9. `task-009-cadence-ux.md`
+10. `task-010-exclude-tests-from-dist.md`
+11. `task-011-signal-corroboration.md`
+12. `task-012-canonical-cluster-reps.md`
+13. `task-013-budget-hard-enforcement.md`
+14. `task-014-scheduler-queue-wiring.md`
 
 
