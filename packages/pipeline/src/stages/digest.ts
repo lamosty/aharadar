@@ -1,9 +1,9 @@
 import type { Db } from "@aharadar/db";
 import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharadar/llm";
-import type { BudgetTier } from "@aharadar/shared";
+import { canonicalizeUrl, sha256Hex, type BudgetTier } from "@aharadar/shared";
 
 import type { IngestSourceFilter } from "./ingest";
-import { rankCandidates } from "./rank";
+import { rankCandidates, type SignalCorroborationFeature } from "./rank";
 import { enrichTopCandidates } from "./llm_enrich";
 
 export type DigestMode = BudgetTier | "catch_up";
@@ -106,6 +106,156 @@ function getPrimaryUrl(params: {
     if (typeof first === "string" && first.length > 0) return first;
   }
   return null;
+}
+
+/**
+ * Check if a URL is X-like (x.com, twitter.com, t.co).
+ * Signal corroboration should boost external content, not X posts themselves.
+ */
+function isXLikeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return host === "x.com" || host === "www.x.com" ||
+           host === "twitter.com" || host === "www.twitter.com" ||
+           host === "t.co";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Safely canonicalize a URL, returning null if invalid.
+ */
+function safeCanonicalizeUrl(url: string): string | null {
+  try {
+    return canonicalizeUrl(url);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract all external URLs from a signal bundle's metadata.
+ * Filters out X-like URLs since we want to boost external content corroboration.
+ */
+function extractBundleExternalUrls(metadata: Record<string, unknown>): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+
+  const addUrl = (url: unknown) => {
+    if (typeof url !== "string" || url.length === 0) return;
+    if (isXLikeUrl(url)) return;
+    const canon = safeCanonicalizeUrl(url);
+    if (!canon) return;
+    if (seen.has(canon)) return;
+    seen.add(canon);
+    urls.push(canon);
+  };
+
+  // primary_url
+  addUrl(metadata.primary_url);
+
+  // extracted_urls
+  const extracted = metadata.extracted_urls;
+  if (Array.isArray(extracted)) {
+    for (const u of extracted) addUrl(u);
+  }
+
+  // signal_results[].url
+  const results = metadata.signal_results;
+  if (Array.isArray(results)) {
+    for (const r of results) {
+      if (r && typeof r === "object" && !Array.isArray(r)) {
+        addUrl((r as Record<string, unknown>).url);
+      }
+    }
+  }
+
+  return urls;
+}
+
+type SignalBundleRow = {
+  id: string;
+  metadata_json: Record<string, unknown>;
+};
+
+/**
+ * Load recent signal bundles for the topic/window and build a set of corroboration URL hashes.
+ */
+async function loadSignalCorroborationSet(params: {
+  db: Db;
+  userId: string;
+  topicId: string;
+  windowStart: string;
+  windowEnd: string;
+}): Promise<{ urlHashes: Set<string>; sampleUrls: string[] }> {
+  const bundles = await params.db.query<SignalBundleRow>(
+    `select ci.id, ci.metadata_json
+     from content_items ci
+     join content_item_sources cis on cis.content_item_id = ci.id
+     join sources s on s.id = cis.source_id
+     where ci.user_id = $1
+       and ci.deleted_at is null
+       and ci.duplicate_of_content_item_id is null
+       and ci.source_type = 'signal'
+       and ci.canonical_url is null
+       and s.topic_id = $2::uuid
+       and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
+       and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
+     order by coalesce(ci.published_at, ci.fetched_at) desc
+     limit 100`,
+    [params.userId, params.topicId, params.windowStart, params.windowEnd]
+  );
+
+  const urlHashes = new Set<string>();
+  const sampleUrls: string[] = [];
+
+  for (const row of bundles.rows) {
+    const meta = asRecord(row.metadata_json);
+    const externalUrls = extractBundleExternalUrls(meta);
+    for (const url of externalUrls) {
+      const hash = sha256Hex(url);
+      if (!urlHashes.has(hash)) {
+        urlHashes.add(hash);
+        if (sampleUrls.length < 10) sampleUrls.push(url);
+      }
+    }
+  }
+
+  return { urlHashes, sampleUrls };
+}
+
+/**
+ * Compute signal corroboration feature for a candidate.
+ */
+function computeSignalCorroboration(params: {
+  candidatePrimaryUrl: string | null;
+  urlHashes: Set<string>;
+  sampleUrls: string[];
+}): SignalCorroborationFeature {
+  if (!params.candidatePrimaryUrl) {
+    return { matched: false, matchedUrl: null, signalUrlSample: params.sampleUrls.slice(0, 3) };
+  }
+
+  // Skip X-like URLs (they are not eligible for corroboration in MVP)
+  if (isXLikeUrl(params.candidatePrimaryUrl)) {
+    return { matched: false, matchedUrl: null, signalUrlSample: params.sampleUrls.slice(0, 3) };
+  }
+
+  const canon = safeCanonicalizeUrl(params.candidatePrimaryUrl);
+  if (!canon) {
+    return { matched: false, matchedUrl: null, signalUrlSample: params.sampleUrls.slice(0, 3) };
+  }
+
+  const hash = sha256Hex(canon);
+  const matched = params.urlHashes.has(hash);
+
+  return {
+    matched,
+    matchedUrl: matched ? canon : null,
+    signalUrlSample: params.sampleUrls.slice(0, 3),
+  };
 }
 
 function resolveBudgetTier(mode: DigestMode): BudgetTier {
@@ -486,17 +636,37 @@ export async function persistDigestFromContentItems(params: {
     maxCalls: triageLimit,
   });
 
+  // Load signal corroboration URL set from recent signal bundles
+  const signalCorr = await loadSignalCorroborationSet({
+    db: params.db,
+    userId: params.userId,
+    topicId: params.topicId,
+    windowStart: params.windowStart,
+    windowEnd: params.windowEnd,
+  });
+
   const ranked = rankCandidates({
-    candidates: scored.map((c) => ({
-      candidateId: c.candidateId,
-      kind: c.kind,
-      representativeContentItemId: c.representativeContentItemId,
-      candidateAtMs: c.candidateAtMs,
-      heuristicScore: c.heuristicScore,
-      positiveSim: c.positiveSim,
-      negativeSim: c.negativeSim,
-      triage: triageMap.get(c.candidateId) ?? null,
-    })),
+    candidates: scored.map((c) => {
+      // Compute candidate primary URL for corroboration matching
+      const primaryUrl = getPrimaryUrl({ canonicalUrl: c.canonicalUrl, metadata: c.metadata });
+      const signalCorroboration = computeSignalCorroboration({
+        candidatePrimaryUrl: primaryUrl,
+        urlHashes: signalCorr.urlHashes,
+        sampleUrls: signalCorr.sampleUrls,
+      });
+
+      return {
+        candidateId: c.candidateId,
+        kind: c.kind,
+        representativeContentItemId: c.representativeContentItemId,
+        candidateAtMs: c.candidateAtMs,
+        heuristicScore: c.heuristicScore,
+        positiveSim: c.positiveSim,
+        negativeSim: c.negativeSim,
+        triage: triageMap.get(c.candidateId) ?? null,
+        signalCorroboration,
+      };
+    }),
   });
 
   const selected = ranked.slice(0, maxItems);
