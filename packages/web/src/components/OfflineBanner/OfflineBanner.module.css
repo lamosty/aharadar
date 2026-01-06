@@ -1,0 +1,82 @@
+/* Offline/Stale Banner */
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Offline state - more prominent */
+.offline {
+  background-color: var(--color-error-subtle);
+  color: var(--color-error);
+  border-bottom: 1px solid var(--color-error);
+}
+
+/* Stale data state - less prominent */
+.stale {
+  background-color: var(--color-warning-surface);
+  color: var(--color-warning-text);
+  border-bottom: 1px solid var(--color-warning-border);
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.message {
+  font-weight: var(--font-weight-medium);
+}
+
+.time {
+  opacity: 0.8;
+  font-size: var(--font-size-xs);
+}
+
+/* Compact stale indicator for inline use */
+.staleIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning-text);
+  background-color: var(--color-warning-surface);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-full);
+}
+
+.staleTime {
+  opacity: 0.8;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+}

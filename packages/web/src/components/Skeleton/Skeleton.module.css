@@ -1,0 +1,201 @@
+/* Base skeleton with shimmer animation */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-skeleton-base) 25%,
+    var(--color-skeleton-highlight) 50%,
+    var(--color-skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--color-skeleton-base);
+  }
+}
+
+/* Border radius variants */
+.rounded-none {
+  border-radius: 0;
+}
+
+.rounded-sm {
+  border-radius: var(--radius-sm);
+}
+
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* Text group with spacing */
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Card skeleton */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Digest list item skeleton */
+.digestItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.digestItemMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.digestItemMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+/* Ranked item skeleton */
+.rankedItem {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.rankedItemRank {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.rankedItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.rankedItemActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Source item skeleton */
+.sourceItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.sourceItemMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.sourceItemControls {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Budget card skeleton */
+.budgetCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.budgetCardStats {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Page skeleton */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.pageHeader {
+  margin-bottom: var(--space-2);
+}
+
+.pageContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* List skeleton */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
