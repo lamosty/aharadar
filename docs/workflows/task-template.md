@@ -31,6 +31,10 @@ If anything else seems required, stop and ask before changing.
 
 - <explicit choices; if unclear STOP and ask>
 
+> If you are generating a **batch** of Opus tasks, run the Driver Q&A gate and record answers before handing tasks to Opus:
+>
+> - `docs/workflows/opus-task-generator.md`
+
 ### Implementation steps (ordered)
 
 1. ...
@@ -85,5 +89,3 @@ How to validate:
 What I’m unsure about / decisions I made:
 - ...
 ```
-
-

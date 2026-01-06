@@ -2,9 +2,9 @@
 
 This repo is built with AI agents. This document defines a **repeatable flow** for using:
 
-- **Claude Code Opus 4.5** as the *implementer*
-- **GPT‑5.2 xtra high** as the *architect/reviewer*
-- **You** as the *driver* (runs commands, decides tradeoffs, merges commits)
+- **Claude Code Opus 4.5** as the _implementer_
+- **GPT‑5.2 xtra high** as the _architect/reviewer_
+- **You** as the _driver_ (runs commands, decides tradeoffs, merges commits)
 
 This workflow is designed to maximize speed **without** losing correctness.
 
@@ -39,12 +39,26 @@ Parallel Opus sessions are fine only when they touch **non-overlapping surfaces*
 If the change affects contracts, write/update docs/ADRs **first** and commit them as a docs-only commit.
 
 Use:
+
 - `docs/workflows/task-template.md` (copy/paste)
 - `docs/_session/opus-worklist.md` (queue tasks)
+
+#### 1a) Driver Q&A gate (required when generating a batch of tasks)
+
+When GPT‑5.2 xtra high generates or refreshes a batch of Opus task specs, it must run a short “Driver Q&A gate”:
+
+- ask the driver the relevant decisions **before** Opus starts
+- wait for answers
+- update the task specs/docs to record the decisions (docs-only commit), then proceed
+
+Checklist + recommended question block:
+
+- `docs/workflows/opus-task-generator.md`
 
 ### 2) Opus implements (one commit-sized chunk)
 
 Rules for Opus:
+
 - Stay within the declared file scope.
 - If a contract is unclear: **stop and ask** (don’t guess).
 - Keep interfaces stable unless the spec/ADR explicitly changes them.
@@ -113,10 +127,9 @@ If changes are required, Opus should apply them in a follow-up commit (or amend 
 ## “We don’t have tests yet” (important)
 
 Until tests exist, compensate by:
+
 - keeping tasks small
 - running typecheck every time
 - using CLI smoke tests
 
 Add tests early once core plumbing stabilizes (see worklist).
-
-
