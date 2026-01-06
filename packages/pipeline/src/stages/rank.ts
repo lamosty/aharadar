@@ -15,6 +15,60 @@ export interface SignalCorroborationFeature {
   signalUrlSample: string[];
 }
 
+/**
+ * Source weight feature for explainability.
+ */
+export interface SourceWeightFeature {
+  type_weight: number;
+  source_weight: number;
+  effective_weight: number;
+}
+
+/**
+ * Parse SOURCE_TYPE_WEIGHTS_JSON env var.
+ * Returns a map of source_type -> weight (default 1.0 for missing types).
+ */
+export function parseSourceTypeWeights(env: NodeJS.ProcessEnv = process.env): Map<string, number> {
+  const raw = env.SOURCE_TYPE_WEIGHTS_JSON;
+  if (!raw) return new Map();
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return new Map();
+
+    const map = new Map<string, number>();
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        map.set(key, value);
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * Compute effective source weight.
+ * effectiveWeight = clamp(typeWeight * sourceWeight, 0.1, 3.0)
+ */
+export function computeEffectiveSourceWeight(params: {
+  sourceType: string;
+  sourceWeight: number | null;
+  typeWeights: Map<string, number>;
+}): SourceWeightFeature {
+  const typeWeight = params.typeWeights.get(params.sourceType) ?? 1.0;
+  const sourceWeight = params.sourceWeight ?? 1.0;
+  const raw = typeWeight * sourceWeight;
+  const effectiveWeight = Math.max(0.1, Math.min(3.0, raw));
+
+  return {
+    type_weight: typeWeight,
+    source_weight: sourceWeight,
+    effective_weight: effectiveWeight,
+  };
+}
+
 export interface RankCandidateInput {
   candidateId: string;
   kind: "cluster" | "item";
@@ -26,6 +80,7 @@ export interface RankCandidateInput {
   triage: TriageOutput | null;
   signalCorroboration: SignalCorroborationFeature | null;
   novelty: NoveltyFeature | null;
+  sourceWeight: SourceWeightFeature | null;
 }
 
 export interface RankedCandidate {
@@ -61,11 +116,15 @@ export function rankCandidates(params: { candidates: RankCandidateInput[]; weigh
     // Novelty feature (0-1 where 1 = most novel)
     const novelty01 = c.novelty?.novelty01 ?? 0;
 
-    // Compute score with signal boost and novelty
+    // Source weight feature (multiplier)
+    const effectiveWeight = c.sourceWeight?.effective_weight ?? 1.0;
+
+    // Compute score with signal boost and novelty, then apply source weight
     const baseScore = triage
       ? wAha * aha01 + wHeuristic * c.heuristicScore + wPref * pref
       : c.heuristicScore + wPref * pref;
-    const score = baseScore + wSignal * signalCorr01 + wNovelty * novelty01;
+    const preWeightScore = baseScore + wSignal * signalCorr01 + wNovelty * novelty01;
+    const score = preWeightScore * effectiveWeight;
 
     // Build triageJson with system_features for explainability
     let triageJson: Record<string, unknown> | null = null;
@@ -89,6 +148,14 @@ export function rankCandidates(params: { candidates: RankCandidateInput[]; weigh
         lookback_days: c.novelty.lookback_days,
         max_similarity: c.novelty.max_similarity,
         novelty01: c.novelty.novelty01,
+      };
+    }
+
+    if (c.sourceWeight) {
+      systemFeatures.source_weight_v1 = {
+        type_weight: c.sourceWeight.type_weight,
+        source_weight: c.sourceWeight.source_weight,
+        effective_weight: c.sourceWeight.effective_weight,
       };
     }
 

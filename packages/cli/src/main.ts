@@ -13,7 +13,9 @@ import {
   adminSignalExplodeBundlesCommand,
   adminSignalResetCursorCommand,
   adminSourcesSetCadenceCommand,
+  adminSourcesSetEnabledCommand,
   adminSourcesSetTopicCommand,
+  adminSourcesSetWeightCommand,
   adminSourcesAddCommand,
   adminSourcesListCommand,
   adminTopicsAddCommand,
@@ -116,6 +118,8 @@ function printHelp(): void {
   console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
   console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
   console.log("  admin:sources-set-cadence (--source-id <uuid> | --topic <name> --source-type <type>) (--every-minutes <int> | --clear) [--dry-run]");
+  console.log("  admin:sources-set-weight (--source-id <uuid> | --topic <name> --source-type <type>) --weight <number> [--dry-run]");
+  console.log("  admin:sources-set-enabled (--source-id <uuid> | --topic <name> --source-type <type>) --enabled <true|false> [--dry-run]");
   console.log('  admin:signal-debug [--kind bundle] [--limit N] [--verbose] [--json] [--raw]');
   console.log("  admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
@@ -179,6 +183,12 @@ async function main(): Promise<void> {
       break;
     case "admin:sources-set-cadence":
       result = adminSourcesSetCadenceCommand(rest);
+      break;
+    case "admin:sources-set-weight":
+      result = adminSourcesSetWeightCommand(rest);
+      break;
+    case "admin:sources-set-enabled":
+      result = adminSourcesSetEnabledCommand(rest);
       break;
     default:
       printHelp();

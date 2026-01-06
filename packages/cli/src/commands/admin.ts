@@ -1688,3 +1688,320 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
     await db.close();
   }
 }
+
+function printSourcesSetWeightUsage(): void {
+  console.log("Usage:");
+  console.log("  admin:sources-set-weight (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --weight <number> [--dry-run]");
+  console.log("");
+  console.log("Notes:");
+  console.log("- Weight is clamped to [0.1, 3.0]. Default is 1.0.");
+  console.log("- Use --weight 1.0 to reset to default.");
+  console.log("");
+  console.log("Examples:");
+  console.log("  # Set weight for a single source:");
+  console.log("  pnpm dev:cli -- admin:sources-set-weight --source-id <uuid> --weight 0.5");
+  console.log("");
+  console.log("  # Set weight for all rss sources in a topic:");
+  console.log("  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type rss --weight 1.5");
+  console.log("");
+  console.log("  # Dry run (preview changes without persisting):");
+  console.log("  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type x_posts --weight 0.8 --dry-run");
+}
+
+export async function adminSourcesSetWeightCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    let sourceId: string | null = null;
+    let topicArg: string | null = null;
+    const sourceTypes: string[] = [];
+    let weight: number | null = null;
+    let dryRun = false;
+
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--source-id") {
+        sourceId = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--topic") {
+        topicArg = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--source-type") {
+        const next = args[i + 1];
+        if (next && next.trim().length > 0) {
+          sourceTypes.push(...splitCsv(String(next)));
+        }
+        i += 1;
+        continue;
+      }
+      if (a === "--weight") {
+        const next = args[i + 1];
+        const parsed = next ? Number.parseFloat(next) : Number.NaN;
+        if (!Number.isFinite(parsed)) {
+          console.error("Invalid --weight (expected a number)");
+          process.exitCode = 1;
+          return;
+        }
+        weight = parsed;
+        i += 1;
+        continue;
+      }
+      if (a === "--dry-run") {
+        dryRun = true;
+        continue;
+      }
+      if (a === "--help" || a === "-h") {
+        printSourcesSetWeightUsage();
+        return;
+      }
+    }
+
+    // Validate: must have either --source-id OR (--topic + --source-type)
+    const hasSingleMode = sourceId !== null;
+    const hasBulkMode = topicArg !== null && sourceTypes.length > 0;
+
+    if (!hasSingleMode && !hasBulkMode) {
+      printSourcesSetWeightUsage();
+      return;
+    }
+
+    if (hasSingleMode && hasBulkMode) {
+      console.error("Cannot use both --source-id and --topic/--source-type together.");
+      process.exitCode = 1;
+      return;
+    }
+
+    // Validate: must have --weight
+    if (weight === null) {
+      console.error("Must specify --weight <number>.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const user = await db.users.getOrCreateSingleton();
+
+    // Resolve target sources
+    let targetSources: Array<{ id: string; type: string; name: string }> = [];
+
+    if (hasSingleMode) {
+      const source = await db.sources.getById(sourceId!);
+      if (!source) {
+        console.error(`Source not found: ${sourceId}`);
+        process.exitCode = 1;
+        return;
+      }
+      targetSources = [{ id: source.id, type: source.type, name: source.name }];
+    } else {
+      // Bulk mode: resolve topic and find matching sources
+      const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
+      const allSources = await db.sources.listByUserAndTopic({ userId: user.id, topicId: topic.id });
+      targetSources = allSources
+        .filter((s) => sourceTypes.includes(s.type))
+        .map((s) => ({ id: s.id, type: s.type, name: s.name }));
+
+      if (targetSources.length === 0) {
+        console.log(`No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`);
+        return;
+      }
+    }
+
+    // Apply changes
+    console.log(dryRun ? "Dry run (no changes will be persisted):" : "Updating source weight:");
+    console.log("");
+
+    let changed = 0;
+    let unchanged = 0;
+
+    for (const source of targetSources) {
+      if (dryRun) {
+        const current = await db.sources.getById(source.id);
+        const currentWeight = current?.config_json?.weight;
+        console.log(`- ${source.id} ${source.type}:${source.name}`);
+        console.log(`  previous: ${currentWeight ?? "(default 1.0)"}`);
+        console.log(`  new: ${weight}`);
+      } else {
+        const result = await db.sources.updateConfigWeight({
+          sourceId: source.id,
+          weight,
+        });
+        console.log(`- ${source.id} ${source.type}:${source.name}`);
+        console.log(`  previous: ${result.previous ?? "(default 1.0)"}`);
+        console.log(`  new: ${result.updated ?? "(default 1.0)"}`);
+
+        if (result.previous !== result.updated) {
+          changed += 1;
+        } else {
+          unchanged += 1;
+        }
+      }
+    }
+
+    console.log("");
+    console.log(`Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, unchanged=${unchanged})`}.`);
+  } finally {
+    await db.close();
+  }
+}
+
+function printSourcesSetEnabledUsage(): void {
+  console.log("Usage:");
+  console.log("  admin:sources-set-enabled (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --enabled <true|false> [--dry-run]");
+  console.log("");
+  console.log("Examples:");
+  console.log("  # Disable a single source:");
+  console.log("  pnpm dev:cli -- admin:sources-set-enabled --source-id <uuid> --enabled false");
+  console.log("");
+  console.log("  # Disable all rss sources in a topic:");
+  console.log("  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type rss --enabled false");
+  console.log("");
+  console.log("  # Re-enable all x_posts sources:");
+  console.log("  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type x_posts --enabled true");
+  console.log("");
+  console.log("  # Dry run:");
+  console.log("  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type signal --enabled false --dry-run");
+}
+
+export async function adminSourcesSetEnabledCommand(args: string[]): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    let sourceId: string | null = null;
+    let topicArg: string | null = null;
+    const sourceTypes: string[] = [];
+    let enabled: boolean | null = null;
+    let dryRun = false;
+
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--source-id") {
+        sourceId = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--topic") {
+        topicArg = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--source-type") {
+        const next = args[i + 1];
+        if (next && next.trim().length > 0) {
+          sourceTypes.push(...splitCsv(String(next)));
+        }
+        i += 1;
+        continue;
+      }
+      if (a === "--enabled") {
+        const next = args[i + 1]?.toLowerCase();
+        if (next === "true" || next === "1" || next === "yes") {
+          enabled = true;
+        } else if (next === "false" || next === "0" || next === "no") {
+          enabled = false;
+        } else {
+          console.error("Invalid --enabled (expected true or false)");
+          process.exitCode = 1;
+          return;
+        }
+        i += 1;
+        continue;
+      }
+      if (a === "--dry-run") {
+        dryRun = true;
+        continue;
+      }
+      if (a === "--help" || a === "-h") {
+        printSourcesSetEnabledUsage();
+        return;
+      }
+    }
+
+    // Validate: must have either --source-id OR (--topic + --source-type)
+    const hasSingleMode = sourceId !== null;
+    const hasBulkMode = topicArg !== null && sourceTypes.length > 0;
+
+    if (!hasSingleMode && !hasBulkMode) {
+      printSourcesSetEnabledUsage();
+      return;
+    }
+
+    if (hasSingleMode && hasBulkMode) {
+      console.error("Cannot use both --source-id and --topic/--source-type together.");
+      process.exitCode = 1;
+      return;
+    }
+
+    // Validate: must have --enabled
+    if (enabled === null) {
+      console.error("Must specify --enabled <true|false>.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const user = await db.users.getOrCreateSingleton();
+
+    // Resolve target sources
+    let targetSources: Array<{ id: string; type: string; name: string; isEnabled: boolean }> = [];
+
+    if (hasSingleMode) {
+      const source = await db.sources.getById(sourceId!);
+      if (!source) {
+        console.error(`Source not found: ${sourceId}`);
+        process.exitCode = 1;
+        return;
+      }
+      targetSources = [{ id: source.id, type: source.type, name: source.name, isEnabled: source.is_enabled }];
+    } else {
+      // Bulk mode: resolve topic and find matching sources (include disabled sources)
+      const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
+      const allSources = await db.sources.listByUserAndTopic({ userId: user.id, topicId: topic.id });
+      targetSources = allSources
+        .filter((s) => sourceTypes.includes(s.type))
+        .map((s) => ({ id: s.id, type: s.type, name: s.name, isEnabled: s.is_enabled }));
+
+      if (targetSources.length === 0) {
+        console.log(`No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`);
+        return;
+      }
+    }
+
+    // Apply changes
+    console.log(dryRun ? "Dry run (no changes will be persisted):" : `${enabled ? "Enabling" : "Disabling"} sources:`);
+    console.log("");
+
+    let changed = 0;
+    let alreadyInState = 0;
+
+    for (const source of targetSources) {
+      const wouldChange = source.isEnabled !== enabled;
+
+      if (dryRun) {
+        console.log(`- ${source.id} ${source.type}:${source.name}`);
+        console.log(`  currently: ${source.isEnabled ? "enabled" : "disabled"}`);
+        console.log(`  would be: ${enabled ? "enabled" : "disabled"}${wouldChange ? "" : " (no change)"}`);
+      } else {
+        const result = await db.sources.updateEnabled({
+          sourceId: source.id,
+          isEnabled: enabled,
+        });
+        console.log(`- ${source.id} ${source.type}:${source.name}`);
+        console.log(`  previous: ${result.previous ? "enabled" : "disabled"}`);
+        console.log(`  updated: ${result.updated ? "enabled" : "disabled"}`);
+
+        if (result.previous !== result.updated) {
+          changed += 1;
+        } else {
+          alreadyInState += 1;
+        }
+      }
+    }
+
+    console.log("");
+    console.log(`Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, already_${enabled ? "enabled" : "disabled"}=${alreadyInState})`}.`);
+  } finally {
+    await db.close();
+  }
+}

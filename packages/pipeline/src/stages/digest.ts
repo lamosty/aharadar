@@ -3,7 +3,7 @@ import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharada
 import { canonicalizeUrl, sha256Hex, type BudgetTier } from "@aharadar/shared";
 
 import type { IngestSourceFilter } from "./ingest";
-import { rankCandidates, type SignalCorroborationFeature } from "./rank";
+import { rankCandidates, parseSourceTypeWeights, computeEffectiveSourceWeight, type SignalCorroborationFeature } from "./rank";
 import { enrichTopCandidates } from "./llm_enrich";
 import { getNoveltyLookbackDays, buildNoveltyFeature, type NoveltyFeature } from "../scoring/novelty";
 
@@ -30,6 +30,7 @@ type CandidateRow = {
   source_id: string;
   source_type: string;
   source_name: string | null;
+  source_config_json: Record<string, unknown> | null;
   title: string | null;
   body_text: string | null;
   canonical_url: string | null;
@@ -563,6 +564,7 @@ export async function persistDigestFromContentItems(params: {
          tis.source_id::text as source_id,
          s.type as source_type,
          s.name as source_name,
+         s.config_json as source_config_json,
          rep.title,
          rep.body_text,
          rep.canonical_url,
@@ -607,6 +609,7 @@ export async function persistDigestFromContentItems(params: {
          tis.source_id::text as source_id,
          s.type as source_type,
          s.name as source_name,
+         s.config_json as source_config_json,
          ci.title,
          ci.body_text,
          ci.canonical_url,
@@ -669,6 +672,7 @@ export async function persistDigestFromContentItems(params: {
       sourceId: row.source_id,
       sourceType: row.source_type,
       sourceName: row.source_name,
+      sourceConfigJson: asRecord(row.source_config_json),
       title: row.title,
       bodyText: row.body_text,
       canonicalUrl: row.canonical_url,
@@ -733,6 +737,9 @@ export async function persistDigestFromContentItems(params: {
     candidates: scored.map((c) => ({ candidateId: c.candidateId, vectorText: c.vectorText })),
   });
 
+  // Parse source type weights from env for ranking
+  const sourceTypeWeights = parseSourceTypeWeights();
+
   const ranked = rankCandidates({
     candidates: scored.map((c) => {
       // Compute candidate primary URL for corroboration matching
@@ -741,6 +748,14 @@ export async function persistDigestFromContentItems(params: {
         candidatePrimaryUrl: primaryUrl,
         urlHashes: signalCorr.urlHashes,
         sampleUrls: signalCorr.sampleUrls,
+      });
+
+      // Compute source weight (from source config and env type weights)
+      const perSourceWeight = asFiniteNumber(c.sourceConfigJson?.weight);
+      const sourceWeight = computeEffectiveSourceWeight({
+        sourceType: c.sourceType,
+        sourceWeight: perSourceWeight,
+        typeWeights: sourceTypeWeights,
       });
 
       return {
@@ -754,6 +769,7 @@ export async function persistDigestFromContentItems(params: {
         triage: triageMap.get(c.candidateId) ?? null,
         signalCorroboration,
         novelty: noveltyMap.get(c.candidateId) ?? null,
+        sourceWeight,
       };
     }),
   });
