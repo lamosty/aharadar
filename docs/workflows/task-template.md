@@ -58,15 +58,12 @@ pnpm -r typecheck
 - **Message**: `<type(scope)>: <message>`
 - **Files expected**: <list>
 
-### Final step (required): print GPT‑5.2 review prompt
+### Final step (required): print task report (and final recap for batch runs)
 
 After committing, print this block **filled in**:
 
 ```text
-REVIEW PROMPT (paste into GPT‑5.2 xtra high)
-
-You are GPT‑5.2 xtra high acting as a senior reviewer/architect in this repo.
-Please review my just-finished change for correctness, spec compliance, and unintended side effects.
+TASK REPORT (copy/paste to driver chat)
 
 Repo: /Users/lamosty/projects/aharadar
 Branch: <branch-name>
@@ -86,6 +83,38 @@ How to validate:
 - pnpm -r typecheck
 - <any CLI smoke commands>
 
-What I’m unsure about / decisions I made:
+Open questions / uncertainties:
+- ...
+```
+
+#### Batch runs (important): final recap
+
+If you execute **multiple tasks back-to-back** in one Opus session, also print a single **FINAL RECAP** block **once at the very end** (after the last task/commit), so the driver can copy/paste just once.
+
+During the run, you may print only a short progress line after each task, e.g.:
+
+```text
+COMMITTED: <hash> — <task spec path> — <short summary>
+```
+
+Final recap format:
+
+```text
+FINAL RECAP (copy/paste once)
+
+Tasks completed (in order):
+1) <task spec path> — <commit> — <1-line summary>
+2) ...
+
+Files changed (union):
+- ...
+
+How to validate (full):
+- pnpm -r typecheck
+- pnpm test
+- pnpm test:integration (if applicable)
+- <any required smoke commands>
+
+Open questions / uncertainties (all tasks):
 - ...
 ```

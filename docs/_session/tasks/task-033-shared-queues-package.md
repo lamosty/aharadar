@@ -87,15 +87,12 @@ pnpm -r build
   - `packages/worker/tsconfig.json`
   - `packages/worker/src/queues.ts`
 
-## Final step (required): print GPT‑5.2 review prompt
+## Final step (required): print task report
 
 After committing, print this block **filled in**:
 
 ```text
-REVIEW PROMPT (paste into GPT‑5.2 xtra high)
-
-You are GPT‑5.2 xtra high acting as a senior reviewer/architect in this repo.
-Please review my just-finished change for correctness, spec compliance, and unintended side effects.
+TASK REPORT (copy/paste to driver chat)
 
 Repo: /Users/lamosty/projects/aharadar
 Branch: <branch-name>
@@ -115,7 +112,7 @@ How to validate:
 - pnpm -r typecheck
 - pnpm -r build
 
-What I’m unsure about / decisions I made:
+Open questions / uncertainties:
 - ...
 ```
 

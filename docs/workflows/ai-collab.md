@@ -73,22 +73,19 @@ pnpm -r typecheck
 
 Plus a task-specific CLI smoke test (e.g., `pnpm dev:cli -- admin:run-now ...`).
 
-### 4) Opus prints a GPT‑5.2 review prompt (required)
+### 4) Opus prints a task report (required) + final recap for batch runs
 
-After the commit, Opus must print a copy/paste-ready prompt for GPT‑5.2 xtra high:
+After each commit, Opus must print a copy/paste-ready **task report** (no special “review prompt” preamble needed):
 
 ```text
-REVIEW PROMPT (paste into GPT‑5.2 xtra high)
-
-You are GPT‑5.2 xtra high acting as a senior reviewer/architect in this repo.
-Please review my just-finished change for correctness, spec compliance, and unintended side effects.
+TASK REPORT (copy/paste to driver chat)
 
 Repo: /Users/lamosty/projects/aharadar
 Branch: <branch-name>
 Commit(s): <commit-hash(es)>
 
 Task spec followed:
-- <path to task spec> (ex: docs/_session/tasks/task-028-api-scaffold.md)
+- <path to task spec>
 - <ADR paths if relevant>
 
 What I changed (1–3 bullets):
@@ -97,27 +94,34 @@ What I changed (1–3 bullets):
 Files changed:
 - <list>
 
-How to validate (commands I ran or you should run):
+How to validate:
 - pnpm -r typecheck
 - <any CLI smoke commands>
 
-Please check:
-- Contracts: docs/* + ADRs adhered to (no guessing)
-- Provider-agnosticism preserved
-- Topic-agnostic invariants preserved
-- Budgets/cadence semantics correct
-- Idempotency preserved (no duplicate creation on reruns)
-- No silent backward-compat hacks
-- Typescript strict, no implicit any
-- No surprising behavior changes outside the intended scope
+Open questions / uncertainties:
+- ...
+```
 
-What I’m unsure about / decisions I made:
+If Opus executes **multiple tasks back-to-back** in one run, Opus must also print a single **FINAL RECAP** block once at the end, so the driver can copy/paste just once:
+
+```text
+FINAL RECAP (copy/paste once)
+
+Tasks completed (in order):
+1) <task spec path> — <commit> — <1-line summary>
+2) ...
+
+Files changed (union):
 - ...
 
-Then:
-1) Tell me “LGTM” or “Changes required”
-2) If changes required, give exact edits (files + what to change)
-3) Suggest follow-up tasks (if any)
+How to validate (full):
+- pnpm -r typecheck
+- pnpm test
+- pnpm test:integration (if applicable)
+- <any required smoke commands>
+
+Open questions / uncertainties (all tasks):
+- ...
 ```
 
 ### 5) GPT‑5.2 reviews → Opus applies fixes
