@@ -6,7 +6,7 @@ Start here:
 
 - Workflow: `docs/workflows/ai-collab.md`
 - Worklist: `docs/_session/opus-worklist.md`
-- Master implementation plan: `docs/_session/opus-implementation-x_posts-and-cadence.md`
+- Task specs in this directory are the canonical source of truth for Opus execution.
 
 Task files (in recommended order):
 
@@ -31,5 +31,15 @@ Task files (in recommended order):
 19. `task-019-youtube-connector.md` (deferred)
 20. `task-020-hn-connector.md`
 21. `task-021-connector-tests.md` (rss/hn only for now)
-
-
+22. `task-022-rank-tests.md`
+23. `task-023-scheduler-window-tests.md`
+24. `task-024-budget-gating-tests.md`
+25. `task-025-rss-edge-case-tests.md`
+26. `task-026-hn-edge-case-tests.md`
+27. `task-027-integration-tests-harness.md`
+28. `task-028-api-scaffold.md`
+29. `task-029-api-digests-items.md`
+30. `task-030-api-feedback.md`
+31. `task-031-api-admin-run.md`
+32. `task-032-integration-queue-worker.md`
+33. `task-033-shared-queues-package.md`

@@ -1,19 +1,19 @@
-# Opus worklist (current) — canonical `x_posts` + per-source cadence
+# Opus worklist (current) — Aha Radar backlog
 
 This file is the **active queue** of tasks to hand to Claude Code Opus 4.5.
+
+Notes:
+
+- This started as “`x_posts` + cadence” work; it now tracks the broader backlog (pipeline, connectors, tests, API, CLI, UI, etc.).
+- We intentionally keep older task entries here for history/context even after they land.
 
 Workflow: follow `docs/workflows/ai-collab.md`.
 
 Task specs live in: `docs/_session/tasks/` (copy/paste-ready).
 
-## Pre-req (do once)
+## Pre-req (as needed)
 
-Commit the planning docs/ADRs first (if not already committed):
-
-- `docs/_session/opus-implementation-x_posts-and-cadence.md`
-- `docs/adr/0009-source-cadence.md`
-- `docs/adr/0010-x-posts-canonical-via-grok.md`
-- `docs/adr/0003-x-strategy-grok-signal.md` (marked superseded)
+If a task changes a contract, ensure the relevant `docs/*` and/or `docs/adr/*` updates are committed **before** handing implementation to Opus (docs-first).
 
 ## Execution strategy
 
@@ -105,3 +105,55 @@ Every task must end with:
 ## Deferred (later)
 
 - Task 019 is currently **deferred** (YouTube ingestion). Keep the connector stubbed for now.
+
+---
+
+## Tests + API batch (prepared; run after current tasks land)
+
+22. **Task 022**: rank math + weights parsing unit tests
+
+- `docs/_session/tasks/task-022-rank-tests.md`
+
+23. **Task 023**: scheduler window generation unit tests
+
+- `docs/_session/tasks/task-023-scheduler-window-tests.md`
+
+24. **Task 024**: credits status + budget gating unit tests
+
+- `docs/_session/tasks/task-024-budget-gating-tests.md`
+
+25. **Task 025**: RSS edge-case unit tests (dates + content:encoded)
+
+- `docs/_session/tasks/task-025-rss-edge-case-tests.md`
+
+26. **Task 026**: HN normalization edge-case unit tests
+
+- `docs/_session/tasks/task-026-hn-edge-case-tests.md`
+
+27. **Task 027**: optional integration test harness (`pnpm test:integration`)
+
+- `docs/_session/tasks/task-027-integration-tests-harness.md`
+
+28. **Task 028**: API scaffold + API key auth + health
+
+- `docs/_session/tasks/task-028-api-scaffold.md`
+
+29. **Task 029**: API digests + items read endpoints
+
+- `docs/_session/tasks/task-029-api-digests-items.md`
+
+30. **Task 030**: API feedback endpoint
+
+- `docs/_session/tasks/task-030-api-feedback.md`
+
+33. **Task 033**: shared BullMQ queue package (`@aharadar/queues`)
+
+- `docs/_session/tasks/task-033-shared-queues-package.md`
+
+31. **Task 031**: API admin run endpoint (enqueue to BullMQ)
+
+- `docs/_session/tasks/task-031-api-admin-run.md`
+
+32. **Task 032**: integration test for Redis + BullMQ worker end-to-end
+
+- `docs/_session/tasks/task-032-integration-queue-worker.md`

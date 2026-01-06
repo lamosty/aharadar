@@ -13,7 +13,6 @@ Implement the generic **per-source cadence gating** described in ADR 0009, so ea
 - `AGENTS.md`
 - `CLAUDE.md`
 - `docs/adr/0009-source-cadence.md`
-- `docs/_session/opus-implementation-x_posts-and-cadence.md` (Commit B section)
 - Code:
   - `packages/pipeline/src/stages/ingest.ts`
 
@@ -115,5 +114,3 @@ Then:
 2) If changes required, give exact edits (files + what to change)
 3) Suggest follow-up tasks (if any)
 ```
-
-

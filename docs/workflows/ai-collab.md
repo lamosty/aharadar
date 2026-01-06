@@ -88,7 +88,7 @@ Branch: <branch-name>
 Commit(s): <commit-hash(es)>
 
 Task spec followed:
-- <path to spec/ADR> (ex: docs/_session/opus-implementation-x_posts-and-cadence.md)
+- <path to task spec> (ex: docs/_session/tasks/task-028-api-scaffold.md)
 - <ADR paths if relevant>
 
 What I changed (1–3 bullets):

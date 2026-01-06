@@ -12,7 +12,6 @@ Refactor the Grok “x_search” provider implementation into a reusable module 
 
 - `AGENTS.md`
 - `CLAUDE.md`
-- `docs/_session/opus-implementation-x_posts-and-cadence.md` (Commit C notes)
 - Code:
   - `packages/connectors/src/signal/provider.ts`
   - `packages/connectors/src/signal/fetch.ts`

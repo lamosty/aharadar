@@ -1,5 +1,9 @@
 # Migration: Legacy signal-stored X content to x_posts
 
+> **Status**: Reference note (still current).
+>
+> This repo’s MVP stance is **reset + re-ingest** for local/dev. If that stance changes, update `docs/connectors.md` and this note together.
+
 ## Problem statement
 
 Before the `x_posts` canonical connector was introduced, X/Twitter posts were stored as `signal_post_v1` items via the `signal` connector. Now that `x_posts` exists and `signal` is bundle-only, old signal-stored X content won't appear in new digests.
@@ -32,6 +36,7 @@ pnpm dev:cli -- admin:run-now --topic <topic-name>
 Per the repo velocity rule (CLAUDE.md: "no premature fallbacks"), **we do not implement a backfill/migration tool by default**.
 
 Rationale:
+
 - Dev/local can always reset + re-ingest (clean state is fine)
 - A backfill tool adds complexity and risk (data transformation, idempotency, etc.)
 - The value is low for MVP (fresh ingestion is sufficient)

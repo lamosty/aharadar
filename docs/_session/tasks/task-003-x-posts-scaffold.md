@@ -19,7 +19,6 @@ This sets up the code structure so we can implement fetch/normalize in later tas
 - `AGENTS.md`
 - `CLAUDE.md`
 - `docs/adr/0010-x-posts-canonical-via-grok.md`
-- `docs/_session/opus-implementation-x_posts-and-cadence.md`
 - `docs/connectors.md` (the `x_posts` section)
 - Code:
   - `packages/connectors/src/registry.ts`
