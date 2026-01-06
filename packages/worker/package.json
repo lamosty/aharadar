@@ -4,9 +4,15 @@
   "version": "0.0.0",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
+  "dependencies": {
+    "@aharadar/db": "workspace:*",
+    "@aharadar/pipeline": "workspace:*",
+    "@aharadar/shared": "workspace:*",
+    "bullmq": "^5.34.8"
+  },
   "scripts": {
     "build": "tsc -b",
-    "dev": "echo \"worker: not implemented\"",
+    "dev": "node dist/main.js",
     "test": "echo \"worker: no tests yet\"",
     "lint": "echo \"worker: no lint yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"

@@ -1,6 +1,6 @@
 # ADR 0004: Job Queue — Redis + BullMQ
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2025-12-17
 
 ## Context
