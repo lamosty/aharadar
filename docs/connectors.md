@@ -536,3 +536,7 @@ Debugging:
 - `x_posts` is the **canonical** connector for X/Twitter posts: posts are first-class items that flow through embedding, clustering, ranking, and digests.
 - `signal` is a **derived/amplifier** connector: bundles are stored for auditing and (future) corroboration, but do not appear in user digests.
 - If a user wants both canonical X posts and search-based signal bundles, they can configure separate sources with each type.
+
+**Migration from legacy signal-stored X content**
+
+If your local/dev DB contains old `signal_post_v1` items from before `x_posts` was introduced, see `docs/_session/migration-signal-x-to-x_posts.md` for the recommended approach (reset + re-ingest).
