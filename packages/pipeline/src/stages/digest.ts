@@ -5,6 +5,7 @@ import { canonicalizeUrl, sha256Hex, type BudgetTier } from "@aharadar/shared";
 import type { IngestSourceFilter } from "./ingest";
 import { rankCandidates, type SignalCorroborationFeature } from "./rank";
 import { enrichTopCandidates } from "./llm_enrich";
+import { getNoveltyLookbackDays, buildNoveltyFeature, type NoveltyFeature } from "../scoring/novelty";
 
 export type DigestMode = BudgetTier | "catch_up";
 
@@ -256,6 +257,72 @@ function computeSignalCorroboration(params: {
     matchedUrl: matched ? canon : null,
     signalUrlSample: params.sampleUrls.slice(0, 3),
   };
+}
+
+/**
+ * Compute novelty for candidates by finding max similarity to topic history.
+ *
+ * For each candidate with a vector, we query the nearest neighbor from the
+ * historical items in the lookback window (topic-scoped, excluding current window).
+ */
+async function computeNoveltyForCandidates(params: {
+  db: Db;
+  userId: string;
+  topicId: string;
+  windowStart: string;
+  lookbackDays: number;
+  candidates: Array<{ candidateId: string; vectorText: string | null }>;
+}): Promise<Map<string, NoveltyFeature>> {
+  const noveltyMap = new Map<string, NoveltyFeature>();
+
+  // Filter candidates that have vectors
+  const candidatesWithVectors = params.candidates.filter((c) => c.vectorText !== null);
+  if (candidatesWithVectors.length === 0) return noveltyMap;
+
+  // Compute lookback window boundary
+  const windowStartDate = new Date(params.windowStart);
+  const lookbackStartDate = new Date(windowStartDate.getTime() - params.lookbackDays * 24 * 60 * 60 * 1000);
+  const lookbackStart = lookbackStartDate.toISOString();
+
+  // For each candidate, find the max similarity to any historical embedding
+  // We use a single query per candidate (uses pgvector index efficiently)
+  for (const candidate of candidatesWithVectors) {
+    try {
+      // Query: find nearest neighbor in topic history within lookback window
+      // Similarity = 1 - cosine_distance
+      const result = await params.db.query<{ max_similarity: number }>(
+        `with topic_history as (
+           select e.vector
+           from embeddings e
+           join content_items ci on ci.id = e.content_item_id
+           join content_item_sources cis on cis.content_item_id = ci.id
+           join sources s on s.id = cis.source_id
+           where ci.user_id = $1
+             and s.topic_id = $2::uuid
+             and ci.deleted_at is null
+             and ci.duplicate_of_content_item_id is null
+             and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
+             and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
+         )
+         select (1 - (th.vector <=> $5::vector))::float8 as max_similarity
+         from topic_history th
+         order by th.vector <=> $5::vector
+         limit 1`,
+        [params.userId, params.topicId, lookbackStart, params.windowStart, candidate.vectorText]
+      );
+
+      const maxSimilarity = result.rows[0]?.max_similarity ?? 0;
+      noveltyMap.set(candidate.candidateId, buildNoveltyFeature({
+        lookbackDays: params.lookbackDays,
+        maxSimilarity: Math.max(0, Math.min(1, maxSimilarity)),
+      }));
+    } catch (err) {
+      // On error, skip novelty for this candidate (don't break the whole run)
+      console.warn(`novelty query failed for candidate ${candidate.candidateId}:`, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return noveltyMap;
 }
 
 function resolveBudgetTier(mode: DigestMode): BudgetTier {
@@ -612,6 +679,7 @@ export async function persistDigestFromContentItems(params: {
       engagementRaw,
       positiveSim: row.positive_sim,
       negativeSim: row.negative_sim,
+      vectorText: row.vector_text,
     };
   });
 
@@ -654,6 +722,17 @@ export async function persistDigestFromContentItems(params: {
     windowEnd: params.windowEnd,
   });
 
+  // Compute novelty for candidates (topic-scoped, embedding-based)
+  const noveltyLookbackDays = getNoveltyLookbackDays();
+  const noveltyMap = await computeNoveltyForCandidates({
+    db: params.db,
+    userId: params.userId,
+    topicId: params.topicId,
+    windowStart: params.windowStart,
+    lookbackDays: noveltyLookbackDays,
+    candidates: scored.map((c) => ({ candidateId: c.candidateId, vectorText: c.vectorText })),
+  });
+
   const ranked = rankCandidates({
     candidates: scored.map((c) => {
       // Compute candidate primary URL for corroboration matching
@@ -674,6 +753,7 @@ export async function persistDigestFromContentItems(params: {
         negativeSim: c.negativeSim,
         triage: triageMap.get(c.candidateId) ?? null,
         signalCorroboration,
+        novelty: noveltyMap.get(c.candidateId) ?? null,
       };
     }),
   });

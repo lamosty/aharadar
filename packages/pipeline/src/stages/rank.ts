@@ -1,10 +1,12 @@
 import type { TriageOutput } from "@aharadar/llm";
+import type { NoveltyFeature } from "../scoring/novelty";
 
 export interface RankWeights {
   wAha: number;
   wHeuristic: number;
   wPref: number;
   wSignal: number;
+  wNovelty: number;
 }
 
 export interface SignalCorroborationFeature {
@@ -23,6 +25,7 @@ export interface RankCandidateInput {
   negativeSim: number | null;
   triage: TriageOutput | null;
   signalCorroboration: SignalCorroborationFeature | null;
+  novelty: NoveltyFeature | null;
 }
 
 export interface RankedCandidate {
@@ -43,6 +46,7 @@ export function rankCandidates(params: { candidates: RankCandidateInput[]; weigh
   const wHeuristic = params.weights?.wHeuristic ?? 0.15;
   const wPref = params.weights?.wPref ?? 0.05;
   const wSignal = params.weights?.wSignal ?? 0.05;
+  const wNovelty = params.weights?.wNovelty ?? 0.05;
 
   const scored = params.candidates.map((c) => {
     const triage = c.triage;
@@ -54,25 +58,42 @@ export function rankCandidates(params: { candidates: RankCandidateInput[]; weigh
     // Signal corroboration feature (0 or 1 for MVP)
     const signalCorr01 = c.signalCorroboration?.matched ? 1 : 0;
 
-    // Compute score with signal boost
+    // Novelty feature (0-1 where 1 = most novel)
+    const novelty01 = c.novelty?.novelty01 ?? 0;
+
+    // Compute score with signal boost and novelty
     const baseScore = triage
       ? wAha * aha01 + wHeuristic * c.heuristicScore + wPref * pref
       : c.heuristicScore + wPref * pref;
-    const score = baseScore + wSignal * signalCorr01;
+    const score = baseScore + wSignal * signalCorr01 + wNovelty * novelty01;
 
     // Build triageJson with system_features for explainability
     let triageJson: Record<string, unknown> | null = null;
     if (triage) {
       triageJson = { ...(triage as unknown as Record<string, unknown>) };
     }
+
+    // Build system_features object with all available features
+    const systemFeatures: Record<string, unknown> = {};
+
     if (c.signalCorroboration) {
-      const systemFeatures = {
-        signal_corroboration_v1: {
-          matched: c.signalCorroboration.matched,
-          matched_url: c.signalCorroboration.matchedUrl,
-          signal_url_sample: c.signalCorroboration.signalUrlSample,
-        },
+      systemFeatures.signal_corroboration_v1 = {
+        matched: c.signalCorroboration.matched,
+        matched_url: c.signalCorroboration.matchedUrl,
+        signal_url_sample: c.signalCorroboration.signalUrlSample,
       };
+    }
+
+    if (c.novelty) {
+      systemFeatures.novelty_v1 = {
+        lookback_days: c.novelty.lookback_days,
+        max_similarity: c.novelty.max_similarity,
+        novelty01: c.novelty.novelty01,
+      };
+    }
+
+    // Attach system_features to triageJson if we have any features
+    if (Object.keys(systemFeatures).length > 0) {
       if (triageJson) {
         triageJson.system_features = systemFeatures;
       } else {
