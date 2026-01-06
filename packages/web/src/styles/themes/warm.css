@@ -25,8 +25,15 @@
   --color-success-subtle: #d5f5e3;
   --color-warning: #f39c12;
   --color-warning-subtle: #fef9e7;
+  --color-warning-surface: #fff5e0;
+  --color-warning-border: #f5c573;
+  --color-warning-text: #8a5a00;
   --color-error: #c0392b;
   --color-error-subtle: #fadbd8;
+
+  /* Skeleton loading */
+  --color-skeleton-base: #f0e6da;
+  --color-skeleton-highlight: #fef3e2;
 
   /* Typography */
   --font-sans: "Georgia", "Cambria", "Times New Roman", Times, serif;
@@ -120,8 +127,15 @@
   --color-success-subtle: #145a32;
   --color-warning: #f7dc6f;
   --color-warning-subtle: #7d6608;
+  --color-warning-surface: #3d3115;
+  --color-warning-border: #695824;
+  --color-warning-text: #f7dc6f;
   --color-error: #e74c3c;
   --color-error-subtle: #78281f;
+
+  /* Skeleton loading */
+  --color-skeleton-base: #443628;
+  --color-skeleton-highlight: #5c4a3d;
 
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);

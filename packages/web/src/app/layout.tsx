@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
+import { QueryProvider } from "@/components/QueryProvider";
 import { t } from "@/lib/i18n";
 import { themeInitScript } from "@/lib/theme";
 import "@/styles/globals.css";
@@ -69,9 +70,11 @@ export default function RootLayout({
           {t("accessibility.skipToContent")}
         </a>
 
-        <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

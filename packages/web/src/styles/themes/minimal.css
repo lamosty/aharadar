@@ -25,8 +25,15 @@
   --color-success-subtle: #dcfce7;
   --color-warning: #ca8a04;
   --color-warning-subtle: #fef9c3;
+  --color-warning-surface: #fefce8;
+  --color-warning-border: #fde047;
+  --color-warning-text: #854d0e;
   --color-error: #dc2626;
   --color-error-subtle: #fee2e2;
+
+  /* Skeleton loading */
+  --color-skeleton-base: #e5e5e5;
+  --color-skeleton-highlight: #f5f5f5;
 
   /* Typography - Monospace accent */
   --font-sans: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -120,8 +127,15 @@
   --color-success-subtle: #14532d;
   --color-warning: #facc15;
   --color-warning-subtle: #713f12;
+  --color-warning-surface: #312e0c;
+  --color-warning-border: #5c550f;
+  --color-warning-text: #facc15;
   --color-error: #f87171;
   --color-error-subtle: #7f1d1d;
+
+  /* Skeleton loading */
+  --color-skeleton-base: #262626;
+  --color-skeleton-highlight: #404040;
 
   --shadow-sm: 0 0 0 1px var(--color-border-subtle);
   --shadow-md: 0 0 0 1px var(--color-border);

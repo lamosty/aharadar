@@ -11,7 +11,11 @@
     "next": "Next",
     "submit": "Submit",
     "search": "Search",
-    "settings": "Settings"
+    "settings": "Settings",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all"
   },
   "nav": {
     "home": "Home",
@@ -20,7 +24,8 @@
     "sources": "Sources",
     "settings": "Settings",
     "login": "Login",
-    "logout": "Logout"
+    "logout": "Logout",
+    "admin": "Admin"
   },
   "landing": {
     "hero": {
@@ -86,13 +91,109 @@
         "reader": "Reader",
         "timeline": "Timeline"
       }
+    },
+    "dev": {
+      "title": "Developer Settings",
+      "warning": "These settings are for local development only. API credentials are stored in your browser's localStorage.",
+      "apiBaseUrl": "API Base URL",
+      "apiBaseUrlHint": "The base URL of your API server (e.g., http://localhost:3001/api)",
+      "apiKey": "API Key",
+      "apiKeyHint": "Your API key for authentication (X-API-Key header)",
+      "saved": "Developer settings saved",
+      "cleared": "Developer settings cleared",
+      "clear": "Clear"
     }
   },
   "toast": {
     "error": "Something went wrong",
     "success": "Success!",
     "settingsSaved": "Settings saved",
-    "linkSent": "Magic link sent! Check your email."
+    "linkSent": "Magic link sent! Check your email.",
+    "sourceUpdated": "Source updated",
+    "sourceUpdateFailed": "Failed to update source",
+    "runStarted": "Pipeline run started",
+    "runFailed": "Failed to start pipeline run",
+    "feedbackError": "Failed to save feedback. Please try again."
+  },
+  "admin": {
+    "title": "Admin",
+    "description": "Manage your pipeline, sources, and budgets",
+    "nav": {
+      "run": "Run Now",
+      "sources": "Sources",
+      "budgets": "Budgets"
+    },
+    "cards": {
+      "run": {
+        "title": "Run Now",
+        "description": "Trigger a pipeline run manually"
+      },
+      "sources": {
+        "title": "Sources",
+        "description": "Manage source configurations"
+      },
+      "budgets": {
+        "title": "Budgets",
+        "description": "View credit usage and limits"
+      }
+    },
+    "run": {
+      "title": "Run Pipeline",
+      "windowStart": "Window Start",
+      "windowEnd": "Window End",
+      "mode": "Mode",
+      "modes": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High",
+        "catch_up": "Catch Up"
+      },
+      "modeDescriptions": {
+        "low": "Minimal processing, lowest cost",
+        "normal": "Standard processing",
+        "high": "Enhanced processing, higher cost",
+        "catch_up": "Process backlog"
+      },
+      "submit": "Start Run",
+      "submitting": "Starting...",
+      "success": "Pipeline run started",
+      "successJobId": "Job ID: {jobId}",
+      "viewDigests": "View Digests",
+      "error": "Failed to start run",
+      "sinceLastRun": "Since last run"
+    },
+    "sources": {
+      "title": "Sources Management",
+      "description": "Configure your content sources",
+      "name": "Name",
+      "type": "Type",
+      "enabled": "Enabled",
+      "cadence": "Cadence",
+      "cadenceMinutes": "Interval (minutes)",
+      "weight": "Weight",
+      "weightDescription": "Higher weight = more influence on ranking",
+      "save": "Save",
+      "saving": "Saving...",
+      "noSources": "No sources configured yet",
+      "lastFetched": "Last fetched"
+    },
+    "budgets": {
+      "title": "Budget Status",
+      "description": "Monitor your credit usage and limits",
+      "monthly": "Monthly",
+      "daily": "Daily",
+      "used": "Used",
+      "limit": "Limit",
+      "remaining": "Remaining",
+      "paidCalls": "Paid Calls",
+      "allowed": "Allowed",
+      "blocked": "Blocked",
+      "degradedMode": "Degraded Mode Active",
+      "degradedModeDescription": "Budget exhausted. Pipeline running in low-cost mode.",
+      "warningApproaching": "Approaching limit",
+      "warningCritical": "Critical: Nearly exhausted",
+      "notConfigured": "Not configured"
+    }
   },
   "accessibility": {
     "skipToContent": "Skip to main content",
@@ -100,5 +201,94 @@
     "closeMenu": "Close menu",
     "toggleTheme": "Toggle theme",
     "toggleColorMode": "Toggle color mode"
+  },
+  "item": {
+    "title": "Item Detail",
+    "openOriginal": "Open original",
+    "backToDigest": "Back to digest",
+    "author": "Author",
+    "publishedAt": "Published",
+    "source": "Source",
+    "metadata": "Metadata",
+    "showMetadata": "Show metadata",
+    "hideMetadata": "Hide metadata",
+    "noTitle": "Untitled",
+    "unknownAuthor": "Unknown author",
+    "loading": "Loading item...",
+    "error": "Failed to load item",
+    "notFound": "Item not found"
+  },
+  "digests": {
+    "title": "Digests",
+    "list": {
+      "window": "Window",
+      "mode": "Mode",
+      "items": "items",
+      "item": "item",
+      "created": "Created",
+      "empty": "No digests yet",
+      "emptyDescription": "Digests will appear here after your first pipeline run.",
+      "error": "Failed to load digests",
+      "retry": "Try again"
+    },
+    "detail": {
+      "window": "Window",
+      "items": "items",
+      "item": "item",
+      "rankedItems": "Ranked Items",
+      "loading": "Loading digest...",
+      "error": "Failed to load digest",
+      "notFound": "Digest not found",
+      "staleData": "Showing cached data",
+      "lastUpdated": "Last updated {time}"
+    },
+    "whyShown": {
+      "title": "Why shown",
+      "ahaScore": "Aha Score",
+      "reason": "Reason",
+      "novelty": "Novelty",
+      "noveltyScore": "Novelty score",
+      "lookbackDays": "Lookback period",
+      "similarItems": "Similar items found",
+      "sourceWeight": "Source Weight",
+      "weight": "Weight",
+      "sourceName": "Source",
+      "sourceType": "Type",
+      "corroboration": "Signal Corroboration",
+      "corroboratingUrls": "Corroborating URLs",
+      "corroboratingTopics": "Corroborating topics",
+      "corroborationScore": "Corroboration score",
+      "noFeatures": "No ranking features available"
+    },
+    "feedback": {
+      "like": "Like",
+      "dislike": "Dislike",
+      "save": "Save",
+      "skip": "Skip",
+      "liked": "Liked",
+      "disliked": "Disliked",
+      "saved": "Saved",
+      "skipped": "Skipped",
+      "submitting": "Submitting...",
+      "error": "Failed to submit feedback",
+      "success": "Feedback recorded"
+    },
+    "modes": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "catch_up": "Catch-up"
+    }
+  },
+  "network": {
+    "offline": "You're offline - showing cached data",
+    "staleData": "Showing cached data",
+    "lastUpdated": "Last updated {time}"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{count} min ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
   }
 }

@@ -7,9 +7,11 @@ export interface NavItem {
   id: string;
   href: string;
   labelKey: string; // i18n key
-  icon: "home" | "digest" | "sources" | "settings";
+  icon: "home" | "digest" | "sources" | "settings" | "admin";
   /** Whether this item should appear in mobile bottom nav */
   mobileNav?: boolean;
+  /** Child items for nested navigation (e.g., admin sub-pages) */
+  children?: NavItem[];
 }
 
 export interface NavSection {
@@ -41,6 +43,33 @@ export const mainNavItems: NavItem[] = [
     labelKey: "nav.sources",
     icon: "sources",
     mobileNav: true,
+  },
+  {
+    id: "admin",
+    href: "/app/admin",
+    labelKey: "nav.admin",
+    icon: "admin",
+    mobileNav: false,
+    children: [
+      {
+        id: "admin-run",
+        href: "/app/admin/run",
+        labelKey: "admin.nav.run",
+        icon: "admin",
+      },
+      {
+        id: "admin-sources",
+        href: "/app/admin/sources",
+        labelKey: "admin.nav.sources",
+        icon: "sources",
+      },
+      {
+        id: "admin-budgets",
+        href: "/app/admin/budgets",
+        labelKey: "admin.nav.budgets",
+        icon: "admin",
+      },
+    ],
   },
   {
     id: "settings",
