@@ -859,18 +859,57 @@ export async function adminSourcesSetTopicCommand(args: string[]): Promise<void>
   }
 }
 
+function printSourcesSetCadenceUsage(): void {
+  console.log("Usage:");
+  console.log("  admin:sources-set-cadence (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) (--every-minutes <int> | --clear) [--dry-run]");
+  console.log("");
+  console.log("Examples:");
+  console.log("  # Set daily cadence for a single source:");
+  console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440");
+  console.log("");
+  console.log("  # Set daily cadence for all x_posts sources in a topic:");
+  console.log("  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440");
+  console.log("");
+  console.log("  # Set 8-hour cadence for multiple source types:");
+  console.log("  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type rss,reddit --every-minutes 480");
+  console.log("");
+  console.log("  # Clear cadence (fetch on every run):");
+  console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --clear");
+  console.log("");
+  console.log("  # Dry run (preview changes without persisting):");
+  console.log("  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440 --dry-run");
+  console.log("");
+  console.log("Tip: list sources with `admin:sources-list`.");
+}
+
 export async function adminSourcesSetCadenceCommand(args: string[]): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
   try {
     let sourceId: string | null = null;
+    let topicArg: string | null = null;
+    const sourceTypes: string[] = [];
     let everyMinutes: number | null = null;
     let clear = false;
+    let dryRun = false;
 
     for (let i = 0; i < args.length; i += 1) {
       const a = args[i];
       if (a === "--source-id") {
         sourceId = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--topic") {
+        topicArg = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--source-type") {
+        const next = args[i + 1];
+        if (next && next.trim().length > 0) {
+          sourceTypes.push(...splitCsv(String(next)));
+        }
         i += 1;
         continue;
       }
@@ -890,47 +929,91 @@ export async function adminSourcesSetCadenceCommand(args: string[]): Promise<voi
         clear = true;
         continue;
       }
+      if (a === "--dry-run") {
+        dryRun = true;
+        continue;
+      }
       if (a === "--help" || a === "-h") {
-        sourceId = null;
+        printSourcesSetCadenceUsage();
+        return;
       }
     }
 
-    if (!sourceId || (!clear && everyMinutes === null)) {
-      console.log("Usage:");
-      console.log("  admin:sources-set-cadence --source-id <uuid> (--every-minutes <int> | --clear)");
-      console.log("");
-      console.log("Examples:");
-      console.log("  # Set daily cadence (1440 minutes):");
-      console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440");
-      console.log("");
-      console.log("  # Set 8-hour cadence (480 minutes):");
-      console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 480");
-      console.log("");
-      console.log("  # Clear cadence (fetch on every run):");
-      console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --clear");
-      console.log("");
-      console.log("Tip: list sources with `admin:sources-list`.");
+    // Validate: must have either --source-id OR (--topic + --source-type)
+    const hasSingleMode = sourceId !== null;
+    const hasBulkMode = topicArg !== null && sourceTypes.length > 0;
+
+    if (!hasSingleMode && !hasBulkMode) {
+      printSourcesSetCadenceUsage();
       return;
     }
 
-    const source = await db.sources.getById(sourceId);
-    if (!source) {
-      console.error(`Source not found: ${sourceId}`);
+    if (hasSingleMode && hasBulkMode) {
+      console.error("Cannot use both --source-id and --topic/--source-type together.");
       process.exitCode = 1;
       return;
     }
 
-    const result = await db.sources.updateConfigCadence({
-      sourceId,
-      cadence: clear ? null : { mode: "interval", everyMinutes: everyMinutes! },
-    });
+    // Validate: must have either --every-minutes or --clear
+    if (!clear && everyMinutes === null) {
+      console.error("Must specify either --every-minutes <int> or --clear.");
+      process.exitCode = 1;
+      return;
+    }
 
-    console.log("Updated source cadence:");
-    console.log(`- source_id: ${sourceId}`);
-    console.log(`- type: ${source.type}`);
-    console.log(`- name: ${source.name}`);
-    console.log(`- previous: ${result.previous ? JSON.stringify(result.previous) : "(none)"}`);
-    console.log(`- new: ${result.updated ? JSON.stringify(result.updated) : "(cleared)"}`);
+    const user = await db.users.getOrCreateSingleton();
+    const cadence = clear ? null : { mode: "interval" as const, everyMinutes: everyMinutes! };
+
+    // Resolve target sources
+    let targetSources: Array<{ id: string; type: string; name: string }> = [];
+
+    if (hasSingleMode) {
+      const source = await db.sources.getById(sourceId!);
+      if (!source) {
+        console.error(`Source not found: ${sourceId}`);
+        process.exitCode = 1;
+        return;
+      }
+      targetSources = [{ id: source.id, type: source.type, name: source.name }];
+    } else {
+      // Bulk mode: resolve topic and find matching sources
+      const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
+      const allSources = await db.sources.listEnabledByUserAndTopic({ userId: user.id, topicId: topic.id });
+      targetSources = allSources
+        .filter((s) => sourceTypes.includes(s.type))
+        .map((s) => ({ id: s.id, type: s.type, name: s.name }));
+
+      if (targetSources.length === 0) {
+        console.log(`No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`);
+        return;
+      }
+    }
+
+    // Apply changes
+    console.log(dryRun ? "Dry run (no changes will be persisted):" : "Updating source cadence:");
+    console.log("");
+
+    for (const source of targetSources) {
+      if (dryRun) {
+        // For dry run, just show what would change
+        const current = await db.sources.getById(source.id);
+        const currentCadence = current?.config_json?.cadence;
+        console.log(`- ${source.id} ${source.type}:${source.name}`);
+        console.log(`  previous: ${currentCadence ? JSON.stringify(currentCadence) : "(none)"}`);
+        console.log(`  new: ${cadence ? JSON.stringify({ mode: cadence.mode, every_minutes: cadence.everyMinutes }) : "(cleared)"}`);
+      } else {
+        const result = await db.sources.updateConfigCadence({
+          sourceId: source.id,
+          cadence,
+        });
+        console.log(`- ${source.id} ${source.type}:${source.name}`);
+        console.log(`  previous: ${result.previous ? JSON.stringify(result.previous) : "(none)"}`);
+        console.log(`  new: ${result.updated ? JSON.stringify(result.updated) : "(cleared)"}`);
+      }
+    }
+
+    console.log("");
+    console.log(`Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : " updated"}.`);
   } finally {
     await db.close();
   }

@@ -115,7 +115,7 @@ function printHelp(): void {
   console.log("  admin:sources-list");
   console.log("  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]");
   console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
-  console.log("  admin:sources-set-cadence --source-id <uuid> (--every-minutes <int> | --clear)");
+  console.log("  admin:sources-set-cadence (--source-id <uuid> | --topic <name> --source-type <type>) (--every-minutes <int> | --clear) [--dry-run]");
   console.log('  admin:signal-debug [--kind bundle] [--limit N] [--verbose] [--json] [--raw]');
   console.log("  admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]");
   console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
