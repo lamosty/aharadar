@@ -186,6 +186,25 @@ export interface SourcePatchResponse {
   source: Source;
 }
 
+/** Supported source types */
+export const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube"] as const;
+
+export type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
+
+/** Source create request */
+export interface SourceCreateRequest {
+  type: SupportedSourceType;
+  name: string;
+  config?: SourceConfig;
+  isEnabled?: boolean;
+}
+
+/** Source create response */
+export interface SourceCreateResponse {
+  ok: true;
+  source: Source;
+}
+
 /** Budget warning level */
 export type BudgetWarningLevel = "none" | "approaching" | "critical";
 
@@ -301,10 +320,7 @@ interface FetchOptions {
 /**
  * Core fetch wrapper with auth and error handling.
  */
-async function apiFetch<T>(
-  path: string,
-  options: FetchOptions = {}
-): Promise<T> {
+async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const settings = getDevSettings();
   const url = `${settings.apiBaseUrl}${path}`;
 
@@ -327,18 +343,9 @@ async function apiFetch<T>(
     const data = (await response.json()) as T | ApiErrorResponse;
 
     // Check for API error response shape
-    if (
-      typeof data === "object" &&
-      data !== null &&
-      "ok" in data &&
-      data.ok === false
-    ) {
+    if (typeof data === "object" && data !== null && "ok" in data && data.ok === false) {
       const errorData = data as ApiErrorResponse;
-      throw new ApiError(
-        errorData.error.code,
-        errorData.error.message,
-        response.status
-      );
+      throw new ApiError(errorData.error.code, errorData.error.message, response.status);
     }
 
     return data as T;
@@ -350,9 +357,7 @@ async function apiFetch<T>(
 
     // Network or fetch errors
     if (error instanceof TypeError || error instanceof DOMException) {
-      throw new NetworkError(
-        error.name === "AbortError" ? "Request aborted" : "Network request failed"
-      );
+      throw new NetworkError(error.name === "AbortError" ? "Request aborted" : "Network request failed");
     }
 
     // Unknown errors
@@ -391,20 +396,14 @@ export async function getDigests(
 /**
  * Get digest detail with items.
  */
-export async function getDigest(
-  id: string,
-  signal?: AbortSignal
-): Promise<DigestDetailResponse> {
+export async function getDigest(id: string, signal?: AbortSignal): Promise<DigestDetailResponse> {
   return apiFetch<DigestDetailResponse>(`/digests/${id}`, { signal });
 }
 
 /**
  * Get content item detail.
  */
-export async function getItem(
-  id: string,
-  signal?: AbortSignal
-): Promise<ItemDetailResponse> {
+export async function getItem(id: string, signal?: AbortSignal): Promise<ItemDetailResponse> {
   return apiFetch<ItemDetailResponse>(`/items/${id}`, { signal });
 }
 
@@ -439,9 +438,7 @@ export async function postAdminRun(
 /**
  * List all sources.
  */
-export async function getAdminSources(
-  signal?: AbortSignal
-): Promise<SourcesListResponse> {
+export async function getAdminSources(signal?: AbortSignal): Promise<SourcesListResponse> {
   return apiFetch<SourcesListResponse>("/admin/sources", { signal });
 }
 
@@ -461,10 +458,22 @@ export async function patchAdminSource(
 }
 
 /**
+ * Create a new source.
+ */
+export async function postAdminSource(
+  request: SourceCreateRequest,
+  signal?: AbortSignal
+): Promise<SourceCreateResponse> {
+  return apiFetch<SourceCreateResponse>("/admin/sources", {
+    method: "POST",
+    body: request,
+    signal,
+  });
+}
+
+/**
  * Get budget status.
  */
-export async function getAdminBudgets(
-  signal?: AbortSignal
-): Promise<BudgetsResponse> {
+export async function getAdminBudgets(signal?: AbortSignal): Promise<BudgetsResponse> {
   return apiFetch<BudgetsResponse>("/admin/budgets", { signal });
 }

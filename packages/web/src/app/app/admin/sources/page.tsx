@@ -1,82 +1,21 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
+import { useAdminSources, useAdminSourcePatch, useAdminSourceCreate } from "@/lib/hooks";
+import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType, type Source, type SourceConfig } from "@/lib/api";
 import styles from "./page.module.css";
-
-interface Source {
-  id: string;
-  type: string;
-  name: string;
-  isEnabled: boolean;
-  config: {
-    cadence?: { mode: string; every_minutes: number };
-    weight?: number;
-  };
-  createdAt: string;
-  lastFetchedAt?: string;
-}
-
-// Mock data - will be replaced by real API hooks
-function useMockSources() {
-  const [sources, setSources] = useState<Source[]>([
-    {
-      id: "src-1",
-      type: "rss",
-      name: "Hacker News RSS",
-      isEnabled: true,
-      config: { cadence: { mode: "interval", every_minutes: 60 }, weight: 1.5 },
-      createdAt: "2025-01-01T00:00:00Z",
-      lastFetchedAt: "2025-01-06T10:30:00Z",
-    },
-    {
-      id: "src-2",
-      type: "reddit",
-      name: "r/programming",
-      isEnabled: true,
-      config: { cadence: { mode: "interval", every_minutes: 120 }, weight: 1.2 },
-      createdAt: "2025-01-01T00:00:00Z",
-      lastFetchedAt: "2025-01-06T09:15:00Z",
-    },
-    {
-      id: "src-3",
-      type: "youtube",
-      name: "Tech Channels",
-      isEnabled: false,
-      config: { cadence: { mode: "interval", every_minutes: 480 }, weight: 1.0 },
-      createdAt: "2025-01-02T00:00:00Z",
-    },
-    {
-      id: "src-4",
-      type: "rss",
-      name: "TechCrunch",
-      isEnabled: true,
-      config: { cadence: { mode: "interval", every_minutes: 240 }, weight: 0.8 },
-      createdAt: "2025-01-03T00:00:00Z",
-      lastFetchedAt: "2025-01-06T08:00:00Z",
-    },
-  ]);
-
-  const updateSource = useCallback(
-    async (id: string, updates: Partial<Source>): Promise<void> => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setSources((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-      );
-    },
-    []
-  );
-
-  return { sources, updateSource, isLoading: false };
-}
 
 export default function AdminSourcesPage() {
   const { addToast } = useToast();
-  const { sources, updateSource, isLoading } = useMockSources();
+  const { data: sourcesData, isLoading } = useAdminSources();
+  const patchMutation = useAdminSourcePatch();
+  const createMutation = useAdminSourceCreate();
+
+  const sources = sourcesData?.sources ?? [];
+
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{
@@ -84,9 +23,18 @@ export default function AdminSourcesPage() {
     weight: number;
   } | null>(null);
 
+  // Create form state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createType, setCreateType] = useState<SupportedSourceType>("rss");
+  const [createName, setCreateName] = useState("");
+  const [createConfig, setCreateConfig] = useState("");
+
   const handleToggleEnabled = async (source: Source) => {
     try {
-      await updateSource(source.id, { isEnabled: !source.isEnabled });
+      await patchMutation.mutateAsync({
+        id: source.id,
+        patch: { isEnabled: !source.isEnabled },
+      });
       addToast(t("toast.sourceUpdated"), "success");
     } catch {
       addToast(t("toast.sourceUpdateFailed"), "error");
@@ -111,11 +59,13 @@ export default function AdminSourcesPage() {
 
     setSavingId(source.id);
     try {
-      await updateSource(source.id, {
-        config: {
-          ...source.config,
-          cadence: { mode: "interval", every_minutes: editValues.cadenceMinutes },
-          weight: editValues.weight,
+      await patchMutation.mutateAsync({
+        id: source.id,
+        patch: {
+          configPatch: {
+            cadence: { mode: "interval", every_minutes: editValues.cadenceMinutes },
+            weight: editValues.weight,
+          },
         },
       });
       addToast(t("toast.sourceUpdated"), "success");
@@ -128,8 +78,52 @@ export default function AdminSourcesPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
+  const handleShowCreateForm = () => {
+    setShowCreateForm(true);
+    setCreateType("rss");
+    setCreateName("");
+    setCreateConfig("");
+  };
+
+  const handleCancelCreate = () => {
+    setShowCreateForm(false);
+    setCreateType("rss");
+    setCreateName("");
+    setCreateConfig("");
+  };
+
+  const handleCreateSource = async () => {
+    if (!createName.trim()) {
+      addToast(t("toast.sourceCreateFailed"), "error");
+      return;
+    }
+
+    let parsedConfig: SourceConfig | undefined;
+    if (createConfig.trim()) {
+      try {
+        parsedConfig = JSON.parse(createConfig) as SourceConfig;
+      } catch {
+        addToast(t("toast.sourceCreateFailed"), "error");
+        return;
+      }
+    }
+
+    try {
+      await createMutation.mutateAsync({
+        type: createType,
+        name: createName.trim(),
+        config: parsedConfig,
+      });
+      addToast(t("toast.sourceCreated"), "success");
+      handleCancelCreate();
+    } catch {
+      addToast(t("toast.sourceCreateFailed"), "error");
+    }
+  };
+
+  const getTypeDescription = (type: SupportedSourceType): string => {
+    const key = `admin.sources.typeDescriptions.${type}` as const;
+    return t(key);
   };
 
   if (isLoading) {
@@ -152,14 +146,104 @@ export default function AdminSourcesPage() {
         </Link>
         <h1 className={styles.title}>{t("admin.sources.title")}</h1>
         <p className={styles.description}>{t("admin.sources.description")}</p>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            onClick={handleShowCreateForm}
+            className={styles.addSourceButton}
+            disabled={showCreateForm}
+          >
+            <PlusIcon />
+            <span>{t("admin.sources.addSource")}</span>
+          </button>
+        </div>
       </header>
 
-      {sources.length === 0 ? (
+      {showCreateForm && (
+        <div className={styles.createForm}>
+          <h2 className={styles.createFormTitle}>{t("admin.sources.addSource")}</h2>
+
+          <div className={styles.editField}>
+            <label htmlFor="create-type" className={styles.editLabel}>
+              {t("admin.sources.type")}
+            </label>
+            <select
+              id="create-type"
+              value={createType}
+              onChange={(e) => setCreateType(e.target.value as SupportedSourceType)}
+              className={styles.selectInput}
+            >
+              {SUPPORTED_SOURCE_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            <p className={styles.typeDescription}>{getTypeDescription(createType)}</p>
+          </div>
+
+          <div className={styles.editField}>
+            <label htmlFor="create-name" className={styles.editLabel}>
+              {t("admin.sources.name")}
+            </label>
+            <input
+              type="text"
+              id="create-name"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              placeholder={t("admin.sources.namePlaceholder")}
+              className={styles.textInput}
+            />
+          </div>
+
+          <div className={styles.editField}>
+            <label htmlFor="create-config" className={styles.editLabel}>
+              {t("admin.sources.configLabel")}
+            </label>
+            <textarea
+              id="create-config"
+              value={createConfig}
+              onChange={(e) => setCreateConfig(e.target.value)}
+              placeholder={t("admin.sources.configPlaceholder")}
+              className={styles.textareaInput}
+            />
+            <p className={styles.editHint}>{t("admin.sources.configHint")}</p>
+          </div>
+
+          <div className={styles.editActions}>
+            <button
+              type="button"
+              onClick={handleCancelCreate}
+              className={styles.cancelButton}
+              disabled={createMutation.isPending}
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateSource}
+              className={styles.saveButton}
+              disabled={createMutation.isPending || !createName.trim()}
+            >
+              {createMutation.isPending ? (
+                <>
+                  <LoadingSpinner />
+                  <span>{t("admin.sources.creating")}</span>
+                </>
+              ) : (
+                <span>{t("admin.sources.create")}</span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sources.length === 0 && !showCreateForm ? (
         <div className={styles.empty}>
           <SourcesIcon />
           <p>{t("admin.sources.noSources")}</p>
         </div>
-      ) : (
+      ) : sources.length > 0 ? (
         <div className={styles.sourcesList}>
           {sources.map((source) => (
             <div key={source.id} className={styles.sourceCard}>
@@ -167,12 +251,6 @@ export default function AdminSourcesPage() {
                 <div className={styles.sourceInfo}>
                   <span className={styles.sourceType}>{source.type}</span>
                   <h3 className={styles.sourceName}>{source.name}</h3>
-                  {source.lastFetchedAt && (
-                    <p className={styles.lastFetched}>
-                      {t("admin.sources.lastFetched")}:{" "}
-                      {formatDate(source.lastFetchedAt)}
-                    </p>
-                  )}
                 </div>
                 <label className={styles.toggle}>
                   <input
@@ -192,10 +270,7 @@ export default function AdminSourcesPage() {
               {editingSource === source.id && editValues ? (
                 <div className={styles.editForm}>
                   <div className={styles.editField}>
-                    <label
-                      htmlFor={`cadence-${source.id}`}
-                      className={styles.editLabel}
-                    >
+                    <label htmlFor={`cadence-${source.id}`} className={styles.editLabel}>
                       {t("admin.sources.cadenceMinutes")}
                     </label>
                     <input
@@ -214,10 +289,7 @@ export default function AdminSourcesPage() {
                     />
                   </div>
                   <div className={styles.editField}>
-                    <label
-                      htmlFor={`weight-${source.id}`}
-                      className={styles.editLabel}
-                    >
+                    <label htmlFor={`weight-${source.id}`} className={styles.editLabel}>
                       {t("admin.sources.weight")}
                     </label>
                     <input
@@ -235,9 +307,7 @@ export default function AdminSourcesPage() {
                       }
                       className={styles.editInput}
                     />
-                    <p className={styles.editHint}>
-                      {t("admin.sources.weightDescription")}
-                    </p>
+                    <p className={styles.editHint}>{t("admin.sources.weightDescription")}</p>
                   </div>
                   <div className={styles.editActions}>
                     <button
@@ -268,20 +338,14 @@ export default function AdminSourcesPage() {
               ) : (
                 <div className={styles.sourceDetails}>
                   <div className={styles.detailItem}>
-                    <span className={styles.detailLabel}>
-                      {t("admin.sources.cadence")}
-                    </span>
+                    <span className={styles.detailLabel}>{t("admin.sources.cadence")}</span>
                     <span className={styles.detailValue}>
                       {source.config.cadence?.every_minutes ?? "-"} min
                     </span>
                   </div>
                   <div className={styles.detailItem}>
-                    <span className={styles.detailLabel}>
-                      {t("admin.sources.weight")}
-                    </span>
-                    <span className={styles.detailValue}>
-                      {source.config.weight?.toFixed(1) ?? "1.0"}
-                    </span>
+                    <span className={styles.detailLabel}>{t("admin.sources.weight")}</span>
+                    <span className={styles.detailValue}>{source.config.weight?.toFixed(1) ?? "1.0"}</span>
                   </div>
                   <button
                     type="button"
@@ -296,7 +360,7 @@ export default function AdminSourcesPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -373,6 +437,25 @@ function LoadingSpinner() {
       aria-hidden="true"
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   );
 }

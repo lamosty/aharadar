@@ -24,6 +24,7 @@ import {
   postAdminRun,
   getAdminSources,
   patchAdminSource,
+  postAdminSource,
   getAdminBudgets,
   type HealthResponse,
   type DigestsListResponse,
@@ -36,6 +37,8 @@ import {
   type SourcesListResponse,
   type SourcePatchRequest,
   type SourcePatchResponse,
+  type SourceCreateRequest,
+  type SourceCreateResponse,
   type BudgetsResponse,
   type DigestItem,
   type FeedbackAction,
@@ -51,8 +54,7 @@ export const queryKeys = {
   health: ["health"] as const,
   digests: {
     all: ["digests"] as const,
-    list: (params?: { from?: string; to?: string }) =>
-      ["digests", "list", params] as const,
+    list: (params?: { from?: string; to?: string }) => ["digests", "list", params] as const,
     detail: (id: string) => ["digests", id] as const,
   },
   items: {
@@ -150,12 +152,7 @@ interface UseFeedbackOptions {
 export function useFeedback(options?: UseFeedbackOptions) {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    FeedbackResponse,
-    ApiError | NetworkError,
-    FeedbackRequest,
-    FeedbackMutationContext
-  >({
+  return useMutation<FeedbackResponse, ApiError | NetworkError, FeedbackRequest, FeedbackMutationContext>({
     mutationFn: (feedback) => postFeedback(feedback),
 
     // Optimistic update: update cache before request completes
@@ -170,9 +167,7 @@ export function useFeedback(options?: UseFeedbackOptions) {
 
       // Snapshot the previous values
       const previousDigest = feedback.digestId
-        ? queryClient.getQueryData<DigestDetailResponse>(
-            queryKeys.digests.detail(feedback.digestId)
-          )
+        ? queryClient.getQueryData<DigestDetailResponse>(queryKeys.digests.detail(feedback.digestId))
         : undefined;
 
       const previousItem = queryClient.getQueryData<ItemDetailResponse>(
@@ -190,16 +185,10 @@ export function useFeedback(options?: UseFeedbackOptions) {
     onError: (_error, feedback, context) => {
       // Restore the previous values
       if (context?.previousDigest && feedback.digestId) {
-        queryClient.setQueryData(
-          queryKeys.digests.detail(feedback.digestId),
-          context.previousDigest
-        );
+        queryClient.setQueryData(queryKeys.digests.detail(feedback.digestId), context.previousDigest);
       }
       if (context?.previousItem) {
-        queryClient.setQueryData(
-          queryKeys.items.detail(feedback.contentItemId),
-          context.previousItem
-        );
+        queryClient.setQueryData(queryKeys.items.detail(feedback.contentItemId), context.previousItem);
       }
 
       options?.onError?.(_error);
@@ -241,10 +230,7 @@ export interface LocalFeedbackState {
 // ============================================================================
 
 export function useAdminRun(
-  options?: Omit<
-    UseMutationOptions<AdminRunResponse, ApiError | NetworkError, AdminRunRequest>,
-    "mutationFn"
-  >
+  options?: Omit<UseMutationOptions<AdminRunResponse, ApiError | NetworkError, AdminRunRequest>, "mutationFn">
 ) {
   return useMutation({
     mutationFn: (request) => postAdminRun(request),
@@ -253,10 +239,7 @@ export function useAdminRun(
 }
 
 export function useAdminSources(
-  options?: Omit<
-    UseQueryOptions<SourcesListResponse, ApiError | NetworkError>,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<SourcesListResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: queryKeys.admin.sources,
@@ -288,11 +271,26 @@ export function useAdminSourcePatch(
   });
 }
 
-export function useAdminBudgets(
+export function useAdminSourceCreate(
   options?: Omit<
-    UseQueryOptions<BudgetsResponse, ApiError | NetworkError>,
-    "queryKey" | "queryFn"
+    UseMutationOptions<SourceCreateResponse, ApiError | NetworkError, SourceCreateRequest>,
+    "mutationFn"
   >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request) => postAdminSource(request),
+    onSuccess: () => {
+      // Invalidate sources list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.sources });
+    },
+    ...options,
+  });
+}
+
+export function useAdminBudgets(
+  options?: Omit<UseQueryOptions<BudgetsResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: queryKeys.admin.budgets,

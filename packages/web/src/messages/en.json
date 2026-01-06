@@ -111,6 +111,8 @@
     "linkSent": "Magic link sent! Check your email.",
     "sourceUpdated": "Source updated",
     "sourceUpdateFailed": "Failed to update source",
+    "sourceCreated": "Source created",
+    "sourceCreateFailed": "Failed to create source",
     "runStarted": "Pipeline run started",
     "runFailed": "Failed to start pipeline run",
     "feedbackError": "Failed to save feedback. Please try again."
@@ -175,7 +177,25 @@
       "save": "Save",
       "saving": "Saving...",
       "noSources": "No sources configured yet",
-      "lastFetched": "Last fetched"
+      "lastFetched": "Last fetched",
+      "addSource": "Add Source",
+      "addSourceDescription": "Create a new content source",
+      "create": "Create Source",
+      "creating": "Creating...",
+      "sourceCreated": "Source created successfully",
+      "sourceCreateFailed": "Failed to create source",
+      "namePlaceholder": "e.g., Tech News RSS",
+      "configLabel": "Configuration (JSON)",
+      "configPlaceholder": "{\"key\": \"value\"}",
+      "configHint": "Optional JSON config for the source connector",
+      "typeDescriptions": {
+        "reddit": "Fetch posts from Reddit subreddits",
+        "hn": "Fetch stories from Hacker News",
+        "rss": "Fetch articles from RSS/Atom feeds",
+        "signal": "X/Twitter signal search via Grok",
+        "x_posts": "Fetch posts from X/Twitter accounts",
+        "youtube": "Fetch videos from YouTube channels (coming soon)"
+      }
     },
     "budgets": {
       "title": "Budget Status",
