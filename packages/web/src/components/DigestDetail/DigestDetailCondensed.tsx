@@ -103,14 +103,20 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
         <td className={styles.tdRank}>{item.rank}</td>
         <td className={styles.tdTitle}>
           <div className={styles.titleWrapper}>
-            <a
-              href={item.contentItem.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.titleLink}
-            >
-              {item.contentItem.title}
-            </a>
+            {item.contentItem.url ? (
+              <a
+                href={item.contentItem.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.titleLink}
+              >
+                {item.contentItem.title || "(Untitled)"}
+              </a>
+            ) : (
+              <span className={styles.titleText}>
+                {item.contentItem.title || "(Untitled)"}
+              </span>
+            )}
             {item.contentItem.author && (
               <span className={styles.author}>by {item.contentItem.author}</span>
             )}

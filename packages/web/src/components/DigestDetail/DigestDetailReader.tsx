@@ -97,14 +97,20 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
 
       <div className={styles.cardBody}>
         <h3 className={styles.title}>
-          <a
-            href={item.contentItem.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.titleLink}
-          >
-            {item.contentItem.title}
-          </a>
+          {item.contentItem.url ? (
+            <a
+              href={item.contentItem.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.titleLink}
+            >
+              {item.contentItem.title || "(Untitled)"}
+            </a>
+          ) : (
+            <span className={styles.titleText}>
+              {item.contentItem.title || "(Untitled)"}
+            </span>
+          )}
         </h3>
 
         {item.contentItem.author && (

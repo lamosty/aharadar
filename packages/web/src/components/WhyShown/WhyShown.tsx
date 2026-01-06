@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { type TriageFeatures } from "@/lib/mock-data";
 import { t } from "@/lib/i18n";
 import styles from "./WhyShown.module.css";
@@ -12,6 +12,7 @@ interface WhyShownProps {
 
 export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const panelId = useId();
 
   const hasFeatures = features && Object.keys(features).length > 0;
 
@@ -22,7 +23,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
         className={styles.toggle}
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        aria-controls="why-shown-panel"
+        aria-controls={panelId}
         data-testid="why-shown-toggle"
       >
         <span className={styles.toggleLabel}>{t("digests.whyShown.title")}</span>
@@ -33,7 +34,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
 
       {isExpanded && (
         <div
-          id="why-shown-panel"
+          id={panelId}
           className={styles.panel}
           role="region"
           aria-label={t("digests.whyShown.title")}

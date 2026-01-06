@@ -142,32 +142,29 @@ export async function setupApiMocks(page: Page, options: {
     feedbackShouldFail = false,
   } = options;
 
-  // Mock digests list
-  await page.route("**/api/digests*", async (route: Route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(digestsResponse),
-    });
-  });
-
-  // Mock digest detail
-  await page.route("**/api/digests/*", async (route: Route) => {
-    // Skip if it's a list request (has query params but no ID)
+  // Mock digests endpoints (list and detail)
+  // Use a single handler that distinguishes between list and detail requests
+  await page.route("**/api/digests**", async (route: Route) => {
     const url = new URL(route.request().url());
-    const pathParts = url.pathname.split("/");
-    const id = pathParts[pathParts.length - 1];
+    const pathParts = url.pathname.split("/").filter(Boolean);
+    const lastPart = pathParts[pathParts.length - 1];
 
-    if (!id || id === "digests") {
-      await route.continue();
-      return;
+    // Check if this is a detail request (has an ID after /digests/)
+    const isDetailRequest = lastPart && lastPart !== "digests" && pathParts.includes("digests");
+
+    if (isDetailRequest) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(digestDetailResponse),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(digestsResponse),
+      });
     }
-
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(digestDetailResponse),
-    });
   });
 
   // Mock feedback

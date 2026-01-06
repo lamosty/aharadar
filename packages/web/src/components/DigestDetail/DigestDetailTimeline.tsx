@@ -129,14 +129,20 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
 
       <div className={styles.postContent}>
         <h3 className={styles.title}>
-          <a
-            href={item.contentItem.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.titleLink}
-          >
-            {item.contentItem.title}
-          </a>
+          {item.contentItem.url ? (
+            <a
+              href={item.contentItem.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.titleLink}
+            >
+              {item.contentItem.title || "(Untitled)"}
+            </a>
+          ) : (
+            <span className={styles.titleText}>
+              {item.contentItem.title || "(Untitled)"}
+            </span>
+          )}
         </h3>
 
         {item.contentItem.author && (
@@ -160,15 +166,17 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
           variant="compact"
         />
 
-        <a
-          href={item.contentItem.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.openLink}
-        >
-          <ExternalLinkIcon />
-          Open
-        </a>
+        {item.contentItem.url && (
+          <a
+            href={item.contentItem.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.openLink}
+          >
+            <ExternalLinkIcon />
+            Open
+          </a>
+        )}
       </footer>
 
       <WhyShown features={item.triageJson?.system_features} />

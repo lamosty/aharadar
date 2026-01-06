@@ -79,7 +79,7 @@ export function useNetworkStatus(): NetworkStatus {
 
   // Track recent fetch errors
   const [hasRecentErrors, setHasRecentErrors] = useState(false);
-  const [errorClearTimeout, setErrorClearTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [errorClearTimeout, setErrorClearTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const markError = useCallback(() => {
     setHasRecentErrors(true);
