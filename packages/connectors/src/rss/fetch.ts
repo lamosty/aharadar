@@ -71,12 +71,12 @@ const parser = new XMLParser({
   isArray: (name) => ["item", "entry", "category", "author", "link"].includes(name),
 });
 
-interface ParsedFeed {
+export interface ParsedFeed {
   type: "rss" | "atom";
   entries: ParsedEntry[];
 }
 
-interface ParsedEntry {
+export interface ParsedEntry {
   guid: string | null;
   link: string | null;
   title: string | null;
@@ -88,8 +88,13 @@ interface ParsedEntry {
 }
 
 function extractText(value: unknown): string | null {
+  // Handle arrays (take first element)
+  if (Array.isArray(value)) {
+    if (value.length === 0) return null;
+    return extractText(value[0]);
+  }
   if (typeof value === "string") return value.trim() || null;
-  if (value && typeof value === "object" && !Array.isArray(value)) {
+  if (value && typeof value === "object") {
     const rec = value as Record<string, unknown>;
     if (rec["#text"] != null) return String(rec["#text"]).trim() || null;
     if (rec["#cdata"] != null) return String(rec["#cdata"]).trim() || null;
@@ -97,7 +102,7 @@ function extractText(value: unknown): string | null {
   return null;
 }
 
-function parseFeed(xmlText: string): ParsedFeed {
+export function parseFeed(xmlText: string): ParsedFeed {
   const doc = parser.parse(xmlText);
 
   // Try RSS 2.0
