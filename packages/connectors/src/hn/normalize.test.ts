@@ -155,4 +155,174 @@ describe("normalizeHn", () => {
       expect(result.sourceType).toBe("hn");
     });
   });
+
+  describe("missing id edge case", () => {
+    const HN_STORY_NO_ID = {
+      id: null,
+      type: "story",
+      by: "testuser",
+      time: 1736150400,
+      title: "Story without ID",
+      text: null,
+      url: "https://example.com/story",
+      score: 10,
+      descendants: 5,
+    };
+
+    it("returns null externalId when id is missing", async () => {
+      const result = await normalizeHn(HN_STORY_NO_ID, mockParams);
+      expect(result.externalId).toBeNull();
+    });
+
+    it("uses url as canonicalUrl when id is missing but url is present", async () => {
+      const result = await normalizeHn(HN_STORY_NO_ID, mockParams);
+      expect(result.canonicalUrl).toBe("https://example.com/story");
+    });
+
+    it("returns null canonicalUrl when both id and url are missing", async () => {
+      const noIdNoUrl = { ...HN_STORY_NO_ID, url: null };
+      const result = await normalizeHn(noIdNoUrl, mockParams);
+      expect(result.canonicalUrl).toBeNull();
+    });
+
+    it("does not throw when id is missing", async () => {
+      await expect(normalizeHn(HN_STORY_NO_ID, mockParams)).resolves.not.toThrow();
+    });
+  });
+
+  describe("non-story types", () => {
+    const HN_JOB = {
+      id: 99999001,
+      type: "job",
+      by: "ycombinator",
+      time: 1736150400,
+      title: "YC is hiring",
+      text: "<p>We&#x27;re looking for engineers.</p>",
+      url: "https://ycombinator.com/jobs",
+      score: null,
+      descendants: null,
+    };
+
+    const HN_POLL = {
+      id: 99999002,
+      type: "poll",
+      by: "pollster",
+      time: 1736150400,
+      title: "Favorite programming language?",
+      text: "Vote for your favorite!",
+      url: null,
+      score: 500,
+      descendants: 120,
+    };
+
+    it("normalizes job type without throwing", async () => {
+      await expect(normalizeHn(HN_JOB, mockParams)).resolves.not.toThrow();
+    });
+
+    it("preserves job type in metadata", async () => {
+      const result = await normalizeHn(HN_JOB, mockParams);
+      expect(result.metadata.type).toBe("job");
+    });
+
+    it("normalizes poll type without throwing", async () => {
+      await expect(normalizeHn(HN_POLL, mockParams)).resolves.not.toThrow();
+    });
+
+    it("preserves poll type in metadata", async () => {
+      const result = await normalizeHn(HN_POLL, mockParams);
+      expect(result.metadata.type).toBe("poll");
+    });
+
+    it("extracts title and author for non-story types", async () => {
+      const result = await normalizeHn(HN_JOB, mockParams);
+      expect(result.title).toBe("YC is hiring");
+      expect(result.author).toBe("ycombinator");
+    });
+  });
+
+  describe("HTML stripping robustness", () => {
+    const HN_STORY_WITH_COMPLEX_HTML = {
+      id: 99999003,
+      type: "story",
+      by: "htmlmaster",
+      time: 1736150400,
+      title: "Complex HTML Test",
+      text: `<script>alert('xss')</script>
+<style>.malicious { color: red; }</style>
+<p>First paragraph.</p>
+<p>Second paragraph with <a href="http://example.com">a link</a>.</p>
+<div>Entities: &amp; &lt;tag&gt; &quot;quoted&quot; &#39;apostrophe&#39; &#x27;hex apostrophe&#x27;</div>
+<br>Line break above.`,
+      url: null,
+      score: 42,
+      descendants: 10,
+    };
+
+    it("removes script blocks", async () => {
+      const result = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      expect(result.bodyText).not.toContain("script");
+      expect(result.bodyText).not.toContain("alert");
+      expect(result.bodyText).not.toContain("xss");
+    });
+
+    it("removes style blocks", async () => {
+      const result = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      expect(result.bodyText).not.toContain("style");
+      expect(result.bodyText).not.toContain("malicious");
+      expect(result.bodyText).not.toContain("color");
+    });
+
+    it("decodes HTML entities", async () => {
+      const result = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      expect(result.bodyText).toContain("&");
+      // Note: &lt;tag&gt; becomes <tag> which is then stripped as an HTML tag
+      expect(result.bodyText).toContain('"quoted"');
+      expect(result.bodyText).toContain("'apostrophe'");
+      expect(result.bodyText).toContain("'hex apostrophe'");
+    });
+
+    it("removes anchor tags but preserves text content", async () => {
+      const result = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      expect(result.bodyText).toContain("a link");
+      expect(result.bodyText).not.toContain("<a");
+      expect(result.bodyText).not.toContain("href");
+    });
+
+    it("converts block elements to newlines", async () => {
+      const result = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      expect(result.bodyText).toContain("First paragraph.");
+      expect(result.bodyText).toContain("Second paragraph");
+      // Should have some structure preserved via newlines
+      expect(result.bodyText?.includes("\n")).toBe(true);
+    });
+
+    it("produces deterministic output", async () => {
+      const result1 = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      const result2 = await normalizeHn(HN_STORY_WITH_COMPLEX_HTML, mockParams);
+      expect(result1.bodyText).toBe(result2.bodyText);
+    });
+  });
+
+  describe("missing time edge case", () => {
+    const HN_STORY_NO_TIME = {
+      id: 99999004,
+      type: "story",
+      by: "timeless",
+      time: null,
+      title: "Story without time",
+      text: null,
+      url: "https://example.com/timeless",
+      score: 5,
+      descendants: 0,
+    };
+
+    it("does not throw when time is missing", async () => {
+      await expect(normalizeHn(HN_STORY_NO_TIME, mockParams)).resolves.not.toThrow();
+    });
+
+    it("returns null publishedAt when time is missing", async () => {
+      const result = await normalizeHn(HN_STORY_NO_TIME, mockParams);
+      expect(result.publishedAt).toBeNull();
+    });
+  });
 });
