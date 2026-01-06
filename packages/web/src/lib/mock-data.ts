@@ -311,3 +311,129 @@ export function useMockFeedback(): UseFeedbackResult {
     isPending: false,
   };
 }
+
+// ============================================================================
+// Real API Hooks with Adapters
+// These use the real API but transform responses to match component interfaces
+// ============================================================================
+
+import { useDigests, useDigest, useFeedback } from "./hooks";
+import type {
+  DigestListItem,
+  DigestDetailResponse,
+  DigestItem as ApiDigestItem,
+} from "./api";
+
+/**
+ * Adapt API DigestListItem to component DigestSummary.
+ */
+function adaptDigestSummary(item: DigestListItem): DigestSummary {
+  return {
+    id: item.id,
+    windowStart: item.windowStart,
+    windowEnd: item.windowEnd,
+    mode: item.mode as DigestSummary["mode"],
+    itemCount: 0, // API doesn't provide this; will be filled from detail if needed
+    createdAt: item.createdAt,
+  };
+}
+
+/**
+ * Adapt API DigestItem to component DigestItem.
+ */
+function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
+  return {
+    id: apiItem.contentItemId ?? `item-${index}`,
+    rank: apiItem.rank,
+    score: apiItem.score,
+    contentItem: {
+      id: apiItem.contentItemId ?? `item-${index}`,
+      title: apiItem.item?.title ?? "(No title)",
+      url: apiItem.item?.url ?? "",
+      author: apiItem.item?.author ?? null,
+      publishedAt: apiItem.item?.publishedAt ?? null,
+      sourceType: apiItem.item?.sourceType ?? "unknown",
+      triageSummary: apiItem.summaryJson
+        ? String((apiItem.summaryJson as Record<string, unknown>).summary ?? "")
+        : undefined,
+    },
+    triageJson: apiItem.triageJson
+      ? { system_features: apiItem.triageJson as unknown as TriageFeatures }
+      : undefined,
+    feedback: null, // API doesn't return feedback state per item currently
+  };
+}
+
+/**
+ * Adapt API DigestDetailResponse to component DigestDetail.
+ */
+function adaptDigestDetail(response: DigestDetailResponse): DigestDetail {
+  return {
+    id: response.digest.id,
+    windowStart: response.digest.windowStart,
+    windowEnd: response.digest.windowEnd,
+    mode: response.digest.mode as DigestDetail["mode"],
+    itemCount: response.items.length,
+    createdAt: response.digest.createdAt,
+    items: response.items.map(adaptDigestItem),
+  };
+}
+
+/**
+ * Hook for fetching digests list using real API.
+ * Returns data in component-expected shape.
+ */
+export function useRealDigests(): UseDigestsResult {
+  const query = useDigests();
+
+  return {
+    data: query.data?.digests.map(adaptDigestSummary),
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error ?? null,
+    refetch: () => {
+      query.refetch();
+    },
+  };
+}
+
+/**
+ * Hook for fetching digest detail using real API.
+ * Returns data in component-expected shape.
+ */
+export function useRealDigestDetail(id: string): UseDigestDetailResult {
+  const query = useDigest(id);
+
+  return {
+    data: query.data ? adaptDigestDetail(query.data) : undefined,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    isStale: query.isStale ?? false,
+    error: query.error ?? null,
+    refetch: () => {
+      query.refetch();
+    },
+  };
+}
+
+/**
+ * Hook for submitting feedback using real API.
+ */
+export function useRealFeedback(): UseFeedbackResult {
+  const mutation = useFeedback();
+
+  return {
+    submitFeedback: async (
+      contentItemId: string,
+      digestId: string,
+      action: "like" | "dislike" | "save" | "skip"
+    ) => {
+      await mutation.mutateAsync({
+        contentItemId,
+        digestId,
+        action,
+      });
+    },
+    isPending: mutation.isPending,
+  };
+}

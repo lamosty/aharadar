@@ -148,6 +148,8 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    // Query digest items, joining both direct content items and cluster representatives
+    // Uses COALESCE to prefer direct content item, falling back to cluster representative
     const itemsResult = await db.query<DigestItemRow>(
       `SELECT
          di.rank,
@@ -157,13 +159,15 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
          di.triage_json,
          di.summary_json,
          di.entities_json,
-         ci.title as item_title,
-         ci.canonical_url as item_url,
-         ci.author as item_author,
-         ci.published_at::text as item_published_at,
-         ci.source_type as item_source_type
+         COALESCE(ci.title, ci_rep.title) as item_title,
+         COALESCE(ci.canonical_url, ci_rep.canonical_url) as item_url,
+         COALESCE(ci.author, ci_rep.author) as item_author,
+         COALESCE(ci.published_at, ci_rep.published_at)::text as item_published_at,
+         COALESCE(ci.source_type, ci_rep.source_type) as item_source_type
        FROM digest_items di
        LEFT JOIN content_items ci ON ci.id = di.content_item_id
+       LEFT JOIN clusters cl ON cl.id = di.cluster_id
+       LEFT JOIN content_items ci_rep ON ci_rep.id = cl.representative_content_item_id
        WHERE di.digest_id = $1
        ORDER BY di.rank ASC`,
       [id]
@@ -186,7 +190,8 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         triageJson: row.triage_json,
         summaryJson: row.summary_json,
         entitiesJson: row.entities_json,
-        item: row.content_item_id
+        // Return item if we have any content (direct item or cluster representative)
+        item: row.item_title || row.item_url || row.item_source_type
           ? {
               title: row.item_title,
               url: row.item_url,

@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/components/ThemeProvider";
 import { t } from "@/lib/i18n";
-import { useMockDigests } from "@/lib/mock-data";
+import { useRealDigests } from "@/lib/mock-data";
 import {
   DigestsListCondensed,
   DigestsListCondensedSkeleton,
@@ -15,8 +15,8 @@ import styles from "./page.module.css";
 
 export default function DigestsPage() {
   const { layout } = useTheme();
-  // Placeholder - will be replaced by useDigests() from data layer
-  const { data: digests, isLoading, isError, refetch } = useMockDigests();
+  // Using real API with adapter hooks
+  const { data: digests, isLoading, isError, refetch } = useRealDigests();
 
   return (
     <div className={styles.page}>
@@ -59,7 +59,7 @@ export default function DigestsPage() {
 
 interface DigestsListProps {
   layout: "condensed" | "reader" | "timeline";
-  digests: NonNullable<ReturnType<typeof useMockDigests>["data"]>;
+  digests: NonNullable<ReturnType<typeof useRealDigests>["data"]>;
 }
 
 function DigestsList({ layout, digests }: DigestsListProps) {

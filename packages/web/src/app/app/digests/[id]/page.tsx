@@ -4,7 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
 import { t } from "@/lib/i18n";
-import { useMockDigestDetail, useMockFeedback, type DigestItem } from "@/lib/mock-data";
+import { useRealDigestDetail, useRealFeedback, type DigestItem } from "@/lib/mock-data";
 import {
   DigestDetailCondensed,
   DigestDetailCondensedSkeleton,
@@ -22,11 +22,11 @@ interface DigestDetailPageProps {
 export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   const { id } = use(params);
   const { layout } = useTheme();
-  // Placeholder - will be replaced by useDigestDetail() from data layer
+  // Using real API with adapter hooks
   const { data: digest, isLoading, isError, isStale, refetch } =
-    useMockDigestDetail(id);
-  // Placeholder - will be replaced by useFeedback() from data layer
-  const { submitFeedback } = useMockFeedback();
+    useRealDigestDetail(id);
+  // Using real API feedback hook
+  const { submitFeedback } = useRealFeedback();
 
   const handleFeedback = async (
     contentItemId: string,
