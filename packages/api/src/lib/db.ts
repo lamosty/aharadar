@@ -14,6 +14,7 @@ export function getDb(): Db {
 export interface SingletonContext {
   userId: string;
   topicId: string;
+  db: Db;
 }
 
 export async function getSingletonContext(): Promise<SingletonContext | null> {
@@ -25,5 +26,5 @@ export async function getSingletonContext(): Promise<SingletonContext | null> {
   const defaultTopic = topics.find((t) => t.name === "default") ?? topics[0];
   if (!defaultTopic) return null;
 
-  return { userId: user.id, topicId: defaultTopic.id };
+  return { userId: user.id, topicId: defaultTopic.id, db: database };
 }

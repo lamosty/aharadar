@@ -189,6 +189,23 @@ export function createSourcesRepo(db: Queryable) {
       return { previous, updated: params.isEnabled };
     },
 
+    async updateName(params: {
+      sourceId: string;
+      name: string;
+    }): Promise<{ previous: string; updated: string }> {
+      const current = await db.query<{ name: string }>("select name from sources where id = $1::uuid", [
+        params.sourceId,
+      ]);
+      const row = current.rows[0];
+      if (!row) throw new Error(`Source not found: ${params.sourceId}`);
+
+      const previous = row.name;
+
+      await db.query("update sources set name = $2 where id = $1::uuid", [params.sourceId, params.name]);
+
+      return { previous, updated: params.name };
+    },
+
     async listByUserAndTopic(params: { userId: string; topicId: string }): Promise<SourceRow[]> {
       const res = await db.query<SourceRow>(
         `select id, user_id, topic_id::text as topic_id, type, name, config_json, cursor_json, is_enabled, created_at

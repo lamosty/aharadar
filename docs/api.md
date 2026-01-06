@@ -82,13 +82,102 @@ Response:
 { "ok": true, "jobId": "string" }
 ```
 
+### `GET /api/admin/sources`
+
+Returns list of sources for the singleton user/topic.
+
+Response:
+
+```json
+{
+  "ok": true,
+  "sources": [
+    {
+      "id": "uuid",
+      "type": "rss",
+      "name": "Example Feed",
+      "isEnabled": true,
+      "config": { "cadence": { "mode": "interval", "every_minutes": 480 }, "weight": 1.5 },
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### `PATCH /api/admin/sources/:id`
+
+Update source fields. Supports partial updates with patch semantics.
+
+Request:
+
+```json
+{
+  "name": "New Name",
+  "isEnabled": false,
+  "configPatch": {
+    "cadence": { "mode": "interval", "every_minutes": 480 },
+    "weight": 1.5
+  }
+}
+```
+
+All fields are optional. For `configPatch`, setting a field to `null` removes it from config.
+
+Response:
+
+```json
+{
+  "ok": true,
+  "source": {
+    "id": "uuid",
+    "type": "rss",
+    "name": "New Name",
+    "isEnabled": false,
+    "config": { "cadence": { "mode": "interval", "every_minutes": 480 }, "weight": 1.5 },
+    "createdAt": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+Errors:
+
+- 400 for invalid UUID, invalid body
+- 403 if source doesn't belong to current user/topic
+- 404 if source not found
+
+### `GET /api/admin/budgets`
+
+Returns the current budget status (credits usage).
+
+Response:
+
+```json
+{
+  "ok": true,
+  "budgets": {
+    "monthlyUsed": 1500,
+    "monthlyLimit": 10000,
+    "monthlyRemaining": 8500,
+    "dailyUsed": 200,
+    "dailyLimit": 500,
+    "dailyRemaining": 300,
+    "paidCallsAllowed": true,
+    "warningLevel": "none"
+  }
+}
+```
+
+Notes:
+
+- `dailyLimit` and `dailyRemaining` are `null` if `DAILY_THROTTLE_CREDITS` is not configured
+- `warningLevel` can be `"none"`, `"approaching"` (>=80%), or `"critical"` (>=95%)
+- `paidCallsAllowed` is `false` when monthly or daily credits are exhausted
+
 ### `GET /api/admin/config` and `PUT /api/admin/config`
 
 Optional MVP admin endpoints to manage:
 
-- sources
 - schedule
-- budgets
 
 ## Error responses (Proposed)
 
