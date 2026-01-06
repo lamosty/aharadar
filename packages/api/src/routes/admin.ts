@@ -42,7 +42,130 @@ interface AdminRunRequestBody {
   mode?: RunMode;
 }
 
+/** Supported source types */
+const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube"] as const;
+type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
+
+function isSupportedSourceType(value: unknown): value is SupportedSourceType {
+  return typeof value === "string" && SUPPORTED_SOURCE_TYPES.includes(value as SupportedSourceType);
+}
+
+interface AdminSourcesCreateBody {
+  type: string;
+  name: string;
+  config?: Record<string, unknown>;
+  isEnabled?: boolean;
+}
+
 export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
+  // POST /admin/sources - Create a new source
+  fastify.post<{ Body: AdminSourcesCreateBody }>("/admin/sources", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const body = request.body as unknown;
+    if (!body || typeof body !== "object") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_BODY",
+          message: "Request body must be a JSON object",
+        },
+      });
+    }
+
+    const { type, name, config, isEnabled } = body as Record<string, unknown>;
+
+    // Validate type (required)
+    if (typeof type !== "string" || type.trim().length === 0) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "type is required and must be a non-empty string",
+        },
+      });
+    }
+
+    if (!isSupportedSourceType(type)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `type must be one of: ${SUPPORTED_SOURCE_TYPES.join(", ")}`,
+        },
+      });
+    }
+
+    // Validate name (required)
+    if (typeof name !== "string" || name.trim().length === 0) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "name is required and must be a non-empty string",
+        },
+      });
+    }
+
+    // Validate config (optional, must be object if provided)
+    if (config !== undefined && (typeof config !== "object" || config === null || Array.isArray(config))) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "config must be an object if provided",
+        },
+      });
+    }
+
+    // Validate isEnabled (optional, must be boolean if provided)
+    if (isEnabled !== undefined && typeof isEnabled !== "boolean") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "isEnabled must be a boolean if provided",
+        },
+      });
+    }
+
+    const db = getDb();
+    const result = await db.sources.create({
+      userId: ctx.userId,
+      topicId: ctx.topicId,
+      type: type.trim(),
+      name: name.trim(),
+      config: (config as Record<string, unknown>) ?? {},
+      isEnabled: isEnabled ?? true,
+    });
+
+    // Fetch the created source to return full details
+    const created = await db.sources.getById(result.id);
+    if (!created) {
+      return reply.code(500).send({
+        ok: false,
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to fetch created source",
+        },
+      });
+    }
+
+    return reply.code(201).send({
+      ok: true,
+      source: formatSource(created),
+    });
+  });
+
   fastify.post<{ Body: AdminRunRequestBody }>("/admin/run", async (request, reply) => {
     const ctx = await getSingletonContext();
     if (!ctx) {
@@ -309,7 +432,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
             ok: false,
             error: {
               code: "INVALID_PARAM",
-              message: "configPatch.cadence must be { mode: 'interval', every_minutes: <positive number> } or null",
+              message:
+                "configPatch.cadence must be { mode: 'interval', every_minutes: <positive number> } or null",
             },
           });
         }
