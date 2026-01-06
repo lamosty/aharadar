@@ -27,5 +27,9 @@ Task files (in recommended order):
 15. `task-015-novelty-scoring.md`
 16. `task-016-source-weights-admin-ux.md`
 17. `task-017-why-shown-ranking-breakdown.md`
+18. `task-018-rss-connector.md`
+19. `task-019-youtube-connector.md` (deferred)
+20. `task-020-hn-connector.md`
+21. `task-021-connector-tests.md` (rss/hn only for now)
 
 

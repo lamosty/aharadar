@@ -83,3 +83,25 @@ Every task must end with:
 17. **Task 017**: review “why shown” ranking breakdown (novelty/corroboration/weights)
 
 - `docs/_session/tasks/task-017-why-shown-ranking-breakdown.md`
+
+## Core connectors batch (prepare before API/UI)
+
+18. **Task 018**: RSS connector (fetch + normalize)
+
+- `docs/_session/tasks/task-018-rss-connector.md`
+
+19. **Task 019**: YouTube connector (channel feed ingestion; no transcripts)
+
+- `docs/_session/tasks/task-019-youtube-connector.md`
+
+20. **Task 020**: HN connector (Firebase API stories; no comments)
+
+- `docs/_session/tasks/task-020-hn-connector.md`
+
+21. **Task 021**: hermetic unit tests for rss/hn parsing
+
+- `docs/_session/tasks/task-021-connector-tests.md`
+
+## Deferred (later)
+
+- Task 019 is currently **deferred** (YouTube ingestion). Keep the connector stubbed for now.
