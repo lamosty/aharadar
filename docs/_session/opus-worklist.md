@@ -69,3 +69,17 @@ Every task must end with:
 14. **Task 014**: scheduler/queue wiring (BullMQ + real cron windows)
 
 - `docs/_session/tasks/task-014-scheduler-queue-wiring.md`
+
+## Next batch (prepared; run after current tasks land)
+
+15. **Task 015**: novelty scoring (topic-scoped, embedding-based) + ranking integration
+
+- `docs/_session/tasks/task-015-novelty-scoring.md`
+
+16. **Task 016**: source weights + bulk admin helpers (enable/disable + set weight)
+
+- `docs/_session/tasks/task-016-source-weights-admin-ux.md`
+
+17. **Task 017**: review “why shown” ranking breakdown (novelty/corroboration/weights)
+
+- `docs/_session/tasks/task-017-why-shown-ranking-breakdown.md`

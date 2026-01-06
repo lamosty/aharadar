@@ -24,5 +24,8 @@ Task files (in recommended order):
 12. `task-012-canonical-cluster-reps.md`
 13. `task-013-budget-hard-enforcement.md`
 14. `task-014-scheduler-queue-wiring.md`
+15. `task-015-novelty-scoring.md`
+16. `task-016-source-weights-admin-ux.md`
+17. `task-017-why-shown-ranking-breakdown.md`
 
 

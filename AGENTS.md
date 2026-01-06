@@ -13,6 +13,22 @@ You are an AI coding agent working in this repository.
 - Confirm behavior against `docs/*` (or update the docs first if you are changing a contract).
 - If present, read the latest handoff recap in `docs/sessions/recaps/` before starting work.
 
+**If you are generating Opus tasks (planning mode)**
+
+We often separate roles to speed up development:
+
+- **GPT‑5.2 xtra high**: _task generator / architect_ (writes task specs, asks driver questions, updates docs)
+- **Claude Code Opus 4.5**: _implementer_ (executes one task spec per commit)
+- **Human**: _driver_ (answers tradeoffs, runs commands, merges commits)
+
+When generating or refreshing a batch of Opus task specs, follow the required Driver Q&A gate:
+
+- `docs/workflows/opus-task-generator.md`
+
+Rule: generate tasks → ask driver questions → wait → update task specs/docs → commit docs-only → then run Opus.
+
+This enables parallelism: while Opus implements the current batch, the task generator can prepare the next batch (assuming the current one is done) and run the Driver Q&A gate up front.
+
 **How to work (non-negotiable)**
 
 - Work in **commit-sized** chunks (small, reviewable, coherent).
@@ -65,6 +81,7 @@ If you only read a few files, read these in order:
 7. `docs/llm.md` — provider-agnostic LLM tasks + strict JSON schemas.
 8. `docs/budgets.md` — credits budgeting + exhaustion policy.
 9. ADRs: `docs/adr/*` — decisions + statuses.
+10. `docs/workflows/opus-task-generator.md` — Driver Q&A gate + task generation workflow
 
 ## Non-negotiables (project invariants)
 
