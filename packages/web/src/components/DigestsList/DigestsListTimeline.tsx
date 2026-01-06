@@ -66,7 +66,7 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
   const groupedDigests = groupByDate(digests);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="digests-list">
       {Array.from(groupedDigests.entries()).map(([dateKey, dateDigests]) => (
         <section key={dateKey} className={styles.dateGroup}>
           <header className={styles.dateHeader}>
@@ -93,6 +93,7 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
                   href={`/app/digests/${digest.id}`}
                   className={styles.digestCard}
                   prefetch={true}
+                  data-testid={`digest-item-${digest.id}`}
                 >
                   <div className={styles.digestTime}>
                     <time dateTime={digest.createdAt}>

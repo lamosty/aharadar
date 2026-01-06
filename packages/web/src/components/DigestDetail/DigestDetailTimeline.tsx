@@ -56,7 +56,7 @@ export function DigestDetailTimeline({
   onFeedback,
 }: DigestDetailTimelineProps) {
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="digest-detail">
       <ol className={styles.timeline} role="list">
         {items.map((item, index) => (
           <li key={item.id} className={styles.timelineItem}>
@@ -105,7 +105,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
   };
 
   return (
-    <article className={styles.post}>
+    <article className={styles.post} data-testid={`digest-item-${item.id}`}>
       <header className={styles.postHeader}>
         <div className={styles.postMeta}>
           <span className={styles.rank}>#{item.rank}</span>

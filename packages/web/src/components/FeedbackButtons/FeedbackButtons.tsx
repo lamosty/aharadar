@@ -62,6 +62,7 @@ export function FeedbackButtons({
       className={`${styles.container} ${isCompact ? styles.compact : ""}`}
       role="group"
       aria-label="Feedback actions"
+      data-testid="feedback-buttons"
     >
       <FeedbackButton
         action="like"
@@ -135,6 +136,7 @@ function FeedbackButton({
       aria-pressed={isActive}
       aria-label={isActive ? activeLabels[action] : labels[action]}
       title={isActive ? activeLabels[action] : labels[action]}
+      data-testid={`feedback-${action}`}
     >
       <Icon filled={isActive} />
       {!compact && (

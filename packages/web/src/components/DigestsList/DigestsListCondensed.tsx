@@ -53,7 +53,7 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
 
 export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="digests-list">
       <table className={styles.table} role="grid">
         <thead className={styles.tableHead}>
           <tr>
@@ -73,7 +73,7 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
         </thead>
         <tbody>
           {digests.map((digest) => (
-            <tr key={digest.id} className={styles.row}>
+            <tr key={digest.id} className={styles.row} data-testid={`digest-item-${digest.id}`}>
               <td className={styles.tdWindow}>
                 <Link
                   href={`/app/digests/${digest.id}`}

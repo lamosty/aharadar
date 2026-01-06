@@ -58,7 +58,7 @@ function getModeDescription(mode: DigestSummary["mode"]): string {
 
 export function DigestsListReader({ digests }: DigestsListReaderProps) {
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="digests-list">
       <ul className={styles.list} role="list">
         {digests.map((digest) => (
           <li key={digest.id}>
@@ -66,6 +66,7 @@ export function DigestsListReader({ digests }: DigestsListReaderProps) {
               href={`/app/digests/${digest.id}`}
               className={styles.card}
               prefetch={true}
+              data-testid={`digest-item-${digest.id}`}
             >
               <article className={styles.cardContent}>
                 <header className={styles.cardHeader}>

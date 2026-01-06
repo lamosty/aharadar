@@ -16,13 +16,14 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
   const hasFeatures = features && Object.keys(features).length > 0;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="why-shown">
       <button
         type="button"
         className={styles.toggle}
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
         aria-controls="why-shown-panel"
+        data-testid="why-shown-toggle"
       >
         <span className={styles.toggleLabel}>{t("digests.whyShown.title")}</span>
         <span className={`${styles.toggleIcon} ${isExpanded ? styles.expanded : ""}`}>
@@ -36,6 +37,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
           className={styles.panel}
           role="region"
           aria-label={t("digests.whyShown.title")}
+          data-testid="why-shown-panel"
         >
           {!hasFeatures ? (
             <p className={styles.noFeatures}>{t("digests.whyShown.noFeatures")}</p>

@@ -22,12 +22,12 @@ export default function LandingPage() {
 
       {/* Hero section */}
       <main id="main-content">
-        <section className={styles.hero}>
+        <section className={styles.hero} data-testid="hero-section">
           <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle}>{t("landing.hero.title")}</h1>
+            <h1 className={styles.heroTitle} data-testid="hero-title">{t("landing.hero.title")}</h1>
             <p className={styles.heroSubtitle}>{t("landing.hero.subtitle")}</p>
             <div className={styles.heroActions}>
-              <Link href="/app" className={`btn btn-primary ${styles.heroCta}`}>
+              <Link href="/app" className={`btn btn-primary ${styles.heroCta}`} data-testid="hero-cta">
                 {t("landing.hero.cta")}
               </Link>
             </div>
@@ -40,7 +40,7 @@ export default function LandingPage() {
         </section>
 
         {/* Features section */}
-        <section className={styles.features}>
+        <section className={styles.features} data-testid="features-section">
           <div className={styles.featuresContent}>
             <h2 className={styles.featuresTitle}>
               {t("landing.features.title")}

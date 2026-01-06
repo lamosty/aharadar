@@ -42,7 +42,7 @@ export function DigestDetailCondensed({
   onFeedback,
 }: DigestDetailCondensedProps) {
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="digest-detail">
       <table className={styles.table} role="grid">
         <thead className={styles.tableHead}>
           <tr>
@@ -99,7 +99,7 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
 
   return (
     <>
-      <tr className={styles.row}>
+      <tr className={styles.row} data-testid={`digest-item-${item.id}`}>
         <td className={styles.tdRank}>{item.rank}</td>
         <td className={styles.tdTitle}>
           <div className={styles.titleWrapper}>

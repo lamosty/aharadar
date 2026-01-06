@@ -42,7 +42,7 @@ export function DigestDetailReader({
   onFeedback,
 }: DigestDetailReaderProps) {
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="digest-detail">
       <ol className={styles.list} role="list">
         {items.map((item) => (
           <li key={item.id}>
@@ -75,7 +75,7 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
   };
 
   return (
-    <article className={styles.card}>
+    <article className={styles.card} data-testid={`digest-item-${item.id}`}>
       <header className={styles.cardHeader}>
         <div className={styles.rankBadge}>#{item.rank}</div>
         <div className={styles.meta}>
