@@ -31,6 +31,8 @@ async function buildServer() {
   await fastify.register(cors, {
     origin: true, // Allow all origins in dev; restrict in production
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-API-Key", "Authorization"],
   });
 
   fastify.setErrorHandler((error: Error & { statusCode?: number; code?: string }, _request, reply) => {
