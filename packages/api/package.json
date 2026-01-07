@@ -17,8 +17,10 @@
     "@aharadar/pipeline": "workspace:*",
     "@aharadar/queues": "workspace:*",
     "@aharadar/shared": "workspace:*",
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",
     "bullmq": "^5.34.8",
-    "fastify": "^5.2.1"
+    "fastify": "^5.2.1",
+    "resend": "^6.6.0"
   }
 }
