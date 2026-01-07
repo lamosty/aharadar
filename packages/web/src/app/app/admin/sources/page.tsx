@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import { useAdminSources, useAdminSourcePatch, useAdminSourceCreate } from "@/lib/hooks";
 import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType, type Source, type SourceConfig } from "@/lib/api";
+import {
+  SourceConfigForm,
+  validateSourceConfig,
+  getDefaultConfig,
+  type SourceTypeConfig,
+} from "@/components/SourceConfigForms";
 import styles from "./page.module.css";
 
 export default function AdminSourcesPage() {
@@ -27,7 +33,16 @@ export default function AdminSourcesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createType, setCreateType] = useState<SupportedSourceType>("rss");
   const [createName, setCreateName] = useState("");
-  const [createConfig, setCreateConfig] = useState("");
+  const [createConfig, setCreateConfig] = useState<Partial<SourceTypeConfig>>(() =>
+    getDefaultConfig("rss")
+  );
+  const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
+
+  // Reset config when source type changes
+  useEffect(() => {
+    setCreateConfig(getDefaultConfig(createType));
+    setCreateErrors({});
+  }, [createType]);
 
   const handleToggleEnabled = async (source: Source) => {
     try {
@@ -82,37 +97,39 @@ export default function AdminSourcesPage() {
     setShowCreateForm(true);
     setCreateType("rss");
     setCreateName("");
-    setCreateConfig("");
+    setCreateConfig(getDefaultConfig("rss"));
+    setCreateErrors({});
   };
 
   const handleCancelCreate = () => {
     setShowCreateForm(false);
     setCreateType("rss");
     setCreateName("");
-    setCreateConfig("");
+    setCreateConfig(getDefaultConfig("rss"));
+    setCreateErrors({});
   };
 
   const handleCreateSource = async () => {
+    // Validate name
     if (!createName.trim()) {
-      addToast(t("toast.sourceCreateFailed"), "error");
+      setCreateErrors({ name: "Name is required" });
       return;
     }
 
-    let parsedConfig: SourceConfig | undefined;
-    if (createConfig.trim()) {
-      try {
-        parsedConfig = JSON.parse(createConfig) as SourceConfig;
-      } catch {
-        addToast(t("toast.sourceCreateFailed"), "error");
-        return;
-      }
+    // Validate config
+    const configErrors = validateSourceConfig(createType, createConfig);
+    if (Object.keys(configErrors).length > 0) {
+      setCreateErrors(configErrors);
+      return;
     }
+
+    setCreateErrors({});
 
     try {
       await createMutation.mutateAsync({
         type: createType,
         name: createName.trim(),
-        config: parsedConfig,
+        config: createConfig as SourceConfig,
       });
       addToast(t("toast.sourceCreated"), "success");
       handleCancelCreate();
@@ -124,6 +141,18 @@ export default function AdminSourcesPage() {
   const getTypeDescription = (type: SupportedSourceType): string => {
     const key = `admin.sources.typeDescriptions.${type}` as const;
     return t(key);
+  };
+
+  const getSourceTypeDisplayName = (type: SupportedSourceType): string => {
+    const names: Record<SupportedSourceType, string> = {
+      rss: "RSS Feed",
+      reddit: "Reddit",
+      hn: "Hacker News",
+      youtube: "YouTube",
+      x_posts: "X (Twitter) Posts",
+      signal: "Signal Search",
+    };
+    return names[type] ?? type;
   };
 
   if (isLoading) {
@@ -175,11 +204,10 @@ export default function AdminSourcesPage() {
             >
               {SUPPORTED_SOURCE_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {getSourceTypeDisplayName(type)}
                 </option>
               ))}
             </select>
-            <p className={styles.typeDescription}>{getTypeDescription(createType)}</p>
           </div>
 
           <div className={styles.editField}>
@@ -192,22 +220,18 @@ export default function AdminSourcesPage() {
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
               placeholder={t("admin.sources.namePlaceholder")}
-              className={styles.textInput}
+              className={`${styles.textInput} ${createErrors.name ? styles.hasError : ""}`}
             />
+            {createErrors.name && <p className={styles.errorText}>{createErrors.name}</p>}
           </div>
 
-          <div className={styles.editField}>
-            <label htmlFor="create-config" className={styles.editLabel}>
-              {t("admin.sources.configLabel")}
-            </label>
-            <textarea
-              id="create-config"
-              value={createConfig}
-              onChange={(e) => setCreateConfig(e.target.value)}
-              placeholder={t("admin.sources.configPlaceholder")}
-              className={styles.textareaInput}
+          <div className={styles.configFormWrapper}>
+            <SourceConfigForm
+              sourceType={createType}
+              config={createConfig}
+              onChange={setCreateConfig}
+              errors={createErrors}
             />
-            <p className={styles.editHint}>{t("admin.sources.configHint")}</p>
           </div>
 
           <div className={styles.editActions}>
