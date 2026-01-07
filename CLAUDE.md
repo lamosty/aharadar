@@ -5,9 +5,10 @@ Core loop: ingest → normalize → dedupe/cluster → triage → rank → enric
 
 ## Before coding
 
-1. Read the latest recap in `docs/sessions/recaps/`
-2. Check relevant docs in `docs/` (spec, architecture, data-model, pipeline)
-3. Confirm contracts in docs/code before changing anything
+1. Read the latest recap in `docs/recaps/`
+2. Check open tasks in `docs/tasks/`
+3. Check relevant docs in `docs/` (spec, architecture, data-model, pipeline)
+4. Confirm contracts in docs/code before changing anything
 
 ## How to work
 
@@ -65,7 +66,7 @@ One logical change per commit. After finishing:
 
 ## Long sessions
 
-Write handoff recap to `docs/sessions/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
+Write handoff recap to `docs/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
 
 ## Key docs
 
@@ -76,7 +77,8 @@ Write handoff recap to `docs/sessions/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
 - `docs/connectors.md` — connector contracts
 - `docs/adr/*` — decisions
 
-## Collaboration workflow (Opus implementer + GPT reviewer)
+## Key locations
 
-- `docs/workflows/ai-collab.md`
-- `docs/_session/opus-worklist.md`
+- `docs/tasks/` — open task files
+- `docs/recaps/` — session recaps
+- `docs/adr/` — architecture decisions

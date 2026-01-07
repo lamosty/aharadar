@@ -11,11 +11,13 @@ Make user feedback (likes/dislikes) influence future item scoring. When a user l
 ## Background
 
 Currently:
+
 - User feedback is stored in `feedback_events`
 - Scoring is purely algorithmic (LLM triage + source weights)
 - Feedback doesn't affect future rankings
 
 Desired:
+
 - Feedback trains a "preference profile" per user
 - Future items are scored: `final_score = algorithmic_score * preference_adjustment`
 
@@ -44,6 +46,7 @@ If anything else seems required, **stop and ask**.
    - **Recommend starting with Option A for simplicity**
 
 2. **Create preference aggregation**:
+
    ```typescript
    interface UserPreferences {
      sourceTypeWeights: Record<string, number>; // e.g., { hn: 1.2, reddit: 0.8 }
@@ -51,6 +54,7 @@ If anything else seems required, **stop and ask**.
      // Future: topicWeights, keywordWeights
    }
    ```
+
    - Compute from feedback_events:
      - Like → +0.1 to source/author weight
      - Dislike → -0.1 to source/author weight

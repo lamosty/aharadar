@@ -14,6 +14,7 @@ We identified a fundamental mismatch between the current "digest-centric" UX and
 ## The Problem Identified
 
 ### Current Model (Digest-Centric)
+
 ```
 User opens app → Picks a "Digest" (time window) → Sees 8-20 items from that window
 ```
@@ -24,6 +25,7 @@ User opens app → Picks a "Digest" (time window) → Sees 8-20 items from that 
 - This came from an "email newsletter" mental model
 
 ### User's Actual Vision (Feed-Centric)
+
 ```
 User opens app → Sees ALL interesting items ranked best-to-worst → Filters/sorts as needed
 ```
@@ -45,6 +47,7 @@ User opens app → Sees ALL interesting items ranked best-to-worst → Filters/s
 **Decision:** Rank at ingest time, against recent items (~30 days), not continuous re-ranking.
 
 **Reasoning:**
+
 - Continuous re-ranking is expensive and complex
 - Ingest-time ranking is sufficient for novelty detection
 - User feedback can adjust displayed scores without re-running pipeline
@@ -52,53 +55,58 @@ User opens app → Sees ALL interesting items ranked best-to-worst → Filters/s
 ### 2. Novelty Detection vs User Preferences
 
 **The Core Insight:**
+
 > "If there's something new/novel, user couldn't have possibly seen it before and give it a rank - that's the point of the app."
 
 This means novelty detection MUST be algorithmic - you can't train on novel things by definition.
 
 **Two Concepts Being Measured:**
 
-| Concept | What it measures | Can user feedback train it? |
-|---------|------------------|----------------------------|
-| **Novelty** | "Is this idea new/surprising to the world?" | No - algorithmic only |
-| **Preference** | "Does this user care about this topic/source?" | Yes - from likes/dislikes |
+| Concept        | What it measures                               | Can user feedback train it? |
+| -------------- | ---------------------------------------------- | --------------------------- |
+| **Novelty**    | "Is this idea new/surprising to the world?"    | No - algorithmic only       |
+| **Preference** | "Does this user care about this topic/source?" | Yes - from likes/dislikes   |
 
 **Proposed Formula:**
+
 ```
 Final Score = Novelty (algorithmic, LLM-based) × Preference (user-trained weights)
 ```
 
 **Three Implementation Options:**
 
-| Option | Description | Effort | Personalization |
-|--------|-------------|--------|-----------------|
-| **A: Pure Algorithmic** | No preference training, feedback only filters | 0 weeks | None |
-| **B: Preference-Weighted** | Source/topic weights from feedback | 1-2 weeks | Medium |
-| **C: Embedding-Based** | User preference vector from liked items | 3-4 weeks | High |
+| Option                     | Description                                   | Effort    | Personalization |
+| -------------------------- | --------------------------------------------- | --------- | --------------- |
+| **A: Pure Algorithmic**    | No preference training, feedback only filters | 0 weeks   | None            |
+| **B: Preference-Weighted** | Source/topic weights from feedback            | 1-2 weeks | Medium          |
+| **C: Embedding-Based**     | User preference vector from liked items       | 3-4 weeks | High            |
 
 **Recommendation:** Start with Option B (preference-weighted novelty)
 
 **Long-Term Output Example:**
 
-| Item | Novelty | User A (tech fan) | User B (bio fan) |
-|------|---------|-------------------|------------------|
-| Novel AI breakthrough | 0.9 | 0.9 × 1.2 = 1.08 | 0.9 × 0.8 = 0.72 |
-| Novel bio discovery | 0.85 | 0.85 × 0.7 = 0.60 | 0.85 × 1.3 = 1.11 |
+| Item                  | Novelty | User A (tech fan) | User B (bio fan)  |
+| --------------------- | ------- | ----------------- | ----------------- |
+| Novel AI breakthrough | 0.9     | 0.9 × 1.2 = 1.08  | 0.9 × 0.8 = 0.72  |
+| Novel bio discovery   | 0.85    | 0.85 × 0.7 = 0.60 | 0.85 × 1.3 = 1.11 |
 
 ### 3. The Topic Concept
 
 **Important context:** The app has a Topic concept that we shouldn't forget.
 
 **Current data model:**
+
 - Users have Topics (e.g., "Tech News", "Finance", "Science")
 - Topics have Sources (Reddit, HN, Twitter accounts, RSS feeds)
 - Items belong to Sources, which belong to Topics
 
 **How Topics reduce preference complexity:**
+
 - If sources are properly organized into topics, we don't need preference weights to "fight" between tech vs finance - they're already separated
 - User preference within a topic should focus on: source weights, author preferences, content style (not topic itself)
 
 **Usage patterns:**
+
 - Some users: One "default" topic with all sources mixed
 - Other users: Multiple topics (daily tech radar, monthly science digest, etc.)
 
@@ -106,12 +114,12 @@ Final Score = Novelty (algorithmic, LLM-based) × Preference (user-trained weigh
 
 **Different users have different check frequencies:**
 
-| Profile | Check Frequency | Decay Behavior | "New" means |
-|---------|-----------------|----------------|-------------|
-| Power | Multiple/day | Fast (hours) | Since last check |
-| Daily | Once/day | Medium (24h) | Since yesterday |
-| Weekly | Once/week | Slow (7 days) | Since last week |
-| Research | Monthly | Very slow | Since last month |
+| Profile  | Check Frequency | Decay Behavior | "New" means      |
+| -------- | --------------- | -------------- | ---------------- |
+| Power    | Multiple/day    | Fast (hours)   | Since last check |
+| Daily    | Once/day        | Medium (24h)   | Since yesterday  |
+| Weekly   | Once/week       | Slow (7 days)  | Since last week  |
+| Research | Monthly         | Very slow      | Since last month |
 
 **Decision:** Make this configurable (task-047), not one-size-fits-all.
 
@@ -159,12 +167,12 @@ Final Score = Novelty (algorithmic, LLM-based) × Preference (user-trained weigh
 
 See `docs/_session/tasks/task-044-047-overview.md` for full details.
 
-| Task | Description | Depends On |
-|------|-------------|------------|
-| **044** | API: Unified items endpoint with filters | - |
-| **045** | Web: Unified feed view | 044 |
-| **046** | Pipeline: Preference-based scoring | - |
-| **047** | Configurable timeframes/decay | 044, 045 |
+| Task    | Description                              | Depends On |
+| ------- | ---------------------------------------- | ---------- |
+| **044** | API: Unified items endpoint with filters | -          |
+| **045** | Web: Unified feed view                   | 044        |
+| **046** | Pipeline: Preference-based scoring       | -          |
+| **047** | Configurable timeframes/decay            | 044, 045   |
 
 **Suggested order:** 044 → 045 → 046 → 047
 

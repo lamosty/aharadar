@@ -7,6 +7,7 @@ Current UX is **digest-centric**: users navigate digest-by-digest, and items tha
 ## The Vision
 
 A **feed-centric** UX where:
+
 - All interesting items appear in ONE ranked list
 - New items flow in continuously (via batch processing)
 - Users can filter by source, date, score
@@ -16,12 +17,12 @@ A **feed-centric** UX where:
 
 ## Task Breakdown
 
-| Task | Description | Depends On |
-|------|-------------|------------|
-| **044** | API: Unified items endpoint | - |
-| **045** | Web: Unified feed view | 044 |
-| **046** | Pipeline: Preference-based scoring | - |
-| **047** | Configurable timeframes/decay | 044, 045 |
+| Task    | Description                        | Depends On |
+| ------- | ---------------------------------- | ---------- |
+| **044** | API: Unified items endpoint        | -          |
+| **045** | Web: Unified feed view             | 044        |
+| **046** | Pipeline: Preference-based scoring | -          |
+| **047** | Configurable timeframes/decay      | 044, 045   |
 
 ## Suggested Order
 

@@ -12,12 +12,12 @@ Allow users to configure how they use the app - from "power user checking multip
 
 Different usage patterns need different behaviors:
 
-| Profile | Check Frequency | Decay | "New" means |
-|---------|-----------------|-------|-------------|
-| Power | Multiple/day | Fast (hours) | Since last check |
-| Daily | Once/day | Medium (24h) | Since yesterday |
-| Weekly | Once/week | Slow (7 days) | Since last week |
-| Research | Monthly | Very slow | Since last month |
+| Profile  | Check Frequency | Decay         | "New" means      |
+| -------- | --------------- | ------------- | ---------------- |
+| Power    | Multiple/day    | Fast (hours)  | Since last check |
+| Daily    | Once/day        | Medium (24h)  | Since yesterday  |
+| Weekly   | Once/week       | Slow (7 days) | Since last week  |
+| Research | Monthly         | Very slow     | Since last month |
 
 ## Read first (required)
 
@@ -41,6 +41,7 @@ If anything else seems required, **stop and ask**.
 ### Phase 1: Data model
 
 1. **Add user_preferences table** (or extend users):
+
    ```sql
    CREATE TABLE user_preferences (
      user_id UUID PRIMARY KEY REFERENCES users(id),
@@ -60,12 +61,14 @@ If anything else seems required, **stop and ask**.
 ### Phase 2: Apply decay in ranking
 
 3. **Decay formula**:
+
    ```typescript
    function applyDecay(score: number, itemAge: number, decayHours: number): number {
      const decayFactor = Math.exp(-itemAge / decayHours);
      return score * decayFactor;
    }
    ```
+
    - `itemAge` = hours since item was published/fetched
    - `decayHours` = from user preferences (24 for daily, 168 for weekly, etc.)
 

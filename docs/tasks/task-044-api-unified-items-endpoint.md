@@ -30,6 +30,7 @@ If anything else seems required, **stop and ask**.
 ## Implementation steps (ordered)
 
 1. **Design the endpoint**:
+
    ```
    GET /api/items
    Query params:
@@ -50,6 +51,7 @@ If anything else seems required, **stop and ask**.
    - Return item with score, source info, metadata
 
 3. **Response shape**:
+
    ```typescript
    {
      ok: true,
