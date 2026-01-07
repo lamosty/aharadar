@@ -329,7 +329,7 @@ function adaptDigestSummary(item: DigestListItem): DigestSummary {
     windowStart: item.windowStart,
     windowEnd: item.windowEnd,
     mode: item.mode as DigestSummary["mode"],
-    itemCount: 0, // API doesn't provide this; will be filled from detail if needed
+    itemCount: item.itemCount,
     createdAt: item.createdAt,
   };
 }

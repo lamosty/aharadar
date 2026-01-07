@@ -51,6 +51,7 @@ export interface DigestListItem {
   windowStart: string;
   windowEnd: string;
   createdAt: string;
+  itemCount: number;
 }
 
 /** Digests list response */

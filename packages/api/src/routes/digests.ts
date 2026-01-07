@@ -7,6 +7,7 @@ interface DigestListRow {
   window_start: string;
   window_end: string;
   created_at: string;
+  item_count: string; // bigint comes as string from pg
 }
 
 interface DigestDetailRow {
@@ -84,11 +85,17 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
     const toDate = to ?? defaultTo;
 
     const result = await db.query<DigestListRow>(
-      `SELECT id, mode, window_start::text, window_end::text, created_at::text
-       FROM digests
-       WHERE user_id = $1 AND topic_id = $2::uuid
-         AND created_at >= $3::timestamptz AND created_at <= $4::timestamptz
-       ORDER BY created_at DESC
+      `SELECT
+         d.id,
+         d.mode,
+         d.window_start::text,
+         d.window_end::text,
+         d.created_at::text,
+         (SELECT COUNT(*) FROM digest_items di WHERE di.digest_id = d.id) as item_count
+       FROM digests d
+       WHERE d.user_id = $1 AND d.topic_id = $2::uuid
+         AND d.created_at >= $3::timestamptz AND d.created_at <= $4::timestamptz
+       ORDER BY d.created_at DESC
        LIMIT 100`,
       [ctx.userId, ctx.topicId, fromDate, toDate]
     );
@@ -101,6 +108,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         windowStart: row.window_start,
         windowEnd: row.window_end,
         createdAt: row.created_at,
+        itemCount: Number.parseInt(row.item_count, 10),
       })),
     };
   });
