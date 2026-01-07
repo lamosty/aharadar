@@ -2,9 +2,10 @@
 
 import { Suspense, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useItems, useFeedback } from "@/lib/hooks";
+import { useItems, useFeedback, useMarkChecked } from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
 import { useToast } from "@/components/Toast";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 type SortOption = "score_desc" | "date_desc" | "date_asc";
@@ -97,6 +98,20 @@ function FeedPageContent() {
     },
   });
 
+  // Mark as caught up mutation
+  const markCheckedMutation = useMarkChecked({
+    onSuccess: () => {
+      addToast(t("digests.feed.caughtUpSuccess"), "success");
+    },
+    onError: () => {
+      addToast(t("digests.feed.caughtUpError"), "error");
+    },
+  });
+
+  const handleMarkCaughtUp = useCallback(() => {
+    markCheckedMutation.mutate();
+  }, [markCheckedMutation]);
+
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
       const item = data?.pages.flatMap((p) => p.items).find((i) => i.id === contentItemId);
@@ -116,8 +131,21 @@ function FeedPageContent() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Feed</h1>
-        <p className={styles.subtitle}>All your ranked items in one place</p>
+        <div className={styles.headerTop}>
+          <div>
+            <h1 className={styles.title}>Feed</h1>
+            <p className={styles.subtitle}>All your ranked items in one place</p>
+          </div>
+          <button
+            className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
+            onClick={handleMarkCaughtUp}
+            disabled={markCheckedMutation.isPending}
+          >
+            {markCheckedMutation.isPending
+              ? t("digests.feed.markingCaughtUp")
+              : t("digests.feed.markCaughtUp")}
+          </button>
+        </div>
       </header>
 
       <FeedFilterBar

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { t } from "@/lib/i18n";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { DevSettingsForm } from "@/components/DevSettings";
+import { ViewingProfileSettings } from "@/components/ViewingProfile";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -14,6 +15,13 @@ export default function SettingsPage() {
       <header className={styles.header}>
         <h1 className={styles.title}>{t("settings.title")}</h1>
       </header>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>{t("settings.viewing.title")}</h2>
+        <div className={styles.sectionContent}>
+          <ViewingProfileSettings />
+        </div>
+      </section>
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t("settings.appearance.title")}</h2>

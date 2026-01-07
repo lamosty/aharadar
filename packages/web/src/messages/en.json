@@ -94,6 +94,31 @@
         "timeline": "Timeline"
       }
     },
+    "viewing": {
+      "title": "Viewing Profile",
+      "description": "How often do you check your feed?",
+      "profile": "Profile",
+      "decayHours": "Decay rate (hours)",
+      "decayHoursDescription": "How quickly older items fade in relevance",
+      "lastChecked": "Last caught up",
+      "never": "Never",
+      "profiles": {
+        "power": "Power User",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "research": "Research",
+        "custom": "Custom"
+      },
+      "profileDescriptions": {
+        "power": "For checking multiple times per day",
+        "daily": "For checking once per day",
+        "weekly": "For weekly catch-up sessions",
+        "research": "For monthly deep dives",
+        "custom": "Set your own decay rate"
+      },
+      "updated": "Preferences updated",
+      "updateFailed": "Failed to update preferences"
+    },
     "dev": {
       "title": "Developer Settings",
       "warning": "These settings are for local development only. API credentials are stored in your browser's localStorage.",
@@ -303,6 +328,13 @@
       "submitting": "Submitting...",
       "error": "Failed to submit feedback",
       "success": "Feedback recorded"
+    },
+    "feed": {
+      "newBadge": "NEW",
+      "markCaughtUp": "Mark as caught up",
+      "markingCaughtUp": "Marking...",
+      "caughtUpSuccess": "Feed marked as caught up",
+      "caughtUpError": "Failed to mark as caught up"
     },
     "modes": {
       "low": "Low",

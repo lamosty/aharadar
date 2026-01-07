@@ -3,6 +3,7 @@
 import { type FeedItem as FeedItemType } from "@/lib/api";
 import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { t } from "@/lib/i18n";
 import styles from "./FeedItem.module.css";
 
 interface FeedItemProps {
@@ -62,6 +63,7 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
   return (
     <article className={styles.card} data-testid={`feed-item-${item.id}`}>
       <div className={styles.header}>
+        {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
         <span
           className={styles.sourceTag}
           style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}

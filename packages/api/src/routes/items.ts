@@ -1,6 +1,22 @@
 import type { FastifyInstance } from "fastify";
 import type { FeedbackAction } from "@aharadar/shared";
+import { createUserPreferencesRepo } from "@aharadar/db";
 import { getDb, getSingletonContext } from "../lib/db.js";
+
+/**
+ * Apply exponential decay to a score based on item age.
+ * @param score - Original score
+ * @param itemAgeHours - Hours since item was published
+ * @param decayHours - Half-life in hours (score halves after this time)
+ * @returns Decayed score
+ */
+function applyDecay(score: number, itemAgeHours: number, decayHours: number): number {
+  if (itemAgeHours <= 0 || decayHours <= 0) return score;
+  // Exponential decay: score * e^(-age/decay)
+  // This gives ~37% of original after decayHours
+  const decayFactor = Math.exp(-itemAgeHours / decayHours);
+  return score * decayFactor;
+}
 
 interface ContentItemRow {
   id: string;
@@ -122,6 +138,12 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const db = getDb();
+
+    // Load user preferences for decay calculation
+    const prefsRepo = createUserPreferencesRepo(db);
+    const userPrefs = await prefsRepo.getOrCreate(ctx.userId);
+    const decayHours = userPrefs.decayHours;
+    const lastCheckedAt = userPrefs.lastCheckedAt;
 
     // Build filter conditions dynamically
     const filterConditions: string[] = [];
@@ -249,15 +271,29 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     ]);
 
     const total = countResult.rows[0]?.total ?? 0;
+    const now = new Date();
 
-    return {
-      ok: true,
-      items: itemsResult.rows.map((row, idx) => ({
+    // Map items with decay applied and isNew flag
+    const items = itemsResult.rows.map((row, idx) => {
+      // Calculate item age in hours (use published_at or digest_created_at)
+      const itemDate = row.published_at ? new Date(row.published_at) : new Date(row.digest_created_at);
+      const itemAgeHours = (now.getTime() - itemDate.getTime()) / (1000 * 60 * 60);
+
+      // Apply decay to score
+      const rawScore = row.score;
+      const decayedScore = applyDecay(rawScore, itemAgeHours, decayHours);
+
+      // Check if item is "new" (published after last checked)
+      const isNew = lastCheckedAt ? itemDate > lastCheckedAt : false;
+
+      return {
         id: row.content_item_id,
-        score: row.score,
+        score: decayedScore,
+        rawScore, // Original score before decay
         rank: offset + idx + 1,
         digestId: row.digest_id,
         digestCreatedAt: row.digest_created_at,
+        isNew,
         item: {
           title: row.title,
           url: row.canonical_url,
@@ -268,12 +304,30 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         },
         triageJson: row.triage_json,
         feedback: row.feedback_action,
-      })),
+      };
+    });
+
+    // Re-sort by decayed score if sorting by score
+    if (sort === "score_desc") {
+      items.sort((a, b) => b.score - a.score);
+      // Update ranks after re-sort
+      items.forEach((item, idx) => {
+        item.rank = offset + idx + 1;
+      });
+    }
+
+    return {
+      ok: true,
+      items,
       pagination: {
         total,
         limit,
         offset,
         hasMore: offset + itemsResult.rows.length < total,
+      },
+      preferences: {
+        decayHours,
+        lastCheckedAt: lastCheckedAt?.toISOString() ?? null,
       },
     };
   });

@@ -29,6 +29,9 @@ import {
   postAdminSource,
   deleteAdminSource,
   getAdminBudgets,
+  getPreferences,
+  patchPreferences,
+  postMarkChecked,
   type HealthResponse,
   type DigestsListResponse,
   type DigestDetailResponse,
@@ -46,6 +49,10 @@ import {
   type SourceCreateResponse,
   type SourceDeleteResponse,
   type BudgetsResponse,
+  type PreferencesGetResponse,
+  type PreferencesUpdateResponse,
+  type PreferencesMarkCheckedResponse,
+  type ViewingProfile,
   type FeedbackAction,
   ApiError,
   NetworkError,
@@ -71,6 +78,7 @@ export const queryKeys = {
     sources: ["admin", "sources"] as const,
     budgets: ["admin", "budgets"] as const,
   },
+  preferences: ["preferences"] as const,
 } as const;
 
 // ============================================================================
@@ -373,4 +381,69 @@ export function usePrefetchItem() {
       staleTime: 30 * 1000,
     });
   };
+}
+
+// ============================================================================
+// Preferences Queries & Mutations
+// ============================================================================
+
+/**
+ * Query for user preferences (viewing profile, decay settings, etc.)
+ */
+export function usePreferences(
+  options?: Omit<UseQueryOptions<PreferencesGetResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.preferences,
+    queryFn: ({ signal }) => getPreferences(signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update user preferences.
+ */
+export function useUpdatePreferences(
+  options?: Omit<
+    UseMutationOptions<
+      PreferencesUpdateResponse,
+      ApiError | NetworkError,
+      { viewingProfile?: ViewingProfile; decayHours?: number; customSettings?: Record<string, unknown> }
+    >,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => patchPreferences(data),
+    onSuccess: () => {
+      // Invalidate preferences to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
+      // Also invalidate items since decay settings affect scores
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to mark feed as "caught up".
+ */
+export function useMarkChecked(
+  options?: Omit<UseMutationOptions<PreferencesMarkCheckedResponse, ApiError | NetworkError, void>, "mutationFn">
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => postMarkChecked(),
+    onSuccess: () => {
+      // Invalidate preferences to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
+      // Invalidate items to update isNew flags
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    ...options,
+  });
 }

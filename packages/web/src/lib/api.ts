@@ -118,9 +118,11 @@ export interface ItemDetailResponse {
 export interface FeedItem {
   id: string;
   score: number;
+  rawScore?: number; // Original score before decay
   rank: number;
   digestId: string;
   digestCreatedAt: string;
+  isNew?: boolean; // True if published after last_checked_at
   item: {
     title: string | null;
     url: string | null;
@@ -561,6 +563,85 @@ export interface SourceDeleteResponse {
 export async function deleteAdminSource(id: string, signal?: AbortSignal): Promise<SourceDeleteResponse> {
   return apiFetch<SourceDeleteResponse>(`/admin/sources/${id}`, {
     method: "DELETE",
+    signal,
+  });
+}
+
+// ============================================================================
+// Preferences API
+// ============================================================================
+
+/** Viewing profile options */
+export type ViewingProfile = "power" | "daily" | "weekly" | "research" | "custom";
+
+/** Profile option for UI */
+export interface ProfileOption {
+  value: ViewingProfile;
+  label: string;
+  description: string;
+  decayHours: number | null;
+}
+
+/** Preferences data */
+export interface PreferencesData {
+  viewingProfile: ViewingProfile;
+  decayHours: number;
+  lastCheckedAt: string | null;
+  customSettings: Record<string, unknown>;
+  updatedAt: string;
+}
+
+/** Get preferences response */
+export interface PreferencesGetResponse {
+  ok: true;
+  preferences: PreferencesData;
+  profileOptions: ProfileOption[];
+}
+
+/** Update preferences response */
+export interface PreferencesUpdateResponse {
+  ok: true;
+  preferences: PreferencesData;
+}
+
+/** Mark checked response */
+export interface PreferencesMarkCheckedResponse {
+  ok: true;
+  preferences: PreferencesData;
+  message: string;
+}
+
+/**
+ * Get user preferences.
+ */
+export async function getPreferences(signal?: AbortSignal): Promise<PreferencesGetResponse> {
+  return apiFetch<PreferencesGetResponse>("/preferences", { signal });
+}
+
+/**
+ * Update user preferences.
+ */
+export async function patchPreferences(
+  data: {
+    viewingProfile?: ViewingProfile;
+    decayHours?: number;
+    customSettings?: Record<string, unknown>;
+  },
+  signal?: AbortSignal
+): Promise<PreferencesUpdateResponse> {
+  return apiFetch<PreferencesUpdateResponse>("/preferences", {
+    method: "PATCH",
+    body: data,
+    signal,
+  });
+}
+
+/**
+ * Mark feed as "caught up".
+ */
+export async function postMarkChecked(signal?: AbortSignal): Promise<PreferencesMarkCheckedResponse> {
+  return apiFetch<PreferencesMarkCheckedResponse>("/preferences/mark-checked", {
+    method: "POST",
     signal,
   });
 }

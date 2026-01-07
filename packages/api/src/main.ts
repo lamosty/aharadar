@@ -8,6 +8,7 @@ import { digestsRoutes } from "./routes/digests.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
 import { itemsRoutes } from "./routes/items.js";
+import { preferencesRoutes } from "./routes/preferences.js";
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
@@ -56,6 +57,7 @@ async function buildServer() {
       await api.register(digestsRoutes);
       await api.register(feedbackRoutes);
       await api.register(itemsRoutes);
+      await api.register(preferencesRoutes);
     },
     { prefix: "/api" }
   );
