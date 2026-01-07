@@ -103,11 +103,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(
-    ellipse 80% 50% at 50% -20%,
-    var(--color-primary-subtle) 0%,
-    transparent 60%
-  );
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, var(--color-primary-subtle) 0%, transparent 60%);
   pointer-events: none;
   opacity: 0.5;
 }
@@ -190,10 +186,12 @@
 
 .heroCta:hover {
   transform: translateY(-2px);
+  /* Keep gradient on hover - override .btn-primary solid background */
+  background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-primary-active) 100%);
   /* Use CSS variable for theme-aware shadow glow */
   box-shadow:
     var(--shadow-primary, var(--shadow-lg)),
-    var(--shadow-primary, 0 8px 24px -4px rgb(99 102 241 / 0.35));
+    0 8px 24px -4px rgb(99 102 241 / 0.35);
 }
 
 .heroCta:active {
@@ -338,7 +336,11 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, var(--color-primary-subtle) 0%, var(--color-primary-subtle-hover, var(--color-primary-subtle)) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-subtle) 0%,
+    var(--color-primary-subtle-hover, var(--color-primary-subtle)) 100%
+  );
   color: var(--color-primary);
   border-radius: var(--radius-xl);
   margin-bottom: var(--space-5);

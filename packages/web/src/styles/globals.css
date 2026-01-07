@@ -577,7 +577,8 @@ button {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -604,7 +605,8 @@ button {
 }
 
 @keyframes bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -634,11 +636,21 @@ button {
 }
 
 /* Stagger animation delay utilities */
-.delay-1 { animation-delay: 50ms; }
-.delay-2 { animation-delay: 100ms; }
-.delay-3 { animation-delay: 150ms; }
-.delay-4 { animation-delay: 200ms; }
-.delay-5 { animation-delay: 250ms; }
+.delay-1 {
+  animation-delay: 50ms;
+}
+.delay-2 {
+  animation-delay: 100ms;
+}
+.delay-3 {
+  animation-delay: 150ms;
+}
+.delay-4 {
+  animation-delay: 200ms;
+}
+.delay-5 {
+  animation-delay: 250ms;
+}
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
