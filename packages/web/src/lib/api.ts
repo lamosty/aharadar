@@ -114,6 +114,52 @@ export interface ItemDetailResponse {
   item: ContentItem;
 }
 
+/** Unified feed item (from GET /items endpoint) */
+export interface FeedItem {
+  id: string;
+  score: number;
+  rank: number;
+  digestId: string;
+  digestCreatedAt: string;
+  item: {
+    title: string | null;
+    url: string | null;
+    author: string | null;
+    publishedAt: string | null;
+    sourceType: string;
+    sourceId: string;
+  };
+  triageJson: Record<string, unknown> | null;
+  feedback: FeedbackAction | null;
+}
+
+/** Pagination info */
+export interface PaginationInfo {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+/** Items list params */
+export interface ItemsListParams {
+  limit?: number;
+  offset?: number;
+  sourceTypes?: string[];
+  sourceIds?: string[];
+  minScore?: number;
+  since?: string;
+  until?: string;
+  sort?: "score_desc" | "date_desc" | "date_asc";
+}
+
+/** Items list response */
+export interface ItemsListResponse {
+  ok: true;
+  items: FeedItem[];
+  pagination: PaginationInfo;
+}
+
 /** Feedback action types */
 export type FeedbackAction = "like" | "dislike" | "save" | "skip";
 
@@ -406,6 +452,30 @@ export async function getDigest(id: string, signal?: AbortSignal): Promise<Diges
  */
 export async function getItem(id: string, signal?: AbortSignal): Promise<ItemDetailResponse> {
   return apiFetch<ItemDetailResponse>(`/items/${id}`, { signal });
+}
+
+/**
+ * List items with filters (unified feed).
+ */
+export async function getItems(
+  params?: ItemsListParams,
+  signal?: AbortSignal
+): Promise<ItemsListResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+  if (params?.sourceTypes?.length) searchParams.set("sourceTypes", params.sourceTypes.join(","));
+  if (params?.sourceIds?.length) searchParams.set("sourceIds", params.sourceIds.join(","));
+  if (params?.minScore !== undefined) searchParams.set("minScore", String(params.minScore));
+  if (params?.since) searchParams.set("since", params.since);
+  if (params?.until) searchParams.set("until", params.until);
+  if (params?.sort) searchParams.set("sort", params.sort);
+
+  const query = searchParams.toString();
+  const path = query ? `/items?${query}` : "/items";
+
+  return apiFetch<ItemsListResponse>(path, { signal });
 }
 
 /**

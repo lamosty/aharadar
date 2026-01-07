@@ -46,10 +46,12 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
             <dl className={styles.featureList}>
               {features.aha_score && (
                 <FeatureSection title={t("digests.whyShown.ahaScore")}>
-                  <div className={styles.scoreRow}>
-                    <span className={styles.scoreValue}>{features.aha_score.score}</span>
-                    <span className={styles.scoreMax}>/100</span>
-                  </div>
+                  {features.aha_score.score != null && (
+                    <div className={styles.scoreRow}>
+                      <span className={styles.scoreValue}>{features.aha_score.score}</span>
+                      <span className={styles.scoreMax}>/100</span>
+                    </div>
+                  )}
                   {features.aha_score.reason && <p className={styles.reason}>{features.aha_score.reason}</p>}
                 </FeatureSection>
               )}
@@ -57,18 +59,24 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
               {features.novelty_v1 && (
                 <FeatureSection title={t("digests.whyShown.novelty")}>
                   <div className={styles.metaGrid}>
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.noveltyScore")}</dt>
-                      <dd>{(features.novelty_v1.score * 100).toFixed(0)}%</dd>
-                    </div>
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.lookbackDays")}</dt>
-                      <dd>{features.novelty_v1.lookback_days} days</dd>
-                    </div>
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.similarItems")}</dt>
-                      <dd>{features.novelty_v1.similar_items_count}</dd>
-                    </div>
+                    {typeof features.novelty_v1.score === "number" && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.noveltyScore")}</dt>
+                        <dd>{(features.novelty_v1.score * 100).toFixed(0)}%</dd>
+                      </div>
+                    )}
+                    {typeof features.novelty_v1.lookback_days === "number" && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.lookbackDays")}</dt>
+                        <dd>{features.novelty_v1.lookback_days} days</dd>
+                      </div>
+                    )}
+                    {typeof features.novelty_v1.similar_items_count === "number" && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.similarItems")}</dt>
+                        <dd>{features.novelty_v1.similar_items_count}</dd>
+                      </div>
+                    )}
                   </div>
                 </FeatureSection>
               )}
@@ -76,30 +84,38 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
               {features.source_weight_v1 && (
                 <FeatureSection title={t("digests.whyShown.sourceWeight")}>
                   <div className={styles.metaGrid}>
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.sourceName")}</dt>
-                      <dd>{features.source_weight_v1.source_name}</dd>
-                    </div>
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.sourceType")}</dt>
-                      <dd className={styles.sourceType}>{features.source_weight_v1.source_type}</dd>
-                    </div>
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.weight")}</dt>
-                      <dd>{features.source_weight_v1.weight.toFixed(1)}x</dd>
-                    </div>
+                    {features.source_weight_v1.source_name && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.sourceName")}</dt>
+                        <dd>{features.source_weight_v1.source_name}</dd>
+                      </div>
+                    )}
+                    {features.source_weight_v1.source_type && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.sourceType")}</dt>
+                        <dd className={styles.sourceType}>{features.source_weight_v1.source_type}</dd>
+                      </div>
+                    )}
+                    {typeof features.source_weight_v1.weight === "number" && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.weight")}</dt>
+                        <dd>{features.source_weight_v1.weight.toFixed(1)}x</dd>
+                      </div>
+                    )}
                   </div>
                 </FeatureSection>
               )}
 
               {features.signal_corroboration_v1 && (
                 <FeatureSection title={t("digests.whyShown.corroboration")}>
-                  <div className={styles.metaItem}>
-                    <dt>{t("digests.whyShown.corroborationScore")}</dt>
-                    <dd>{(features.signal_corroboration_v1.score * 100).toFixed(0)}%</dd>
-                  </div>
+                  {typeof features.signal_corroboration_v1.score === "number" && (
+                    <div className={styles.metaItem}>
+                      <dt>{t("digests.whyShown.corroborationScore")}</dt>
+                      <dd>{(features.signal_corroboration_v1.score * 100).toFixed(0)}%</dd>
+                    </div>
+                  )}
 
-                  {features.signal_corroboration_v1.corroborating_topics.length > 0 && (
+                  {features.signal_corroboration_v1.corroborating_topics?.length > 0 && (
                     <div className={styles.tagSection}>
                       <dt>{t("digests.whyShown.corroboratingTopics")}</dt>
                       <dd className={styles.tagList}>
@@ -112,7 +128,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                     </div>
                   )}
 
-                  {features.signal_corroboration_v1.corroborating_urls.length > 0 && (
+                  {features.signal_corroboration_v1.corroborating_urls?.length > 0 && (
                     <div className={styles.urlSection}>
                       <dt>{t("digests.whyShown.corroboratingUrls")}</dt>
                       <dd>

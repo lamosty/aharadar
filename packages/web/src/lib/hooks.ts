@@ -12,6 +12,7 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
+  useInfiniteQuery,
   type UseQueryOptions,
   type UseMutationOptions,
 } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ import {
   getDigests,
   getDigest,
   getItem,
+  getItems,
   postFeedback,
   postAdminRun,
   getAdminSources,
@@ -31,6 +33,8 @@ import {
   type DigestsListResponse,
   type DigestDetailResponse,
   type ItemDetailResponse,
+  type ItemsListResponse,
+  type ItemsListParams,
   type FeedbackRequest,
   type FeedbackResponse,
   type AdminRunRequest,
@@ -60,6 +64,7 @@ export const queryKeys = {
   },
   items: {
     all: ["items"] as const,
+    list: (params?: Omit<ItemsListParams, "offset">) => ["items", "list", params] as const,
     detail: (id: string) => ["items", id] as const,
   },
   admin: {
@@ -122,6 +127,25 @@ export function useItem(
     queryFn: ({ signal }) => getItem(id, signal),
     enabled: !!id,
     ...options,
+  });
+}
+
+/**
+ * Infinite query for unified feed items.
+ * Supports pagination via "Load more" or infinite scroll.
+ */
+export function useItems(params?: Omit<ItemsListParams, "offset">) {
+  const limit = params?.limit ?? 20;
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.items.list(params),
+    queryFn: ({ signal, pageParam }) =>
+      getItems({ ...params, limit, offset: pageParam as number }, signal),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: ItemsListResponse) => {
+      if (!lastPage.pagination.hasMore) return undefined;
+      return lastPage.pagination.offset + lastPage.pagination.limit;
+    },
   });
 }
 

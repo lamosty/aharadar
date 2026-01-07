@@ -21,6 +21,7 @@
   "nav": {
     "home": "Home",
     "dashboard": "Dashboard",
+    "feed": "Feed",
     "digests": "Digests",
     "sources": "Sources",
     "settings": "Settings",
