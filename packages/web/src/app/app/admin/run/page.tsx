@@ -79,9 +79,7 @@ export default function AdminRunPage() {
             <CheckIcon />
           </div>
           <h2 className={styles.successTitle}>{t("admin.run.success")}</h2>
-          <p className={styles.successJobId}>
-            {t("admin.run.successJobId", { jobId: jobId ?? "" })}
-          </p>
+          <p className={styles.successJobId}>{t("admin.run.successJobId", { jobId: jobId ?? "" })}</p>
           <div className={styles.successActions}>
             <Link href="/app/digests" className={styles.primaryButton}>
               {t("admin.run.viewDigests")}

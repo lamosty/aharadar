@@ -77,15 +77,7 @@ function FeedPageContent() {
   );
 
   // Fetch items
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    error,
-  } = useItems({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error } = useItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     limit: 20,
@@ -177,9 +169,7 @@ function FeedPageContent() {
       {!isLoading && !isError && allItems.length === 0 && (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No items yet</p>
-          <p className={styles.emptyMessage}>
-            Run the pipeline to fetch and rank items from your sources.
-          </p>
+          <p className={styles.emptyMessage}>Run the pipeline to fetch and rank items from your sources.</p>
         </div>
       )}
 

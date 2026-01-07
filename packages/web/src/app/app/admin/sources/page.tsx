@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
-import { useAdminSources, useAdminSourcePatch, useAdminSourceCreate, useAdminSourceDelete } from "@/lib/hooks";
+import {
+  useAdminSources,
+  useAdminSourcePatch,
+  useAdminSourceCreate,
+  useAdminSourceDelete,
+} from "@/lib/hooks";
 import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType, type Source, type SourceConfig } from "@/lib/api";
 import {
   SourceConfigForm,
@@ -36,9 +41,7 @@ export default function AdminSourcesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createType, setCreateType] = useState<SupportedSourceType>("rss");
   const [createName, setCreateName] = useState("");
-  const [createConfig, setCreateConfig] = useState<Partial<SourceTypeConfig>>(() =>
-    getDefaultConfig("rss")
-  );
+  const [createConfig, setCreateConfig] = useState<Partial<SourceTypeConfig>>(() => getDefaultConfig("rss"));
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
 
   // Reset config when source type changes

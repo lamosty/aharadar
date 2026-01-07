@@ -1,9 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import {
-  createUserPreferencesRepo,
-  type ViewingProfile,
-  PROFILE_DECAY_HOURS,
-} from "@aharadar/db";
+import { createUserPreferencesRepo, type ViewingProfile, PROFILE_DECAY_HOURS } from "@aharadar/db";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 interface UpdatePreferencesBody {

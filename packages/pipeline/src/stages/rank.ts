@@ -138,7 +138,7 @@ export function computeUserPreferenceWeight(params: {
   }
 
   const sourceTypeWeight = userPreferences.sourceTypeWeights[sourceType] ?? 1.0;
-  const authorWeight = author ? userPreferences.authorWeights[author] ?? 1.0 : 1.0;
+  const authorWeight = author ? (userPreferences.authorWeights[author] ?? 1.0) : 1.0;
 
   // Combined weight, clamped to [0.5, 2.0]
   const rawWeight = sourceTypeWeight * authorWeight;

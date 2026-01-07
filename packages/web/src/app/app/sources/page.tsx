@@ -83,9 +83,7 @@ export default function SourcesPage() {
                       </div>
                       <div className={styles.stat}>
                         <span className={styles.statLabel}>Weight</span>
-                        <span className={styles.statValue}>
-                          {source.config.weight?.toFixed(1) ?? "1.0"}
-                        </span>
+                        <span className={styles.statValue}>{source.config.weight?.toFixed(1) ?? "1.0"}</span>
                       </div>
                     </div>
                   </div>
