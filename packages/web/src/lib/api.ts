@@ -125,6 +125,7 @@ export interface FeedItem {
   isNew?: boolean; // True if published after last_checked_at
   item: {
     title: string | null;
+    bodyText: string | null;
     url: string | null;
     author: string | null;
     publishedAt: string | null;

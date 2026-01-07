@@ -51,6 +51,18 @@ function getSourceColor(type: string): string {
   return colors[type] || "var(--color-text-muted)";
 }
 
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength).trim() + "…";
+}
+
+function getDisplayTitle(item: FeedItemType): string {
+  // Prefer title, fall back to truncated body text
+  if (item.item.title) return item.item.title;
+  if (item.item.bodyText) return truncateText(item.item.bodyText, 200);
+  return "(Untitled)";
+}
+
 export function FeedItem({ item, onFeedback }: FeedItemProps) {
   const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
     if (onFeedback) {
@@ -88,10 +100,10 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
       <h3 className={styles.title}>
         {item.item.url ? (
           <a href={item.item.url} target="_blank" rel="noopener noreferrer" className={styles.titleLink}>
-            {item.item.title || "(Untitled)"}
+            {getDisplayTitle(item)}
           </a>
         ) : (
-          <span>{item.item.title || "(Untitled)"}</span>
+          <span>{getDisplayTitle(item)}</span>
         )}
       </h3>
 

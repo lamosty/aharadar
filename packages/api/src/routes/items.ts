@@ -41,6 +41,7 @@ interface UnifiedItemRow {
   summary_json: Record<string, unknown> | null;
   entities_json: Record<string, unknown> | null;
   title: string | null;
+  body_text: string | null;
   canonical_url: string | null;
   author: string | null;
   published_at: string | null;
@@ -229,6 +230,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         li.summary_json,
         li.entities_json,
         ci.title,
+        ci.body_text,
         ci.canonical_url,
         ci.author,
         ci.published_at::text,
@@ -302,6 +304,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         isNew,
         item: {
           title: row.title,
+          bodyText: row.body_text,
           url: row.canonical_url,
           author: row.author,
           publishedAt: row.published_at,
