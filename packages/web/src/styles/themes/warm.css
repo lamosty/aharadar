@@ -1,43 +1,50 @@
 /**
  * Warm Theme
- * Warmer tones with slightly rounded corners for a friendlier feel.
+ * Cozy, inviting palette with rounded corners and a friendly feel.
+ * Updated for 2026 design aesthetics.
  */
 
 [data-theme="warm"] {
   /* Colors - Light Mode */
-  --color-bg: #fffbf5;
-  --color-surface: #fef3e2;
+  --color-bg: #fefcf9;
+  --color-surface: #fdf8f3;
   --color-surface-elevated: #ffffff;
-  --color-border: #e8d5c4;
+  --color-surface-hover: #fcf4eb;
+  --color-border: #e5d4c3;
   --color-border-subtle: #f0e6da;
 
-  --color-text-primary: #3d2c1e;
+  --color-text-primary: #2d1f14;
   --color-text-secondary: #5c4a3d;
   --color-text-muted: #8b7966;
-  --color-text-inverse: #fffbf5;
+  --color-text-inverse: #ffffff;
 
-  --color-primary: #e67e22;
-  --color-primary-hover: #d35400;
-  --color-primary-active: #ba4a00;
-  --color-primary-subtle: #fdebd0;
+  /* Warm amber-orange primary */
+  --color-primary: #d97706;
+  --color-primary-hover: #b45309;
+  --color-primary-active: #92400e;
+  --color-primary-subtle: #fef3c7;
+  --color-primary-subtle-hover: #fde68a;
   --color-text-on-primary: #ffffff;
 
-  --color-success: #27ae60;
-  --color-success-subtle: #d5f5e3;
-  --color-warning: #f39c12;
-  --color-warning-subtle: #fef9e7;
-  --color-warning-surface: #fff5e0;
-  --color-warning-border: #f5c573;
-  --color-warning-text: #8a5a00;
-  --color-error: #c0392b;
-  --color-error-subtle: #fadbd8;
+  /* Semantic colors */
+  --color-success: #059669;
+  --color-success-hover: #047857;
+  --color-success-subtle: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-warning-subtle: #fef3c7;
+  --color-warning-surface: #fffbeb;
+  --color-warning-border: #fbbf24;
+  --color-warning-text: #92400e;
+  --color-error: #dc2626;
+  --color-error-hover: #b91c1c;
+  --color-error-subtle: #fee2e2;
 
   /* Skeleton loading */
   --color-skeleton-base: #f0e6da;
-  --color-skeleton-highlight: #fef3e2;
+  --color-skeleton-highlight: #fdf8f3;
 
-  /* Typography */
-  --font-sans: "Georgia", "Cambria", "Times New Roman", Times, serif;
+  /* Typography - Friendly humanist sans */
+  --font-sans: "Source Sans Pro", "Nunito", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   --font-size-xs: 0.75rem;
@@ -46,17 +53,23 @@
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 2.5rem;
+  --font-size-5xl: 3rem;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --line-height-tight: 1.25;
+  --line-height-tight: 1.2;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
+
+  /* Letter spacing */
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
 
   /* Spacing */
   --space-0: 0;
@@ -71,27 +84,41 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Border Radius - More rounded */
+  /* Border Radius - More rounded for warmth */
   --radius-none: 0;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
   --radius-full: 9999px;
 
-  /* Shadows - Warmer tone */
-  --shadow-sm: 0 1px 3px 0 rgb(61 44 30 / 0.08);
-  --shadow-md: 0 4px 6px -1px rgb(61 44 30 / 0.1), 0 2px 4px -2px rgb(61 44 30 / 0.08);
-  --shadow-lg: 0 10px 15px -3px rgb(61 44 30 / 0.1), 0 4px 6px -4px rgb(61 44 30 / 0.08);
-  --shadow-xl: 0 20px 25px -5px rgb(61 44 30 / 0.12), 0 8px 10px -6px rgb(61 44 30 / 0.08);
+  /* Shadows - Warm toned */
+  --shadow-xs: 0 1px 2px 0 rgb(61 44 30 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(61 44 30 / 0.08), 0 1px 2px -1px rgb(61 44 30 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(61 44 30 / 0.1), 0 2px 4px -2px rgb(61 44 30 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(61 44 30 / 0.1), 0 4px 6px -4px rgb(61 44 30 / 0.06);
+  --shadow-xl: 0 20px 25px -5px rgb(61 44 30 / 0.1), 0 8px 10px -6px rgb(61 44 30 / 0.06);
+  --shadow-2xl: 0 25px 50px -12px rgb(61 44 30 / 0.2);
 
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
-  --transition-slow: 350ms ease;
+  /* Colored shadows */
+  --shadow-primary: 0 4px 14px 0 rgb(217 119 6 / 0.25);
+  --shadow-success: 0 4px 14px 0 rgb(5 150 105 / 0.25);
+  --shadow-error: 0 4px 14px 0 rgb(220 38 38 / 0.25);
+
+  /* Glass effect */
+  --glass-bg: rgba(254, 252, 249, 0.85);
+  --glass-border: rgba(229, 212, 195, 0.3);
+  --glass-blur: 12px;
+
+  /* Transitions - Smooth */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Focus Ring */
-  --focus-ring-color: rgba(230, 126, 34, 0.4);
+  --focus-ring-color: rgba(217, 119, 6, 0.4);
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
 
@@ -106,43 +133,60 @@
   --z-toast: 1080;
 }
 
-/* Dark Mode */
+/* Dark Mode - Rich, cozy dark with warm accents */
 [data-theme="warm"][data-mode="dark"] {
-  --color-bg: #1c1410;
-  --color-surface: #2a211a;
-  --color-surface-elevated: #362a21;
-  --color-border: #5c4a3d;
-  --color-border-subtle: #443628;
+  --color-bg: #151210;
+  --color-surface: #1e1a16;
+  --color-surface-elevated: #262019;
+  --color-surface-hover: #2e271f;
+  --color-border: #4a3d30;
+  --color-border-subtle: #352d24;
 
-  --color-text-primary: #fef3e2;
-  --color-text-secondary: #e8d5c4;
-  --color-text-muted: #b89f8a;
-  --color-text-inverse: #1c1410;
+  --color-text-primary: #faf5ef;
+  --color-text-secondary: #d4c4b4;
+  --color-text-muted: #a89580;
+  --color-text-inverse: #151210;
 
-  --color-primary: #f5a962;
-  --color-primary-hover: #f8bc7f;
-  --color-primary-active: #face9b;
-  --color-primary-subtle: #7a3d0c;
-  --color-text-on-primary: #1c1410;
+  /* Luminous amber for dark mode */
+  --color-primary: #fbbf24;
+  --color-primary-hover: #fcd34d;
+  --color-primary-active: #fde68a;
+  --color-primary-subtle: #78350f;
+  --color-primary-subtle-hover: #92400e;
+  --color-text-on-primary: #151210;
 
-  --color-success: #58d68d;
-  --color-success-subtle: #145a32;
-  --color-warning: #f7dc6f;
-  --color-warning-subtle: #7d6608;
-  --color-warning-surface: #3d3115;
-  --color-warning-border: #695824;
-  --color-warning-text: #f7dc6f;
-  --color-error: #e74c3c;
-  --color-error-subtle: #78281f;
+  --color-success: #34d399;
+  --color-success-hover: #6ee7b7;
+  --color-success-subtle: #064e3b;
+  --color-warning: #fbbf24;
+  --color-warning-subtle: #78350f;
+  --color-warning-surface: #451a03;
+  --color-warning-border: #92400e;
+  --color-warning-text: #fcd34d;
+  --color-error: #f87171;
+  --color-error-hover: #fca5a5;
+  --color-error-subtle: #7f1d1d;
 
   /* Skeleton loading */
-  --color-skeleton-base: #443628;
-  --color-skeleton-highlight: #5c4a3d;
+  --color-skeleton-base: #352d24;
+  --color-skeleton-highlight: #4a3d30;
 
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+  /* Dark mode shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.6);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.7);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.8);
 
-  --focus-ring-color: rgba(245, 169, 98, 0.5);
+  /* Glowing colored shadows */
+  --shadow-primary: 0 4px 14px 0 rgb(251 191 36 / 0.3);
+  --shadow-success: 0 4px 14px 0 rgb(52 211 153 / 0.3);
+  --shadow-error: 0 4px 14px 0 rgb(248 113 113 / 0.3);
+
+  /* Glass effect for dark mode */
+  --glass-bg: rgba(30, 26, 22, 0.85);
+  --glass-border: rgba(74, 61, 48, 0.4);
+
+  --focus-ring-color: rgba(251, 191, 36, 0.5);
 }

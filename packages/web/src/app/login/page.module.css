@@ -4,7 +4,26 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background-color: var(--color-surface);
+  background-color: var(--color-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle gradient background */
+.page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse 100% 80% at 50% 0%,
+    var(--color-primary-subtle) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  opacity: 0.4;
 }
 
 .container {
@@ -12,43 +31,62 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-8);
-  font-size: var(--font-size-xl);
+  gap: var(--space-3);
+  margin-bottom: var(--space-10);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   text-decoration: none;
-  transition: color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    transform var(--transition-fast);
+  letter-spacing: var(--letter-spacing-tight, -0.025em);
 }
 
 .logo:hover {
   color: var(--color-primary);
+  transform: scale(1.02);
 }
 
 .logo:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .card {
   width: 100%;
   background-color: var(--color-surface-elevated);
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-xl);
-  padding: var(--space-8);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-2xl, var(--radius-xl));
+  padding: var(--space-10);
+  box-shadow: var(--shadow-xl);
 }
 
 @media (max-width: 480px) {
   .card {
     padding: var(--space-6);
+    border-radius: var(--radius-xl);
   }
 }
 
@@ -57,18 +95,19 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin-bottom: var(--space-2);
+  letter-spacing: var(--letter-spacing-tight, -0.025em);
 }
 
 .subtitle {
   font-size: var(--font-size-base);
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .field {
@@ -79,6 +118,8 @@
 .submitButton {
   width: 100%;
   padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-base);
+  margin-top: var(--space-2);
 }
 
 .spinner {
@@ -97,18 +138,31 @@
 /* Success state */
 .successState {
   text-align: center;
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .successIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   background-color: var(--color-success-subtle);
   color: var(--color-success);
   border-radius: var(--radius-full);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  box-shadow: 0 4px 14px 0 rgb(5 150 105 / 0.2);
 }
 
 .successTitle {
@@ -121,7 +175,7 @@
 .successDescription {
   font-size: var(--font-size-base);
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
 .backButton {
@@ -130,19 +184,32 @@
 
 /* Back link */
 .backLink {
-  margin-top: var(--space-6);
+  margin-top: var(--space-8);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   text-decoration: none;
-  transition: color var(--transition-fast);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .backLink:hover {
   color: var(--color-text-primary);
+  background-color: var(--color-surface-hover, var(--color-surface));
 }
 
 .backLink:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .container,
+  .successState {
+    animation: none;
+  }
 }
