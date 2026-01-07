@@ -13,6 +13,8 @@ import { createSourcesRepo } from "./repos/sources";
 import { createTopicPreferenceProfilesRepo } from "./repos/topic_preference_profiles";
 import { createTopicsRepo } from "./repos/topics";
 import { createUsersRepo } from "./repos/users";
+import { createAuthTokensRepo } from "./repos/auth_tokens";
+import { createSessionsRepo } from "./repos/sessions";
 
 export interface Queryable {
   query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<QueryResult<T>>;
@@ -31,6 +33,8 @@ export type DbContext = Queryable & {
   digestItems: ReturnType<typeof createDigestItemsRepo>;
   feedbackEvents: ReturnType<typeof createFeedbackEventsRepo>;
   providerCalls: ReturnType<typeof createProviderCallsRepo>;
+  authTokens: ReturnType<typeof createAuthTokensRepo>;
+  sessions: ReturnType<typeof createSessionsRepo>;
 };
 
 export interface Db extends DbContext {
@@ -53,6 +57,8 @@ function createContext(db: Queryable): DbContext {
     digestItems: createDigestItemsRepo(db),
     feedbackEvents: createFeedbackEventsRepo(db),
     providerCalls: createProviderCallsRepo(db),
+    authTokens: createAuthTokensRepo(db),
+    sessions: createSessionsRepo(db),
   };
 }
 

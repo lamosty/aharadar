@@ -12,3 +12,5 @@ export * from "./repos/topic_preference_profiles";
 export * from "./repos/topics";
 export * from "./repos/user_preferences";
 export * from "./repos/users";
+export * from "./repos/auth_tokens";
+export * from "./repos/sessions";
