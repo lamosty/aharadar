@@ -20,6 +20,7 @@
   --color-primary-hover: #d35400;
   --color-primary-active: #ba4a00;
   --color-primary-subtle: #fdebd0;
+  --color-text-on-primary: #ffffff;
 
   --color-success: #27ae60;
   --color-success-subtle: #d5f5e3;
@@ -122,6 +123,7 @@
   --color-primary-hover: #f8bc7f;
   --color-primary-active: #face9b;
   --color-primary-subtle: #7a3d0c;
+  --color-text-on-primary: #1c1410;
 
   --color-success: #58d68d;
   --color-success-subtle: #145a32;
