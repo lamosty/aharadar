@@ -66,9 +66,7 @@ export function ViewingProfileSettings() {
             onClick={() => handleProfileChange(option.value)}
             disabled={updateMutation.isPending}
           >
-            <span className={styles.profileLabel}>
-              {t(`settings.viewing.profiles.${option.value}`)}
-            </span>
+            <span className={styles.profileLabel}>{t(`settings.viewing.profiles.${option.value}`)}</span>
             <span className={styles.profileDescription}>
               {t(`settings.viewing.profileDescriptions.${option.value}`)}
             </span>
@@ -101,14 +99,10 @@ export function ViewingProfileSettings() {
 
       <div className={styles.lastChecked}>
         <span className={styles.lastCheckedLabel}>{t("settings.viewing.lastChecked")}:</span>
-        <span className={styles.lastCheckedValue}>
-          {formatLastChecked(preferences.lastCheckedAt)}
-        </span>
+        <span className={styles.lastCheckedValue}>{formatLastChecked(preferences.lastCheckedAt)}</span>
       </div>
 
-      {updateMutation.isError && (
-        <p className={styles.errorMessage}>{t("settings.viewing.updateFailed")}</p>
-      )}
+      {updateMutation.isError && <p className={styles.errorMessage}>{t("settings.viewing.updateFailed")}</p>}
     </div>
   );
 }

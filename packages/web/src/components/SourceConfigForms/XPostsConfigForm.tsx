@@ -5,11 +5,7 @@ import type { XPostsConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
-export function XPostsConfigForm({
-  value,
-  onChange,
-  errors,
-}: SourceConfigFormProps<XPostsConfig>) {
+export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormProps<XPostsConfig>) {
   const [accountInput, setAccountInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [queryInput, setQueryInput] = useState("");
@@ -87,8 +83,8 @@ export function XPostsConfigForm({
 
       <div className={styles.helpBox}>
         <p>
-          Monitor X/Twitter for content. You can follow specific accounts, track keywords, or use
-          custom search queries. At least one of accounts, keywords, or queries should be specified.
+          Monitor X/Twitter for content. You can follow specific accounts, track keywords, or use custom
+          search queries. At least one of accounts, keywords, or queries should be specified.
         </p>
       </div>
 
@@ -100,7 +96,9 @@ export function XPostsConfigForm({
             content={
               <>
                 <p>The service used to fetch X/Twitter data.</p>
-                <p><strong>Grok (xAI):</strong> Uses xAI&apos;s Grok API which has access to real-time X data.</p>
+                <p>
+                  <strong>Grok (xAI):</strong> Uses xAI&apos;s Grok API which has access to real-time X data.
+                </p>
               </>
             }
           />
@@ -126,8 +124,14 @@ export function XPostsConfigForm({
               content={
                 <>
                   <p>Specific X/Twitter accounts to monitor for posts.</p>
-                  <p><strong>How it works:</strong> Each account becomes a separate search query (<code>from:username</code>).</p>
-                  <p><strong>Example:</strong> Adding &quot;openai&quot; and &quot;anthropic&quot; will fetch posts from both accounts.</p>
+                  <p>
+                    <strong>How it works:</strong> Each account becomes a separate search query (
+                    <code>from:username</code>).
+                  </p>
+                  <p>
+                    <strong>Example:</strong> Adding &quot;openai&quot; and &quot;anthropic&quot; will fetch
+                    posts from both accounts.
+                  </p>
                   <p>Enter usernames without the @ symbol.</p>
                 </>
               }
@@ -181,8 +185,12 @@ export function XPostsConfigForm({
               content={
                 <>
                   <p>Search for posts containing these keywords or topics.</p>
-                  <p><strong>How it works:</strong> Each keyword becomes a separate search query.</p>
-                  <p><strong>Tips:</strong></p>
+                  <p>
+                    <strong>How it works:</strong> Each keyword becomes a separate search query.
+                  </p>
+                  <p>
+                    <strong>Tips:</strong>
+                  </p>
                   <ul>
                     <li>Use specific terms for better results</li>
                     <li>Combine with accounts to narrow down</li>
@@ -240,13 +248,23 @@ export function XPostsConfigForm({
               content={
                 <>
                   <p>Raw X search queries for advanced users.</p>
-                  <p><strong>Examples:</strong></p>
+                  <p>
+                    <strong>Examples:</strong>
+                  </p>
                   <ul>
-                    <li><code>from:user1 OR from:user2</code></li>
-                    <li><code>&quot;exact phrase&quot; lang:en</code></li>
-                    <li><code>AI -crypto min_faves:100</code></li>
+                    <li>
+                      <code>from:user1 OR from:user2</code>
+                    </li>
+                    <li>
+                      <code>&quot;exact phrase&quot; lang:en</code>
+                    </li>
+                    <li>
+                      <code>AI -crypto min_faves:100</code>
+                    </li>
                   </ul>
-                  <p>Use this for complex searches that can&apos;t be expressed with accounts/keywords alone.</p>
+                  <p>
+                    Use this for complex searches that can&apos;t be expressed with accounts/keywords alone.
+                  </p>
                 </>
               }
             />
@@ -302,20 +320,29 @@ export function XPostsConfigForm({
               title="Results Per Account/Search"
               content={
                 <>
-                  <p><strong>What this means:</strong> How many posts to fetch for each account or search query.</p>
-                  <p><strong>Example with 10 accounts and limit of 20:</strong></p>
+                  <p>
+                    <strong>What this means:</strong> How many posts to fetch for each account or search
+                    query.
+                  </p>
+                  <p>
+                    <strong>Example with 10 accounts and limit of 20:</strong>
+                  </p>
                   <ul>
                     <li>Each account is searched separately</li>
                     <li>Up to 20 posts fetched per account</li>
                     <li>Maximum total: 10 x 20 = 200 posts per run</li>
                   </ul>
-                  <p><strong>Recommendations:</strong></p>
+                  <p>
+                    <strong>Recommendations:</strong>
+                  </p>
                   <ul>
                     <li>Low-volume accounts: 10-20</li>
                     <li>High-volume (news): 5-10</li>
                     <li>Just highlights: 3-5</li>
                   </ul>
-                  <p><strong>Default:</strong> 20</p>
+                  <p>
+                    <strong>Default:</strong> 20
+                  </p>
                 </>
               }
             />
@@ -327,10 +354,7 @@ export function XPostsConfigForm({
             max={100}
             value={value.maxResultsPerQuery ?? ""}
             onChange={(e) =>
-              handleChange(
-                "maxResultsPerQuery",
-                e.target.value ? parseInt(e.target.value, 10) : undefined
-              )
+              handleChange("maxResultsPerQuery", e.target.value ? parseInt(e.target.value, 10) : undefined)
             }
             placeholder="20"
             className={styles.numberInput}
@@ -352,8 +376,12 @@ export function XPostsConfigForm({
               content={
                 <>
                   <p>Filter out posts that are replies to other posts.</p>
-                  <p><strong>Enabled:</strong> Only fetch original posts and quote tweets</p>
-                  <p><strong>Disabled:</strong> Include all posts including reply threads</p>
+                  <p>
+                    <strong>Enabled:</strong> Only fetch original posts and quote tweets
+                  </p>
+                  <p>
+                    <strong>Disabled:</strong> Include all posts including reply threads
+                  </p>
                   <p>Recommended to enable for cleaner content.</p>
                 </>
               }
@@ -376,8 +404,12 @@ export function XPostsConfigForm({
               content={
                 <>
                   <p>Filter out retweets (reposts of others&apos; content).</p>
-                  <p><strong>Enabled:</strong> Only fetch original content from the account</p>
-                  <p><strong>Disabled:</strong> Include retweets, which shows what accounts are sharing</p>
+                  <p>
+                    <strong>Enabled:</strong> Only fetch original content from the account
+                  </p>
+                  <p>
+                    <strong>Disabled:</strong> Include retweets, which shows what accounts are sharing
+                  </p>
                   <p>Enable if you only want original posts from followed accounts.</p>
                 </>
               }

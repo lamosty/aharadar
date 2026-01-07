@@ -28,66 +28,27 @@ interface SourceConfigFormProps {
  * Dynamic source configuration form that renders the appropriate
  * form based on the selected source type.
  */
-export function SourceConfigForm({
-  sourceType,
-  config,
-  onChange,
-  errors,
-}: SourceConfigFormProps) {
+export function SourceConfigForm({ sourceType, config, onChange, errors }: SourceConfigFormProps) {
   switch (sourceType) {
     case "rss":
-      return (
-        <RssConfigForm
-          value={config as Partial<RssConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
-      );
+      return <RssConfigForm value={config as Partial<RssConfig>} onChange={onChange} errors={errors} />;
 
     case "reddit":
-      return (
-        <RedditConfigForm
-          value={config as Partial<RedditConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
-      );
+      return <RedditConfigForm value={config as Partial<RedditConfig>} onChange={onChange} errors={errors} />;
 
     case "hn":
-      return (
-        <HnConfigForm
-          value={config as Partial<HnConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
-      );
+      return <HnConfigForm value={config as Partial<HnConfig>} onChange={onChange} errors={errors} />;
 
     case "youtube":
       return (
-        <YoutubeConfigForm
-          value={config as Partial<YoutubeConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
+        <YoutubeConfigForm value={config as Partial<YoutubeConfig>} onChange={onChange} errors={errors} />
       );
 
     case "x_posts":
-      return (
-        <XPostsConfigForm
-          value={config as Partial<XPostsConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
-      );
+      return <XPostsConfigForm value={config as Partial<XPostsConfig>} onChange={onChange} errors={errors} />;
 
     case "signal":
-      return (
-        <SignalConfigForm
-          value={config as Partial<SignalConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
-      );
+      return <SignalConfigForm value={config as Partial<SignalConfig>} onChange={onChange} errors={errors} />;
 
     default:
       return (

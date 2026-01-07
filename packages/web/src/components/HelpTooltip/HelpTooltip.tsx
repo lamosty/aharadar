@@ -108,14 +108,7 @@ interface LabelWithHelpProps {
   className?: string;
 }
 
-export function LabelWithHelp({
-  label,
-  help,
-  helpTitle,
-  required,
-  htmlFor,
-  className,
-}: LabelWithHelpProps) {
+export function LabelWithHelp({ label, help, helpTitle, required, htmlFor, className }: LabelWithHelpProps) {
   return (
     <label htmlFor={htmlFor} className={className}>
       {label}

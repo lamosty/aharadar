@@ -5,11 +5,7 @@ import type { RedditConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
-export function RedditConfigForm({
-  value,
-  onChange,
-  errors,
-}: SourceConfigFormProps<RedditConfig>) {
+export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormProps<RedditConfig>) {
   const [subredditInput, setSubredditInput] = useState("");
 
   const handleChange = <K extends keyof RedditConfig>(key: K, val: RedditConfig[K]) => {
@@ -52,9 +48,8 @@ export function RedditConfigForm({
 
       <div className={styles.helpBox}>
         <p>
-          Add one or more subreddits to monitor. Enter subreddit names without the{" "}
-          <code>r/</code> prefix (e.g., &quot;MachineLearning&quot; not
-          &quot;r/MachineLearning&quot;).
+          Add one or more subreddits to monitor. Enter subreddit names without the <code>r/</code> prefix
+          (e.g., &quot;MachineLearning&quot; not &quot;r/MachineLearning&quot;).
         </p>
       </div>
 
@@ -69,13 +64,12 @@ export function RedditConfigForm({
                   <strong>Required.</strong> Add at least one subreddit to fetch posts from.
                 </p>
                 <p>
-                  <strong>What are subreddits?</strong> Communities on Reddit organized around
-                  specific topics. Each subreddit has its own posts, discussions, and rules.
+                  <strong>What are subreddits?</strong> Communities on Reddit organized around specific
+                  topics. Each subreddit has its own posts, discussions, and rules.
                 </p>
                 <p>
-                  <strong>How to enter:</strong> Type the subreddit name without the{" "}
-                  <code>r/</code> prefix. For example, enter &quot;MachineLearning&quot; not
-                  &quot;r/MachineLearning&quot;.
+                  <strong>How to enter:</strong> Type the subreddit name without the <code>r/</code> prefix.
+                  For example, enter &quot;MachineLearning&quot; not &quot;r/MachineLearning&quot;.
                 </p>
                 <p>
                   <strong>Examples:</strong> technology, worldnews, science, programming
@@ -140,16 +134,16 @@ export function RedditConfigForm({
                     <>
                       <p>How posts are sorted when fetching from the subreddit.</p>
                       <p>
-                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date
-                        with the latest content.
+                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date with the
+                        latest content.
                       </p>
                       <p>
-                        <strong>Hot:</strong> Currently trending posts based on recent votes and
-                        comments. Best for popular discussions happening right now.
+                        <strong>Hot:</strong> Currently trending posts based on recent votes and comments.
+                        Best for popular discussions happening right now.
                       </p>
                       <p>
-                        <strong>Top:</strong> Highest-voted posts within the selected time period.
-                        Best for finding the most valuable content.
+                        <strong>Top:</strong> Highest-voted posts within the selected time period. Best for
+                        finding the most valuable content.
                       </p>
                     </>
                   }
@@ -158,9 +152,7 @@ export function RedditConfigForm({
               <select
                 id="reddit-listing"
                 value={value.listing ?? "new"}
-                onChange={(e) =>
-                  handleChange("listing", e.target.value as "new" | "top" | "hot")
-                }
+                onChange={(e) => handleChange("listing", e.target.value as "new" | "top" | "hot")}
                 className={styles.selectInput}
               >
                 <option value="new">New</option>
@@ -179,12 +171,12 @@ export function RedditConfigForm({
                   content={
                     <>
                       <p>
-                        <strong>When it&apos;s used:</strong> Only applies when &quot;Sort By&quot;
-                        is set to &quot;Top&quot;. Ignored for New and Hot sorting.
+                        <strong>When it&apos;s used:</strong> Only applies when &quot;Sort By&quot; is set to
+                        &quot;Top&quot;. Ignored for New and Hot sorting.
                       </p>
                       <p>
-                        <strong>What it does:</strong> Limits which posts are considered when
-                        ranking by votes.
+                        <strong>What it does:</strong> Limits which posts are considered when ranking by
+                        votes.
                       </p>
                       <ul>
                         <li>
@@ -252,21 +244,19 @@ export function RedditConfigForm({
               content={
                 <>
                   <p>
-                    <strong>What it does:</strong> Fetches the top-voted comments along with each
-                    post.
+                    <strong>What it does:</strong> Fetches the top-voted comments along with each post.
                   </p>
                   <p>
-                    <strong>Why enable:</strong> Comments often contain valuable insights,
-                    corrections, additional context, or expert opinions that add to the original
-                    post.
+                    <strong>Why enable:</strong> Comments often contain valuable insights, corrections,
+                    additional context, or expert opinions that add to the original post.
                   </p>
                   <p>
-                    <strong>Impact:</strong> Increases the amount of content per post, which can
-                    improve AI analysis but also increases processing time and costs.
+                    <strong>Impact:</strong> Increases the amount of content per post, which can improve AI
+                    analysis but also increases processing time and costs.
                   </p>
                   <p>
-                    <strong>Recommendation:</strong> Enable for discussion-heavy subreddits where
-                    comments add value; disable for news or link-sharing subreddits.
+                    <strong>Recommendation:</strong> Enable for discussion-heavy subreddits where comments add
+                    value; disable for news or link-sharing subreddits.
                   </p>
                 </>
               }
@@ -283,12 +273,12 @@ export function RedditConfigForm({
                 content={
                   <>
                     <p>
-                      <strong>What it does:</strong> Limits how many top-level comments are fetched
-                      for each post.
+                      <strong>What it does:</strong> Limits how many top-level comments are fetched for each
+                      post.
                     </p>
                     <p>
-                      <strong>How it works:</strong> Comments are sorted by votes, so you get the
-                      most upvoted comments first.
+                      <strong>How it works:</strong> Comments are sorted by votes, so you get the most upvoted
+                      comments first.
                     </p>
                     <p>
                       <strong>Recommendations:</strong>
@@ -318,10 +308,7 @@ export function RedditConfigForm({
               max={100}
               value={value.maxCommentCount ?? ""}
               onChange={(e) =>
-                handleChange(
-                  "maxCommentCount",
-                  e.target.value ? parseInt(e.target.value, 10) : undefined
-                )
+                handleChange("maxCommentCount", e.target.value ? parseInt(e.target.value, 10) : undefined)
               }
               placeholder="10"
               className={styles.numberInput}
@@ -345,20 +332,20 @@ export function RedditConfigForm({
               content={
                 <>
                   <p>
-                    <strong>What is NSFW?</strong> &quot;Not Safe For Work&quot; - content that
-                    Reddit has marked as adult-only or potentially sensitive.
+                    <strong>What is NSFW?</strong> &quot;Not Safe For Work&quot; - content that Reddit has
+                    marked as adult-only or potentially sensitive.
                   </p>
                   <p>
-                    <strong>Disabled (default):</strong> Posts marked as NSFW are filtered out.
-                    This keeps your feed work-appropriate and family-friendly.
+                    <strong>Disabled (default):</strong> Posts marked as NSFW are filtered out. This keeps
+                    your feed work-appropriate and family-friendly.
                   </p>
                   <p>
-                    <strong>Enabled:</strong> NSFW posts are included in results. Only enable if
-                    you specifically need this content and understand it may contain adult themes.
+                    <strong>Enabled:</strong> NSFW posts are included in results. Only enable if you
+                    specifically need this content and understand it may contain adult themes.
                   </p>
                   <p>
-                    <strong>Note:</strong> Some subreddits are entirely NSFW. If you add one of
-                    these and leave this disabled, you may get no results.
+                    <strong>Note:</strong> Some subreddits are entirely NSFW. If you add one of these and
+                    leave this disabled, you may get no results.
                   </p>
                 </>
               }

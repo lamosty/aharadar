@@ -23,8 +23,8 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
 
       <div className={styles.helpBox}>
         <p>
-          Enter the URL of an RSS or Atom feed. Most blogs and news sites provide RSS feeds - look
-          for the RSS icon or check <code>/feed</code> or <code>/rss</code> paths.
+          Enter the URL of an RSS or Atom feed. Most blogs and news sites provide RSS feeds - look for the RSS
+          icon or check <code>/feed</code> or <code>/rss</code> paths.
         </p>
       </div>
 
@@ -36,11 +36,17 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
             content={
               <>
                 <p>The direct URL to an RSS or Atom feed file.</p>
-                <p><strong>How to find it:</strong></p>
+                <p>
+                  <strong>How to find it:</strong>
+                </p>
                 <ul>
                   <li>Look for an RSS icon on the website</li>
-                  <li>Try adding <code>/feed</code> or <code>/rss</code> to the site URL</li>
-                  <li>Check the page source for <code>&lt;link rel=&quot;alternate&quot;&gt;</code></li>
+                  <li>
+                    Try adding <code>/feed</code> or <code>/rss</code> to the site URL
+                  </li>
+                  <li>
+                    Check the page source for <code>&lt;link rel=&quot;alternate&quot;&gt;</code>
+                  </li>
                 </ul>
               </>
             }
@@ -70,8 +76,12 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
                   content={
                     <>
                       <p>How many items to fetch from the feed per run.</p>
-                      <p><strong>Default:</strong> 50 items</p>
-                      <p><strong>Range:</strong> 1-200</p>
+                      <p>
+                        <strong>Default:</strong> 50 items
+                      </p>
+                      <p>
+                        <strong>Range:</strong> 1-200
+                      </p>
                       <p>Higher values capture more content but may increase processing time.</p>
                     </>
                   }
@@ -84,10 +94,7 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
                 max={200}
                 value={value.maxItemCount ?? ""}
                 onChange={(e) =>
-                  handleChange(
-                    "maxItemCount",
-                    e.target.value ? parseInt(e.target.value, 10) : undefined
-                  )
+                  handleChange("maxItemCount", e.target.value ? parseInt(e.target.value, 10) : undefined)
                 }
                 placeholder="50"
                 className={styles.numberInput}
@@ -111,8 +118,12 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
               content={
                 <>
                   <p>RSS feeds often include both a summary and full content.</p>
-                  <p><strong>Enabled (default):</strong> Use the full article content when available</p>
-                  <p><strong>Disabled:</strong> Use only the summary/description</p>
+                  <p>
+                    <strong>Enabled (default):</strong> Use the full article content when available
+                  </p>
+                  <p>
+                    <strong>Disabled:</strong> Use only the summary/description
+                  </p>
                   <p>Full content provides better context for ranking and summarization.</p>
                 </>
               }
