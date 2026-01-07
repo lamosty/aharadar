@@ -373,9 +373,12 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const settings = getDevSettings();
   const url = `${settings.apiBaseUrl}${path}`;
 
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
+  const headers: HeadersInit = {};
+
+  // Only set Content-Type for requests with a body
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (settings.apiKey) {
     headers["X-API-Key"] = settings.apiKey;
@@ -387,6 +390,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
+      credentials: "include", // Send cookies for session auth
     });
 
     const data = (await response.json()) as T | ApiErrorResponse;
@@ -459,10 +463,7 @@ export async function getItem(id: string, signal?: AbortSignal): Promise<ItemDet
 /**
  * List items with filters (unified feed).
  */
-export async function getItems(
-  params?: ItemsListParams,
-  signal?: AbortSignal
-): Promise<ItemsListResponse> {
+export async function getItems(params?: ItemsListParams, signal?: AbortSignal): Promise<ItemsListResponse> {
   const searchParams = new URLSearchParams();
 
   if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
@@ -641,6 +642,97 @@ export async function patchPreferences(
  */
 export async function postMarkChecked(signal?: AbortSignal): Promise<PreferencesMarkCheckedResponse> {
   return apiFetch<PreferencesMarkCheckedResponse>("/preferences/mark-checked", {
+    method: "POST",
+    signal,
+  });
+}
+
+// ============================================================================
+// Topics API
+// ============================================================================
+
+/** Topic with viewing profile settings */
+export interface Topic {
+  id: string;
+  name: string;
+  description: string | null;
+  viewingProfile: ViewingProfile;
+  decayHours: number;
+  lastCheckedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Topics list response */
+export interface TopicsListResponse {
+  ok: true;
+  topics: Topic[];
+  profileOptions: ProfileOption[];
+}
+
+/** Topic detail response */
+export interface TopicDetailResponse {
+  ok: true;
+  topic: Topic;
+  profileOptions: ProfileOption[];
+}
+
+/** Topic viewing profile update request */
+export interface TopicViewingProfileUpdateRequest {
+  viewingProfile?: ViewingProfile;
+  decayHours?: number;
+}
+
+/** Topic viewing profile update response */
+export interface TopicViewingProfileUpdateResponse {
+  ok: true;
+  topic: Topic;
+}
+
+/** Topic mark checked response */
+export interface TopicMarkCheckedResponse {
+  ok: true;
+  topic: Topic;
+  message: string;
+}
+
+/**
+ * Get all topics.
+ */
+export async function getTopics(signal?: AbortSignal): Promise<TopicsListResponse> {
+  return apiFetch<TopicsListResponse>("/topics", { signal });
+}
+
+/**
+ * Get a single topic by ID.
+ */
+export async function getTopic(id: string, signal?: AbortSignal): Promise<TopicDetailResponse> {
+  return apiFetch<TopicDetailResponse>(`/topics/${id}`, { signal });
+}
+
+/**
+ * Update a topic's viewing profile.
+ */
+export async function patchTopicViewingProfile(
+  id: string,
+  data: TopicViewingProfileUpdateRequest,
+  signal?: AbortSignal
+): Promise<TopicViewingProfileUpdateResponse> {
+  return apiFetch<TopicViewingProfileUpdateResponse>(`/topics/${id}/viewing-profile`, {
+    method: "PATCH",
+    body: data,
+    signal,
+  });
+}
+
+/**
+ * Mark a topic as "caught up".
+ */
+export async function postTopicMarkChecked(
+  id: string,
+  signal?: AbortSignal
+): Promise<TopicMarkCheckedResponse> {
+  return apiFetch<TopicMarkCheckedResponse>(`/topics/${id}/mark-checked`, {
     method: "POST",
     signal,
   });

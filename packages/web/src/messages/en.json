@@ -59,6 +59,13 @@
     "sendLink": "Send magic link",
     "checkEmail": "Check your email",
     "checkEmailDescription": "We sent a login link to {email}",
+    "backToLogin": "Back to login",
+    "invalidToken": "Invalid or expired link. Please request a new one."
+  },
+  "verify": {
+    "verifying": "Verifying your login...",
+    "error": "Verification failed",
+    "noToken": "No verification token provided",
     "backToLogin": "Back to login"
   },
   "dashboard": {
@@ -118,6 +125,11 @@
       },
       "updated": "Preferences updated",
       "updateFailed": "Failed to update preferences"
+    },
+    "topics": {
+      "title": "Topics",
+      "description": "Configure viewing profile settings for each topic. Click a topic to expand its settings.",
+      "noTopics": "No topics configured yet. Topics will appear here once created."
     },
     "dev": {
       "title": "Developer Settings",

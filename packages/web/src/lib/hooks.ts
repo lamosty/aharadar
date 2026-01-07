@@ -32,6 +32,10 @@ import {
   getPreferences,
   patchPreferences,
   postMarkChecked,
+  getTopics,
+  getTopic,
+  patchTopicViewingProfile,
+  postTopicMarkChecked,
   type HealthResponse,
   type DigestsListResponse,
   type DigestDetailResponse,
@@ -52,6 +56,11 @@ import {
   type PreferencesGetResponse,
   type PreferencesUpdateResponse,
   type PreferencesMarkCheckedResponse,
+  type TopicsListResponse,
+  type TopicDetailResponse,
+  type TopicViewingProfileUpdateResponse,
+  type TopicViewingProfileUpdateRequest,
+  type TopicMarkCheckedResponse,
   type ViewingProfile,
   type FeedbackAction,
   ApiError,
@@ -79,6 +88,11 @@ export const queryKeys = {
     budgets: ["admin", "budgets"] as const,
   },
   preferences: ["preferences"] as const,
+  topics: {
+    all: ["topics"] as const,
+    list: () => ["topics", "list"] as const,
+    detail: (id: string) => ["topics", id] as const,
+  },
 } as const;
 
 // ============================================================================
@@ -147,8 +161,7 @@ export function useItems(params?: Omit<ItemsListParams, "offset">) {
 
   return useInfiniteQuery({
     queryKey: queryKeys.items.list(params),
-    queryFn: ({ signal, pageParam }) =>
-      getItems({ ...params, limit, offset: pageParam as number }, signal),
+    queryFn: ({ signal, pageParam }) => getItems({ ...params, limit, offset: pageParam as number }, signal),
     initialPageParam: 0,
     getNextPageParam: (lastPage: ItemsListResponse) => {
       if (!lastPage.pagination.hasMore) return undefined;
@@ -432,7 +445,10 @@ export function useUpdatePreferences(
  * Mutation to mark feed as "caught up".
  */
 export function useMarkChecked(
-  options?: Omit<UseMutationOptions<PreferencesMarkCheckedResponse, ApiError | NetworkError, void>, "mutationFn">
+  options?: Omit<
+    UseMutationOptions<PreferencesMarkCheckedResponse, ApiError | NetworkError, void>,
+    "mutationFn"
+  >
 ) {
   const queryClient = useQueryClient();
 
@@ -441,6 +457,88 @@ export function useMarkChecked(
     onSuccess: () => {
       // Invalidate preferences to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
+      // Invalidate items to update isNew flags
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    ...options,
+  });
+}
+
+// ============================================================================
+// Topics Queries & Mutations
+// ============================================================================
+
+/**
+ * Query for all topics with their viewing profiles.
+ */
+export function useTopics(
+  options?: Omit<UseQueryOptions<TopicsListResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.topics.list(),
+    queryFn: ({ signal }) => getTopics(signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Query for a single topic by ID.
+ */
+export function useTopic(
+  id: string,
+  options?: Omit<UseQueryOptions<TopicDetailResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.topics.detail(id),
+    queryFn: ({ signal }) => getTopic(id, signal),
+    enabled: !!id,
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update a topic's viewing profile.
+ */
+export function useUpdateTopicViewingProfile(
+  topicId: string,
+  options?: Omit<
+    UseMutationOptions<TopicViewingProfileUpdateResponse, ApiError | NetworkError, TopicViewingProfileUpdateRequest>,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => patchTopicViewingProfile(topicId, data),
+    onSuccess: () => {
+      // Invalidate topic queries to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+      // Also invalidate items since decay settings affect scores
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to mark a topic as "caught up".
+ */
+export function useTopicMarkChecked(
+  topicId: string,
+  options?: Omit<
+    UseMutationOptions<TopicMarkCheckedResponse, ApiError | NetworkError, void>,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => postTopicMarkChecked(topicId),
+    onSuccess: () => {
+      // Invalidate topic queries to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
       // Invalidate items to update isNew flags
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
     },
