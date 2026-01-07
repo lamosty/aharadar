@@ -28,6 +28,13 @@ export interface TriageFeatures {
     weight: number;
     source_name: string;
   };
+  user_preference_v1?: {
+    source_type: string;
+    source_type_weight: number;
+    author: string | null;
+    author_weight: number;
+    effective_weight: number;
+  };
   aha_score?: {
     score: number;
     reason: string;

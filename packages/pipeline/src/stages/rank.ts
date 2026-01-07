@@ -1,3 +1,4 @@
+import type { SourceType } from "@aharadar/shared";
 import type { TriageOutput } from "@aharadar/llm";
 import type { NoveltyFeature } from "../scoring/novelty";
 
@@ -7,6 +8,26 @@ export interface RankWeights {
   wPref: number;
   wSignal: number;
   wNovelty: number;
+}
+
+/**
+ * User preference weights computed from feedback history.
+ * These are applied as multipliers to item scores.
+ */
+export interface UserPreferences {
+  sourceTypeWeights: Partial<Record<SourceType, number>>;
+  authorWeights: Record<string, number>;
+}
+
+/**
+ * User preference feature for explainability.
+ */
+export interface UserPreferenceFeature {
+  source_type_weight: number;
+  author_weight: number;
+  effective_weight: number;
+  source_type: SourceType;
+  author: string | null;
 }
 
 export interface SignalCorroborationFeature {
@@ -81,6 +102,10 @@ export interface RankCandidateInput {
   signalCorroboration: SignalCorroborationFeature | null;
   novelty: NoveltyFeature | null;
   sourceWeight: SourceWeightFeature | null;
+  /** Source type for user preference lookup */
+  sourceType?: SourceType;
+  /** Author for user preference lookup */
+  author?: string | null;
 }
 
 export interface RankedCandidate {
@@ -96,9 +121,43 @@ function asFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/**
+ * Compute user preference weight for a candidate.
+ * Returns a multiplier based on source type and author preferences.
+ */
+export function computeUserPreferenceWeight(params: {
+  sourceType?: SourceType;
+  author?: string | null;
+  userPreferences?: UserPreferences;
+}): UserPreferenceFeature | null {
+  const { sourceType, author, userPreferences } = params;
+
+  // If no user preferences or no source type, no preference adjustment
+  if (!userPreferences || !sourceType) {
+    return null;
+  }
+
+  const sourceTypeWeight = userPreferences.sourceTypeWeights[sourceType] ?? 1.0;
+  const authorWeight = author ? userPreferences.authorWeights[author] ?? 1.0 : 1.0;
+
+  // Combined weight, clamped to [0.5, 2.0]
+  const rawWeight = sourceTypeWeight * authorWeight;
+  const effectiveWeight = Math.max(0.5, Math.min(2.0, rawWeight));
+
+  return {
+    source_type_weight: sourceTypeWeight,
+    author_weight: authorWeight,
+    effective_weight: effectiveWeight,
+    source_type: sourceType,
+    author: author ?? null,
+  };
+}
+
 export function rankCandidates(params: {
   candidates: RankCandidateInput[];
   weights?: Partial<RankWeights>;
+  /** User preferences from feedback - applied as score multiplier */
+  userPreferences?: UserPreferences;
 }): RankedCandidate[] {
   const wAha = params.weights?.wAha ?? 0.8;
   const wHeuristic = params.weights?.wHeuristic ?? 0.15;
@@ -122,12 +181,20 @@ export function rankCandidates(params: {
     // Source weight feature (multiplier)
     const effectiveWeight = c.sourceWeight?.effective_weight ?? 1.0;
 
-    // Compute score with signal boost and novelty, then apply source weight
+    // User preference weight (multiplier based on feedback history)
+    const userPrefFeature = computeUserPreferenceWeight({
+      sourceType: c.sourceType,
+      author: c.author,
+      userPreferences: params.userPreferences,
+    });
+    const userPrefWeight = userPrefFeature?.effective_weight ?? 1.0;
+
+    // Compute score with signal boost and novelty, then apply source weight and user preference
     const baseScore = triage
       ? wAha * aha01 + wHeuristic * c.heuristicScore + wPref * pref
       : c.heuristicScore + wPref * pref;
     const preWeightScore = baseScore + wSignal * signalCorr01 + wNovelty * novelty01;
-    const score = preWeightScore * effectiveWeight;
+    const score = preWeightScore * effectiveWeight * userPrefWeight;
 
     // Build triageJson with system_features for explainability
     let triageJson: Record<string, unknown> | null = null;
@@ -159,6 +226,16 @@ export function rankCandidates(params: {
         type_weight: c.sourceWeight.type_weight,
         source_weight: c.sourceWeight.source_weight,
         effective_weight: c.sourceWeight.effective_weight,
+      };
+    }
+
+    if (userPrefFeature) {
+      systemFeatures.user_preference_v1 = {
+        source_type: userPrefFeature.source_type,
+        source_type_weight: userPrefFeature.source_type_weight,
+        author: userPrefFeature.author,
+        author_weight: userPrefFeature.author_weight,
+        effective_weight: userPrefFeature.effective_weight,
       };
     }
 

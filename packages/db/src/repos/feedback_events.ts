@@ -1,4 +1,4 @@
-import type { FeedbackAction } from "@aharadar/shared";
+import type { FeedbackAction, SourceType } from "@aharadar/shared";
 
 import type { Queryable } from "../db";
 
@@ -9,6 +9,16 @@ export interface FeedbackEventRow {
   content_item_id: string;
   action: FeedbackAction;
   created_at: string;
+}
+
+/**
+ * User preference weights computed from feedback history.
+ * Weights are multipliers (1.0 = neutral, >1 = boosted, <1 = penalized).
+ * All weights are clamped to [0.5, 2.0] to prevent extreme values.
+ */
+export interface UserPreferences {
+  sourceTypeWeights: Partial<Record<SourceType, number>>;
+  authorWeights: Record<string, number>;
 }
 
 export function createFeedbackEventsRepo(db: Queryable) {
@@ -46,6 +56,88 @@ export function createFeedbackEventsRepo(db: Queryable) {
         [params.userId, Math.max(1, Math.min(500, Math.floor(params.limit)))]
       );
       return res.rows;
+    },
+
+    /**
+     * Compute user preference weights from feedback history.
+     * Like/save → +0.1 weight, dislike → -0.1 weight.
+     * Weights are clamped to [0.5, 2.0].
+     *
+     * @param userId - The user to compute preferences for
+     * @param maxFeedbackAge - Optional max age in days (default: no limit)
+     * @returns UserPreferences with sourceTypeWeights and authorWeights
+     */
+    async computeUserPreferences(params: {
+      userId: string;
+      maxFeedbackAgeDays?: number;
+    }): Promise<UserPreferences> {
+      const { userId, maxFeedbackAgeDays } = params;
+
+      // Query feedback with joined content_items for source_type and author
+      const ageFilter = maxFeedbackAgeDays
+        ? `and fe.created_at > now() - interval '${maxFeedbackAgeDays} days'`
+        : "";
+
+      const res = await db.query<{
+        source_type: SourceType;
+        author: string | null;
+        action: FeedbackAction;
+      }>(
+        `select
+           ci.source_type,
+           ci.author,
+           fe.action
+         from feedback_events fe
+         join content_items ci on ci.id = fe.content_item_id
+         where fe.user_id = $1
+           ${ageFilter}
+         order by fe.created_at desc
+         limit 1000`,
+        [userId]
+      );
+
+      // Aggregate by source type and author
+      const sourceTypeScores: Record<string, number> = {};
+      const authorScores: Record<string, number> = {};
+
+      const WEIGHT_DELTA = 0.1;
+      const MIN_WEIGHT = 0.5;
+      const MAX_WEIGHT = 2.0;
+
+      for (const row of res.rows) {
+        const delta =
+          row.action === "like" || row.action === "save"
+            ? WEIGHT_DELTA
+            : row.action === "dislike"
+              ? -WEIGHT_DELTA
+              : 0; // skip has no effect
+
+        if (delta !== 0) {
+          // Source type weight
+          sourceTypeScores[row.source_type] = (sourceTypeScores[row.source_type] ?? 0) + delta;
+
+          // Author weight (if author exists)
+          if (row.author) {
+            authorScores[row.author] = (authorScores[row.author] ?? 0) + delta;
+          }
+        }
+      }
+
+      // Convert accumulated scores to weights (base 1.0 + accumulated delta)
+      // and clamp to [MIN_WEIGHT, MAX_WEIGHT]
+      const clamp = (val: number) => Math.max(MIN_WEIGHT, Math.min(MAX_WEIGHT, val));
+
+      const sourceTypeWeights: Partial<Record<SourceType, number>> = {};
+      for (const [sourceType, score] of Object.entries(sourceTypeScores)) {
+        sourceTypeWeights[sourceType as SourceType] = clamp(1.0 + score);
+      }
+
+      const authorWeights: Record<string, number> = {};
+      for (const [author, score] of Object.entries(authorScores)) {
+        authorWeights[author] = clamp(1.0 + score);
+      }
+
+      return { sourceTypeWeights, authorWeights };
     },
   };
 }

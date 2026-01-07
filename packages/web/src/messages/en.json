@@ -283,6 +283,12 @@
       "corroboratingUrls": "Corroborating URLs",
       "corroboratingTopics": "Corroborating topics",
       "corroborationScore": "Corroboration score",
+      "userPreference": "Your Preferences",
+      "userPrefSourceType": "Source type",
+      "userPrefSourceTypeWeight": "Source boost",
+      "userPrefAuthor": "Author",
+      "userPrefAuthorWeight": "Author boost",
+      "userPrefEffectiveWeight": "Combined boost",
       "noFeatures": "No ranking features available"
     },
     "feedback": {

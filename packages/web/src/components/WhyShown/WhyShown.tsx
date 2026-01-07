@@ -147,11 +147,57 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                 </FeatureSection>
               )}
 
+              {features.user_preference_v1 && (
+                <FeatureSection title={t("digests.whyShown.userPreference")}>
+                  <div className={styles.metaGrid}>
+                    {features.user_preference_v1.source_type && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.userPrefSourceType")}</dt>
+                        <dd className={styles.sourceType}>{features.user_preference_v1.source_type}</dd>
+                      </div>
+                    )}
+                    {typeof features.user_preference_v1.source_type_weight === "number" &&
+                      features.user_preference_v1.source_type_weight !== 1.0 && (
+                        <div className={styles.metaItem}>
+                          <dt>{t("digests.whyShown.userPrefSourceTypeWeight")}</dt>
+                          <dd>{features.user_preference_v1.source_type_weight.toFixed(1)}x</dd>
+                        </div>
+                      )}
+                    {features.user_preference_v1.author && (
+                      <div className={styles.metaItem}>
+                        <dt>{t("digests.whyShown.userPrefAuthor")}</dt>
+                        <dd>{features.user_preference_v1.author}</dd>
+                      </div>
+                    )}
+                    {typeof features.user_preference_v1.author_weight === "number" &&
+                      features.user_preference_v1.author_weight !== 1.0 && (
+                        <div className={styles.metaItem}>
+                          <dt>{t("digests.whyShown.userPrefAuthorWeight")}</dt>
+                          <dd>{features.user_preference_v1.author_weight.toFixed(1)}x</dd>
+                        </div>
+                      )}
+                    {typeof features.user_preference_v1.effective_weight === "number" &&
+                      features.user_preference_v1.effective_weight !== 1.0 && (
+                        <div className={styles.metaItem}>
+                          <dt>{t("digests.whyShown.userPrefEffectiveWeight")}</dt>
+                          <dd>{features.user_preference_v1.effective_weight.toFixed(1)}x</dd>
+                        </div>
+                      )}
+                  </div>
+                </FeatureSection>
+              )}
+
               {/* Render any unknown future features gracefully */}
               {Object.entries(features)
                 .filter(
                   ([key]) =>
-                    !["aha_score", "novelty_v1", "source_weight_v1", "signal_corroboration_v1"].includes(key)
+                    ![
+                      "aha_score",
+                      "novelty_v1",
+                      "source_weight_v1",
+                      "signal_corroboration_v1",
+                      "user_preference_v1",
+                    ].includes(key)
                 )
                 .map(([key, value]) => (
                   <FeatureSection key={key} title={key}>
