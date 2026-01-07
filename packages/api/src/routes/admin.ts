@@ -236,7 +236,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     const queue = getPipelineQueue();
 
     // Deterministic job ID including mode to avoid collision with scheduled runs
-    const jobId = `${RUN_WINDOW_JOB_NAME}:${ctx.userId}:${ctx.topicId}:${windowStart}:${windowEnd}:${resolvedMode}`;
+    // BullMQ doesn't allow colons in job IDs, so replace them with underscores
+    const sanitizedStart = windowStart.replace(/:/g, "_");
+    const sanitizedEnd = windowEnd.replace(/:/g, "_");
+    const jobId = `${RUN_WINDOW_JOB_NAME}_${ctx.userId}_${ctx.topicId}_${sanitizedStart}_${sanitizedEnd}_${resolvedMode}`;
 
     await queue.add(
       RUN_WINDOW_JOB_NAME,
