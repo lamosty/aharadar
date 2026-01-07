@@ -35,6 +35,7 @@ coverage/
 .stylelintcache
 .parcel-cache/
 .cache/
+.playwright-mcp/
 
 # IDEs
 .idea/
