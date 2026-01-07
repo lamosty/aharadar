@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
 import { QueryProvider } from "@/components/QueryProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import { t } from "@/lib/i18n";
 import { themeInitScript } from "@/lib/theme";
 import "@/styles/globals.css";
@@ -58,9 +59,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
 
         <QueryProvider>
-          <ThemeProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </ThemeProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </ThemeProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>
