@@ -25,6 +25,7 @@ import {
   getAdminSources,
   patchAdminSource,
   postAdminSource,
+  deleteAdminSource,
   getAdminBudgets,
   type HealthResponse,
   type DigestsListResponse,
@@ -39,8 +40,8 @@ import {
   type SourcePatchResponse,
   type SourceCreateRequest,
   type SourceCreateResponse,
+  type SourceDeleteResponse,
   type BudgetsResponse,
-  type DigestItem,
   type FeedbackAction,
   ApiError,
   NetworkError,
@@ -281,6 +282,21 @@ export function useAdminSourceCreate(
 
   return useMutation({
     mutationFn: (request) => postAdminSource(request),
+    onSuccess: () => {
+      // Invalidate sources list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.sources });
+    },
+    ...options,
+  });
+}
+
+export function useAdminSourceDelete(
+  options?: Omit<UseMutationOptions<SourceDeleteResponse, ApiError | NetworkError, string>, "mutationFn">
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteAdminSource(id),
     onSuccess: () => {
       // Invalidate sources list to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.sources });

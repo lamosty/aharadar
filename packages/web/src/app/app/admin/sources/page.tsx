@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
-import { useAdminSources, useAdminSourcePatch, useAdminSourceCreate } from "@/lib/hooks";
+import { useAdminSources, useAdminSourcePatch, useAdminSourceCreate, useAdminSourceDelete } from "@/lib/hooks";
 import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType, type Source, type SourceConfig } from "@/lib/api";
 import {
   SourceConfigForm,
@@ -19,10 +19,13 @@ export default function AdminSourcesPage() {
   const { data: sourcesData, isLoading } = useAdminSources();
   const patchMutation = useAdminSourcePatch();
   const createMutation = useAdminSourceCreate();
+  const deleteMutation = useAdminSourceDelete();
 
   const sources = sourcesData?.sources ?? [];
 
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{
     cadenceMinutes: number;
@@ -53,6 +56,19 @@ export default function AdminSourcesPage() {
       addToast(t("toast.sourceUpdated"), "success");
     } catch {
       addToast(t("toast.sourceUpdateFailed"), "error");
+    }
+  };
+
+  const handleDeleteSource = async (sourceId: string) => {
+    setDeletingId(sourceId);
+    try {
+      await deleteMutation.mutateAsync(sourceId);
+      addToast(t("toast.sourceDeleted"), "success");
+      setConfirmDeleteId(null);
+    } catch {
+      addToast(t("toast.sourceDeleteFailed"), "error");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -371,14 +387,46 @@ export default function AdminSourcesPage() {
                     <span className={styles.detailLabel}>{t("admin.sources.weight")}</span>
                     <span className={styles.detailValue}>{source.config.weight?.toFixed(1) ?? "1.0"}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleStartEdit(source)}
-                    className={styles.editButton}
-                    aria-label={`Edit ${source.name}`}
-                  >
-                    <EditIcon />
-                  </button>
+                  <div className={styles.actionButtons}>
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(source)}
+                      className={styles.editButton}
+                      aria-label={`Edit ${source.name}`}
+                    >
+                      <EditIcon />
+                    </button>
+                    {confirmDeleteId === source.id ? (
+                      <div className={styles.confirmDelete}>
+                        <span className={styles.confirmText}>{t("admin.sources.confirmDelete")}</span>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(null)}
+                          className={styles.cancelDeleteButton}
+                          disabled={deletingId === source.id}
+                        >
+                          {t("common.cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSource(source.id)}
+                          className={styles.confirmDeleteButton}
+                          disabled={deletingId === source.id}
+                        >
+                          {deletingId === source.id ? <LoadingSpinner /> : t("common.delete")}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(source.id)}
+                        className={styles.deleteButton}
+                        aria-label={`Delete ${source.name}`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -480,6 +528,27 @@ function PlusIcon() {
     >
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
     </svg>
   );
 }

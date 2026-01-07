@@ -219,5 +219,14 @@ export function createSourcesRepo(db: Queryable) {
       );
       return res.rows;
     },
+
+    async delete(params: { sourceId: string; userId: string }): Promise<boolean> {
+      // Only delete if the source belongs to the user (security check)
+      const res = await db.query(
+        "delete from sources where id = $1::uuid and user_id = $2 returning id",
+        [params.sourceId, params.userId]
+      );
+      return res.rowCount !== null && res.rowCount > 0;
+    },
   };
 }

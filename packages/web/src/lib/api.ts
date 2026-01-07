@@ -477,3 +477,19 @@ export async function postAdminSource(
 export async function getAdminBudgets(signal?: AbortSignal): Promise<BudgetsResponse> {
   return apiFetch<BudgetsResponse>("/admin/budgets", { signal });
 }
+
+/** Source delete response */
+export interface SourceDeleteResponse {
+  ok: true;
+  deleted: true;
+}
+
+/**
+ * Delete a source.
+ */
+export async function deleteAdminSource(id: string, signal?: AbortSignal): Promise<SourceDeleteResponse> {
+  return apiFetch<SourceDeleteResponse>(`/admin/sources/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}

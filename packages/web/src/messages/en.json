@@ -15,7 +15,8 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "expandAll": "Expand all",
-    "collapseAll": "Collapse all"
+    "collapseAll": "Collapse all",
+    "delete": "Delete"
   },
   "nav": {
     "home": "Home",
@@ -113,6 +114,8 @@
     "sourceUpdateFailed": "Failed to update source",
     "sourceCreated": "Source created",
     "sourceCreateFailed": "Failed to create source",
+    "sourceDeleted": "Source deleted",
+    "sourceDeleteFailed": "Failed to delete source",
     "runStarted": "Pipeline run started",
     "runFailed": "Failed to start pipeline run",
     "feedbackError": "Failed to save feedback. Please try again."
@@ -188,6 +191,7 @@
       "configLabel": "Configuration (JSON)",
       "configPlaceholder": "{\"key\": \"value\"}",
       "configHint": "Optional JSON config for the source connector",
+      "confirmDelete": "Delete?",
       "typeDescriptions": {
         "reddit": "Fetch posts from Reddit subreddits",
         "hn": "Fetch stories from Hacker News",

@@ -505,4 +505,74 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       source: formatSource(updated),
     };
   });
+
+  // DELETE /admin/sources/:id - Delete a source
+  fastify.delete<{ Params: { id: string } }>("/admin/sources/:id", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+
+    // Validate UUID format
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "id must be a valid UUID",
+        },
+      });
+    }
+
+    // Get current source and verify ownership before deleting
+    const db = getDb();
+    const existing = await db.sources.getById(id);
+
+    if (!existing) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: `Source not found: ${id}`,
+        },
+      });
+    }
+
+    // Verify ownership (source belongs to current user/topic)
+    if (existing.user_id !== ctx.userId || existing.topic_id !== ctx.topicId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Source does not belong to current user/topic",
+        },
+      });
+    }
+
+    // Delete the source (CASCADE will handle related records)
+    const deleted = await db.sources.delete({ sourceId: id, userId: ctx.userId });
+
+    if (!deleted) {
+      return reply.code(500).send({
+        ok: false,
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to delete source",
+        },
+      });
+    }
+
+    return {
+      ok: true,
+      deleted: true,
+    };
+  });
 }
