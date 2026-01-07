@@ -1,6 +1,7 @@
 "use client";
 
 import type { YoutubeConfig, SourceConfigFormProps } from "./types";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
 export function YoutubeConfigForm({
@@ -35,6 +36,22 @@ export function YoutubeConfigForm({
       <div className={styles.field}>
         <label htmlFor="youtube-channelId" className={styles.label}>
           Channel ID<span className={styles.required}>*</span>
+          <HelpTooltip
+            title="YouTube Channel ID"
+            content={
+              <>
+                <p>The unique identifier for a YouTube channel, used to fetch its videos.</p>
+                <p><strong>How to find it:</strong></p>
+                <ul>
+                  <li>Go to the YouTube channel page</li>
+                  <li>Look at the URL - it will be something like <code>youtube.com/channel/UCxxxxxx</code></li>
+                  <li>The ID is the part starting with &quot;UC&quot; (e.g., <code>UCddiUEpYJcSLRk_j2L5vrZA</code>)</li>
+                </ul>
+                <p><strong>Note:</strong> Some channels use custom URLs like <code>youtube.com/@channelname</code>. For these, click on &quot;About&quot; or &quot;More&quot; to find the channel ID, or use a tool to convert the handle to a channel ID.</p>
+                <p>Channel IDs always start with &quot;UC&quot; and are 24 characters long.</p>
+              </>
+            }
+          />
         </label>
         <input
           type="text"
@@ -54,6 +71,27 @@ export function YoutubeConfigForm({
         <div className={styles.field}>
           <label htmlFor="youtube-maxVideoCount" className={styles.label}>
             Max Videos
+            <HelpTooltip
+              title="Maximum Videos Per Run"
+              content={
+                <>
+                  <p>How many videos to fetch each time this source runs.</p>
+                  <p><strong>What this means:</strong></p>
+                  <ul>
+                    <li>Videos are fetched from newest to oldest</li>
+                    <li>If a channel has 100 videos but you set max to 10, only the 10 most recent will be fetched</li>
+                    <li>Already-seen videos are skipped, so you&apos;ll only get new content</li>
+                  </ul>
+                  <p><strong>Recommendations:</strong></p>
+                  <ul>
+                    <li>Active channels (daily uploads): 5-10</li>
+                    <li>Regular channels (weekly): 10-20</li>
+                    <li>Occasional uploaders: 30-50</li>
+                  </ul>
+                  <p><strong>Default:</strong> 30 videos</p>
+                </>
+              }
+            />
           </label>
           <input
             type="number"
@@ -83,6 +121,28 @@ export function YoutubeConfigForm({
           />
           <label htmlFor="youtube-includeTranscript" className={styles.checkboxLabel}>
             Include video transcripts (when available)
+            <HelpTooltip
+              title="Include Transcripts"
+              content={
+                <>
+                  <p>Fetch the full text transcript of each video when available.</p>
+                  <p><strong>Benefits:</strong></p>
+                  <ul>
+                    <li>Enables full-text search across video content</li>
+                    <li>Better AI analysis and summarization</li>
+                    <li>Find specific topics mentioned in videos</li>
+                    <li>More accurate relevance ranking</li>
+                  </ul>
+                  <p><strong>Things to know:</strong></p>
+                  <ul>
+                    <li>Not all videos have transcripts available</li>
+                    <li>Auto-generated transcripts may have errors</li>
+                    <li>Increases data storage slightly</li>
+                  </ul>
+                  <p><strong>Recommended:</strong> Enable for content-heavy channels where you want to search or analyze what&apos;s being said.</p>
+                </>
+              }
+            />
           </label>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import type { RssConfig, SourceConfigFormProps } from "./types";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
 export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps<RssConfig>) {
@@ -31,6 +31,20 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
       <div className={styles.field}>
         <label htmlFor="rss-feedUrl" className={styles.label}>
           Feed URL<span className={styles.required}>*</span>
+          <HelpTooltip
+            title="RSS Feed URL"
+            content={
+              <>
+                <p>The direct URL to an RSS or Atom feed file.</p>
+                <p><strong>How to find it:</strong></p>
+                <ul>
+                  <li>Look for an RSS icon on the website</li>
+                  <li>Try adding <code>/feed</code> or <code>/rss</code> to the site URL</li>
+                  <li>Check the page source for <code>&lt;link rel=&quot;alternate&quot;&gt;</code></li>
+                </ul>
+              </>
+            }
+          />
         </label>
         <input
           type="url"
@@ -41,7 +55,6 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
           className={`${styles.textInput} ${errors?.feedUrl ? styles.hasError : ""}`}
         />
         {errors?.feedUrl && <p className={styles.error}>{errors.feedUrl}</p>}
-        <p className={styles.hint}>The full URL to the RSS or Atom feed</p>
       </div>
 
       <div className={styles.formSection}>
@@ -52,6 +65,17 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
             <div className={styles.field}>
               <label htmlFor="rss-maxItemCount" className={styles.label}>
                 Max Items
+                <HelpTooltip
+                  title="Maximum Items"
+                  content={
+                    <>
+                      <p>How many items to fetch from the feed per run.</p>
+                      <p><strong>Default:</strong> 50 items</p>
+                      <p><strong>Range:</strong> 1-200</p>
+                      <p>Higher values capture more content but may increase processing time.</p>
+                    </>
+                  }
+                />
               </label>
               <input
                 type="number"
@@ -68,7 +92,6 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
                 placeholder="50"
                 className={styles.numberInput}
               />
-              <p className={styles.hint}>1-200, default: 50</p>
             </div>
           </div>
         </div>
@@ -82,7 +105,18 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
             className={styles.checkbox}
           />
           <label htmlFor="rss-preferContentEncoded" className={styles.checkboxLabel}>
-            Prefer full content (content:encoded) over summary
+            Prefer full content over summary
+            <HelpTooltip
+              title="Full Content Preference"
+              content={
+                <>
+                  <p>RSS feeds often include both a summary and full content.</p>
+                  <p><strong>Enabled (default):</strong> Use the full article content when available</p>
+                  <p><strong>Disabled:</strong> Use only the summary/description</p>
+                  <p>Full content provides better context for ranking and summarization.</p>
+                </>
+              }
+            />
           </label>
         </div>
       </div>

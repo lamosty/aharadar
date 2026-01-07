@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { RedditConfig, SourceConfigFormProps } from "./types";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
 export function RedditConfigForm({
@@ -60,6 +61,28 @@ export function RedditConfigForm({
       <div className={styles.field}>
         <label htmlFor="reddit-subreddits" className={styles.label}>
           Subreddits<span className={styles.required}>*</span>
+          <HelpTooltip
+            title="Subreddits to Monitor"
+            content={
+              <>
+                <p>
+                  <strong>Required.</strong> Add at least one subreddit to fetch posts from.
+                </p>
+                <p>
+                  <strong>What are subreddits?</strong> Communities on Reddit organized around
+                  specific topics. Each subreddit has its own posts, discussions, and rules.
+                </p>
+                <p>
+                  <strong>How to enter:</strong> Type the subreddit name without the{" "}
+                  <code>r/</code> prefix. For example, enter &quot;MachineLearning&quot; not
+                  &quot;r/MachineLearning&quot;.
+                </p>
+                <p>
+                  <strong>Examples:</strong> technology, worldnews, science, programming
+                </p>
+              </>
+            }
+          />
         </label>
         <div className={styles.tagInputWrapper}>
           <div className={styles.tagInput}>
@@ -111,6 +134,26 @@ export function RedditConfigForm({
             <div className={styles.field}>
               <label htmlFor="reddit-listing" className={styles.label}>
                 Sort By
+                <HelpTooltip
+                  title="Post Sorting Method"
+                  content={
+                    <>
+                      <p>How posts are sorted when fetching from the subreddit.</p>
+                      <p>
+                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date
+                        with the latest content.
+                      </p>
+                      <p>
+                        <strong>Hot:</strong> Currently trending posts based on recent votes and
+                        comments. Best for popular discussions happening right now.
+                      </p>
+                      <p>
+                        <strong>Top:</strong> Highest-voted posts within the selected time period.
+                        Best for finding the most valuable content.
+                      </p>
+                    </>
+                  }
+                />
               </label>
               <select
                 id="reddit-listing"
@@ -131,6 +174,41 @@ export function RedditConfigForm({
             <div className={styles.field}>
               <label htmlFor="reddit-timeFilter" className={styles.label}>
                 Time Filter
+                <HelpTooltip
+                  title="Time Range for Top Posts"
+                  content={
+                    <>
+                      <p>
+                        <strong>When it&apos;s used:</strong> Only applies when &quot;Sort By&quot;
+                        is set to &quot;Top&quot;. Ignored for New and Hot sorting.
+                      </p>
+                      <p>
+                        <strong>What it does:</strong> Limits which posts are considered when
+                        ranking by votes.
+                      </p>
+                      <ul>
+                        <li>
+                          <strong>Past Hour:</strong> Top posts from the last 60 minutes
+                        </li>
+                        <li>
+                          <strong>Past Day:</strong> Top posts from the last 24 hours
+                        </li>
+                        <li>
+                          <strong>Past Week:</strong> Top posts from the last 7 days
+                        </li>
+                        <li>
+                          <strong>Past Month:</strong> Top posts from the last 30 days
+                        </li>
+                        <li>
+                          <strong>Past Year:</strong> Top posts from the last 365 days
+                        </li>
+                        <li>
+                          <strong>All Time:</strong> Highest-voted posts ever in the subreddit
+                        </li>
+                      </ul>
+                    </>
+                  }
+                />
               </label>
               <select
                 id="reddit-timeFilter"
@@ -169,6 +247,30 @@ export function RedditConfigForm({
           />
           <label htmlFor="reddit-includeComments" className={styles.checkboxLabel}>
             Include top comments
+            <HelpTooltip
+              title="Include Top Comments"
+              content={
+                <>
+                  <p>
+                    <strong>What it does:</strong> Fetches the top-voted comments along with each
+                    post.
+                  </p>
+                  <p>
+                    <strong>Why enable:</strong> Comments often contain valuable insights,
+                    corrections, additional context, or expert opinions that add to the original
+                    post.
+                  </p>
+                  <p>
+                    <strong>Impact:</strong> Increases the amount of content per post, which can
+                    improve AI analysis but also increases processing time and costs.
+                  </p>
+                  <p>
+                    <strong>Recommendation:</strong> Enable for discussion-heavy subreddits where
+                    comments add value; disable for news or link-sharing subreddits.
+                  </p>
+                </>
+              }
+            />
           </label>
         </div>
 
@@ -176,6 +278,38 @@ export function RedditConfigForm({
           <div className={styles.field}>
             <label htmlFor="reddit-maxCommentCount" className={styles.label}>
               Max Comments
+              <HelpTooltip
+                title="Maximum Comments Per Post"
+                content={
+                  <>
+                    <p>
+                      <strong>What it does:</strong> Limits how many top-level comments are fetched
+                      for each post.
+                    </p>
+                    <p>
+                      <strong>How it works:</strong> Comments are sorted by votes, so you get the
+                      most upvoted comments first.
+                    </p>
+                    <p>
+                      <strong>Recommendations:</strong>
+                    </p>
+                    <ul>
+                      <li>
+                        <strong>5-10:</strong> Good for getting the highlights
+                      </li>
+                      <li>
+                        <strong>20-30:</strong> More comprehensive view of the discussion
+                      </li>
+                      <li>
+                        <strong>50+:</strong> Deep dive into community reactions
+                      </li>
+                    </ul>
+                    <p>
+                      <strong>Default:</strong> 10 comments per post
+                    </p>
+                  </>
+                }
+              />
             </label>
             <input
               type="number"
@@ -206,6 +340,29 @@ export function RedditConfigForm({
           />
           <label htmlFor="reddit-includeNsfw" className={styles.checkboxLabel}>
             Include NSFW content
+            <HelpTooltip
+              title="Include NSFW Content"
+              content={
+                <>
+                  <p>
+                    <strong>What is NSFW?</strong> &quot;Not Safe For Work&quot; - content that
+                    Reddit has marked as adult-only or potentially sensitive.
+                  </p>
+                  <p>
+                    <strong>Disabled (default):</strong> Posts marked as NSFW are filtered out.
+                    This keeps your feed work-appropriate and family-friendly.
+                  </p>
+                  <p>
+                    <strong>Enabled:</strong> NSFW posts are included in results. Only enable if
+                    you specifically need this content and understand it may contain adult themes.
+                  </p>
+                  <p>
+                    <strong>Note:</strong> Some subreddits are entirely NSFW. If you add one of
+                    these and leave this disabled, you may get no results.
+                  </p>
+                </>
+              }
+            />
           </label>
         </div>
       </div>

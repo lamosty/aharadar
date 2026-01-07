@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SignalConfig, SourceConfigFormProps } from "./types";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
 export function SignalConfigForm({
@@ -99,6 +100,24 @@ export function SignalConfigForm({
           <div className={styles.field}>
             <label htmlFor="signal-provider" className={styles.label}>
               Provider<span className={styles.required}>*</span>
+              <HelpTooltip
+                title="Signal Provider"
+                content={
+                  <>
+                    <p>The data source used to search for signals and trends.</p>
+                    <p>
+                      <strong>X Search:</strong> Searches X (Twitter) for trending topics,
+                      discussions, and emerging signals. This provides summarized trend data rather
+                      than full posts.
+                    </p>
+                    <p>
+                      <strong>Difference from X Posts:</strong> X Posts fetches full post content
+                      for detailed reading. Signal Search extracts trends, URLs, and entities for
+                      corroboration with other sources.
+                    </p>
+                  </>
+                }
+              />
             </label>
             <select
               id="signal-provider"
@@ -116,6 +135,23 @@ export function SignalConfigForm({
           <div className={styles.field}>
             <label htmlFor="signal-vendor" className={styles.label}>
               Vendor<span className={styles.required}>*</span>
+              <HelpTooltip
+                title="API Vendor"
+                content={
+                  <>
+                    <p>The API service used to access the signal data.</p>
+                    <p>
+                      <strong>Grok (xAI):</strong> Uses xAI&apos;s Grok API which has real-time
+                      access to X data. Grok is an AI assistant developed by xAI with native access
+                      to X/Twitter content.
+                    </p>
+                    <p>
+                      This is the recommended option for X Search signals as it provides the most
+                      up-to-date and comprehensive access.
+                    </p>
+                  </>
+                }
+              />
             </label>
             <select
               id="signal-vendor"
@@ -136,6 +172,23 @@ export function SignalConfigForm({
         <div className={styles.field}>
           <label htmlFor="signal-accounts" className={styles.label}>
             Accounts to Monitor
+            <HelpTooltip
+              title="X Accounts to Follow"
+              content={
+                <>
+                  <p>Specific X/Twitter accounts to monitor for signals.</p>
+                  <p>
+                    <strong>How it works:</strong> Each account becomes a separate search query (
+                    <code>from:username</code>).
+                  </p>
+                  <p>
+                    <strong>Example:</strong> Adding &quot;openai&quot; and &quot;anthropic&quot;
+                    will search for signals from both accounts.
+                  </p>
+                  <p>Enter usernames without the @ symbol.</p>
+                </>
+              }
+            />
           </label>
           <div className={styles.tagInputWrapper}>
             <div className={styles.tagInput}>
@@ -180,6 +233,25 @@ export function SignalConfigForm({
         <div className={styles.field}>
           <label htmlFor="signal-keywords" className={styles.label}>
             Keywords
+            <HelpTooltip
+              title="Topic Keywords"
+              content={
+                <>
+                  <p>Search for signals containing these keywords or topics.</p>
+                  <p>
+                    <strong>How it works:</strong> Each keyword becomes a separate search query.
+                  </p>
+                  <p>
+                    <strong>Tips:</strong>
+                  </p>
+                  <ul>
+                    <li>Use specific terms for better results</li>
+                    <li>Combine with accounts to narrow down</li>
+                    <li>Keywords are case-insensitive</li>
+                  </ul>
+                </>
+              }
+            />
           </label>
           <div className={styles.tagInputWrapper}>
             <div className={styles.tagInput}>
@@ -224,6 +296,32 @@ export function SignalConfigForm({
         <div className={styles.field}>
           <label htmlFor="signal-queries" className={styles.label}>
             Custom Queries
+            <HelpTooltip
+              title="Advanced Search Queries"
+              content={
+                <>
+                  <p>Raw X search queries for advanced users.</p>
+                  <p>
+                    <strong>Examples:</strong>
+                  </p>
+                  <ul>
+                    <li>
+                      <code>from:user1 OR from:user2</code>
+                    </li>
+                    <li>
+                      <code>&quot;exact phrase&quot; lang:en</code>
+                    </li>
+                    <li>
+                      <code>AI -crypto min_faves:100</code>
+                    </li>
+                  </ul>
+                  <p>
+                    Use this for complex searches that can&apos;t be expressed with
+                    accounts/keywords alone.
+                  </p>
+                </>
+              }
+            />
           </label>
           <div className={styles.tagInputWrapper}>
             <div className={styles.tagInput}>
@@ -272,6 +370,32 @@ export function SignalConfigForm({
         <div className={styles.field}>
           <label htmlFor="signal-maxResults" className={styles.label}>
             Max Results Per Query
+            <HelpTooltip
+              title="Results Per Search"
+              content={
+                <>
+                  <p>
+                    <strong>What this means:</strong> How many results to fetch for each account,
+                    keyword, or custom query.
+                  </p>
+                  <p>
+                    <strong>Example with 5 keywords and limit of 5:</strong>
+                  </p>
+                  <ul>
+                    <li>Each keyword is searched separately</li>
+                    <li>Up to 5 results fetched per keyword</li>
+                    <li>Maximum total: 5 x 5 = 25 results per run</li>
+                  </ul>
+                  <p>
+                    <strong>Note:</strong> Signal searches are more cost-friendly than X Posts, so
+                    the default is lower (5 vs 20).
+                  </p>
+                  <p>
+                    <strong>Default:</strong> 5 results per query
+                  </p>
+                </>
+              }
+            />
           </label>
           <input
             type="number"
@@ -285,7 +409,7 @@ export function SignalConfigForm({
                 e.target.value ? parseInt(e.target.value, 10) : undefined
               )
             }
-            placeholder="20"
+            placeholder="5"
             className={styles.numberInput}
           />
         </div>
@@ -300,6 +424,26 @@ export function SignalConfigForm({
           />
           <label htmlFor="signal-extractUrls" className={styles.checkboxLabel}>
             Extract URLs from results (for corroboration)
+            <HelpTooltip
+              title="Extract URLs"
+              content={
+                <>
+                  <p>Automatically extract and collect URLs found in signal results.</p>
+                  <p>
+                    <strong>Why this is useful:</strong>
+                  </p>
+                  <ul>
+                    <li>Links often point to original sources (news articles, blog posts)</li>
+                    <li>Enables corroboration - verify signals against canonical sources</li>
+                    <li>Builds a reference library of related content</li>
+                  </ul>
+                  <p>
+                    <strong>How it works:</strong> URLs are extracted and can be fetched later to
+                    enrich the signal with full source content.
+                  </p>
+                </>
+              }
+            />
           </label>
         </div>
 
@@ -313,6 +457,32 @@ export function SignalConfigForm({
           />
           <label htmlFor="signal-extractEntities" className={styles.checkboxLabel}>
             Extract entities (people, orgs, topics)
+            <HelpTooltip
+              title="Extract Entities"
+              content={
+                <>
+                  <p>Automatically identify and extract named entities from signal results.</p>
+                  <p>
+                    <strong>Entities extracted:</strong>
+                  </p>
+                  <ul>
+                    <li>
+                      <strong>People:</strong> Names of individuals mentioned
+                    </li>
+                    <li>
+                      <strong>Organizations:</strong> Companies, institutions, groups
+                    </li>
+                    <li>
+                      <strong>Topics:</strong> Key subjects and themes discussed
+                    </li>
+                  </ul>
+                  <p>
+                    <strong>Benefits:</strong> Helps you understand who and what is being discussed
+                    across signals, enabling trend analysis and topic tracking.
+                  </p>
+                </>
+              }
+            />
           </label>
         </div>
 
@@ -326,6 +496,21 @@ export function SignalConfigForm({
           />
           <label htmlFor="signal-excludeReplies" className={styles.checkboxLabel}>
             Exclude replies
+            <HelpTooltip
+              title="Exclude Replies"
+              content={
+                <>
+                  <p>Filter out posts that are replies to other posts.</p>
+                  <p>
+                    <strong>Enabled:</strong> Only fetch original posts and quote tweets
+                  </p>
+                  <p>
+                    <strong>Disabled:</strong> Include all posts including reply threads
+                  </p>
+                  <p>Recommended to enable for cleaner signal data.</p>
+                </>
+              }
+            />
           </label>
         </div>
 
@@ -339,6 +524,22 @@ export function SignalConfigForm({
           />
           <label htmlFor="signal-excludeRetweets" className={styles.checkboxLabel}>
             Exclude retweets
+            <HelpTooltip
+              title="Exclude Retweets"
+              content={
+                <>
+                  <p>Filter out retweets (reposts of others&apos; content).</p>
+                  <p>
+                    <strong>Enabled:</strong> Only fetch original content from the account
+                  </p>
+                  <p>
+                    <strong>Disabled:</strong> Include retweets, which shows what accounts are
+                    sharing
+                  </p>
+                  <p>Enable if you only want original signals from monitored accounts.</p>
+                </>
+              }
+            />
           </label>
         </div>
       </div>
