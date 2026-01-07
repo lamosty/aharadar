@@ -1,14 +1,18 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
 import { loadDotEnvIfPresent } from "@aharadar/shared";
 import { apiKeyAuth } from "./auth/api_key.js";
+import { sessionAuth } from "./auth/session.js";
 import { closePipelineQueue } from "./lib/queue.js";
 import { adminRoutes } from "./routes/admin.js";
+import { authRoutes } from "./routes/auth.js";
 import { digestsRoutes } from "./routes/digests.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
 import { itemsRoutes } from "./routes/items.js";
 import { preferencesRoutes } from "./routes/preferences.js";
+import { topicsRoutes } from "./routes/topics.js";
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
@@ -36,6 +40,11 @@ async function buildServer() {
     allowedHeaders: ["Content-Type", "X-API-Key", "Authorization"],
   });
 
+  // Cookie parsing for session management
+  await fastify.register(cookie, {
+    parseOptions: {},
+  });
+
   fastify.setErrorHandler((error: Error & { statusCode?: number; code?: string }, _request, reply) => {
     const statusCode = error.statusCode ?? 500;
     const envelope: ErrorEnvelope = {
@@ -48,16 +57,29 @@ async function buildServer() {
     reply.code(statusCode).send(envelope);
   });
 
+  // Public routes (no auth required)
   await fastify.register(healthRoutes, { prefix: "/api" });
+  await fastify.register(authRoutes, { prefix: "/api" });
 
+  // Protected routes - allow either session cookie OR API key
   await fastify.register(
     async (api) => {
-      api.addHook("onRequest", apiKeyAuth);
+      api.addHook("onRequest", async (request, reply) => {
+        // Try session cookie first
+        const sessionToken = request.cookies?.session;
+        if (sessionToken) {
+          await sessionAuth(request, reply);
+          return;
+        }
+        // Fall back to API key (for admin/CLI usage)
+        apiKeyAuth(request, reply, () => {});
+      });
       await api.register(adminRoutes);
       await api.register(digestsRoutes);
       await api.register(feedbackRoutes);
       await api.register(itemsRoutes);
       await api.register(preferencesRoutes);
+      await api.register(topicsRoutes);
     },
     { prefix: "/api" }
   );
