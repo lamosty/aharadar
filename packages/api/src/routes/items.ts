@@ -68,7 +68,10 @@ function isValidIsoDate(value: unknown): value is string {
 
 function parseArrayParam(value: string | undefined): string[] {
   if (!value) return [];
-  return value.split(",").map((s) => s.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
@@ -197,10 +200,11 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
 
     // Query: Get latest score for each content item
     // Uses DISTINCT ON to get the most recent digest entry for each item
+    // Supports both individual items (di.content_item_id) and cluster representatives (c.representative_content_item_id)
     const itemsQuery = `
       WITH latest_items AS (
-        SELECT DISTINCT ON (di.content_item_id)
-          di.content_item_id,
+        SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
+          COALESCE(di.content_item_id, c.representative_content_item_id) as content_item_id,
           di.score,
           di.digest_id,
           di.triage_json,
@@ -209,11 +213,12 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
           d.created_at as digest_created_at
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
-        JOIN content_items ci_inner ON ci_inner.id = di.content_item_id
-        WHERE di.content_item_id IS NOT NULL
+        LEFT JOIN clusters c ON c.id = di.cluster_id
+        JOIN content_items ci_inner ON ci_inner.id = COALESCE(di.content_item_id, c.representative_content_item_id)
+        WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
           AND d.topic_id = '${ctx.topicId}'::uuid
-        ORDER BY di.content_item_id, d.created_at DESC
+        ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
       )
       SELECT
         li.content_item_id,
@@ -246,18 +251,19 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
 
     const itemsParams = [...filterParams, limit, offset];
 
-    // Count query for pagination
+    // Count query for pagination (same logic as items query)
     const countQuery = `
       WITH latest_items AS (
-        SELECT DISTINCT ON (di.content_item_id)
-          di.content_item_id,
+        SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
+          COALESCE(di.content_item_id, c.representative_content_item_id) as content_item_id,
           di.score
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
-        WHERE di.content_item_id IS NOT NULL
+        LEFT JOIN clusters c ON c.id = di.cluster_id
+        WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
           AND d.topic_id = '${ctx.topicId}'::uuid
-        ORDER BY di.content_item_id, d.created_at DESC
+        ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
       )
       SELECT COUNT(*)::int as total
       FROM latest_items li
