@@ -1,16 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
+import { getDevSettings } from "@/lib/api";
 import styles from "./page.module.css";
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
+  const searchParams = useSearchParams();
+
+  // Show error toast if redirected with error
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "invalid_token") {
+      addToast(t("login.invalidToken"), "error");
+    }
+  }, [searchParams, addToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,12 +33,27 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
-    // Simulate API call delay (no backend yet)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const settings = getDevSettings();
+      const response = await fetch(`${settings.apiBaseUrl}/auth/send-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    setIsLoading(false);
-    setSubmitted(true);
-    addToast(t("toast.linkSent"), "success");
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.error?.message ?? "Failed to send link");
+      }
+
+      setSubmitted(true);
+      addToast(t("toast.linkSent"), "success");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : t("toast.error"), "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBackToLogin = () => {
@@ -159,5 +185,19 @@ function LoadingSpinner() {
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" />
       <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" />
     </svg>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.page}>
+          <div className={styles.container}>{t("common.loading")}</div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
