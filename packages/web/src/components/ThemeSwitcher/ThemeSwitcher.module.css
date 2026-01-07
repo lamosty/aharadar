@@ -104,18 +104,18 @@
   background-color: var(--color-primary-subtle);
   border-color: var(--color-primary);
   color: var(--color-primary);
-  box-shadow: 0 2px 8px 0 rgb(79 70 229 / 0.12);
+  box-shadow: var(--shadow-primary, var(--shadow-sm));
 }
 
 .buttonActive:hover {
   background-color: var(--color-primary-subtle-hover, var(--color-primary-subtle));
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px 0 rgb(79 70 229 / 0.2);
+  box-shadow: var(--shadow-primary, var(--shadow-md));
 }
 
 .buttonActive:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px 0 rgb(79 70 229 / 0.12);
+  box-shadow: var(--shadow-primary, var(--shadow-sm));
 }
 
 .buttonIcon {

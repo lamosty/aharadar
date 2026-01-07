@@ -190,9 +190,10 @@
 
 .heroCta:hover {
   transform: translateY(-2px);
+  /* Use CSS variable for theme-aware shadow glow */
   box-shadow:
     var(--shadow-primary, var(--shadow-lg)),
-    0 8px 24px -4px rgb(79 70 229 / 0.35);
+    var(--shadow-primary, 0 8px 24px -4px rgb(99 102 241 / 0.35));
 }
 
 .heroCta:active {
