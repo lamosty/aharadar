@@ -4,32 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
+import { useAdminRun } from "@/lib/hooks";
+import type { RunMode } from "@/lib/api";
 import styles from "./page.module.css";
-
-type RunMode = "low" | "normal" | "high" | "catch_up";
-
-interface RunState {
-  status: "idle" | "loading" | "success" | "error";
-  jobId?: string;
-  errorMessage?: string;
-}
-
-// Mock function - will be replaced by real API call
-async function mockStartRun(
-  windowStart: string,
-  windowEnd: string,
-  mode: RunMode
-): Promise<{ jobId: string }> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-
-  // Simulate occasional errors for demo
-  if (Math.random() < 0.1) {
-    throw new Error("Failed to connect to pipeline service");
-  }
-
-  return { jobId: `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
-}
 
 function getDefaultWindowStart(): string {
   // Default to 24 hours ago
@@ -48,32 +25,43 @@ export default function AdminRunPage() {
   const [windowStart, setWindowStart] = useState(getDefaultWindowStart);
   const [windowEnd, setWindowEnd] = useState(getDefaultWindowEnd);
   const [mode, setMode] = useState<RunMode>("normal");
-  const [runState, setRunState] = useState<RunState>({ status: "idle" });
+  const [jobId, setJobId] = useState<string | null>(null);
+
+  const runMutation = useAdminRun({
+    onSuccess: (data) => {
+      setJobId(data.jobId);
+      addToast(t("toast.runStarted"), "success");
+    },
+    onError: (err) => {
+      addToast(err.message || t("toast.runFailed"), "error");
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setRunState({ status: "loading" });
+    // Convert local datetime to ISO string
+    const startDate = new Date(windowStart);
+    const endDate = new Date(windowEnd);
 
-    try {
-      const result = await mockStartRun(windowStart, windowEnd, mode);
-      setRunState({ status: "success", jobId: result.jobId });
-      addToast(t("toast.runStarted"), "success");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t("admin.run.error");
-      setRunState({ status: "error", errorMessage: message });
-      addToast(t("toast.runFailed"), "error");
-    }
+    runMutation.mutate({
+      windowStart: startDate.toISOString(),
+      windowEnd: endDate.toISOString(),
+      mode,
+    });
   };
 
   const handleReset = () => {
-    setRunState({ status: "idle" });
+    runMutation.reset();
+    setJobId(null);
     setWindowStart(getDefaultWindowStart());
     setWindowEnd(getDefaultWindowEnd());
     setMode("normal");
   };
 
-  const isLoading = runState.status === "loading";
+  const isLoading = runMutation.isPending;
+  const isSuccess = runMutation.isSuccess;
+  const isError = runMutation.isError;
 
   return (
     <div className={styles.page}>
@@ -85,14 +73,14 @@ export default function AdminRunPage() {
         <h1 className={styles.title}>{t("admin.run.title")}</h1>
       </header>
 
-      {runState.status === "success" ? (
+      {isSuccess ? (
         <div className={styles.successCard}>
           <div className={styles.successIcon}>
             <CheckIcon />
           </div>
           <h2 className={styles.successTitle}>{t("admin.run.success")}</h2>
           <p className={styles.successJobId}>
-            {t("admin.run.successJobId", { jobId: runState.jobId ?? "" })}
+            {t("admin.run.successJobId", { jobId: jobId ?? "" })}
           </p>
           <div className={styles.successActions}>
             <Link href="/app/digests" className={styles.primaryButton}>
@@ -165,10 +153,10 @@ export default function AdminRunPage() {
             </div>
           </fieldset>
 
-          {runState.status === "error" && (
+          {isError && (
             <div className={styles.error} role="alert">
               <ErrorIcon />
-              <span>{runState.errorMessage}</span>
+              <span>{runMutation.error?.message || t("admin.run.error")}</span>
             </div>
           )}
 

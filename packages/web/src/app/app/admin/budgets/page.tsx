@@ -1,47 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
+import { useAdminBudgets } from "@/lib/hooks";
 import styles from "./page.module.css";
-
-interface BudgetStatus {
-  monthlyUsed: number;
-  monthlyLimit: number;
-  monthlyRemaining: number;
-  dailyUsed: number | null;
-  dailyLimit: number | null;
-  dailyRemaining: number | null;
-  paidCallsAllowed: boolean;
-  warningLevel: "none" | "approaching" | "critical";
-}
-
-// Mock data - will be replaced by real API hooks
-function useMockBudgets() {
-  const [budgets, setBudgets] = useState<BudgetStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setBudgets({
-        monthlyUsed: 7500,
-        monthlyLimit: 10000,
-        monthlyRemaining: 2500,
-        dailyUsed: 380,
-        dailyLimit: 500,
-        dailyRemaining: 120,
-        paidCallsAllowed: true,
-        warningLevel: "approaching",
-      });
-      setIsLoading(false);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  return { budgets, isLoading };
-}
 
 function getProgressColor(used: number, limit: number): string {
   const percentage = (used / limit) * 100;
@@ -55,7 +17,8 @@ function formatCredits(value: number): string {
 }
 
 export default function AdminBudgetsPage() {
-  const { budgets, isLoading } = useMockBudgets();
+  const { data, isLoading, isError, error } = useAdminBudgets();
+  const budgets = data?.budgets ?? null;
 
   if (isLoading) {
     return (
@@ -75,7 +38,7 @@ export default function AdminBudgetsPage() {
     );
   }
 
-  if (!budgets) {
+  if (isError || !budgets) {
     return (
       <div className={styles.page}>
         <header className={styles.header}>
@@ -86,7 +49,7 @@ export default function AdminBudgetsPage() {
           <h1 className={styles.title}>{t("admin.budgets.title")}</h1>
         </header>
         <div className={styles.error}>
-          <p>{t("common.error")}</p>
+          <p>{error?.message || t("common.error")}</p>
         </div>
       </div>
     );

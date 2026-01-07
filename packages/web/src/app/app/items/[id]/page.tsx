@@ -1,86 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { t } from "@/lib/i18n";
 import { JsonViewer } from "@/components";
+import { useItem } from "@/lib/hooks";
 import styles from "./page.module.css";
-
-// Types for content item based on API spec
-interface ContentItem {
-  id: string;
-  title: string | null;
-  url: string;
-  author: string | null;
-  publishedAt: string | null;
-  sourceType: string;
-  sourceName: string;
-  metadata: Record<string, unknown> | null;
-  digestId?: string;
-}
-
-// Mock data placeholder - will be replaced by useItem(id) from data layer
-function useMockItem(id: string): {
-  item: ContentItem | null;
-  isLoading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  // Simulate API fetch delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [id]);
-
-  const mockItem: ContentItem = {
-    id,
-    title: "Understanding Large Language Models: A Comprehensive Guide",
-    url: "https://example.com/article/understanding-llms",
-    author: "Jane Smith",
-    publishedAt: "2025-01-05T14:30:00Z",
-    sourceType: "rss",
-    sourceName: "Tech Blog",
-    digestId: "digest-123",
-    metadata: {
-      feedUrl: "https://example.com/feed.xml",
-      categories: ["AI", "Machine Learning", "Technology"],
-      wordCount: 2450,
-      readingTime: "12 min",
-      language: "en",
-      excerpt:
-        "Large language models have transformed how we interact with technology. This guide covers the fundamentals...",
-      thumbnailUrl: "https://example.com/images/llm-guide.jpg",
-      engagement: {
-        likes: 142,
-        comments: 23,
-        shares: 56,
-      },
-      triageScore: 0.87,
-      triageReason: "High relevance to your interests in AI and technology",
-    },
-  };
-
-  const refetch = () => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-  };
-
-  return {
-    item: isLoading || error ? null : mockItem,
-    isLoading,
-    error,
-    refetch,
-  };
-}
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "";
@@ -114,12 +39,12 @@ function ItemSkeleton() {
   );
 }
 
-function ErrorState({ error, onRetry }: { error: Error; onRetry: () => void }) {
+function ErrorState({ errorMessage, onRetry }: { errorMessage: string; onRetry: () => void }) {
   return (
     <div className={styles.error} role="alert">
       <ErrorIcon />
       <h2 className={styles.errorTitle}>{t("item.error")}</h2>
-      <p className={styles.errorMessage}>{error.message}</p>
+      <p className={styles.errorMessage}>{errorMessage}</p>
       <button type="button" className={`btn btn-primary ${styles.retryButton}`} onClick={onRetry}>
         {t("common.retry")}
       </button>
@@ -141,8 +66,11 @@ function NotFoundState() {
 
 export default function ItemDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
-  const { item, isLoading, error, refetch } = useMockItem(id);
+  const digestId = searchParams.get("digestId");
+  const { data, isLoading, isError, error, refetch } = useItem(id);
+  const item = data?.item ?? null;
 
   if (isLoading) {
     return (
@@ -152,10 +80,10 @@ export default function ItemDetailPage() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className={styles.page}>
-        <ErrorState error={error} onRetry={refetch} />
+        <ErrorState errorMessage={error?.message || t("common.error")} onRetry={() => refetch()} />
       </div>
     );
   }
@@ -175,12 +103,12 @@ export default function ItemDetailPage() {
         <Link href="/app/digests" className={styles.breadcrumbLink}>
           {t("nav.digests")}
         </Link>
-        {item.digestId && (
+        {digestId && (
           <>
             <span className={styles.breadcrumbSeparator} aria-hidden="true">
               /
             </span>
-            <Link href={`/app/digests/${item.digestId}`} className={styles.breadcrumbLink}>
+            <Link href={`/app/digests/${digestId}`} className={styles.breadcrumbLink}>
               Digest
             </Link>
           </>
@@ -222,26 +150,26 @@ export default function ItemDetailPage() {
             <dt className="sr-only">{t("item.source")}</dt>
             <dd className={styles.metaValue}>
               <SourceIcon />
-              <span>
-                {item.sourceName} ({item.sourceType})
-              </span>
+              <span>{item.sourceType}</span>
             </dd>
           </div>
         </dl>
       </header>
 
       {/* Actions */}
-      <div className={styles.actions}>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`btn btn-primary ${styles.openButton}`}
-        >
-          <ExternalLinkIcon />
-          {t("item.openOriginal")}
-        </a>
-      </div>
+      {item.url && (
+        <div className={styles.actions}>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`btn btn-primary ${styles.openButton}`}
+          >
+            <ExternalLinkIcon />
+            {t("item.openOriginal")}
+          </a>
+        </div>
+      )}
 
       {/* Metadata viewer */}
       {item.metadata && (
