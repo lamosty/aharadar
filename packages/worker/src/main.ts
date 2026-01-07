@@ -1,9 +1,12 @@
 import { createDb } from "@aharadar/db";
 import { parseSchedulerConfig, generateDueWindows, getSchedulableTopics } from "@aharadar/pipeline";
-import { loadRuntimeEnv } from "@aharadar/shared";
+import { loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
 
 import { createPipelineQueue } from "./queues";
 import { createPipelineWorker } from "./workers/pipeline.worker";
+
+// Load .env and .env.local files (must happen before reading env vars)
+loadDotEnvIfPresent();
 
 /**
  * Parse scheduler tick interval from env.
@@ -42,7 +45,10 @@ async function runSchedulerTick(
 
     for (const window of windows) {
       // Use a deterministic job ID to prevent duplicate jobs
-      const jobId = `run_window:${userId}:${topicId}:${window.windowStart}:${window.windowEnd}`;
+      // BullMQ doesn't allow colons in job IDs, so replace them with underscores
+      const sanitizedStart = window.windowStart.replace(/:/g, "_");
+      const sanitizedEnd = window.windowEnd.replace(/:/g, "_");
+      const jobId = `run_window_${userId}_${topicId}_${sanitizedStart}_${sanitizedEnd}`;
 
       await queue.add("run_window", window, {
         jobId,
