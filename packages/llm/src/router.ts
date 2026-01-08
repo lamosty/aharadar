@@ -110,8 +110,8 @@ function resolveProvider(
   openaiApiKey: string | undefined,
   anthropicApiKey: string | undefined
 ): Provider {
-  // Check if subscription mode is enabled and available (triage only for now)
-  if (env.CLAUDE_USE_SUBSCRIPTION === "true" && task === "triage") {
+  // Check if subscription mode is enabled and available
+  if (env.CLAUDE_USE_SUBSCRIPTION === "true") {
     const limits = getUsageLimitsFromEnv(env);
     if (canUseClaudeSubscription(limits)) {
       return "claude-subscription";
