@@ -1,0 +1,216 @@
+.container {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.topicSelect,
+.questionInput {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.topicSelect label,
+.questionInput label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.topicSelect select,
+.questionInput textarea {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.topicSelect select:focus,
+.questionInput textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-alpha);
+}
+
+.questionInput textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.submitButton {
+  padding: 0.75rem 1.5rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.submitButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  padding: 1rem;
+  background: var(--error-bg, #fef2f2);
+  border: 1px solid var(--error-border, #fecaca);
+  border-radius: 0.5rem;
+  color: var(--error-text, #b91c1c);
+  margin-bottom: 1.5rem;
+}
+
+.response {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.answerSection h2,
+.confidenceSection h3,
+.citationsSection h3,
+.dataGapsSection h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.answerText {
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.confidenceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.confidenceBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.confidenceHigh {
+  background: var(--success-bg, #dcfce7);
+  color: var(--success-text, #166534);
+}
+
+.confidenceMedium {
+  background: var(--warning-bg, #fef9c3);
+  color: var(--warning-text, #854d0e);
+}
+
+.confidenceLow {
+  background: var(--error-bg, #fef2f2);
+  color: var(--error-text, #b91c1c);
+}
+
+.confidenceReasoning {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.citationsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.citation {
+  padding: 0.75rem;
+  background: var(--surface-elevated);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+}
+
+.citationTitle {
+  display: block;
+  font-weight: 500;
+  color: var(--primary);
+  text-decoration: none;
+  margin-bottom: 0.25rem;
+}
+
+.citationTitle:hover {
+  text-decoration: underline;
+}
+
+span.citationTitle {
+  color: var(--text);
+}
+
+.citationSource {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.citationRelevance {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.dataGapsSection {
+  padding: 1rem;
+  background: var(--warning-bg, #fffbeb);
+  border: 1px solid var(--warning-border, #fde68a);
+  border-radius: 0.5rem;
+}
+
+.dataGapsSection h3 {
+  color: var(--warning-text, #92400e);
+}
+
+.dataGapsList {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--warning-text, #92400e);
+  font-size: 0.875rem;
+}
+
+.usageSection {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

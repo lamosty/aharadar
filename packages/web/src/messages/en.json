@@ -25,6 +25,7 @@
     "home": "Home",
     "dashboard": "Dashboard",
     "feed": "Feed",
+    "ask": "Ask",
     "digests": "Digests",
     "sources": "Sources",
     "topics": "Topics",
@@ -32,6 +33,20 @@
     "login": "Login",
     "logout": "Logout",
     "admin": "Admin"
+  },
+  "ask": {
+    "title": "Ask Your Knowledge Base",
+    "subtitle": "Get AI-powered answers from your curated content",
+    "topic": "Topic",
+    "question": "Question",
+    "questionPlaceholder": "Ask anything... e.g., What would Warren Buffett think about recent tech layoffs?",
+    "submit": "Ask",
+    "thinking": "Thinking...",
+    "answer": "Answer",
+    "citations": "Sources",
+    "confidence": "Confidence",
+    "dataGaps": "Data Gaps",
+    "featureDisabled": "Q&A feature is not enabled"
   },
   "landing": {
     "hero": {
@@ -261,7 +276,9 @@
         "rss": "Fetch articles from RSS/Atom feeds",
         "signal": "X/Twitter signal search via Grok",
         "x_posts": "Fetch posts from X/Twitter accounts",
-        "youtube": "Fetch videos from YouTube channels (coming soon)"
+        "youtube": "Fetch videos from YouTube channels (coming soon)",
+        "sec_edgar": "SEC EDGAR filings (Form 4, 13F)",
+        "congress_trading": "Congressional trading disclosures"
       }
     },
     "budgets": {
