@@ -1,0 +1,31 @@
+apiVersion: 1
+policies:
+  - orgId: 1
+    receiver: default-email
+    group_by:
+      - alertname
+      - category
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      # Critical alerts: faster notification, shorter repeat
+      - receiver: default-email
+        matchers:
+          - severity = critical
+        group_wait: 0s
+        repeat_interval: 1h
+
+      # Budget alerts: group together
+      - receiver: default-email
+        matchers:
+          - category = budget
+        group_by:
+          - alertname
+        repeat_interval: 2h
+
+      # Storage alerts: longer repeat interval
+      - receiver: default-email
+        matchers:
+          - category = storage
+        repeat_interval: 6h

@@ -1,0 +1,372 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: AhaRadar Alerts
+    folder: AhaRadar
+    interval: 1m
+    rules:
+      # ============================================================
+      # Budget Alerts
+      # ============================================================
+      - uid: budget-warning
+        title: Budget Warning (80%)
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                (sum(credits_consumed_total) / 1000000) > 0.8
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: warning
+          category: budget
+        annotations:
+          summary: Monthly budget usage exceeded 80%
+          description: |
+            Current usage: {{ $value | printf "%.1f" }}%
+            Action: Review LLM usage patterns
+
+      - uid: budget-critical
+        title: Budget Critical (100%)
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                (sum(credits_consumed_total) / 1000000) >= 1.0
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 0m
+        labels:
+          severity: critical
+          category: budget
+        annotations:
+          summary: Monthly budget exhausted
+          description: |
+            Budget is fully consumed. Pipeline will use fallback tier.
+            Action: Investigate usage spike immediately.
+
+      - uid: daily-budget-warning
+        title: Daily Budget Warning (90%)
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                (sum(increase(credits_consumed_total[24h])) / 50000) > 0.9
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: warning
+          category: budget
+        annotations:
+          summary: Daily budget usage exceeded 90%
+          description: |
+            High daily credit consumption detected.
+            Action: Check for unusual pipeline activity.
+
+      # ============================================================
+      # Pipeline Alerts
+      # ============================================================
+      - uid: pipeline-failure-spike
+        title: Pipeline Failure Spike
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum(increase(pipeline_runs_total{status="error"}[1h])) > 3
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 0m
+        labels:
+          severity: warning
+          category: pipeline
+        annotations:
+          summary: Multiple pipeline failures detected
+          description: |
+            More than 3 pipeline failures in the last hour.
+            Action: Check worker logs for error details.
+
+      - uid: pipeline-stage-slow
+        title: Pipeline Stage Slow
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.95, sum(rate(pipeline_run_duration_seconds_bucket[5m])) by (le, stage)) > 300
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 10m
+        labels:
+          severity: warning
+          category: pipeline
+        annotations:
+          summary: Pipeline stage running slow
+          description: |
+            p95 stage duration exceeds 5 minutes.
+            Action: Check for resource contention or API rate limits.
+
+      - uid: ingest-stalled
+        title: Ingestion Stalled
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                increase(ingest_items_total[1h]) == 0
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 60m
+        labels:
+          severity: warning
+          category: pipeline
+        annotations:
+          summary: No items ingested for 1 hour
+          description: |
+            Ingestion has stalled. No new items in the last hour.
+            Action: Check scheduler, connector configs, source availability.
+
+      # ============================================================
+      # Queue Alerts
+      # ============================================================
+      - uid: queue-backlog
+        title: Queue Backlog
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: queue_depth > 50
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: warning
+          category: queue
+        annotations:
+          summary: Queue depth exceeds threshold
+          description: |
+            Current depth: {{ $value }}
+            Action: Check worker health, consider scaling.
+
+      - uid: queue-backlog-critical
+        title: Queue Backlog Critical
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: queue_depth > 100
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: critical
+          category: queue
+        annotations:
+          summary: Queue backlog critical
+          description: |
+            Queue depth: {{ $value }}. Jobs are piling up.
+            Action: Immediate worker investigation required.
+
+      # ============================================================
+      # API Alerts
+      # ============================================================
+      - uid: api-high-error-rate
+        title: API High Error Rate
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+                /
+                sum(rate(http_requests_total[5m]))
+                > 0.05
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: warning
+          category: api
+        annotations:
+          summary: API error rate exceeds 5%
+          description: |
+            High 5xx error rate detected.
+            Action: Check API logs for error details.
+
+      - uid: api-high-error-rate-critical
+        title: API High Error Rate Critical
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+                /
+                sum(rate(http_requests_total[5m]))
+                > 0.15
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 2m
+        labels:
+          severity: critical
+          category: api
+        annotations:
+          summary: API error rate critical (>15%)
+          description: |
+            Critical error rate. API may be down.
+            Action: Immediate investigation required.
+
+      - uid: api-high-latency
+        title: API High Latency
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 5
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: warning
+          category: api
+        annotations:
+          summary: API p99 latency exceeds 5 seconds
+          description: |
+            API response times are degraded.
+            Action: Check database performance, external dependencies.
+
+      # ============================================================
+      # Storage Alerts (Task 077b)
+      # ============================================================
+      - uid: storage-db-size-warning
+        title: Database Size Warning
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: postgres_database_size_bytes > 5368709120
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: Database size exceeds 5GB
+          description: |
+            Current size: {{ $value | humanize1024 }}
+            Action: Review retention policies.
+
+      - uid: storage-db-size-critical
+        title: Database Size Critical
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: postgres_database_size_bytes > 10737418240
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: Database size exceeds 10GB
+          description: |
+            Immediate action required. Database size critical.
+            Action: Implement retention, scale storage.
+
+      - uid: storage-provider-calls-high
+        title: Provider Calls Table Large
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: postgres_row_count{table="provider_calls"} > 1000000
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 0m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: provider_calls table exceeds 1M rows
+          description: |
+            Consider implementing retention policy for provider_calls.
+            Action: Archive or delete old records.
