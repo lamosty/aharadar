@@ -35,8 +35,10 @@ describe("API Routes Integration Tests", () => {
 
     const connectionString = container.getConnectionUri();
 
-    // Set DATABASE_URL before importing route modules
+    // Set required env vars before importing route modules
     process.env.DATABASE_URL = connectionString;
+    process.env.REDIS_URL = "redis://localhost:6379"; // Not actually used in these tests
+    process.env.MONTHLY_CREDITS = "60000";
 
     db = createDb(connectionString);
 
@@ -104,22 +106,22 @@ describe("API Routes Integration Tests", () => {
 
     // Create source
     const sourceResult = await db.query<{ id: string }>(
-      `INSERT INTO sources (user_id, topic_id, name, type, enabled, cadence_minutes, weight, config_json)
-       VALUES ($1, $2, 'Test Source', 'hn', true, 60, 1.0, '{}') RETURNING id`,
+      `INSERT INTO sources (user_id, topic_id, type, name, config_json)
+       VALUES ($1, $2, 'hn', 'Test Source', '{}') RETURNING id`,
       [userId, topicId]
     );
     sourceId = sourceResult.rows[0].id;
 
     // Create content item
     const contentResult = await db.query<{ id: string }>(
-      `INSERT INTO content_items (user_id, source_type, title, body_text, canonical_url, author, published_at, metadata_json)
-       VALUES ($1, 'hn', 'Test HN Post', 'Test content body', 'https://example.com/test', 'testuser', NOW(), '{}')
+      `INSERT INTO content_items (user_id, source_id, source_type, title, body_text, canonical_url, author, published_at, metadata_json)
+       VALUES ($1, $2, 'hn', 'Test HN Post', 'Test content body', 'https://example.com/test', 'testuser', NOW(), '{}')
        RETURNING id`,
-      [userId]
+      [userId, sourceId]
     );
     contentItemId = contentResult.rows[0].id;
 
-    // Link content item to source
+    // Link content item to source (junction table for multi-source support)
     await db.query(
       `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
       [contentItemId, sourceId]
@@ -128,7 +130,7 @@ describe("API Routes Integration Tests", () => {
     // Create embedding for the content item (needed for preference updates)
     const embeddingVector = Array(1536).fill(0.01); // Fake embedding
     await db.query(
-      `INSERT INTO embeddings (content_item_id, vector) VALUES ($1, $2::vector)`,
+      `INSERT INTO embeddings (content_item_id, model, dims, vector) VALUES ($1, 'text-embedding-3-small', 1536, $2::vector)`,
       [contentItemId, `[${embeddingVector.join(",")}]`]
     );
 
