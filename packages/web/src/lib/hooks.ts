@@ -37,6 +37,7 @@ import {
   patchTopicViewingProfile,
   postTopicMarkChecked,
   createTopic,
+  updateTopic,
   deleteTopic,
   type HealthResponse,
   type DigestsListResponse,
@@ -65,6 +66,8 @@ import {
   type TopicMarkCheckedResponse,
   type CreateTopicRequest,
   type CreateTopicResponse,
+  type UpdateTopicRequest,
+  type UpdateTopicResponse,
   type DeleteTopicResponse,
   type ViewingProfile,
   type FeedbackAction,
@@ -564,6 +567,26 @@ export function useCreateTopic(
 
   return useMutation({
     mutationFn: (data) => createTopic(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update a topic's name/description.
+ */
+export function useUpdateTopic(
+  options?: Omit<
+    UseMutationOptions<UpdateTopicResponse, ApiError | NetworkError, { topicId: string; data: UpdateTopicRequest }>,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ topicId, data }) => updateTopic(topicId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
     },

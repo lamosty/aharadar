@@ -555,17 +555,6 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-      // Don't allow renaming 'default' topic
-      if (existing.name === "default" && name !== undefined && name.trim() !== "default") {
-        return reply.code(400).send({
-          ok: false,
-          error: {
-            code: "INVALID_OPERATION",
-            message: "Cannot rename the default topic",
-          },
-        });
-      }
-
       // Check for duplicate name if renaming
       if (name !== undefined && name.trim() !== existing.name) {
         const duplicate = await db.topics.getByName({ userId: ctx.userId, name: name.trim() });

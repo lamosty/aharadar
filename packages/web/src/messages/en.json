@@ -135,10 +135,16 @@
       "noTopics": "No topics configured yet. Topics will appear here once created.",
       "create": "Create Topic",
       "namePlaceholder": "Topic name (e.g., Tech News)",
+      "name": "Name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional description",
       "created": "Topic created",
       "createFailed": "Failed to create topic",
+      "updated": "Topic updated",
+      "updateFailed": "Failed to update topic",
       "deleted": "Topic deleted",
       "deleteFailed": "Failed to delete topic",
+      "edit": "Edit topic",
       "delete": "Delete topic"
     },
     "dev": {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTopics, useCreateTopic, useDeleteTopic } from "@/lib/hooks";
+import { useTopics, useCreateTopic, useUpdateTopic, useDeleteTopic } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
 import { t } from "@/lib/i18n";
 import { TopicViewingProfileSettings } from "./TopicViewingProfileSettings";
@@ -10,6 +10,7 @@ import styles from "./TopicsList.module.css";
 export function TopicsList() {
   const { data, isLoading, isError } = useTopics();
   const createMutation = useCreateTopic();
+  const updateMutation = useUpdateTopic();
   const deleteMutation = useDeleteTopic();
   const { addToast } = useToast();
 
@@ -17,6 +18,9 @@ export function TopicsList() {
   const [isCreating, setIsCreating] = useState(false);
   const [newTopicName, setNewTopicName] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   if (isLoading) {
     return <div className={styles.loading}>{t("common.loading")}</div>;
@@ -55,7 +59,37 @@ export function TopicsList() {
     }
   };
 
-  const isPending = createMutation.isPending || deleteMutation.isPending;
+  const startEditing = (topicId: string, name: string, description: string | null) => {
+    setEditingTopicId(topicId);
+    setEditName(name);
+    setEditDescription(description ?? "");
+  };
+
+  const cancelEditing = () => {
+    setEditingTopicId(null);
+    setEditName("");
+    setEditDescription("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTopicId || !editName.trim()) return;
+
+    try {
+      await updateMutation.mutateAsync({
+        topicId: editingTopicId,
+        data: {
+          name: editName.trim(),
+          description: editDescription.trim() || null,
+        },
+      });
+      cancelEditing();
+      addToast(t("settings.topics.updated"), "success");
+    } catch {
+      addToast(t("settings.topics.updateFailed"), "error");
+    }
+  };
+
+  const isPending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className={styles.container}>
@@ -123,73 +157,144 @@ export function TopicsList() {
         <div className={styles.topicsList}>
           {topics.map((topic) => {
             const isExpanded = expandedTopicId === topic.id;
-            const isDefault = topic.name === "default";
+            const isEditing = editingTopicId === topic.id;
             const isConfirmingDelete = deleteConfirmId === topic.id;
+            const isOnlyTopic = topics.length === 1;
 
             return (
               <div key={topic.id} className={styles.topicCard}>
-                <div className={styles.topicHeader}>
-                  <button
-                    type="button"
-                    className={styles.topicHeaderButton}
-                    onClick={() => toggleExpanded(topic.id)}
-                    aria-expanded={isExpanded}
-                  >
-                    <div className={styles.topicInfo}>
-                      <span className={styles.topicName}>{topic.name}</span>
-                      {topic.description && (
-                        <span className={styles.topicDescription}>{topic.description}</span>
-                      )}
+                {isEditing ? (
+                  <div className={styles.editForm}>
+                    <div className={styles.editField}>
+                      <label htmlFor={`edit-name-${topic.id}`} className={styles.editLabel}>
+                        {t("settings.topics.name")}
+                      </label>
+                      <input
+                        type="text"
+                        id={`edit-name-${topic.id}`}
+                        className={styles.createInput}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEdit();
+                          if (e.key === "Escape") cancelEditing();
+                        }}
+                        disabled={updateMutation.isPending}
+                        autoFocus
+                      />
                     </div>
-                    <div className={styles.topicMeta}>
-                      <span className={styles.topicProfile}>
-                        {t(`settings.viewing.profiles.${topic.viewingProfile}`)}
-                      </span>
-                      <span className={styles.topicDecay}>{topic.decayHours}h</span>
-                      <span className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ""}`}>
-                        &#9660;
-                      </span>
+                    <div className={styles.editField}>
+                      <label htmlFor={`edit-desc-${topic.id}`} className={styles.editLabel}>
+                        {t("settings.topics.descriptionLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        id={`edit-desc-${topic.id}`}
+                        className={styles.createInput}
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEdit();
+                          if (e.key === "Escape") cancelEditing();
+                        }}
+                        placeholder={t("settings.topics.descriptionPlaceholder")}
+                        disabled={updateMutation.isPending}
+                      />
                     </div>
-                  </button>
-                  {!isDefault && (
-                    <div className={styles.topicActions}>
-                      {isConfirmingDelete ? (
-                        <>
-                          <button
-                            type="button"
-                            className={styles.deleteConfirm}
-                            onClick={() => handleDelete(topic.id)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            {t("common.confirmDelete")}
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.deleteCancel}
-                            onClick={() => setDeleteConfirmId(null)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            {t("common.cancel")}
-                          </button>
-                        </>
-                      ) : (
+                    <div className={styles.createActions}>
+                      <button
+                        type="button"
+                        className={styles.createConfirm}
+                        onClick={handleSaveEdit}
+                        disabled={!editName.trim() || updateMutation.isPending}
+                      >
+                        {updateMutation.isPending ? t("common.saving") : t("common.save")}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.createCancel}
+                        onClick={cancelEditing}
+                        disabled={updateMutation.isPending}
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className={styles.topicHeader}>
+                      <button
+                        type="button"
+                        className={styles.topicHeaderButton}
+                        onClick={() => toggleExpanded(topic.id)}
+                        aria-expanded={isExpanded}
+                      >
+                        <div className={styles.topicInfo}>
+                          <span className={styles.topicName}>{topic.name}</span>
+                          {topic.description && (
+                            <span className={styles.topicDescription}>{topic.description}</span>
+                          )}
+                        </div>
+                        <div className={styles.topicMeta}>
+                          <span className={styles.topicProfile}>
+                            {t(`settings.viewing.profiles.${topic.viewingProfile}`)}
+                          </span>
+                          <span className={styles.topicDecay}>{topic.decayHours}h</span>
+                          <span className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ""}`}>
+                            &#9660;
+                          </span>
+                        </div>
+                      </button>
+                      <div className={styles.topicActions}>
                         <button
                           type="button"
-                          className={styles.deleteButton}
-                          onClick={() => setDeleteConfirmId(topic.id)}
+                          className={styles.editButton}
+                          onClick={() => startEditing(topic.id, topic.name, topic.description)}
                           disabled={isPending}
-                          title={t("settings.topics.delete")}
+                          title={t("settings.topics.edit")}
                         >
-                          ×
+                          ✎
                         </button>
-                      )}
+                        {!isOnlyTopic && (
+                          isConfirmingDelete ? (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.deleteConfirm}
+                                onClick={() => handleDelete(topic.id)}
+                                disabled={deleteMutation.isPending}
+                              >
+                                {t("common.confirmDelete")}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.deleteCancel}
+                                onClick={() => setDeleteConfirmId(null)}
+                                disabled={deleteMutation.isPending}
+                              >
+                                {t("common.cancel")}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.deleteButton}
+                              onClick={() => setDeleteConfirmId(topic.id)}
+                              disabled={isPending}
+                              title={t("settings.topics.delete")}
+                            >
+                              ×
+                            </button>
+                          )
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-                {isExpanded && (
-                  <div className={styles.topicContent}>
-                    <TopicViewingProfileSettings topic={topic} profileOptions={profileOptions} />
-                  </div>
+                    {isExpanded && (
+                      <div className={styles.topicContent}>
+                        <TopicViewingProfileSettings topic={topic} profileOptions={profileOptions} />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );

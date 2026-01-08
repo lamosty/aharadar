@@ -119,6 +119,25 @@
   gap: var(--spacing-sm);
 }
 
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.editLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
 .topicCard {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -153,6 +172,32 @@
   display: flex;
   gap: var(--spacing-xs);
   padding-right: var(--spacing-md);
+}
+
+.editButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.editButton:hover:not(:disabled) {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.editButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .deleteButton {
