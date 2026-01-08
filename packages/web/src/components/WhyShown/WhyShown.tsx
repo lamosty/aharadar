@@ -16,9 +16,16 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
 
   const hasFeatures = features && Object.keys(features).length > 0;
 
-  // Hide component when no features available (triage not run)
+  // Show unavailable message when no features (triage not run due to budget or config)
   if (!hasFeatures) {
-    return null;
+    return (
+      <div className={styles.container} data-testid="why-shown">
+        <div className={styles.unavailable}>
+          <span className={styles.unavailableTitle}>{t("digests.whyShown.unavailable")}</span>
+          <p className={styles.unavailableText}>{t("digests.whyShown.unavailableReason")}</p>
+        </div>
+      </div>
+    );
   }
 
   return (

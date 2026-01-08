@@ -345,7 +345,9 @@
       "userPrefAuthor": "Author",
       "userPrefAuthorWeight": "Author boost",
       "userPrefEffectiveWeight": "Combined boost",
-      "noFeatures": "No ranking features available"
+      "noFeatures": "No ranking features available",
+      "unavailable": "Ranking details unavailable",
+      "unavailableReason": "Triage was not run for this item"
     },
     "feedback": {
       "like": "Like",
