@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useItems, useFeedback, useMarkChecked } from "@/lib/hooks";
+import { useItems, useFeedback, useTopicMarkChecked } from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
 import { useTopic } from "@/components/TopicProvider";
@@ -94,8 +94,8 @@ function FeedPageContent() {
     },
   });
 
-  // Mark as caught up mutation
-  const markCheckedMutation = useMarkChecked({
+  // Mark as caught up mutation - use topic-specific endpoint
+  const markCheckedMutation = useTopicMarkChecked(currentTopicId ?? "", {
     onSuccess: () => {
       addToast(t("digests.feed.caughtUpSuccess"), "success");
     },
@@ -105,8 +105,9 @@ function FeedPageContent() {
   });
 
   const handleMarkCaughtUp = useCallback(() => {
+    if (!currentTopicId) return;
     markCheckedMutation.mutate();
-  }, [markCheckedMutation]);
+  }, [markCheckedMutation, currentTopicId]);
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
@@ -137,7 +138,7 @@ function FeedPageContent() {
             <button
               className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
               onClick={handleMarkCaughtUp}
-              disabled={markCheckedMutation.isPending}
+              disabled={markCheckedMutation.isPending || !currentTopicId}
             >
               {markCheckedMutation.isPending
                 ? t("digests.feed.markingCaughtUp")
