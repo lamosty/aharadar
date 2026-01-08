@@ -583,6 +583,109 @@ Sign up at https://unusualwhales.com/ for API access.
    { "expiry_max_days": 14, "min_premium": 50000 }
    ```
 
+### Market Sentiment (`type = "market_sentiment"`)
+
+**Purpose**
+Track social media sentiment for stocks aggregated from Reddit, Twitter, and StockTwits using the Finnhub API.
+
+**config_json**
+
+```json
+{
+  "tickers": ["SPY", "QQQ", "AAPL", "TSLA", "NVDA"],
+  "sentiment_change_threshold": 10,
+  "min_mentions": 100,
+  "alert_on_extreme": true,
+  "extreme_threshold": 0.8,
+  "max_tickers_per_fetch": 10
+}
+```
+
+**Fields:**
+- `tickers` (required): List of stock tickers to monitor
+- `sentiment_change_threshold` (default: 0): Only emit if sentiment changed by this % since last fetch
+- `min_mentions` (default: 0): Minimum mention count to include
+- `alert_on_extreme` (default: false): Emit when sentiment is extremely bullish/bearish
+- `extreme_threshold` (default: 0.8): Threshold for extreme sentiment (0.5-1.0 scale)
+- `max_tickers_per_fetch` (default: 10, max: 30): Rate limit protection
+
+**cursor_json**
+
+```json
+{
+  "last_fetch_at": "2025-01-08T08:00:00Z",
+  "ticker_scores": {
+    "AAPL": { "score": 0.65, "mentions": 650, "fetched_at": "2025-01-07T08:00:00Z" }
+  }
+}
+```
+
+**Fetch**
+
+- Calls Finnhub Social Sentiment API (`https://finnhub.io/api/v1/stock/social-sentiment`)
+- Requires `FINNHUB_API_KEY` environment variable
+- Rate limited: 60 requests/minute (free tier)
+- Built-in delay between requests to respect limits
+- Tracks previous scores for change detection
+
+**Normalize**
+
+- `external_id`: `ms_{ticker}_{YYYY-MM-DD}`
+- `canonical_url`: Finnhub API URL
+- `title`: `{Ticker} sentiment: {Label} ({score})` or with change: `{Ticker} sentiment: {Label} ({score}, +15% change)`
+- `bodyText`: Mention breakdown, score components, comparison to previous
+- `publishedAt`: Data timestamp from API
+- `author`: `"Finnhub Social Sentiment"`
+- `metadata`:
+  - `ticker`: Stock ticker
+  - `sentiment_score`: Composite score (-1 to 1)
+  - `sentiment_label`: `"bullish"` | `"bearish"` | `"neutral"`
+  - `is_extreme`: Boolean
+  - `total_mentions`: Total mention count
+  - `positive_mentions`, `negative_mentions`, `neutral_mentions`: Breakdown
+  - `positive_score`, `negative_score`: Score components
+  - `previous_score`: Score from last fetch
+  - `score_change`: Percentage change
+
+**Sentiment Classification**
+
+- Score >= 0.1 = bullish
+- Score <= -0.1 = bearish
+- Otherwise = neutral
+- Extreme = |score| > normalized threshold
+
+**Environment Variable**
+
+```bash
+FINNHUB_API_KEY=your_api_key_here
+```
+
+Sign up free at https://finnhub.io/ - 60 API calls/minute.
+
+**Limitations**
+
+1. **Noisy signal** - Social sentiment has limited predictive value
+2. **Lagging indicator** - By the time sentiment is measurable, price may have moved
+3. **Coverage varies** - Not all tickers have sufficient social data
+4. **Free tier limits** - 60 req/min restricts monitoring many tickers
+
+**Use Cases**
+
+1. **Track major indices:**
+   ```json
+   { "tickers": ["SPY", "QQQ"], "min_mentions": 100 }
+   ```
+
+2. **Alert on sentiment shifts:**
+   ```json
+   { "tickers": ["AAPL", "TSLA", "NVDA"], "sentiment_change_threshold": 10 }
+   ```
+
+3. **Extreme sentiment alerts:**
+   ```json
+   { "tickers": ["GME", "AMC"], "alert_on_extreme": true, "extreme_threshold": 0.7 }
+   ```
+
 ### RSS (`type = "rss"`)
 
 **Purpose**

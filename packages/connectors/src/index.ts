@@ -9,5 +9,6 @@ export * from "./sec_edgar";
 export * from "./congress_trading";
 export * from "./polymarket";
 export * from "./options_flow";
+export * from "./market_sentiment";
 
 export * from "./registry";

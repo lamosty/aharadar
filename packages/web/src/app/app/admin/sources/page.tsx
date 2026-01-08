@@ -197,6 +197,7 @@ export default function AdminSourcesPage() {
       congress_trading: "Congress Trading",
       polymarket: "Polymarket",
       options_flow: "Options Flow",
+      market_sentiment: "Market Sentiment",
     };
     return names[type] ?? type;
   };

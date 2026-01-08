@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "./ApiKeyGuidance.module.css";
 
-export type ApiKeyProvider = "quiver" | "unusual_whales" | "sec_edgar";
+export type ApiKeyProvider = "quiver" | "unusual_whales" | "sec_edgar" | "finnhub";
 
 interface ProviderInfo {
   name: string;
@@ -172,6 +172,60 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
               <li>Minimum 100ms between requests</li>
             </ul>
             <p>The connector handles this automatically with built-in throttling.</p>
+          </>
+        ),
+      },
+    ],
+  },
+  finnhub: {
+    name: "Finnhub",
+    description: "Social sentiment data from Reddit, Twitter, and StockTwits",
+    envVar: "FINNHUB_API_KEY",
+    website: "finnhub.io",
+    signupUrl: "https://finnhub.io/",
+    docsUrl: "https://finnhub.io/docs/api",
+    freeLimit: "60 requests/minute",
+    steps: [
+      {
+        title: "Create Account",
+        content: (
+          <>
+            <p>
+              Go to{" "}
+              <a href="https://finnhub.io/" target="_blank" rel="noopener noreferrer">
+                finnhub.io
+              </a>{" "}
+              and click <strong>Get Free API Key</strong>.
+            </p>
+            <p>Sign up with your email address.</p>
+          </>
+        ),
+      },
+      {
+        title: "Get API Key",
+        content: (
+          <>
+            <p>After signing up:</p>
+            <ol>
+              <li>Check your email for verification</li>
+              <li>Log into your Finnhub dashboard</li>
+              <li>Your API key is displayed on the dashboard</li>
+            </ol>
+            <p>
+              Free tier: <strong>60 API calls per minute</strong>
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Add to Environment",
+        content: (
+          <>
+            <p>
+              Add the key to your <code>.env</code> file:
+            </p>
+            <pre>FINNHUB_API_KEY=your_api_key_here</pre>
+            <p>Restart your server after adding the key.</p>
           </>
         ),
       },

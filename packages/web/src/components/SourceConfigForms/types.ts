@@ -95,6 +95,16 @@ export interface OptionsFlowConfig {
   max_alerts_per_fetch?: number;
 }
 
+// Market Sentiment Source Config
+export interface MarketSentimentConfig {
+  tickers?: string[];
+  sentiment_change_threshold?: number;
+  min_mentions?: number;
+  alert_on_extreme?: boolean;
+  extreme_threshold?: number;
+  max_tickers_per_fetch?: number;
+}
+
 // Union type for all configs
 export type SourceTypeConfig =
   | RssConfig
@@ -106,7 +116,8 @@ export type SourceTypeConfig =
   | SecEdgarConfig
   | CongressTradingConfig
   | PolymarketConfig
-  | OptionsFlowConfig;
+  | OptionsFlowConfig
+  | MarketSentimentConfig;
 
 // Form props interface
 export interface SourceConfigFormProps<T> {

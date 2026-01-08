@@ -295,7 +295,8 @@
         "sec_edgar": "SEC EDGAR filings (Form 4, 13F)",
         "congress_trading": "Congressional trading disclosures",
         "polymarket": "Prediction market probabilities",
-        "options_flow": "Unusual options activity & sweeps"
+        "options_flow": "Unusual options activity & sweeps",
+        "market_sentiment": "Social sentiment from Finnhub"
       }
     },
     "budgets": {

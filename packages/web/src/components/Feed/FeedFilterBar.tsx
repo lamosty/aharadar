@@ -22,6 +22,7 @@ const SOURCE_LABELS: Record<SupportedSourceType, string> = {
   congress_trading: "Congress",
   polymarket: "Polymarket",
   options_flow: "Options",
+  market_sentiment: "Sentiment",
 };
 
 const SORT_OPTIONS = [

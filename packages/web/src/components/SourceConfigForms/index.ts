@@ -9,4 +9,5 @@ export { SecEdgarConfigForm } from "./SecEdgarConfigForm";
 export { CongressTradingConfigForm } from "./CongressTradingConfigForm";
 export { PolymarketConfigForm } from "./PolymarketConfigForm";
 export { OptionsFlowConfigForm } from "./OptionsFlowConfigForm";
+export { MarketSentimentConfigForm } from "./MarketSentimentConfigForm";
 export type * from "./types";

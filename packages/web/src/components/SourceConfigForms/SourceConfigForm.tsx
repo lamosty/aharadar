@@ -12,6 +12,7 @@ import type {
   CongressTradingConfig,
   PolymarketConfig,
   OptionsFlowConfig,
+  MarketSentimentConfig,
   SourceTypeConfig,
 } from "./types";
 import { RssConfigForm } from "./RssConfigForm";
@@ -24,6 +25,7 @@ import { SecEdgarConfigForm } from "./SecEdgarConfigForm";
 import { CongressTradingConfigForm } from "./CongressTradingConfigForm";
 import { PolymarketConfigForm } from "./PolymarketConfigForm";
 import { OptionsFlowConfigForm } from "./OptionsFlowConfigForm";
+import { MarketSentimentConfigForm } from "./MarketSentimentConfigForm";
 
 interface SourceConfigFormProps {
   sourceType: SupportedSourceType;
@@ -85,6 +87,15 @@ export function SourceConfigForm({ sourceType, config, onChange, errors }: Sourc
       return (
         <OptionsFlowConfigForm
           value={config as Partial<OptionsFlowConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
+
+    case "market_sentiment":
+      return (
+        <MarketSentimentConfigForm
+          value={config as Partial<MarketSentimentConfig>}
           onChange={onChange}
           errors={errors}
         />
@@ -190,6 +201,14 @@ export function validateSourceConfig(
     case "options_flow":
       // No required fields - all filters are optional
       break;
+
+    case "market_sentiment": {
+      const msConfig = config as Partial<MarketSentimentConfig>;
+      if (!msConfig.tickers || msConfig.tickers.length === 0) {
+        errors.tickers = "At least one ticker is required";
+      }
+      break;
+    }
   }
 
   return errors;
@@ -274,6 +293,13 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
         expiry_max_days: 90,
         max_alerts_per_fetch: 50,
       } as Partial<OptionsFlowConfig>;
+
+    case "market_sentiment":
+      return {
+        tickers: [],
+        min_mentions: 100,
+        max_tickers_per_fetch: 10,
+      } as Partial<MarketSentimentConfig>;
 
     default:
       return {};

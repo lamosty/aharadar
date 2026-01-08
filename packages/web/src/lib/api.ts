@@ -197,12 +197,22 @@ export interface FeedbackResponse {
 /** Run mode types */
 export type RunMode = "low" | "normal" | "high" | "catch_up";
 
+/** LLM provider types */
+export type LlmProvider = "openai" | "anthropic" | "claude-subscription";
+
+/** Provider override for manual runs */
+export interface ProviderOverride {
+  provider?: LlmProvider;
+  model?: string;
+}
+
 /** Admin run request */
 export interface AdminRunRequest {
   windowStart: string;
   windowEnd: string;
   mode?: RunMode;
   topicId?: string;
+  providerOverride?: ProviderOverride;
 }
 
 /** Admin run response */
@@ -256,7 +266,7 @@ export interface SourcePatchResponse {
 }
 
 /** Supported source types */
-export const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube", "sec_edgar", "congress_trading", "polymarket", "options_flow"] as const;
+export const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube", "sec_edgar", "congress_trading", "polymarket", "options_flow", "market_sentiment"] as const;
 
 export type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
 
