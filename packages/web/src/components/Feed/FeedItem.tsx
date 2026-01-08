@@ -3,6 +3,7 @@
 import { type FeedItem as FeedItemType } from "@/lib/api";
 import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { type TriageFeatures } from "@/lib/mock-data";
 import { t } from "@/lib/i18n";
 import styles from "./FeedItem.module.css";
 
@@ -124,7 +125,7 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
           onFeedback={handleFeedback}
           variant="compact"
         />
-        <WhyShown features={item.triageJson?.system_features as Record<string, unknown> | undefined} />
+        <WhyShown features={item.triageJson as TriageFeatures | undefined} />
       </div>
     </article>
   );
