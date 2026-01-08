@@ -8,6 +8,7 @@ export interface ProviderCallDraft {
   inputTokens: number;
   outputTokens: number;
   costEstimateCredits: number;
+  costEstimateUsd?: number; // USD cost based on model pricing (calculated at call time)
   meta: Record<string, unknown>;
   startedAt: string; // ISO
   endedAt?: string; // ISO
