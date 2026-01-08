@@ -60,6 +60,7 @@ interface ItemsListQuerystring {
   since?: string;
   until?: string;
   sort?: string;
+  topicId?: string;
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -99,7 +100,35 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       since,
       until,
       sort = "score_desc",
+      topicId: topicIdParam,
     } = request.query;
+
+    // Use topic from query param if provided, otherwise use default
+    let effectiveTopicId = ctx.topicId;
+    if (topicIdParam) {
+      // Validate topic belongs to user
+      const db = getDb();
+      const topic = await db.topics.getById(topicIdParam);
+      if (!topic) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Topic not found: ${topicIdParam}`,
+          },
+        });
+      }
+      if (topic.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+      effectiveTopicId = topicIdParam;
+    }
 
     // Parse and validate limit
     const limit = Math.min(200, Math.max(1, parseInt(limitStr ?? "50", 10) || 50));
@@ -219,7 +248,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         JOIN content_items ci_inner ON ci_inner.id = COALESCE(di.content_item_id, c.representative_content_item_id)
         WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
-          AND d.topic_id = '${ctx.topicId}'::uuid
+          AND d.topic_id = '${effectiveTopicId}'::uuid
         ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
       )
       SELECT
@@ -266,7 +295,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         LEFT JOIN clusters c ON c.id = di.cluster_id
         WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
-          AND d.topic_id = '${ctx.topicId}'::uuid
+          AND d.topic_id = '${effectiveTopicId}'::uuid
         ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
       )
       SELECT COUNT(*)::int as total

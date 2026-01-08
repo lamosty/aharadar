@@ -168,6 +168,7 @@ export interface ItemsListParams {
   since?: string;
   until?: string;
   sort?: "score_desc" | "date_desc" | "date_asc";
+  topicId?: string;
 }
 
 /** Items list response */
@@ -489,6 +490,7 @@ export async function getItems(params?: ItemsListParams, signal?: AbortSignal): 
   if (params?.since) searchParams.set("since", params.since);
   if (params?.until) searchParams.set("until", params.until);
   if (params?.sort) searchParams.set("sort", params.sort);
+  if (params?.topicId) searchParams.set("topicId", params.topicId);
 
   const query = searchParams.toString();
   const path = query ? `/items?${query}` : "/items";

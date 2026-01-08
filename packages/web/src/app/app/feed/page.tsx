@@ -4,6 +4,8 @@ import { Suspense, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useItems, useFeedback, useMarkChecked } from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
+import { TopicSwitcher } from "@/components/TopicSwitcher";
+import { useTopic } from "@/components/TopicProvider";
 import { useToast } from "@/components/Toast";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
@@ -38,6 +40,7 @@ function FeedPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { addToast } = useToast();
+  const { currentTopicId, isReady: topicReady } = useTopic();
 
   // Parse URL params
   const sourcesParam = searchParams.get("sources");
@@ -76,11 +79,12 @@ function FeedPageContent() {
     [selectedSources, updateUrl]
   );
 
-  // Fetch items
+  // Fetch items - wait for topic context to be ready
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error } = useItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     limit: 20,
+    topicId: currentTopicId || undefined,
   });
 
   // Feedback mutation
@@ -125,18 +129,21 @@ function FeedPageContent() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
-            <h1 className={styles.title}>Feed</h1>
+            <h1 className={styles.title}>{t("feed.title")}</h1>
             <p className={styles.subtitle}>All your ranked items in one place</p>
           </div>
-          <button
-            className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
-            onClick={handleMarkCaughtUp}
-            disabled={markCheckedMutation.isPending}
-          >
-            {markCheckedMutation.isPending
-              ? t("digests.feed.markingCaughtUp")
-              : t("digests.feed.markCaughtUp")}
-          </button>
+          <div className={styles.headerActions}>
+            <TopicSwitcher />
+            <button
+              className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
+              onClick={handleMarkCaughtUp}
+              disabled={markCheckedMutation.isPending}
+            >
+              {markCheckedMutation.isPending
+                ? t("digests.feed.markingCaughtUp")
+                : t("digests.feed.markCaughtUp")}
+            </button>
+          </div>
         </div>
       </header>
 
