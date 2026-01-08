@@ -1,13 +1,13 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .profileGrid {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
 }
 
 .profileButton {
@@ -15,8 +15,8 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-background);
@@ -74,24 +74,24 @@
   color: var(--color-text-tertiary);
   font-family: var(--font-mono);
   flex-shrink: 0;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   background: var(--color-background-subtle);
   border-radius: var(--radius-sm);
 }
 
 .customSettings {
-  padding: var(--spacing-md);
+  padding: var(--space-4);
   background: var(--color-background-subtle);
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .label {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   font-weight: 500;
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
@@ -120,14 +120,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: var(--spacing-sm);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .lastChecked {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   font-size: var(--font-size-sm);
 }
 
@@ -140,7 +140,7 @@
 }
 
 .markCaughtUpButton {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);

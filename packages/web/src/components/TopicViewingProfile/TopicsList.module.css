@@ -1,14 +1,14 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .description {
@@ -19,7 +19,7 @@
 }
 
 .createButton {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-primary);
@@ -44,15 +44,15 @@
 .createForm {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  gap: var(--space-2);
+  padding: var(--space-4);
   background: var(--color-background-subtle);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
 }
 
 .createInput {
-  padding: var(--spacing-sm);
+  padding: var(--space-2);
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -68,12 +68,12 @@
 
 .createActions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   justify-content: flex-end;
 }
 
 .createConfirm {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: var(--space-1) var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: white;
@@ -94,7 +94,7 @@
 }
 
 .createCancel {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: var(--space-1) var(--space-4);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   background: transparent;
@@ -116,20 +116,20 @@
 .topicsList {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .editForm {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  gap: var(--space-2);
+  padding: var(--space-4);
 }
 
 .editField {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
 }
 
 .editLabel {
@@ -148,7 +148,7 @@
 .topicHeader {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .topicHeaderButton {
@@ -156,7 +156,7 @@
   justify-content: space-between;
   align-items: center;
   flex: 1;
-  padding: var(--spacing-md);
+  padding: var(--space-4);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -170,8 +170,8 @@
 
 .topicActions {
   display: flex;
-  gap: var(--spacing-xs);
-  padding-right: var(--spacing-md);
+  gap: var(--space-1);
+  padding-right: var(--space-4);
 }
 
 .editButton {
@@ -227,7 +227,7 @@
 }
 
 .deleteConfirm {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
   font-weight: 500;
   color: white;
@@ -248,7 +248,7 @@
 }
 
 .deleteCancel {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   background: transparent;
@@ -270,7 +270,7 @@
 .topicInfo {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   min-width: 0;
   flex: 1;
 }
@@ -294,7 +294,7 @@
 .topicMeta {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -302,7 +302,7 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   background: var(--color-background-subtle);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
 }
 
@@ -323,7 +323,7 @@
 }
 
 .topicContent {
-  padding: var(--spacing-md);
+  padding: var(--space-4);
   border-top: 1px solid var(--color-border);
   background: var(--color-background-subtle);
 }
@@ -331,7 +331,7 @@
 .loading,
 .error,
 .empty {
-  padding: var(--spacing-md);
+  padding: var(--space-4);
   color: var(--color-text-secondary);
   text-align: center;
 }
