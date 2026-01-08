@@ -51,6 +51,10 @@ describe("API Routes Integration Tests", () => {
       "0004_user_preferences.sql",
       "0005_auth_tables.sql",
       "0006_topics_viewing_profile.sql",
+      "0007_user_roles.sql",
+      "0008_user_api_keys.sql",
+      "0009_cost_usd_column.sql",
+      "0010_llm_settings.sql",
     ];
 
     for (const file of migrationFiles) {
