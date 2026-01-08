@@ -30,8 +30,48 @@ function asVectorLiteral(vector: number[]): string {
   return `[${vector.map((n) => (Number.isFinite(n) ? n : 0)).join(",")}]`;
 }
 
+export interface EmbeddingRow {
+  content_item_id: string;
+  model: string;
+  dims: number;
+  vector_text: string;
+}
+
+function parseVectorText(text: string): number[] | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return null;
+  const inner = trimmed.slice(1, -1).trim();
+  if (inner.length === 0) return [];
+  const parts = inner.split(",");
+  const out: number[] = [];
+  for (const p of parts) {
+    const n = Number.parseFloat(p);
+    if (!Number.isFinite(n)) return null;
+    out.push(n);
+  }
+  return out;
+}
+
 export function createEmbeddingsRepo(db: Queryable) {
   return {
+    async getByContentItemId(contentItemId: string): Promise<{ model: string; dims: number; vector: number[] } | null> {
+      const res = await db.query<EmbeddingRow>(
+        `select
+           content_item_id::text as content_item_id,
+           model,
+           dims,
+           vector::text as vector_text
+         from embeddings
+         where content_item_id = $1::uuid`,
+        [contentItemId]
+      );
+      const row = res.rows[0];
+      if (!row) return null;
+      const vector = parseVectorText(row.vector_text);
+      if (!vector) return null;
+      return { model: row.model, dims: row.dims, vector };
+    },
+
     async upsert(params: EmbeddingUpsert): Promise<{ inserted: boolean }> {
       const res = await db.query<{ inserted: boolean }>(
         `insert into embeddings (content_item_id, model, dims, vector)

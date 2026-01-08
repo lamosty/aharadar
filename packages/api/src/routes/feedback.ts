@@ -4,6 +4,7 @@ import { getDb, getSingletonContext } from "../lib/db.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VALID_ACTIONS: FeedbackAction[] = ["like", "dislike", "save", "skip"];
+const PROFILE_ACTIONS: FeedbackAction[] = ["like", "dislike", "save"];
 
 function isValidUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_REGEX.test(value);
@@ -82,6 +83,40 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       contentItemId,
       action,
     });
+
+    // Update preference profile if this is a like/save/dislike action
+    if (PROFILE_ACTIONS.includes(action)) {
+      try {
+        // Get the topic_id for this content item via content_item_sources -> sources
+        const topicRes = await db.query<{ topic_id: string }>(
+          `select distinct s.topic_id::text as topic_id
+           from content_item_sources cis
+           join sources s on s.id = cis.source_id
+           where cis.content_item_id = $1::uuid
+           limit 1`,
+          [contentItemId]
+        );
+        const topicRow = topicRes.rows[0];
+
+        if (topicRow) {
+          // Get the embedding for this content item
+          const embedding = await db.embeddings.getByContentItemId(contentItemId);
+
+          if (embedding) {
+            // Apply the feedback to the preference profile
+            await db.topicPreferenceProfiles.applyFeedbackEmbedding({
+              userId: ctx.userId,
+              topicId: topicRow.topic_id,
+              action: action as "like" | "save" | "dislike",
+              embeddingVector: embedding.vector,
+            });
+          }
+        }
+      } catch (err) {
+        // Log but don't fail the request - preference update is non-critical
+        fastify.log.warn({ err, contentItemId, action }, "Failed to update preference profile");
+      }
+    }
 
     return { ok: true };
   });
