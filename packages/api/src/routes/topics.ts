@@ -27,6 +27,18 @@ interface UpdateViewingProfileBody {
   decayHours?: number;
 }
 
+interface CreateTopicBody {
+  name: string;
+  description?: string;
+  viewingProfile?: ViewingProfile;
+  decayHours?: number;
+}
+
+interface UpdateTopicBody {
+  name?: string;
+  description?: string | null;
+}
+
 export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
   // GET /topics - List all topics for current user
   fastify.get("/topics", async (_request, reply) => {
@@ -351,6 +363,308 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       ok: true,
       topic: formatTopic(updated),
       message: "Topic marked as caught up",
+    };
+  });
+
+  // POST /topics - Create a new topic
+  fastify.post<{ Body: CreateTopicBody }>("/topics", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const body = request.body as unknown;
+    if (!body || typeof body !== "object") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_BODY",
+          message: "Request body must be a JSON object",
+        },
+      });
+    }
+
+    const { name, description, viewingProfile, decayHours } = body as Record<string, unknown>;
+
+    // Validate name
+    if (typeof name !== "string" || name.trim().length === 0) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "name is required and must be a non-empty string",
+        },
+      });
+    }
+
+    const trimmedName = name.trim();
+    if (trimmedName.length > 100) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "name must be 100 characters or less",
+        },
+      });
+    }
+
+    // Validate viewingProfile if provided
+    if (viewingProfile !== undefined) {
+      const validProfiles: ViewingProfile[] = ["power", "daily", "weekly", "research", "custom"];
+      if (!validProfiles.includes(viewingProfile as ViewingProfile)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `Invalid viewingProfile: must be one of ${validProfiles.join(", ")}`,
+          },
+        });
+      }
+    }
+
+    // Validate decayHours if provided
+    if (decayHours !== undefined) {
+      if (typeof decayHours !== "number" || decayHours < 1 || decayHours > 720) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "Invalid decayHours: must be a number between 1 and 720",
+          },
+        });
+      }
+    }
+
+    // Check if topic with this name already exists
+    const db = getDb();
+    const existing = await db.topics.getByName({ userId: ctx.userId, name: trimmedName });
+    if (existing) {
+      return reply.code(409).send({
+        ok: false,
+        error: {
+          code: "DUPLICATE",
+          message: `A topic named "${trimmedName}" already exists`,
+        },
+      });
+    }
+
+    // Create the topic
+    const topic = await db.topics.create({
+      userId: ctx.userId,
+      name: trimmedName,
+      description: typeof description === "string" ? description.trim() : null,
+      viewingProfile: viewingProfile as ViewingProfile | undefined,
+      decayHours: decayHours as number | undefined,
+    });
+
+    return reply.code(201).send({
+      ok: true,
+      topic: formatTopic(topic),
+    });
+  });
+
+  // PATCH /topics/:id - Update topic name/description
+  fastify.patch<{ Params: { id: string }; Body: UpdateTopicBody }>(
+    "/topics/:id",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
+          },
+        });
+      }
+
+      const { name, description } = body as Record<string, unknown>;
+
+      // Validate name if provided
+      if (name !== undefined) {
+        if (typeof name !== "string" || name.trim().length === 0) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: "name must be a non-empty string",
+            },
+          });
+        }
+        if (name.trim().length > 100) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: "name must be 100 characters or less",
+            },
+          });
+        }
+      }
+
+      // Verify topic exists and belongs to user
+      const db = getDb();
+      const existing = await db.topics.getById(id);
+
+      if (!existing) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Topic not found: ${id}`,
+          },
+        });
+      }
+
+      if (existing.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+
+      // Don't allow renaming 'default' topic
+      if (existing.name === "default" && name !== undefined && name.trim() !== "default") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_OPERATION",
+            message: "Cannot rename the default topic",
+          },
+        });
+      }
+
+      // Check for duplicate name if renaming
+      if (name !== undefined && name.trim() !== existing.name) {
+        const duplicate = await db.topics.getByName({ userId: ctx.userId, name: name.trim() });
+        if (duplicate) {
+          return reply.code(409).send({
+            ok: false,
+            error: {
+              code: "DUPLICATE",
+              message: `A topic named "${name.trim()}" already exists`,
+            },
+          });
+        }
+      }
+
+      const updated = await db.topics.update(id, {
+        name: typeof name === "string" ? name.trim() : undefined,
+        description: description === null ? null : typeof description === "string" ? description.trim() : undefined,
+      });
+
+      return {
+        ok: true,
+        topic: formatTopic(updated),
+      };
+    }
+  );
+
+  // DELETE /topics/:id - Delete a topic
+  fastify.delete<{ Params: { id: string } }>("/topics/:id", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "id must be a valid UUID",
+        },
+      });
+    }
+
+    const db = getDb();
+    const existing = await db.topics.getById(id);
+
+    if (!existing) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: `Topic not found: ${id}`,
+        },
+      });
+    }
+
+    if (existing.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Topic does not belong to current user",
+        },
+      });
+    }
+
+    // Don't allow deleting the default topic
+    if (existing.name === "default") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_OPERATION",
+          message: "Cannot delete the default topic",
+        },
+      });
+    }
+
+    // Move sources to default topic before deleting
+    const defaultTopic = await db.topics.getDefaultByUserId(ctx.userId);
+    if (defaultTopic) {
+      await db.query(
+        "UPDATE sources SET topic_id = $1 WHERE topic_id = $2",
+        [defaultTopic.id, id]
+      );
+    }
+
+    await db.topics.delete(id);
+
+    return {
+      ok: true,
+      message: "Topic deleted. Sources have been moved to the default topic.",
     };
   });
 }

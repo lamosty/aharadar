@@ -216,5 +216,62 @@ export function createTopicsRepo(db: Queryable) {
       if (!row) throw new Error("topics.touchLastChecked: topic not found");
       return rowToTopic(row);
     },
+
+    /**
+     * Update topic name and/or description.
+     */
+    async update(
+      id: string,
+      updates: { name?: string; description?: string | null }
+    ): Promise<Topic> {
+      const { name, description } = updates;
+
+      const setClauses: string[] = [];
+      const values: unknown[] = [];
+      let paramIdx = 1;
+
+      if (name !== undefined) {
+        setClauses.push(`name = $${paramIdx}`);
+        values.push(name);
+        paramIdx++;
+      }
+
+      if (description !== undefined) {
+        setClauses.push(`description = $${paramIdx}`);
+        values.push(description);
+        paramIdx++;
+      }
+
+      if (setClauses.length === 0) {
+        const current = await this.getById(id);
+        if (!current) throw new Error("topics.update: topic not found");
+        return rowToTopic(current);
+      }
+
+      values.push(id);
+
+      const res = await db.query<TopicRow>(
+        `UPDATE topics
+         SET ${setClauses.join(", ")}
+         WHERE id = $${paramIdx}
+         RETURNING id, user_id, name, description,
+                   viewing_profile, decay_hours, last_checked_at::text,
+                   created_at::text AS created_at`,
+        values
+      );
+
+      const row = res.rows[0];
+      if (!row) throw new Error("topics.update: topic not found");
+      return rowToTopic(row);
+    },
+
+    /**
+     * Delete a topic. Returns true if deleted, false if not found.
+     * Note: Sources belonging to this topic should be handled by the caller.
+     */
+    async delete(id: string): Promise<boolean> {
+      const res = await db.query("DELETE FROM topics WHERE id = $1", [id]);
+      return (res.rowCount ?? 0) > 0;
+    },
   };
 }
