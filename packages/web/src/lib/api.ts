@@ -222,6 +222,7 @@ export interface SourceConfig {
 /** Source item */
 export interface Source {
   id: string;
+  topicId: string;
   type: string;
   name: string;
   isEnabled: boolean;
@@ -239,6 +240,7 @@ export interface SourcesListResponse {
 export interface SourcePatchRequest {
   name?: string;
   isEnabled?: boolean;
+  topicId?: string;
   configPatch?: {
     cadence?: { mode: "interval"; every_minutes: number } | null;
     weight?: number | null;
@@ -262,6 +264,7 @@ export interface SourceCreateRequest {
   name: string;
   config?: SourceConfig;
   isEnabled?: boolean;
+  topicId?: string;
 }
 
 /** Source create response */

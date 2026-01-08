@@ -9,6 +9,7 @@ import {
   useAdminSourcePatch,
   useAdminSourceCreate,
   useAdminSourceDelete,
+  useTopics,
 } from "@/lib/hooks";
 import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType, type Source, type SourceConfig } from "@/lib/api";
 import {
@@ -22,11 +23,13 @@ import styles from "./page.module.css";
 export default function AdminSourcesPage() {
   const { addToast } = useToast();
   const { data: sourcesData, isLoading } = useAdminSources();
+  const { data: topicsData } = useTopics();
   const patchMutation = useAdminSourcePatch();
   const createMutation = useAdminSourceCreate();
   const deleteMutation = useAdminSourceDelete();
 
   const sources = sourcesData?.sources ?? [];
+  const topics = topicsData?.topics ?? [];
 
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -35,12 +38,14 @@ export default function AdminSourcesPage() {
   const [editValues, setEditValues] = useState<{
     cadenceMinutes: number;
     weight: number;
+    topicId: string;
   } | null>(null);
 
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createType, setCreateType] = useState<SupportedSourceType>("rss");
   const [createName, setCreateName] = useState("");
+  const [createTopicId, setCreateTopicId] = useState<string>("");
   const [createConfig, setCreateConfig] = useState<Partial<SourceTypeConfig>>(() => getDefaultConfig("rss"));
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
 
@@ -49,6 +54,13 @@ export default function AdminSourcesPage() {
     setCreateConfig(getDefaultConfig(createType));
     setCreateErrors({});
   }, [createType]);
+
+  // Set default topic when topics load
+  useEffect(() => {
+    if (topics.length > 0 && !createTopicId) {
+      setCreateTopicId(topics[0].id);
+    }
+  }, [topics, createTopicId]);
 
   const handleToggleEnabled = async (source: Source) => {
     try {
@@ -80,6 +92,7 @@ export default function AdminSourcesPage() {
     setEditValues({
       cadenceMinutes: source.config.cadence?.every_minutes ?? 60,
       weight: source.config.weight ?? 1.0,
+      topicId: source.topicId,
     });
   };
 
@@ -96,6 +109,8 @@ export default function AdminSourcesPage() {
       await patchMutation.mutateAsync({
         id: source.id,
         patch: {
+          // Include topicId only if it changed
+          ...(editValues.topicId !== source.topicId && { topicId: editValues.topicId }),
           configPatch: {
             cadence: { mode: "interval", every_minutes: editValues.cadenceMinutes },
             weight: editValues.weight,
@@ -116,6 +131,7 @@ export default function AdminSourcesPage() {
     setShowCreateForm(true);
     setCreateType("rss");
     setCreateName("");
+    setCreateTopicId(topics[0]?.id ?? "");
     setCreateConfig(getDefaultConfig("rss"));
     setCreateErrors({});
   };
@@ -124,6 +140,7 @@ export default function AdminSourcesPage() {
     setShowCreateForm(false);
     setCreateType("rss");
     setCreateName("");
+    setCreateTopicId(topics[0]?.id ?? "");
     setCreateConfig(getDefaultConfig("rss"));
     setCreateErrors({});
   };
@@ -149,6 +166,7 @@ export default function AdminSourcesPage() {
         type: createType,
         name: createName.trim(),
         config: createConfig as SourceConfig,
+        topicId: createTopicId || undefined,
       });
       addToast(t("toast.sourceCreated"), "success");
       handleCancelCreate();
@@ -160,6 +178,11 @@ export default function AdminSourcesPage() {
   const getTypeDescription = (type: SupportedSourceType): string => {
     const key = `admin.sources.typeDescriptions.${type}` as const;
     return t(key);
+  };
+
+  const getTopicName = (topicId: string): string => {
+    const topic = topics.find((t) => t.id === topicId);
+    return topic?.name ?? "Unknown";
   };
 
   const getSourceTypeDisplayName = (type: SupportedSourceType): string => {
@@ -244,6 +267,26 @@ export default function AdminSourcesPage() {
             {createErrors.name && <p className={styles.errorText}>{createErrors.name}</p>}
           </div>
 
+          {topics.length > 1 && (
+            <div className={styles.editField}>
+              <label htmlFor="create-topic" className={styles.editLabel}>
+                {t("admin.sources.topic")}
+              </label>
+              <select
+                id="create-topic"
+                value={createTopicId}
+                onChange={(e) => setCreateTopicId(e.target.value)}
+                className={styles.selectInput}
+              >
+                {topics.map((topic) => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className={styles.configFormWrapper}>
             <SourceConfigForm
               sourceType={createType}
@@ -292,7 +335,12 @@ export default function AdminSourcesPage() {
             <div key={source.id} className={styles.sourceCard}>
               <div className={styles.sourceHeader}>
                 <div className={styles.sourceInfo}>
-                  <span className={styles.sourceType}>{source.type}</span>
+                  <div className={styles.sourceBadges}>
+                    <span className={styles.sourceType}>{source.type}</span>
+                    {topics.length > 1 && (
+                      <span className={styles.topicBadge}>{getTopicName(source.topicId)}</span>
+                    )}
+                  </div>
                   <h3 className={styles.sourceName}>{source.name}</h3>
                 </div>
                 <label className={styles.toggle}>
@@ -352,6 +400,30 @@ export default function AdminSourcesPage() {
                     />
                     <p className={styles.editHint}>{t("admin.sources.weightDescription")}</p>
                   </div>
+                  {topics.length > 1 && (
+                    <div className={styles.editField}>
+                      <label htmlFor={`topic-${source.id}`} className={styles.editLabel}>
+                        {t("admin.sources.topic")}
+                      </label>
+                      <select
+                        id={`topic-${source.id}`}
+                        value={editValues.topicId}
+                        onChange={(e) =>
+                          setEditValues({
+                            ...editValues,
+                            topicId: e.target.value,
+                          })
+                        }
+                        className={styles.selectInput}
+                      >
+                        {topics.map((topic) => (
+                          <option key={topic.id} value={topic.id}>
+                            {topic.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className={styles.editActions}>
                     <button
                       type="button"

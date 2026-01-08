@@ -28,6 +28,7 @@ function isValidUuid(value: unknown): value is string {
 function formatSource(row: SourceRow) {
   return {
     id: row.id,
+    topicId: row.topic_id,
     type: row.type,
     name: row.name,
     isEnabled: row.is_enabled,
@@ -55,6 +56,7 @@ interface AdminSourcesCreateBody {
   name: string;
   config?: Record<string, unknown>;
   isEnabled?: boolean;
+  topicId?: string;
 }
 
 export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
@@ -82,7 +84,18 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { type, name, config, isEnabled } = body as Record<string, unknown>;
+    const { type, name, config, isEnabled, topicId } = body as Record<string, unknown>;
+
+    // Validate topicId if provided
+    if (topicId !== undefined && !isValidUuid(topicId)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "topicId must be a valid UUID",
+        },
+      });
+    }
 
     // Validate type (required)
     if (typeof type !== "string" || type.trim().length === 0) {
@@ -138,10 +151,27 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    // Resolve target topic: use provided topicId or fall back to context default
+    const targetTopicId = typeof topicId === "string" ? topicId : ctx.topicId;
+
+    // Verify topic belongs to user if custom topicId provided
     const db = getDb();
+    if (topicId !== undefined) {
+      const topic = await db.topics.getById(targetTopicId);
+      if (!topic || topic.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+    }
+
     const result = await db.sources.create({
       userId: ctx.userId,
-      topicId: ctx.topicId,
+      topicId: targetTopicId,
       type: type.trim(),
       name: name.trim(),
       config: (config as Record<string, unknown>) ?? {},
@@ -294,7 +324,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
-  // GET /admin/sources - List all sources for singleton user/topic
+  // GET /admin/sources - List all sources for user (across all topics)
   fastify.get("/admin/sources", async (_request, reply) => {
     const ctx = await getSingletonContext();
     if (!ctx) {
@@ -308,10 +338,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const db = getDb();
-    const rows = await db.sources.listByUserAndTopic({
-      userId: ctx.userId,
-      topicId: ctx.topicId,
-    });
+    // List ALL sources for user (not filtered by topic) so UI can show topic assignments
+    const rows = await db.sources.listByUser(ctx.userId);
 
     return {
       ok: true,
@@ -356,7 +384,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { name, isEnabled, configPatch } = body as Record<string, unknown>;
+    const { name, isEnabled, configPatch, topicId } = body as Record<string, unknown>;
 
     // Get current source and verify ownership
     const db = getDb();
@@ -372,15 +400,40 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    // Verify ownership (source belongs to current user/topic)
-    if (existing.user_id !== ctx.userId || existing.topic_id !== ctx.topicId) {
+    // Verify ownership (source belongs to current user)
+    if (existing.user_id !== ctx.userId) {
       return reply.code(403).send({
         ok: false,
         error: {
           code: "FORBIDDEN",
-          message: "Source does not belong to current user/topic",
+          message: "Source does not belong to current user",
         },
       });
+    }
+
+    // Validate topicId if provided (for moving source to different topic)
+    if (topicId !== undefined) {
+      if (!isValidUuid(topicId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "topicId must be a valid UUID",
+          },
+        });
+      }
+
+      // Verify target topic belongs to user
+      const targetTopic = await db.topics.getById(topicId as string);
+      if (!targetTopic || targetTopic.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Target topic does not belong to current user",
+          },
+        });
+      }
     }
 
     // Validate name if provided
@@ -463,6 +516,11 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
     if (typeof isEnabled === "boolean") {
       await db.sources.updateEnabled({ sourceId: id, isEnabled });
+    }
+
+    // Apply topic update (move source to different topic)
+    if (typeof topicId === "string") {
+      await db.sources.updateTopic({ sourceId: id, topicId });
     }
 
     if (configPatch !== undefined && typeof configPatch === "object" && configPatch !== null) {
@@ -549,13 +607,13 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    // Verify ownership (source belongs to current user/topic)
-    if (existing.user_id !== ctx.userId || existing.topic_id !== ctx.topicId) {
+    // Verify ownership (source belongs to current user)
+    if (existing.user_id !== ctx.userId) {
       return reply.code(403).send({
         ok: false,
         error: {
           code: "FORBIDDEN",
-          message: "Source does not belong to current user/topic",
+          message: "Source does not belong to current user",
         },
       });
     }

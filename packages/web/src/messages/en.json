@@ -225,6 +225,7 @@
       "cadenceMinutes": "Interval (minutes)",
       "weight": "Weight",
       "weightDescription": "Higher weight = more influence on ranking",
+      "topic": "Topic",
       "save": "Save",
       "saving": "Saving...",
       "noSources": "No sources configured yet",
