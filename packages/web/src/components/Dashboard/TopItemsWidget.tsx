@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useItems } from "@/lib/hooks";
+import { useItems, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
+import { type Topic } from "@/lib/api";
 import styles from "./Dashboard.module.css";
 
 export function TopItemsWidget() {
-  const { data, isLoading, error } = useItems({ limit: 5 });
+  const { data: topicsData, isLoading: topicsLoading, error: topicsError } = useTopics();
+  const topics = topicsData?.topics ?? [];
 
-  if (isLoading) {
+  if (topicsLoading) {
     return (
       <div className={styles.widget}>
         <h3 className={styles.widgetTitle}>{t("dashboard.topItems")}</h3>
@@ -20,7 +23,7 @@ export function TopItemsWidget() {
     );
   }
 
-  if (error) {
+  if (topicsError) {
     return (
       <div className={styles.widget}>
         <h3 className={styles.widgetTitle}>{t("dashboard.topItems")}</h3>
@@ -29,16 +32,14 @@ export function TopItemsWidget() {
     );
   }
 
-  const items = data?.pages.flatMap((p) => p.items) ?? [];
-
-  if (items.length === 0) {
+  if (topics.length === 0) {
     return (
       <div className={styles.widget}>
         <h3 className={styles.widgetTitle}>{t("dashboard.topItems")}</h3>
         <div className={styles.widgetEmpty}>
-          <p>{t("feed.emptyDescription")}</p>
-          <Link href="/app/admin/run" className={styles.widgetLink}>
-            {t("admin.cards.run.title")}
+          <p>{t("topics.emptyDescription")}</p>
+          <Link href="/app/topics" className={styles.widgetLink}>
+            {t("settings.topics.create")}
           </Link>
         </div>
       </div>
@@ -47,36 +48,92 @@ export function TopItemsWidget() {
 
   return (
     <div className={styles.widget}>
-      <div className={styles.widgetHeader}>
-        <h3 className={styles.widgetTitle}>{t("dashboard.topItems")}</h3>
-        <Link href="/app/feed" className={styles.viewAllLink}>
-          {t("dashboard.viewAll")}
-        </Link>
-      </div>
-      <ul className={styles.itemList}>
-        {items.slice(0, 5).map((item) => (
-          <li key={item.id} className={styles.itemRow}>
-            <span className={styles.itemScore}>{Math.round(item.score * 100)}</span>
-            <div className={styles.itemContent}>
-              {item.item.url ? (
-                <a
-                  href={item.item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.itemTitle}
-                >
-                  {item.item.title || item.item.bodyText?.slice(0, 100) || "(Untitled)"}
-                </a>
-              ) : (
-                <span className={styles.itemTitle}>
-                  {item.item.title || item.item.bodyText?.slice(0, 100) || "(Untitled)"}
-                </span>
-              )}
-              <span className={styles.itemSource}>{formatSourceType(item.item.sourceType)}</span>
-            </div>
-          </li>
+      <h3 className={styles.widgetTitle}>{t("dashboard.topItems")}</h3>
+      <div className={styles.topicSections}>
+        {topics.map((topic) => (
+          <TopicItemsSection key={topic.id} topic={topic} />
         ))}
-      </ul>
+      </div>
+    </div>
+  );
+}
+
+interface TopicItemsSectionProps {
+  topic: Topic;
+}
+
+function TopicItemsSection({ topic }: TopicItemsSectionProps) {
+  const [expanded, setExpanded] = useState(false);
+  const limit = expanded ? 10 : 5;
+
+  const { data, isLoading, error } = useItems({ topicId: topic.id, limit: 10 });
+  const allItems = data?.pages.flatMap((p) => p.items) ?? [];
+  const items = allItems.slice(0, limit);
+  const hasMore = allItems.length > 5;
+
+  return (
+    <div className={styles.topicSection}>
+      <div className={styles.topicSectionHeader}>
+        <Link href={`/app/feed?topic=${topic.id}`} className={styles.topicSectionTitle}>
+          {topic.name}
+        </Link>
+        <span className={styles.topicSectionProfile}>{topic.viewingProfile}</span>
+      </div>
+
+      {isLoading ? (
+        <div className={styles.topicSectionLoading}>
+          <Spinner />
+        </div>
+      ) : error ? (
+        <div className={styles.topicSectionError}>{t("common.error")}</div>
+      ) : items.length === 0 ? (
+        <div className={styles.topicSectionEmpty}>No items yet</div>
+      ) : (
+        <>
+          <ul className={styles.itemList}>
+            {items.map((item) => (
+              <li key={item.id} className={styles.itemRow}>
+                <span className={styles.itemScore}>{Math.round(item.score * 100)}</span>
+                <div className={styles.itemContent}>
+                  {item.item.url ? (
+                    <a
+                      href={item.item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.itemTitle}
+                    >
+                      {item.item.title || item.item.bodyText?.slice(0, 100) || "(Untitled)"}
+                    </a>
+                  ) : (
+                    <span className={styles.itemTitle}>
+                      {item.item.title || item.item.bodyText?.slice(0, 100) || "(Untitled)"}
+                    </span>
+                  )}
+                  <span className={styles.itemSource}>{formatSourceType(item.item.sourceType)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {hasMore && !expanded && (
+            <button
+              type="button"
+              className={styles.showMoreButton}
+              onClick={() => setExpanded(true)}
+            >
+              Show more
+            </button>
+          )}
+          {expanded && (
+            <button
+              type="button"
+              className={styles.showMoreButton}
+              onClick={() => setExpanded(false)}
+            >
+              Show less
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }
