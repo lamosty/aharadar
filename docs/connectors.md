@@ -216,6 +216,102 @@ Ingest stories (optionally comments).
 - `published_at`: `time`
 - `metadata_json`: score, descendants, type
 
+### SEC EDGAR (`type = "sec_edgar"`)
+
+**Purpose**
+Ingest insider trading filings (Form 4) and institutional holdings (13F) from the SEC's free public API.
+
+**config_json**
+
+```json
+{
+  "filing_types": ["form4", "13f"],
+  "tickers": ["AAPL", "TSLA"],
+  "ciks": ["0000320193"],
+  "min_transaction_value": 100000,
+  "max_filings_per_fetch": 50
+}
+```
+
+**Fields:**
+- `filing_types` (required): Array of `"form4"` and/or `"13f"`
+- `tickers` (optional): Filter by company ticker symbols
+- `ciks` (optional): Filter by CIK numbers (more precise than tickers)
+- `min_transaction_value` (default: 0): Minimum transaction value in USD (Form 4 only)
+- `max_filings_per_fetch` (default: 50, clamped 1-100): Max filings per fetch
+
+**cursor_json**
+
+```json
+{
+  "form4": {
+    "last_accession": "0001234567-25-000001",
+    "last_fetch_at": "2025-01-08T08:00:00Z"
+  },
+  "13f": {
+    "last_accession": "0001234567-25-000002",
+    "last_fetch_at": "2025-01-08T08:00:00Z"
+  }
+}
+```
+
+**Fetch**
+
+MVP approach:
+- Fetch Form 4 and 13F RSS feeds from SEC Browse-EDGAR
+- For each filing, fetch detailed XML from SEC EDGAR API
+- Parse Form 4 transactions and 13F holdings
+- Rate limit: Max 10 requests/second (100ms minimum delay between requests)
+- Exponential backoff on 429/503 responses
+
+**Normalize**
+
+**Form 4 (Insider Trading):**
+- `external_id`: `form4_{accession_number}`
+- `canonical_url`: SEC company filing page
+- `title`: `[BUY/SELL/...] {Insider Name} - {Company} - ${Amount}`
+- `body_text`: Transaction details including insider role, shares, price, and value
+- `published_at`: Filing date (ISO)
+- `author`: Insider name
+- `metadata`:
+  - `filing_type`: `"form4"`
+  - `ticker`: Company ticker
+  - `cik`: Company CIK
+  - `insider_name`: Name of insider
+  - `insider_title`: Role/title of insider
+  - `transaction_type`: `"purchase"` | `"sale"` | `"award"` | etc.
+  - `transaction_code`: SEC transaction code (P, S, A, D, etc.)
+  - `shares`: Number of shares
+  - `price_per_share`: Price per share
+  - `total_value`: Total transaction value
+  - `shares_owned_after`: Shares owned after transaction
+  - `is_direct`: Direct vs indirect ownership
+  - `is_officer`, `is_director`, `is_ten_percent_owner`: Relationship flags
+
+**13F (Institutional Holdings):**
+- `external_id`: `13f_{accession_number}`
+- `canonical_url`: SEC filing page
+- `title`: `[13F] {Institution Name} - Q{Quarter} {Year} Holdings`
+- `body_text`: Summary of top positions
+- `published_at`: Filing date (ISO)
+- `author`: Institution name
+- `metadata`:
+  - `filing_type`: `"13f"`
+  - `institution_name`: Name of institution
+  - `cik`: Institution CIK
+  - `report_period`: Quarter end date
+  - `total_value`: Total portfolio value (in thousands)
+  - `holdings_count`: Number of positions
+  - `top_holdings`: Array of top 10 positions with ticker, name, shares, value
+
+**Environment Variable**
+
+```bash
+SEC_EDGAR_USER_AGENT=AhaRadar/1.0 (contact@example.com)
+```
+
+Per SEC guidelines, all requests must include a valid User-Agent header with contact information.
+
 ### RSS (`type = "rss"`)
 
 **Purpose**

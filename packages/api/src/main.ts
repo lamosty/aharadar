@@ -15,6 +15,8 @@ import { itemsRoutes } from "./routes/items.js";
 import { preferencesRoutes } from "./routes/preferences.js";
 import { storageRoutes } from "./routes/storage.js";
 import { topicsRoutes } from "./routes/topics.js";
+import { userApiKeysRoutes } from "./routes/user-api-keys.js";
+import { userUsageRoutes } from "./routes/user-usage.js";
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
@@ -88,6 +90,8 @@ async function buildServer() {
       await api.register(itemsRoutes);
       await api.register(preferencesRoutes);
       await api.register(topicsRoutes);
+      await api.register(userApiKeysRoutes);
+      await api.register(userUsageRoutes);
     },
     { prefix: "/api" }
   );

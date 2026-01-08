@@ -132,6 +132,9 @@
       "updated": "Preferences updated",
       "updateFailed": "Failed to update preferences"
     },
+    "apiKeys": {
+      "title": "API Keys"
+    },
     "topics": {
       "title": "Topics",
       "description": "Configure viewing profile settings for each topic. Click a topic to expand its settings.",

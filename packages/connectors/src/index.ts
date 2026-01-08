@@ -5,5 +5,6 @@ export * from "./hn";
 export * from "./rss";
 export * from "./youtube";
 export * from "./signal";
+export * from "./sec_edgar";
 
 export * from "./registry";

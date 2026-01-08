@@ -833,3 +833,156 @@ export async function deleteTopic(
     signal,
   });
 }
+
+// ============================================================================
+// User API Keys
+// ============================================================================
+
+/** API key summary (never includes full key) */
+export interface ApiKeySummary {
+  id: string;
+  provider: string;
+  keySuffix: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Provider status */
+export interface ProviderKeyStatus {
+  provider: string;
+  hasUserKey: boolean;
+  keySuffix: string | null;
+  hasSystemFallback: boolean;
+  activeSource: "user" | "system" | "none";
+}
+
+/** API keys list response */
+export interface ApiKeysListResponse {
+  ok: true;
+  keys: ApiKeySummary[];
+}
+
+/** API key add response */
+export interface ApiKeyAddResponse {
+  ok: true;
+  key: ApiKeySummary;
+}
+
+/** API key delete response */
+export interface ApiKeyDeleteResponse {
+  ok: true;
+}
+
+/** Provider status response */
+export interface ProviderStatusResponse {
+  ok: true;
+  status: ProviderKeyStatus[];
+}
+
+/**
+ * List user's API keys.
+ */
+export async function getUserApiKeys(signal?: AbortSignal): Promise<ApiKeysListResponse> {
+  return apiFetch<ApiKeysListResponse>("/user/api-keys", { signal });
+}
+
+/**
+ * Add or update an API key.
+ */
+export async function addUserApiKey(
+  provider: string,
+  apiKey: string,
+  signal?: AbortSignal
+): Promise<ApiKeyAddResponse> {
+  return apiFetch<ApiKeyAddResponse>("/user/api-keys", {
+    method: "POST",
+    body: { provider, apiKey },
+    signal,
+  });
+}
+
+/**
+ * Delete an API key.
+ */
+export async function deleteUserApiKey(id: string, signal?: AbortSignal): Promise<ApiKeyDeleteResponse> {
+  return apiFetch<ApiKeyDeleteResponse>(`/user/api-keys/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}
+
+/**
+ * Get provider key status.
+ */
+export async function getProviderKeyStatus(signal?: AbortSignal): Promise<ProviderStatusResponse> {
+  return apiFetch<ProviderStatusResponse>("/user/api-keys/status", { signal });
+}
+
+// ============================================================================
+// User Usage
+// ============================================================================
+
+/** Usage summary */
+export interface UsageSummary {
+  totalUsd: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  callCount: number;
+}
+
+/** Usage by provider */
+export interface UsageByProvider {
+  provider: string;
+  totalUsd: number;
+  callCount: number;
+}
+
+/** Usage by model */
+export interface UsageByModel {
+  provider: string;
+  model: string;
+  totalUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  callCount: number;
+}
+
+/** Daily usage */
+export interface DailyUsage {
+  date: string;
+  totalUsd: number;
+  callCount: number;
+}
+
+/** Monthly usage response */
+export interface MonthlyUsageResponse {
+  ok: true;
+  period: string;
+  summary: UsageSummary;
+  byProvider: UsageByProvider[];
+  byModel: UsageByModel[];
+}
+
+/** Daily usage response */
+export interface DailyUsageResponse {
+  ok: true;
+  days: number;
+  startDate: string;
+  endDate: string;
+  daily: DailyUsage[];
+}
+
+/**
+ * Get monthly usage.
+ */
+export async function getMonthlyUsage(signal?: AbortSignal): Promise<MonthlyUsageResponse> {
+  return apiFetch<MonthlyUsageResponse>("/user/usage", { signal });
+}
+
+/**
+ * Get daily usage for charts.
+ */
+export async function getDailyUsage(days?: number, signal?: AbortSignal): Promise<DailyUsageResponse> {
+  const query = days ? `?days=${days}` : "";
+  return apiFetch<DailyUsageResponse>(`/user/usage/daily${query}`, { signal });
+}

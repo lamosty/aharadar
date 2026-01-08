@@ -3,6 +3,7 @@ import { t } from "@/lib/i18n";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { DevSettingsForm } from "@/components/DevSettings";
 import { TopicsList } from "@/components/TopicViewingProfile";
+import { ApiKeysSettings } from "@/components/ApiKeysSettings";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -20,6 +21,13 @@ export default function SettingsPage() {
         <h2 className={styles.sectionTitle}>{t("settings.topics.title")}</h2>
         <div className={styles.sectionContent}>
           <TopicsList />
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>{t("settings.apiKeys.title")}</h2>
+        <div className={styles.sectionContent}>
+          <ApiKeysSettings />
         </div>
       </section>
 
