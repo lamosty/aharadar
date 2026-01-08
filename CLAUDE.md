@@ -106,3 +106,23 @@ Write handoff recap to `docs/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
 - `docs/tasks/` — open task files
 - `docs/recaps/` — session recaps
 - `docs/adr/` — architecture decisions
+
+## Testing utilities
+
+### Auth Bypass (dev only)
+
+For Playwright/manual testing, bypass frontend auth via cookie:
+
+```javascript
+// In browser console:
+document.cookie = 'BYPASS_AUTH=admin; path=/'  // Test as admin user
+document.cookie = 'BYPASS_AUTH=user; path=/'   // Test as regular user
+document.cookie = 'BYPASS_AUTH=; path=/'       // Disable bypass
+```
+
+**Safety notes:**
+- Only bypasses frontend redirect (middleware.ts), NOT API authentication
+- API calls still require valid session or will fail with 401/403
+- Creates mock user object (id: "test-user-id") - won't work for user-specific DB operations
+- Safe for local dev; in production, real auth flow is required
+- Implementation: `packages/web/src/middleware.ts` + `AuthProvider.tsx`
