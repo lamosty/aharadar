@@ -11,7 +11,7 @@ import type {
   QALlmResponse,
   BudgetTier,
 } from "@aharadar/shared";
-import { createConfiguredLlmRouter, type LlmRuntimeConfig, type TaskType } from "@aharadar/llm";
+import { createConfiguredLlmRouter, estimateLlmCredits, type LlmRuntimeConfig, type TaskType } from "@aharadar/llm";
 
 import { retrieveContext, type RetrievedContext } from "./retrieval";
 import { buildQAPrompt, QA_SYSTEM_PROMPT } from "./prompt";
@@ -94,8 +94,9 @@ export async function handleAskQuestion(params: {
         endedAt: new Date().toISOString(),
         status: "ok",
       });
-    } catch {
-      // Ignore logging errors
+    } catch (err) {
+      // Log but don't fail the request for logging errors
+      console.error("[qa] Failed to log provider call:", err instanceof Error ? err.message : err);
     }
 
     const noDataResponse: AskResponse = {
@@ -225,7 +226,14 @@ export async function handleAskQuestion(params: {
     };
   });
 
-  // 7. Log usage with accurate timestamps
+  // 7. Calculate LLM cost
+  const llmCredits = estimateLlmCredits({
+    provider: modelRef.provider,
+    inputTokens: llmResult.inputTokens,
+    outputTokens: llmResult.outputTokens,
+  });
+
+  // 8. Log usage with accurate timestamps
   // Embedding started at totalStart and took embeddingMs
   const embeddingStartedAt = new Date(totalStart).toISOString();
   const embeddingEndedAt = new Date(totalStart + context.embeddingCost.durationMs).toISOString();
@@ -262,7 +270,7 @@ export async function handleAskQuestion(params: {
       model: modelRef.model,
       inputTokens: llmResult.inputTokens,
       outputTokens: llmResult.outputTokens,
-      costEstimateCredits: 0, // TODO: calculate from rates
+      costEstimateCredits: llmCredits,
       meta: {
         kind: "qa_answer",
         topicId,
@@ -274,13 +282,14 @@ export async function handleAskQuestion(params: {
       endedAt: llmEndedAt,
       status: "ok",
     });
-  } catch {
-    // Ignore logging errors
+  } catch (err) {
+    // Log but don't fail the request for logging errors
+    console.error("[qa] Failed to log provider call:", err instanceof Error ? err.message : err);
   }
 
   const totalDurationMs = Date.now() - totalStart;
 
-  // 8. Validate and normalize confidence score
+  // 9. Validate and normalize confidence score
   let confidence = { score: 0.5, reasoning: "Unknown" };
   if (parsed.confidence && typeof parsed.confidence === "object") {
     const score = parsed.confidence.score;
@@ -294,7 +303,7 @@ export async function handleAskQuestion(params: {
     }
   }
 
-  // 9. Build response
+  // 10. Build response
   const response: AskResponse = {
     answer: parsed.answer || "",
     citations,
@@ -309,7 +318,7 @@ export async function handleAskQuestion(params: {
     },
   };
 
-  // 10. Add debug info if requested
+  // 11. Add debug info if requested
   if (includeDebug) {
     const debugInfo: AskDebugInfo = {
       request: {
@@ -354,8 +363,8 @@ export async function handleAskQuestion(params: {
       },
       cost: {
         embeddingCredits: context.embeddingCost.costEstimateCredits,
-        llmCredits: 0, // TODO: calculate from rates
-        totalCredits: context.embeddingCost.costEstimateCredits,
+        llmCredits,
+        totalCredits: context.embeddingCost.costEstimateCredits + llmCredits,
       },
     };
 

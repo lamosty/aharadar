@@ -7,9 +7,36 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { handleAskQuestion } from "@aharadar/pipeline";
+import { handleAskQuestion, computeCreditsStatus } from "@aharadar/pipeline";
 import type { AskRequest, AskResponse } from "@aharadar/shared";
 import { getDb, getSingletonContext } from "../lib/db.js";
+
+// Rate limiting: track question counts per user
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
+
+/**
+ * Check and update rate limit for a user.
+ * Returns { allowed: true } if request is allowed, { allowed: false, retryAfterMs } if rate limited.
+ */
+function checkRateLimit(userId: string): { allowed: true } | { allowed: false; retryAfterMs: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now >= entry.resetAt) {
+    // Start new window
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, retryAfterMs: entry.resetAt - now };
+  }
+
+  entry.count++;
+  return { allowed: true };
+}
 
 interface AskRequestBody {
   question: string;
@@ -142,6 +169,54 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const topicName = topicRes.rows[0].name;
+
+    // Rate limiting check
+    const rateLimitResult = checkRateLimit(ctx.userId);
+    if (!rateLimitResult.allowed) {
+      const retryAfterSec = Math.ceil(rateLimitResult.retryAfterMs / 1000);
+      reply.header("Retry-After", String(retryAfterSec));
+      return reply.code(429).send({
+        ok: false,
+        error: {
+          code: "RATE_LIMITED",
+          message: `Too many requests. Please try again in ${retryAfterSec} seconds.`,
+          retryAfterMs: rateLimitResult.retryAfterMs,
+        },
+      });
+    }
+
+    // Budget check - ensure user has credits before making expensive LLM calls
+    const monthlyCredits = Number.parseInt(process.env.MONTHLY_CREDITS ?? "10000", 10);
+    const dailyThrottleCreditsStr = process.env.DAILY_THROTTLE_CREDITS;
+    const dailyThrottleCredits = dailyThrottleCreditsStr
+      ? Number.parseInt(dailyThrottleCreditsStr, 10)
+      : undefined;
+
+    const creditsStatus = await computeCreditsStatus({
+      db,
+      userId: ctx.userId,
+      monthlyCredits,
+      dailyThrottleCredits,
+      windowEnd: new Date().toISOString(),
+    });
+
+    if (!creditsStatus.paidCallsAllowed) {
+      return reply.code(402).send({
+        ok: false,
+        error: {
+          code: "INSUFFICIENT_CREDITS",
+          message: "Monthly or daily credit limit reached. Q&A requires available credits.",
+          budgets: {
+            monthlyUsed: creditsStatus.monthlyUsed,
+            monthlyLimit: creditsStatus.monthlyLimit,
+            monthlyRemaining: creditsStatus.monthlyRemaining,
+            dailyUsed: creditsStatus.dailyUsed,
+            dailyLimit: creditsStatus.dailyLimit,
+            dailyRemaining: creditsStatus.dailyRemaining,
+          },
+        },
+      });
+    }
 
     try {
       const askRequest: AskRequest = {
