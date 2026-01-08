@@ -29,6 +29,8 @@ import {
   postAdminSource,
   deleteAdminSource,
   getAdminBudgets,
+  getAdminLlmSettings,
+  patchAdminLlmSettings,
   getPreferences,
   patchPreferences,
   postMarkChecked,
@@ -56,6 +58,8 @@ import {
   type SourceCreateResponse,
   type SourceDeleteResponse,
   type BudgetsResponse,
+  type LlmSettingsResponse,
+  type LlmSettingsUpdateRequest,
   type PreferencesGetResponse,
   type PreferencesUpdateResponse,
   type PreferencesMarkCheckedResponse,
@@ -94,6 +98,7 @@ export const queryKeys = {
   admin: {
     sources: ["admin", "sources"] as const,
     budgets: ["admin", "budgets"] as const,
+    llmSettings: ["admin", "llm-settings"] as const,
   },
   preferences: ["preferences"] as const,
   topics: {
@@ -366,6 +371,40 @@ export function useAdminBudgets(
     queryFn: ({ signal }) => getAdminBudgets(signal),
     // Refetch budgets more frequently as they change
     staleTime: 10 * 1000, // 10 seconds
+    ...options,
+  });
+}
+
+/**
+ * Query for LLM settings.
+ */
+export function useAdminLlmSettings(
+  options?: Omit<UseQueryOptions<LlmSettingsResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.llmSettings,
+    queryFn: ({ signal }) => getAdminLlmSettings(signal),
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update LLM settings.
+ */
+export function useAdminLlmSettingsUpdate(
+  options?: Omit<
+    UseMutationOptions<LlmSettingsResponse, ApiError | NetworkError, LlmSettingsUpdateRequest>,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => patchAdminLlmSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.llmSettings });
+    },
     ...options,
   });
 }

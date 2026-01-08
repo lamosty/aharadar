@@ -5,8 +5,10 @@ import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import { useAdminRun, useTopics } from "@/lib/hooks";
-import type { RunMode } from "@/lib/api";
+import type { RunMode, LlmProvider } from "@/lib/api";
 import styles from "./page.module.css";
+
+const PROVIDER_OPTIONS: (LlmProvider | "")[] = ["", "openai", "anthropic", "claude-subscription"];
 
 function getDefaultWindowStart(): string {
   // Default to 24 hours ago
@@ -29,6 +31,8 @@ export default function AdminRunPage() {
   const [windowEnd, setWindowEnd] = useState(getDefaultWindowEnd);
   const [mode, setMode] = useState<RunMode>("normal");
   const [topicId, setTopicId] = useState<string>("");
+  const [providerOverride, setProviderOverride] = useState<LlmProvider | "">("");
+  const [modelOverride, setModelOverride] = useState<string>("");
   const [jobId, setJobId] = useState<string | null>(null);
 
   const runMutation = useAdminRun({
@@ -53,6 +57,12 @@ export default function AdminRunPage() {
       windowEnd: endDate.toISOString(),
       mode,
       topicId: topicId || undefined,
+      providerOverride: providerOverride
+        ? {
+            provider: providerOverride,
+            model: modelOverride || undefined,
+          }
+        : undefined,
     });
   };
 
@@ -63,6 +73,8 @@ export default function AdminRunPage() {
     setWindowEnd(getDefaultWindowEnd());
     setMode("normal");
     setTopicId("");
+    setProviderOverride("");
+    setModelOverride("");
   };
 
   const isLoading = runMutation.isPending;
@@ -179,6 +191,47 @@ export default function AdminRunPage() {
               ))}
             </div>
           </fieldset>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="providerOverride" className={styles.label}>
+              {t("admin.run.providerOverride")}
+            </label>
+            <select
+              id="providerOverride"
+              name="providerOverride"
+              value={providerOverride}
+              onChange={(e) => setProviderOverride(e.target.value as LlmProvider | "")}
+              className={styles.select}
+              disabled={isLoading}
+            >
+              <option value="">{t("admin.run.useSavedSettings")}</option>
+              {PROVIDER_OPTIONS.filter(Boolean).map((p) => (
+                <option key={p} value={p}>
+                  {t(`admin.llm.providers.${p}` as Parameters<typeof t>[0])}
+                </option>
+              ))}
+            </select>
+            <p className={styles.hint}>{t("admin.run.providerOverrideHint")}</p>
+          </div>
+
+          {providerOverride && (
+            <div className={styles.formGroup}>
+              <label htmlFor="modelOverride" className={styles.label}>
+                {t("admin.run.modelOverride")}
+              </label>
+              <input
+                type="text"
+                id="modelOverride"
+                name="modelOverride"
+                value={modelOverride}
+                onChange={(e) => setModelOverride(e.target.value)}
+                className={styles.input}
+                placeholder={providerOverride === "openai" ? "gpt-4o" : "claude-sonnet-4-20250514"}
+                disabled={isLoading}
+              />
+              <p className={styles.hint}>{t("admin.run.modelOverrideHint")}</p>
+            </div>
+          )}
 
           {isError && (
             <div className={styles.error} role="alert">

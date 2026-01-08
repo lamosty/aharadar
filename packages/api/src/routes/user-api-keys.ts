@@ -5,9 +5,17 @@ import { createLogger } from "@aharadar/shared";
 
 const log = createLogger({ component: "user-api-keys" });
 
-// Supported providers
-const PROVIDERS = ["openai", "anthropic", "xai"] as const;
-type Provider = (typeof PROVIDERS)[number];
+// LLM providers
+const LLM_PROVIDERS = ["openai", "anthropic", "xai"] as const;
+type LlmProvider = (typeof LLM_PROVIDERS)[number];
+
+// Connector providers (for data source APIs)
+const CONNECTOR_PROVIDERS = ["quiver", "unusual_whales", "finnhub"] as const;
+type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
+
+// All supported providers
+const ALL_PROVIDERS = [...LLM_PROVIDERS, ...CONNECTOR_PROVIDERS] as const;
+type Provider = (typeof ALL_PROVIDERS)[number];
 
 interface AddKeyBody {
   provider: string;
@@ -24,6 +32,7 @@ interface KeyResponse {
 
 interface ProviderStatus {
   provider: string;
+  category: "llm" | "connector";
   hasUserKey: boolean;
   keySuffix: string | null;
   hasSystemFallback: boolean;
@@ -31,9 +40,23 @@ interface ProviderStatus {
 }
 
 const PROVIDER_ENV_MAP: Record<Provider, string> = {
+  // LLM providers
   openai: "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
   xai: "XAI_API_KEY",
+  // Connector providers
+  quiver: "QUIVER_API_KEY",
+  unusual_whales: "UNUSUAL_WHALES_API_KEY",
+  finnhub: "FINNHUB_API_KEY",
+};
+
+const PROVIDER_CATEGORY: Record<Provider, "llm" | "connector"> = {
+  openai: "llm",
+  anthropic: "llm",
+  xai: "llm",
+  quiver: "connector",
+  unusual_whales: "connector",
+  finnhub: "connector",
 };
 
 export async function userApiKeysRoutes(fastify: FastifyInstance): Promise<void> {
@@ -80,12 +103,12 @@ export async function userApiKeysRoutes(fastify: FastifyInstance): Promise<void>
     const { provider, apiKey } = request.body ?? {};
 
     // Validate provider
-    if (!provider || !PROVIDERS.includes(provider as Provider)) {
+    if (!provider || !ALL_PROVIDERS.includes(provider as Provider)) {
       return reply.code(400).send({
         ok: false,
         error: {
           code: "INVALID_PROVIDER",
-          message: `Provider must be one of: ${PROVIDERS.join(", ")}`,
+          message: `Provider must be one of: ${ALL_PROVIDERS.join(", ")}`,
         },
       });
     }
@@ -189,7 +212,7 @@ export async function userApiKeysRoutes(fastify: FastifyInstance): Promise<void>
     const keys = await db.userApiKeys.listByUser(ctx.userId);
     const allowFallback = process.env.ALLOW_SYSTEM_KEY_FALLBACK === "true";
 
-    const status: ProviderStatus[] = PROVIDERS.map((provider) => {
+    const status: ProviderStatus[] = ALL_PROVIDERS.map((provider) => {
       const userKey = keys.find((k) => k.provider === provider);
       const envVar = PROVIDER_ENV_MAP[provider];
       const hasSystemKey = !!process.env[envVar];
@@ -203,6 +226,7 @@ export async function userApiKeysRoutes(fastify: FastifyInstance): Promise<void>
 
       return {
         provider,
+        category: PROVIDER_CATEGORY[provider],
         hasUserKey: !!userKey,
         keySuffix: userKey?.key_suffix ?? null,
         hasSystemFallback: allowFallback && hasSystemKey,

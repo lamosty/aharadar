@@ -230,6 +230,10 @@
       "budgets": {
         "title": "Budgets",
         "description": "View credit usage and limits"
+      },
+      "llm": {
+        "title": "LLM Settings",
+        "description": "Configure AI provider and model"
       }
     },
     "run": {
@@ -257,7 +261,12 @@
       "error": "Failed to start run",
       "sinceLastRun": "Since last run",
       "topic": "Topic",
-      "topicHint": "Run pipeline for sources assigned to this topic"
+      "topicHint": "Run pipeline for sources assigned to this topic",
+      "providerOverride": "Provider Override",
+      "providerOverrideHint": "Override LLM provider for this run only",
+      "modelOverride": "Model Override",
+      "modelOverrideHint": "Override model for this run (optional)",
+      "useSavedSettings": "Use saved settings"
     },
     "sources": {
       "title": "Sources Management",
@@ -315,6 +324,39 @@
       "warningApproaching": "Approaching limit",
       "warningCritical": "Critical: Nearly exhausted",
       "notConfigured": "Not configured"
+    },
+    "llm": {
+      "title": "LLM Settings",
+      "description": "Configure which AI provider and model to use for pipeline processing",
+      "provider": "Provider",
+      "providerDescription": "Select your LLM provider",
+      "providers": {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic (API)",
+        "claude-subscription": "Claude Subscription"
+      },
+      "providerDescriptions": {
+        "openai": "Use OpenAI API (GPT-4, etc.)",
+        "anthropic": "Use Anthropic API (Claude)",
+        "claude-subscription": "Use Claude Code CLI subscription ($100/mo)"
+      },
+      "anthropicModel": "Anthropic Model",
+      "openaiModel": "OpenAI Model",
+      "claudeSubscription": "Claude Subscription",
+      "claudeSubscriptionEnabled": "Use subscription for all LLM calls",
+      "claudeSubscriptionDescription": "When enabled, uses your Claude Code subscription instead of API calls",
+      "claudeTriageThinking": "Enable thinking for triage",
+      "claudeTriageThinkingDescription": "Use extended thinking for more thoughtful triage decisions",
+      "claudeCallsPerHour": "Rate limit (calls/hour)",
+      "claudeCallsPerHourDescription": "Maximum API calls per hour to stay within subscription limits",
+      "save": "Save Settings",
+      "saving": "Saving...",
+      "saved": "Settings saved",
+      "saveFailed": "Failed to save settings",
+      "lastUpdated": "Last updated",
+      "currentConfig": "Current Configuration",
+      "activeProvider": "Active Provider",
+      "activeModel": "Active Model"
     }
   },
   "accessibility": {

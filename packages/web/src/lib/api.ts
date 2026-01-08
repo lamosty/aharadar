@@ -601,6 +601,58 @@ export async function deleteAdminSource(id: string, signal?: AbortSignal): Promi
 }
 
 // ============================================================================
+// LLM Settings API
+// ============================================================================
+
+/** LLM settings data */
+export interface LlmSettings {
+  provider: LlmProvider;
+  anthropicModel: string;
+  openaiModel: string;
+  claudeSubscriptionEnabled: boolean;
+  claudeTriageThinking: boolean;
+  claudeCallsPerHour: number;
+  updatedAt: string;
+}
+
+/** LLM settings response */
+export interface LlmSettingsResponse {
+  ok: true;
+  settings: LlmSettings;
+}
+
+/** LLM settings update request */
+export interface LlmSettingsUpdateRequest {
+  provider?: LlmProvider;
+  anthropicModel?: string;
+  openaiModel?: string;
+  claudeSubscriptionEnabled?: boolean;
+  claudeTriageThinking?: boolean;
+  claudeCallsPerHour?: number;
+}
+
+/**
+ * Get LLM settings.
+ */
+export async function getAdminLlmSettings(signal?: AbortSignal): Promise<LlmSettingsResponse> {
+  return apiFetch<LlmSettingsResponse>("/admin/llm-settings", { signal });
+}
+
+/**
+ * Update LLM settings.
+ */
+export async function patchAdminLlmSettings(
+  data: LlmSettingsUpdateRequest,
+  signal?: AbortSignal
+): Promise<LlmSettingsResponse> {
+  return apiFetch<LlmSettingsResponse>("/admin/llm-settings", {
+    method: "PATCH",
+    body: data,
+    signal,
+  });
+}
+
+// ============================================================================
 // Preferences API
 // ============================================================================
 
@@ -860,6 +912,7 @@ export interface ApiKeySummary {
 /** Provider status */
 export interface ProviderKeyStatus {
   provider: string;
+  category: "llm" | "connector";
   hasUserKey: boolean;
   keySuffix: string | null;
   hasSystemFallback: boolean;

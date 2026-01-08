@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { RUN_WINDOW_JOB_NAME } from "@aharadar/queues";
+import { RUN_WINDOW_JOB_NAME, type ProviderOverride } from "@aharadar/queues";
 import { computeCreditsStatus } from "@aharadar/pipeline";
-import type { SourceRow } from "@aharadar/db";
+import type { SourceRow, LlmProvider, LlmSettingsUpdate } from "@aharadar/db";
 import { getDb, getSingletonContext } from "../lib/db.js";
 import { getPipelineQueue } from "../lib/queue.js";
 
@@ -42,6 +42,7 @@ interface AdminRunRequestBody {
   windowEnd: string;
   mode?: RunMode;
   topicId?: string;
+  providerOverride?: ProviderOverride;
 }
 
 /** Supported source types */
@@ -220,7 +221,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { windowStart, windowEnd, mode, topicId } = body as Record<string, unknown>;
+    const { windowStart, windowEnd, mode, topicId, providerOverride } = body as Record<string, unknown>;
 
     // Validate topicId if provided
     if (topicId !== undefined && !isValidUuid(topicId)) {
@@ -275,6 +276,44 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    // Validate providerOverride if provided
+    const validProviders = ["openai", "anthropic", "claude-subscription"] as const;
+    let resolvedProviderOverride: ProviderOverride | undefined;
+    if (providerOverride !== undefined) {
+      if (typeof providerOverride !== "object" || providerOverride === null) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "providerOverride must be an object",
+          },
+        });
+      }
+      const { provider: overrideProvider, model: overrideModel } = providerOverride as Record<string, unknown>;
+      if (overrideProvider !== undefined && !validProviders.includes(overrideProvider as typeof validProviders[number])) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `providerOverride.provider must be one of: ${validProviders.join(", ")}`,
+          },
+        });
+      }
+      if (overrideModel !== undefined && typeof overrideModel !== "string") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "providerOverride.model must be a string",
+          },
+        });
+      }
+      resolvedProviderOverride = {
+        provider: overrideProvider as ProviderOverride["provider"],
+        model: overrideModel as string | undefined,
+      };
+    }
+
     // Resolve target topic: use provided topicId or fall back to context default
     const targetTopicId = typeof topicId === "string" ? topicId : ctx.topicId;
 
@@ -309,6 +348,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         windowStart,
         windowEnd,
         mode: resolvedMode,
+        providerOverride: resolvedProviderOverride,
       },
       {
         jobId,
@@ -664,6 +704,162 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     return {
       ok: true,
       deleted: true,
+    };
+  });
+
+  // GET /admin/llm-settings - Get current LLM configuration
+  fastify.get("/admin/llm-settings", async (_request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const db = getDb();
+    const settings = await db.llmSettings.get();
+
+    return {
+      ok: true,
+      settings: {
+        provider: settings.provider,
+        anthropicModel: settings.anthropic_model,
+        openaiModel: settings.openai_model,
+        claudeSubscriptionEnabled: settings.claude_subscription_enabled,
+        claudeTriageThinking: settings.claude_triage_thinking,
+        claudeCallsPerHour: settings.claude_calls_per_hour,
+        updatedAt: settings.updated_at,
+      },
+    };
+  });
+
+  // PATCH /admin/llm-settings - Update LLM configuration
+  fastify.patch("/admin/llm-settings", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const body = request.body as unknown;
+    if (!body || typeof body !== "object") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_BODY",
+          message: "Request body must be a JSON object",
+        },
+      });
+    }
+
+    const {
+      provider,
+      anthropicModel,
+      openaiModel,
+      claudeSubscriptionEnabled,
+      claudeTriageThinking,
+      claudeCallsPerHour,
+    } = body as Record<string, unknown>;
+
+    // Validate provider if provided
+    const validProviders: LlmProvider[] = ["openai", "anthropic", "claude-subscription"];
+    if (provider !== undefined && !validProviders.includes(provider as LlmProvider)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `provider must be one of: ${validProviders.join(", ")}`,
+        },
+      });
+    }
+
+    // Validate model strings
+    if (anthropicModel !== undefined && typeof anthropicModel !== "string") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "anthropicModel must be a string",
+        },
+      });
+    }
+
+    if (openaiModel !== undefined && typeof openaiModel !== "string") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "openaiModel must be a string",
+        },
+      });
+    }
+
+    // Validate boolean fields
+    if (claudeSubscriptionEnabled !== undefined && typeof claudeSubscriptionEnabled !== "boolean") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "claudeSubscriptionEnabled must be a boolean",
+        },
+      });
+    }
+
+    if (claudeTriageThinking !== undefined && typeof claudeTriageThinking !== "boolean") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "claudeTriageThinking must be a boolean",
+        },
+      });
+    }
+
+    // Validate numeric field
+    if (claudeCallsPerHour !== undefined) {
+      if (typeof claudeCallsPerHour !== "number" || !Number.isInteger(claudeCallsPerHour) || claudeCallsPerHour < 1) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "claudeCallsPerHour must be a positive integer",
+          },
+        });
+      }
+    }
+
+    // Build update params
+    const updateParams: LlmSettingsUpdate = {};
+    if (provider !== undefined) updateParams.provider = provider as LlmProvider;
+    if (anthropicModel !== undefined) updateParams.anthropic_model = anthropicModel as string;
+    if (openaiModel !== undefined) updateParams.openai_model = openaiModel as string;
+    if (claudeSubscriptionEnabled !== undefined) updateParams.claude_subscription_enabled = claudeSubscriptionEnabled as boolean;
+    if (claudeTriageThinking !== undefined) updateParams.claude_triage_thinking = claudeTriageThinking as boolean;
+    if (claudeCallsPerHour !== undefined) updateParams.claude_calls_per_hour = claudeCallsPerHour as number;
+
+    const db = getDb();
+    const settings = await db.llmSettings.update(updateParams);
+
+    return {
+      ok: true,
+      settings: {
+        provider: settings.provider,
+        anthropicModel: settings.anthropic_model,
+        openaiModel: settings.openai_model,
+        claudeSubscriptionEnabled: settings.claude_subscription_enabled,
+        claudeTriageThinking: settings.claude_triage_thinking,
+        claudeCallsPerHour: settings.claude_calls_per_hour,
+        updatedAt: settings.updated_at,
+      },
     };
   });
 }

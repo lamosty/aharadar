@@ -11,10 +11,31 @@ import {
 } from "@/lib/api";
 import styles from "./ApiKeysSettings.module.css";
 
-const PROVIDER_LABELS: Record<string, string> = {
+// LLM provider labels
+const LLM_PROVIDER_LABELS: Record<string, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic",
   xai: "xAI (Grok)",
+};
+
+// Connector provider labels
+const CONNECTOR_PROVIDER_LABELS: Record<string, string> = {
+  quiver: "Quiver (Congress Trading)",
+  unusual_whales: "Unusual Whales (Options Flow)",
+  finnhub: "Finnhub (Market Sentiment)",
+};
+
+// Combined labels
+const PROVIDER_LABELS: Record<string, string> = {
+  ...LLM_PROVIDER_LABELS,
+  ...CONNECTOR_PROVIDER_LABELS,
+};
+
+// Provider descriptions for the dropdown
+const PROVIDER_DESCRIPTIONS: Record<string, string> = {
+  quiver: "Required for Congress Trading source",
+  unusual_whales: "Required for Options Flow source",
+  finnhub: "Required for Market Sentiment source",
 };
 
 export function ApiKeysSettings() {
@@ -87,16 +108,37 @@ export function ApiKeysSettings() {
     return <div className={styles.loading}>Loading...</div>;
   }
 
+  // Split status by category
+  const llmStatus = status.filter((s) => s.category === "llm");
+  const connectorStatus = status.filter((s) => s.category === "connector");
+
   return (
     <div className={styles.container}>
       {error && <div className={styles.error}>{error}</div>}
 
-      {/* Provider Status */}
+      {/* LLM Provider Status */}
       <div className={styles.statusSection}>
-        <h3 className={styles.subtitle}>Provider Status</h3>
-        <p className={styles.description}>Which API key will be used for each provider</p>
+        <h3 className={styles.subtitle}>LLM Providers</h3>
+        <p className={styles.description}>API keys for AI/LLM processing</p>
         <div className={styles.statusList}>
-          {status.map((s) => (
+          {llmStatus.map((s) => (
+            <div key={s.provider} className={styles.statusItem}>
+              <div className={styles.statusProvider}>
+                <span className={styles.providerName}>{PROVIDER_LABELS[s.provider] || s.provider}</span>
+                {s.keySuffix && <span className={styles.keySuffix}>...{s.keySuffix}</span>}
+              </div>
+              {getSourceBadge(s.activeSource)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Connector Provider Status */}
+      <div className={styles.statusSection}>
+        <h3 className={styles.subtitle}>Data Source APIs</h3>
+        <p className={styles.description}>API keys for financial data connectors</p>
+        <div className={styles.statusList}>
+          {connectorStatus.map((s) => (
             <div key={s.provider} className={styles.statusItem}>
               <div className={styles.statusProvider}>
                 <span className={styles.providerName}>{PROVIDER_LABELS[s.provider] || s.provider}</span>
@@ -119,14 +161,21 @@ export function ApiKeysSettings() {
             className={styles.select}
           >
             <option value="">Select provider</option>
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="xai">xAI (Grok)</option>
+            <optgroup label="LLM Providers">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="xai">xAI (Grok)</option>
+            </optgroup>
+            <optgroup label="Data Sources">
+              <option value="quiver">Quiver (Congress Trading)</option>
+              <option value="unusual_whales">Unusual Whales (Options Flow)</option>
+              <option value="finnhub">Finnhub (Market Sentiment)</option>
+            </optgroup>
           </select>
 
           <input
             type="password"
-            placeholder="sk-... or similar"
+            placeholder="API key"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             className={styles.input}
@@ -140,6 +189,9 @@ export function ApiKeysSettings() {
             {adding ? "Adding..." : "Add Key"}
           </button>
         </div>
+        {newProvider && PROVIDER_DESCRIPTIONS[newProvider] && (
+          <p className={styles.providerHint}>{PROVIDER_DESCRIPTIONS[newProvider]}</p>
+        )}
       </div>
 
       {/* Existing Keys */}
