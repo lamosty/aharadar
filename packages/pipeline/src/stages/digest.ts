@@ -1,6 +1,6 @@
 import type { Db } from "@aharadar/db";
 import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharadar/llm";
-import { canonicalizeUrl, sha256Hex, type BudgetTier } from "@aharadar/shared";
+import { canonicalizeUrl, sha256Hex, type BudgetTier, type SourceType } from "@aharadar/shared";
 
 import type { IngestSourceFilter } from "./ingest";
 import {
@@ -8,6 +8,7 @@ import {
   parseSourceTypeWeights,
   computeEffectiveSourceWeight,
   type SignalCorroborationFeature,
+  type UserPreferences,
 } from "./rank";
 import { enrichTopCandidates } from "./llm_enrich";
 import { getNoveltyLookbackDays, buildNoveltyFeature, type NoveltyFeature } from "../scoring/novelty";
@@ -770,7 +771,18 @@ export async function persistDigestFromContentItems(params: {
   // Parse source type weights from env for ranking
   const sourceTypeWeights = parseSourceTypeWeights();
 
+  // Compute user preferences from feedback history (source/author weights)
+  const feedbackPrefs = await params.db.feedbackEvents.computeUserPreferences({
+    userId: params.userId,
+    maxFeedbackAgeDays: 90, // Use last 90 days of feedback
+  });
+  const userPreferences: UserPreferences = {
+    sourceTypeWeights: feedbackPrefs.sourceTypeWeights,
+    authorWeights: feedbackPrefs.authorWeights,
+  };
+
   const ranked = rankCandidates({
+    userPreferences,
     candidates: scored.map((c) => {
       // Compute candidate primary URL for corroboration matching
       const primaryUrl = getPrimaryUrl({ canonicalUrl: c.canonicalUrl, metadata: c.metadata });
@@ -800,6 +812,8 @@ export async function persistDigestFromContentItems(params: {
         signalCorroboration,
         novelty: noveltyMap.get(c.candidateId) ?? null,
         sourceWeight,
+        sourceType: c.sourceType as SourceType,
+        author: c.author,
       };
     }),
   });
