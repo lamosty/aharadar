@@ -3,20 +3,9 @@ import type { FeedbackAction } from "@aharadar/shared";
 import { createUserPreferencesRepo } from "@aharadar/db";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
-/**
- * Apply exponential decay to a score based on item age.
- * @param score - Original score
- * @param itemAgeHours - Hours since item was published
- * @param decayHours - Half-life in hours (score halves after this time)
- * @returns Decayed score
- */
-function applyDecay(score: number, itemAgeHours: number, decayHours: number): number {
-  if (itemAgeHours <= 0 || decayHours <= 0) return score;
-  // Exponential decay: score * e^(-age/decay)
-  // This gives ~37% of original after decayHours
-  const decayFactor = Math.exp(-itemAgeHours / decayHours);
-  return score * decayFactor;
-}
+// Note: Decay is now computed in SQL for correct pagination ordering
+// Formula: score * EXP(-age_hours / decay_hours)
+// This gives ~37% of original score after decayHours
 
 interface ContentItemRow {
   id: string;
@@ -35,6 +24,7 @@ interface ContentItemRow {
 interface UnifiedItemRow {
   content_item_id: string;
   score: number;
+  decayed_score: number;
   digest_id: string;
   digest_created_at: string;
   triage_json: Record<string, unknown> | null;
@@ -217,6 +207,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     const filterClause = filterConditions.length > 0 ? filterConditions.join(" AND ") : "true";
 
     // Determine ORDER BY
+    // For score_desc, we order by decay-adjusted score computed in SQL
     let orderBy: string;
     switch (sort) {
       case "date_desc":
@@ -226,12 +217,17 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         orderBy = "ci.published_at ASC NULLS LAST";
         break;
       default:
-        orderBy = "li.score DESC";
+        // Order by decayed score (computed in SELECT)
+        orderBy = "decayed_score DESC";
     }
 
     // Query: Get latest score for each content item
     // Uses DISTINCT ON to get the most recent digest entry for each item
     // Supports both individual items (di.content_item_id) and cluster representatives (c.representative_content_item_id)
+    // Decay is computed in SQL: score * EXP(-age_hours / decay_hours)
+    const decayHoursParamIdx = filterParamIdx;
+    filterParamIdx++;
+
     const itemsQuery = `
       WITH latest_items AS (
         SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
@@ -254,6 +250,13 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       SELECT
         li.content_item_id,
         li.score,
+        -- Compute decay-adjusted score in SQL for correct ordering
+        -- Formula: score * EXP(-age_hours / decay_hours)
+        -- Age uses published_at if available, otherwise digest_created_at
+        (li.score * EXP(
+          -GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(ci.published_at, li.digest_created_at))) / 3600.0)
+          / GREATEST(1, $${decayHoursParamIdx}::float)
+        ))::real as decayed_score,
         li.digest_id::text,
         li.digest_created_at::text,
         li.triage_json,
@@ -282,7 +285,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       OFFSET $${filterParamIdx + 1}
     `;
 
-    const itemsParams = [...filterParams, limit, offset];
+    const itemsParams = [...filterParams, decayHours, limit, offset];
 
     // Count query for pagination (same logic as items query)
     const countQuery = `
@@ -310,25 +313,17 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     ]);
 
     const total = countResult.rows[0]?.total ?? 0;
-    const now = new Date();
 
-    // Map items with decay applied and isNew flag
+    // Map items - decay is already computed in SQL, no re-sorting needed
     const items = itemsResult.rows.map((row, idx) => {
-      // Calculate item age in hours (use published_at or digest_created_at)
-      const itemDate = row.published_at ? new Date(row.published_at) : new Date(row.digest_created_at);
-      const itemAgeHours = (now.getTime() - itemDate.getTime()) / (1000 * 60 * 60);
-
-      // Apply decay to score
-      const rawScore = row.score;
-      const decayedScore = applyDecay(rawScore, itemAgeHours, decayHours);
-
       // Check if item is "new" (published after last checked)
+      const itemDate = row.published_at ? new Date(row.published_at) : new Date(row.digest_created_at);
       const isNew = lastCheckedAt ? itemDate > lastCheckedAt : false;
 
       return {
         id: row.content_item_id,
-        score: decayedScore,
-        rawScore, // Original score before decay
+        score: row.decayed_score, // Decay computed in SQL
+        rawScore: row.score, // Original score before decay
         rank: offset + idx + 1,
         digestId: row.digest_id,
         digestCreatedAt: row.digest_created_at,
@@ -347,15 +342,6 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         feedback: row.feedback_action,
       };
     });
-
-    // Re-sort by decayed score if sorting by score
-    if (sort === "score_desc") {
-      items.sort((a, b) => b.score - a.score);
-      // Update ranks after re-sort
-      items.forEach((item, idx) => {
-        item.rank = offset + idx + 1;
-      });
-    }
 
     return {
       ok: true,
