@@ -60,3 +60,15 @@
   color: var(--color-text-muted);
   margin: 0;
 }
+
+.widgetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-6);
+}
+
+@media (max-width: 640px) {
+  .widgetGrid {
+    grid-template-columns: 1fr;
+  }
+}

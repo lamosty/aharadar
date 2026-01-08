@@ -77,7 +77,9 @@
     "welcome": "Welcome to your radar",
     "recentDigests": "Recent Digests",
     "noDigests": "No digests yet. Configure your sources to get started.",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "topics": "Topics",
+    "topItems": "Top Items"
   },
   "settings": {
     "title": "Settings",
