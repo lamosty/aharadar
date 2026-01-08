@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
 import { QueryProvider } from "@/components/QueryProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import { TopicProvider } from "@/components/TopicProvider";
 import { t } from "@/lib/i18n";
 import { themeInitScript } from "@/lib/theme";
 import "@/styles/globals.css";
@@ -60,9 +61,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <QueryProvider>
           <AuthProvider>
-            <ThemeProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </ThemeProvider>
+            <TopicProvider>
+              <ThemeProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </ThemeProvider>
+            </TopicProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

@@ -375,5 +375,11 @@
     "minutesAgo": "{count} min ago",
     "hoursAgo": "{count}h ago",
     "daysAgo": "{count}d ago"
+  },
+  "feed": {
+    "topic": "Topic",
+    "title": "Feed",
+    "empty": "No items yet",
+    "emptyDescription": "Items will appear here after running the pipeline."
   }
 }
