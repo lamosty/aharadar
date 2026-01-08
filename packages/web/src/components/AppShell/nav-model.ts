@@ -3,6 +3,8 @@
  * This separation allows easy modification and future nav variants (top/bottom).
  */
 
+import type { UserRole } from "@/components/AuthProvider";
+
 export interface NavItem {
   id: string;
   href: string;
@@ -10,6 +12,8 @@ export interface NavItem {
   icon: "home" | "feed" | "digest" | "sources" | "topics" | "settings" | "admin";
   /** Whether this item should appear in mobile bottom nav */
   mobileNav?: boolean;
+  /** Whether this item requires admin role to see */
+  adminOnly?: boolean;
   /** Child items for nested navigation (e.g., admin sub-pages) */
   children?: NavItem[];
 }
@@ -43,6 +47,7 @@ export const mainNavItems: NavItem[] = [
     labelKey: "nav.digests",
     icon: "digest",
     mobileNav: false,
+    adminOnly: true,
   },
   {
     id: "sources",
@@ -64,6 +69,7 @@ export const mainNavItems: NavItem[] = [
     labelKey: "nav.admin",
     icon: "admin",
     mobileNav: false,
+    adminOnly: true,
     children: [
       {
         id: "admin-run",
@@ -109,4 +115,20 @@ export const navSections: NavSection[] = [
  */
 export function getMobileNavItems(): NavItem[] {
   return mainNavItems.filter((item) => item.mobileNav);
+}
+
+/**
+ * Get navigation items filtered by user role.
+ * Admin users see all items, regular users only see non-admin items.
+ */
+export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {
+  if (role === "admin") return mainNavItems;
+  return mainNavItems.filter((item) => !item.adminOnly);
+}
+
+/**
+ * Get mobile nav items filtered by user role.
+ */
+export function getMobileNavItemsForRole(role: UserRole | undefined): NavItem[] {
+  return getNavItemsForRole(role).filter((item) => item.mobileNav);
 }

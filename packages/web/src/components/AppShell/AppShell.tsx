@@ -4,7 +4,8 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
-import { mainNavItems, getMobileNavItems, type NavItem } from "./nav-model";
+import { useAuth } from "@/components/AuthProvider";
+import { getNavItemsForRole, getMobileNavItemsForRole, type NavItem } from "./nav-model";
 import styles from "./AppShell.module.css";
 
 interface AppShellProps {
@@ -19,7 +20,11 @@ interface AppShellProps {
 export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const mobileNavItems = getMobileNavItems();
+  const { user } = useAuth();
+
+  // Filter nav items based on user role
+  const navItems = getNavItemsForRole(user?.role);
+  const mobileNavItems = getMobileNavItemsForRole(user?.role);
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar = () => setSidebarOpen(false);
@@ -59,7 +64,7 @@ export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
 
         <nav className={styles.nav}>
           <ul className={styles.navList}>
-            {mainNavItems.map((item) => (
+            {navItems.map((item) => (
               <li key={item.id}>
                 <NavLink item={item} isActive={pathname === item.href} onClick={closeSidebar} />
               </li>

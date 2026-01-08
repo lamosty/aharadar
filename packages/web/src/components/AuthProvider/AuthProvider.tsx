@@ -3,9 +3,12 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { getDevSettings } from "@/lib/api";
 
+export type UserRole = "admin" | "user";
+
 interface User {
   id: string;
   email: string | null;
+  role: UserRole;
   createdAt: string;
 }
 
@@ -92,4 +95,9 @@ export function useUser() {
 export function useIsAuthenticated() {
   const { isAuthenticated, isLoading } = useAuth();
   return { isAuthenticated, isLoading };
+}
+
+export function useIsAdmin() {
+  const { user } = useAuth();
+  return user?.role === "admin";
 }
