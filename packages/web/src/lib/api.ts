@@ -140,6 +140,7 @@ export interface FeedItem {
     title: string | null;
     bodyText: string | null;
     url: string | null;
+    externalId?: string | null;
     author: string | null;
     publishedAt: string | null;
     sourceType: string;

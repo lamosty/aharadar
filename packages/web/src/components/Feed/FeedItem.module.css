@@ -88,6 +88,26 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+.commentsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 25%, transparent);
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.commentsLink:hover {
+  background: color-mix(in srgb, var(--color-warning) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+}
+
 .meta {
   display: flex;
   align-items: center;

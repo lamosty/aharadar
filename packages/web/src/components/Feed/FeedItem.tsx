@@ -86,6 +86,18 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
         {item.item.sourceType === "reddit" && item.item.metadata?.subreddit && (
           <span className={styles.subreddit}>r/{item.item.metadata.subreddit}</span>
         )}
+        {item.item.sourceType === "hn" && item.item.externalId && (
+          <a
+            href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.commentsLink}
+            title={t("feed.hnComments")}
+          >
+            <CommentIcon />
+            <span>{t("feed.hnComments")}</span>
+          </a>
+        )}
         <span className={styles.meta}>
           {item.item.author && (
             <span className={styles.author}>
@@ -144,5 +156,23 @@ export function FeedItemSkeleton() {
         <span className={`${styles.skeleton} ${styles.skeletonActions}`} />
       </div>
     </article>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
   );
 }

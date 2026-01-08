@@ -33,6 +33,7 @@ interface UnifiedItemRow {
   title: string | null;
   body_text: string | null;
   canonical_url: string | null;
+  external_id: string | null;
   author: string | null;
   published_at: string | null;
   source_type: string;
@@ -265,6 +266,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ci.title,
         ci.body_text,
         ci.canonical_url,
+        ci.external_id,
         ci.author,
         ci.published_at::text,
         ci.source_type,
@@ -332,6 +334,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
           title: row.title,
           bodyText: row.body_text,
           url: row.canonical_url,
+          externalId: row.external_id,
           author: row.author,
           publishedAt: row.published_at,
           sourceType: row.source_type,

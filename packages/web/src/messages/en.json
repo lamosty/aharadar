@@ -402,6 +402,7 @@
     "subtitle": "All your ranked items in one place",
     "empty": "No items yet",
     "emptyDescription": "Items will appear here after running the pipeline.",
+    "hnComments": "Comments",
     "onboarding": {
       "subtitle": "Get started with personalized content",
       "title": "Welcome to your feed",
