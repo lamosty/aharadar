@@ -53,3 +53,17 @@ Task files (in recommended order):
 41. `task-041-api-admin-budgets.md`
 42. `task-042-web-admin-ui.md`
 43. `task-043-web-e2e-playwright.md`
+
+## SaaS Infrastructure Tasks
+
+44. `task-078-user-api-keys.md` - Encrypted storage for user-provided API keys
+45. `task-079-dollar-cost-tracking.md` - Real USD cost tracking for LLM calls
+46. `task-080-usage-ui.md` - Settings UI for API keys + usage dashboard
+
+## New Connector & Documentation Tasks
+
+47. `task-083-youtube-connector.md` - Complete YouTube connector with transcript preview
+48. `task-084-rss-connector-types.md` - Add RSS-based connector types (podcast, substack, etc.)
+49. `task-085-telegram-connector.md` - Add Telegram public channel connector
+50. `task-086-docs-refresh.md` - Update outdated docs, create new required docs
+51. `task-087-financial-data-research.md` - RESEARCH: Financial/trading data sources
