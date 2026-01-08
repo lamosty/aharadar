@@ -15,6 +15,7 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "node dist/main.js",
+    "start": "node dist/main.js",
     "test": "echo \"worker: no tests yet\"",
     "lint": "echo \"worker: no lint yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"

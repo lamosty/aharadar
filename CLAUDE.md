@@ -24,6 +24,7 @@ pnpm build            # Build all packages
 pnpm dev              # Build + run CLI
 pnpm dev:api          # Build + run API server (reads .env)
 pnpm dev:web          # Run Next.js dev server
+pnpm dev:worker       # Build + run scheduler worker
 pnpm typecheck        # TypeScript strict check
 pnpm format           # Prettier
 pnpm migrate          # Run DB migrations
@@ -42,6 +43,29 @@ pnpm reset            # Reset DB
   - Surface tradeoffs; let human decide
   - No backward-compat for old DB rows unless explicitly requested
   - Only add fallbacks when required by spec/ADR
+
+## Experimental philosophy
+
+This app is highly experimental. Value of features can't be known until tested in real usage.
+
+**Build → Ship off → Test locally → Measure → Decide**
+
+- **New features**: ship disabled/off by default via config flags
+- **Costly features** (extra LLM calls, API usage): must be opt-in
+- **Local testing first**: use Claude Code subscription ($100/month) for local experimentation before enabling for API usage
+- **No premature optimization**: build the simple version, see if it works, then iterate
+
+Example config pattern for experimental features:
+```typescript
+{
+  "experimental": {
+    "feature_name": false,  // Off by default
+    "feature_model": "haiku"  // Cheap model when enabled
+  }
+}
+```
+
+Don't over-engineer features before proving value. Ship toggleable, test locally, measure real-world impact.
 
 ## Coding conventions
 

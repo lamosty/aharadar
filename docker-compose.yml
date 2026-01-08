@@ -57,6 +57,22 @@ services:
     depends_on:
       - prometheus
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://aharadar:aharadar_dev_password@postgres:5432/aharadar
+      - REDIS_URL=redis://redis:6379
+      - SCHEDULER_TICK_MINUTES=5
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
