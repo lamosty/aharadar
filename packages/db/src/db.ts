@@ -15,6 +15,7 @@ import { createTopicsRepo } from "./repos/topics";
 import { createUsersRepo } from "./repos/users";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createSessionsRepo } from "./repos/sessions";
+import { createUserApiKeysRepo } from "./repos/user_api_keys";
 
 export interface Queryable {
   query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<QueryResult<T>>;
@@ -35,6 +36,7 @@ export type DbContext = Queryable & {
   providerCalls: ReturnType<typeof createProviderCallsRepo>;
   authTokens: ReturnType<typeof createAuthTokensRepo>;
   sessions: ReturnType<typeof createSessionsRepo>;
+  userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
 };
 
 export interface Db extends DbContext {
@@ -59,6 +61,7 @@ function createContext(db: Queryable): DbContext {
     providerCalls: createProviderCallsRepo(db),
     authTokens: createAuthTokensRepo(db),
     sessions: createSessionsRepo(db),
+    userApiKeys: createUserApiKeysRepo(db),
   };
 }
 
