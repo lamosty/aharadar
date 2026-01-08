@@ -40,7 +40,14 @@ describe("persistDigestFromContentItems integration", () => {
 
     // Apply migrations in order
     const migrationsDir = join(__dirname, "../../../db/migrations");
-    const migrationFiles = ["0001_init.sql", "0002_topics.sql", "0003_topic_preference_profiles.sql"];
+    const migrationFiles = [
+      "0001_init.sql",
+      "0002_topics.sql",
+      "0003_topic_preference_profiles.sql",
+      "0004_user_preferences.sql",
+      "0005_auth_tables.sql",
+      "0006_topics_viewing_profile.sql",
+    ];
 
     for (const file of migrationFiles) {
       const sql = readFileSync(join(migrationsDir, file), "utf-8");

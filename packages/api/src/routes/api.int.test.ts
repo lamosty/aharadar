@@ -1,0 +1,423 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
+import Fastify, { type FastifyInstance } from "fastify";
+import { createDb, type Db } from "@aharadar/db";
+
+/**
+ * Integration tests for API routes.
+ *
+ * Uses Testcontainers to spin up a Postgres instance with pgvector,
+ * applies migrations, seeds minimal data, and verifies API behavior.
+ *
+ * Note: These tests set DATABASE_URL before importing routes to inject
+ * the test database connection.
+ *
+ * Run with: pnpm test:integration
+ */
+describe("API Routes Integration Tests", () => {
+  let container: StartedPostgreSqlContainer | null = null;
+  let db: Db | null = null;
+  let app: FastifyInstance | null = null;
+  let userId: string;
+  let topicId: string;
+  let contentItemId: string;
+  let sourceId: string;
+
+  beforeAll(async () => {
+    // Start Postgres container with pgvector
+    container = await new PostgreSqlContainer("pgvector/pgvector:pg16")
+      .withDatabase("aharadar_test")
+      .withUsername("test")
+      .withPassword("test")
+      .start();
+
+    const connectionString = container.getConnectionUri();
+
+    // Set DATABASE_URL before importing route modules
+    process.env.DATABASE_URL = connectionString;
+
+    db = createDb(connectionString);
+
+    // Apply migrations in order
+    const migrationsDir = join(__dirname, "../../../db/migrations");
+    const migrationFiles = [
+      "0001_init.sql",
+      "0002_topics.sql",
+      "0003_topic_preference_profiles.sql",
+      "0004_user_preferences.sql",
+      "0005_auth_tables.sql",
+      "0006_topics_viewing_profile.sql",
+    ];
+
+    for (const file of migrationFiles) {
+      const sql = readFileSync(join(migrationsDir, file), "utf-8");
+      await db.query(sql, []);
+    }
+
+    // Seed test data
+    await seedTestData();
+
+    // Dynamically import routes after DATABASE_URL is set
+    const { topicsRoutes } = await import("./topics.js");
+    const { feedbackRoutes } = await import("./feedback.js");
+    const { itemsRoutes } = await import("./items.js");
+
+    // Build Fastify app with routes
+    app = Fastify({ logger: false });
+    await app.register(topicsRoutes, { prefix: "/api" });
+    await app.register(feedbackRoutes, { prefix: "/api" });
+    await app.register(itemsRoutes, { prefix: "/api" });
+    await app.ready();
+  }, 120000); // 2 minute timeout for container startup
+
+  afterAll(async () => {
+    if (app) {
+      await app.close();
+    }
+    if (db) {
+      await db.close();
+    }
+    if (container) {
+      await container.stop();
+    }
+  });
+
+  async function seedTestData() {
+    if (!db) throw new Error("DB not initialized");
+
+    // Create user
+    const userResult = await db.query<{ id: string }>(
+      `INSERT INTO users (email) VALUES ('test@example.com') RETURNING id`,
+      []
+    );
+    userId = userResult.rows[0].id;
+
+    // Create default topic
+    const topicResult = await db.query<{ id: string }>(
+      `INSERT INTO topics (user_id, name, description)
+       VALUES ($1, 'default', 'Default test topic') RETURNING id`,
+      [userId]
+    );
+    topicId = topicResult.rows[0].id;
+
+    // Create source
+    const sourceResult = await db.query<{ id: string }>(
+      `INSERT INTO sources (user_id, topic_id, name, type, enabled, cadence_minutes, weight, config_json)
+       VALUES ($1, $2, 'Test Source', 'hn', true, 60, 1.0, '{}') RETURNING id`,
+      [userId, topicId]
+    );
+    sourceId = sourceResult.rows[0].id;
+
+    // Create content item
+    const contentResult = await db.query<{ id: string }>(
+      `INSERT INTO content_items (user_id, source_type, title, body_text, canonical_url, author, published_at, metadata_json)
+       VALUES ($1, 'hn', 'Test HN Post', 'Test content body', 'https://example.com/test', 'testuser', NOW(), '{}')
+       RETURNING id`,
+      [userId]
+    );
+    contentItemId = contentResult.rows[0].id;
+
+    // Link content item to source
+    await db.query(
+      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+      [contentItemId, sourceId]
+    );
+
+    // Create embedding for the content item (needed for preference updates)
+    const embeddingVector = Array(1536).fill(0.01); // Fake embedding
+    await db.query(
+      `INSERT INTO embeddings (content_item_id, vector) VALUES ($1, $2::vector)`,
+      [contentItemId, `[${embeddingVector.join(",")}]`]
+    );
+
+    // Create user preferences
+    await db.query(
+      `INSERT INTO user_preferences (user_id, decay_hours) VALUES ($1, 24) ON CONFLICT DO NOTHING`,
+      [userId]
+    );
+
+    // Create a digest with the content item
+    const digestResult = await db.query<{ id: string }>(
+      `INSERT INTO digests (user_id, topic_id, window_start, window_end, mode)
+       VALUES ($1, $2, NOW() - INTERVAL '1 day', NOW(), 'normal') RETURNING id`,
+      [userId, topicId]
+    );
+    const digestId = digestResult.rows[0].id;
+
+    // Add content item to digest
+    await db.query(
+      `INSERT INTO digest_items (digest_id, content_item_id, score, rank, triage_json)
+       VALUES ($1, $2, 0.85, 1, '{"aha_score": 85, "reason": "Test item"}')`,
+      [digestId, contentItemId]
+    );
+  }
+
+  describe("Topics CRUD", () => {
+    it("GET /api/topics - should list topics", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: "/api/topics",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.topics).toBeInstanceOf(Array);
+      expect(body.topics.length).toBeGreaterThanOrEqual(1);
+      expect(body.topics[0].name).toBe("default");
+      expect(body.profileOptions).toBeInstanceOf(Array);
+    });
+
+    it("POST /api/topics - should create a new topic", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/topics",
+        payload: {
+          name: "New Topic",
+          description: "A test topic",
+          viewingProfile: "daily",
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.topic.name).toBe("New Topic");
+      expect(body.topic.description).toBe("A test topic");
+      expect(body.topic.viewingProfile).toBe("daily");
+    });
+
+    it("POST /api/topics - should reject duplicate names", async () => {
+      // First creation
+      await app!.inject({
+        method: "POST",
+        url: "/api/topics",
+        payload: { name: "Duplicate Test" },
+      });
+
+      // Second creation with same name
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/topics",
+        payload: { name: "Duplicate Test" },
+      });
+
+      expect(response.statusCode).toBe(409);
+      const body = response.json();
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("DUPLICATE");
+    });
+
+    it("GET /api/topics/:id - should get a specific topic", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: `/api/topics/${topicId}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.topic.id).toBe(topicId);
+      expect(body.topic.name).toBe("default");
+    });
+
+    it("PATCH /api/topics/:id - should update topic name", async () => {
+      // Create a topic to update
+      const createResponse = await app!.inject({
+        method: "POST",
+        url: "/api/topics",
+        payload: { name: "To Be Updated" },
+      });
+      const newTopicId = createResponse.json().topic.id;
+
+      // Update it
+      const response = await app!.inject({
+        method: "PATCH",
+        url: `/api/topics/${newTopicId}`,
+        payload: {
+          name: "Updated Name",
+          description: "Updated description",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.topic.name).toBe("Updated Name");
+      expect(body.topic.description).toBe("Updated description");
+    });
+
+    it("DELETE /api/topics/:id - should delete a topic", async () => {
+      // Create a topic to delete
+      const createResponse = await app!.inject({
+        method: "POST",
+        url: "/api/topics",
+        payload: { name: "To Be Deleted" },
+      });
+      const newTopicId = createResponse.json().topic.id;
+
+      // Delete it
+      const response = await app!.inject({
+        method: "DELETE",
+        url: `/api/topics/${newTopicId}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+
+      // Verify it's gone
+      const getResponse = await app!.inject({
+        method: "GET",
+        url: `/api/topics/${newTopicId}`,
+      });
+      expect(getResponse.statusCode).toBe(404);
+    });
+
+    it("DELETE /api/topics/:id - should not delete default topic", async () => {
+      const response = await app!.inject({
+        method: "DELETE",
+        url: `/api/topics/${topicId}`,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json();
+      expect(body.error.code).toBe("INVALID_OPERATION");
+    });
+  });
+
+  describe("Feedback", () => {
+    it("POST /api/feedback - should record like feedback", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/feedback",
+        payload: {
+          contentItemId,
+          action: "like",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+
+      // Verify feedback was stored
+      const feedbackResult = await db!.query(
+        `SELECT action FROM feedback_events WHERE content_item_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [contentItemId]
+      );
+      expect(feedbackResult.rows[0].action).toBe("like");
+    });
+
+    it("POST /api/feedback - should record dislike feedback", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/feedback",
+        payload: {
+          contentItemId,
+          action: "dislike",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().ok).toBe(true);
+    });
+
+    it("POST /api/feedback - should record save feedback", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/feedback",
+        payload: {
+          contentItemId,
+          action: "save",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().ok).toBe(true);
+    });
+
+    it("POST /api/feedback - should reject invalid action", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/feedback",
+        payload: {
+          contentItemId,
+          action: "invalid",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json();
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("INVALID_PARAM");
+    });
+
+    it("POST /api/feedback - should reject invalid UUID", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/feedback",
+        payload: {
+          contentItemId: "not-a-uuid",
+          action: "like",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json();
+      expect(body.error.code).toBe("INVALID_PARAM");
+    });
+  });
+
+  describe("Items", () => {
+    it("GET /api/items - should list items", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: `/api/items?topicId=${topicId}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.items).toBeInstanceOf(Array);
+      expect(body.items.length).toBeGreaterThanOrEqual(1);
+      expect(body.pagination).toBeDefined();
+      expect(body.pagination.total).toBeGreaterThanOrEqual(1);
+    });
+
+    it("GET /api/items - should respect limit parameter", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: `/api/items?topicId=${topicId}&limit=1`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.items.length).toBeLessThanOrEqual(1);
+      expect(body.pagination.limit).toBe(1);
+    });
+
+    it("GET /api/items - should include triage data", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: `/api/items?topicId=${topicId}`,
+      });
+
+      const body = response.json();
+      const itemWithTriage = body.items.find((i: { triageJson: unknown }) => i.triageJson !== null);
+      expect(itemWithTriage).toBeDefined();
+      expect(itemWithTriage.triageJson.aha_score).toBe(85);
+    });
+
+    it("GET /api/items - should return 404 for non-existent topic", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: "/api/items?topicId=00000000-0000-0000-0000-000000000000",
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
+});
