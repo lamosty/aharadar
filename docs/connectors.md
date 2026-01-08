@@ -312,6 +312,81 @@ SEC_EDGAR_USER_AGENT=AhaRadar/1.0 (contact@example.com)
 
 Per SEC guidelines, all requests must include a valid User-Agent header with contact information.
 
+### Congress Trading (`type = "congress_trading"`)
+
+**Purpose**
+Ingest stock trades disclosed by U.S. Congress members using the Quiver Quantitative API.
+
+**config_json**
+
+```json
+{
+  "politicians": ["Nancy Pelosi", "Dan Crenshaw"],
+  "chambers": ["senate", "house"],
+  "min_amount": 15000,
+  "transaction_types": ["purchase", "sale"],
+  "tickers": ["AAPL", "NVDA", "GOOGL"],
+  "max_trades_per_fetch": 50
+}
+```
+
+**Fields:**
+- `politicians` (optional): Filter by specific politicians (case-insensitive partial match)
+- `chambers` (optional, default: both): `"senate"` and/or `"house"`
+- `min_amount` (default: 0): Minimum transaction amount (lower bound of range)
+- `transaction_types` (optional, default: both): `"purchase"` and/or `"sale"`
+- `tickers` (optional): Filter by specific stock tickers
+- `max_trades_per_fetch` (default: 50, clamped 1-100): Max trades per fetch
+
+**cursor_json**
+
+```json
+{
+  "last_fetch_at": "2025-01-08T08:00:00Z",
+  "last_report_date": "2025-01-07",
+  "seen_trade_ids": ["ct_P000197_NVDA_2025-01-02_purchase"]
+}
+```
+
+**Fetch**
+
+- Calls Quiver Quantitative `/beta/live/congresstrading` endpoint
+- Requires `QUIVER_API_KEY` environment variable
+- Applies local filters (politician, chamber, amount, tickers, transaction type)
+- Tracks seen trades by composite ID to avoid duplicates
+- Gracefully skips if no API key configured
+
+**Normalize**
+
+- `external_id`: `ct_{bioguide_id}_{ticker}_{date}_{transaction_type}` (composite key)
+- `canonical_url`: Disclosure link or Quiver page
+- `title`: `[{Chamber}] {Politician} ({Party}) {BUY/SELL} {Ticker}`
+- `body_text`: Full trade details including asset description, amount range, dates
+- `published_at`: Report date (filing date, when information became public)
+- `author`: Politician name
+- `metadata`:
+  - `politician`: Full name
+  - `bioguide_id`: Official BioGuide ID
+  - `party`: `"D"` | `"R"` | `"I"`
+  - `chamber`: `"house"` | `"senate"`
+  - `district`: District or state
+  - `ticker`: Stock ticker
+  - `asset_description`: Full asset description
+  - `transaction_type`: `"purchase"` | `"sale"` | `"exchange"`
+  - `amount_range`: Original range string (e.g., "$15,001 - $50,000")
+  - `amount_min`, `amount_max`: Parsed numeric bounds
+  - `transaction_date`: Date of transaction
+  - `report_date`: Date of disclosure filing
+  - `days_to_disclose`: Days between transaction and report
+
+**Environment Variable**
+
+```bash
+QUIVER_API_KEY=your_quiver_api_key_here
+```
+
+Sign up for free at https://www.quiverquant.com/ to get an API key. Free tier allows ~100 requests/day.
+
 ### RSS (`type = "rss"`)
 
 **Purpose**

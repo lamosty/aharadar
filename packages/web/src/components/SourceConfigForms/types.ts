@@ -55,6 +55,25 @@ export interface SignalConfig {
   excludeRetweets?: boolean;
 }
 
+// SEC EDGAR Source Config
+export interface SecEdgarConfig {
+  filing_types: ("form4" | "13f")[];
+  tickers?: string[];
+  ciks?: string[];
+  min_transaction_value?: number;
+  max_filings_per_fetch?: number;
+}
+
+// Congress Trading Source Config
+export interface CongressTradingConfig {
+  politicians?: string[];
+  chambers?: ("senate" | "house")[];
+  min_amount?: number;
+  transaction_types?: ("purchase" | "sale")[];
+  tickers?: string[];
+  max_trades_per_fetch?: number;
+}
+
 // Union type for all configs
 export type SourceTypeConfig =
   | RssConfig
@@ -62,7 +81,9 @@ export type SourceTypeConfig =
   | HnConfig
   | YoutubeConfig
   | XPostsConfig
-  | SignalConfig;
+  | SignalConfig
+  | SecEdgarConfig
+  | CongressTradingConfig;
 
 // Form props interface
 export interface SourceConfigFormProps<T> {

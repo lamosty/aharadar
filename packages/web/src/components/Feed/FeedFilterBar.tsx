@@ -18,6 +18,8 @@ const SOURCE_LABELS: Record<SupportedSourceType, string> = {
   youtube: "YouTube",
   x_posts: "X",
   signal: "Signal",
+  sec_edgar: "SEC",
+  congress_trading: "Congress",
 };
 
 const SORT_OPTIONS = [

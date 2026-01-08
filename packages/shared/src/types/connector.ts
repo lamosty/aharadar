@@ -1,6 +1,6 @@
 import type { ProviderCallDraft } from "./provider_calls";
 
-export type SourceType = "reddit" | "hn" | "rss" | "youtube" | "signal" | "sec_edgar" | string;
+export type SourceType = "reddit" | "hn" | "rss" | "youtube" | "signal" | "sec_edgar" | "congress_trading" | string;
 
 export type Cursor = Record<string, unknown>;
 

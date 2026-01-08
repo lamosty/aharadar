@@ -193,6 +193,8 @@ export default function AdminSourcesPage() {
       youtube: "YouTube",
       x_posts: "X (Twitter) Posts",
       signal: "Signal Search",
+      sec_edgar: "SEC EDGAR Filings",
+      congress_trading: "Congress Trading",
     };
     return names[type] ?? type;
   };

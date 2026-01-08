@@ -8,6 +8,8 @@ import type {
   YoutubeConfig,
   XPostsConfig,
   SignalConfig,
+  SecEdgarConfig,
+  CongressTradingConfig,
   SourceTypeConfig,
 } from "./types";
 import { RssConfigForm } from "./RssConfigForm";
@@ -16,6 +18,8 @@ import { HnConfigForm } from "./HnConfigForm";
 import { YoutubeConfigForm } from "./YoutubeConfigForm";
 import { XPostsConfigForm } from "./XPostsConfigForm";
 import { SignalConfigForm } from "./SignalConfigForm";
+import { SecEdgarConfigForm } from "./SecEdgarConfigForm";
+import { CongressTradingConfigForm } from "./CongressTradingConfigForm";
 
 interface SourceConfigFormProps {
   sourceType: SupportedSourceType;
@@ -49,6 +53,20 @@ export function SourceConfigForm({ sourceType, config, onChange, errors }: Sourc
 
     case "signal":
       return <SignalConfigForm value={config as Partial<SignalConfig>} onChange={onChange} errors={errors} />;
+
+    case "sec_edgar":
+      return (
+        <SecEdgarConfigForm value={config as Partial<SecEdgarConfig>} onChange={onChange} errors={errors} />
+      );
+
+    case "congress_trading":
+      return (
+        <CongressTradingConfigForm
+          value={config as Partial<CongressTradingConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
 
     default:
       return (
@@ -130,6 +148,18 @@ export function validateSourceConfig(
       }
       break;
     }
+
+    case "sec_edgar": {
+      const secConfig = config as Partial<SecEdgarConfig>;
+      if (!secConfig.filing_types || secConfig.filing_types.length === 0) {
+        errors.filing_types = "At least one filing type is required";
+      }
+      break;
+    }
+
+    case "congress_trading":
+      // No required fields - all filters are optional
+      break;
   }
 
   return errors;
@@ -190,6 +220,17 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
         excludeReplies: true,
         excludeRetweets: true,
       } as Partial<SignalConfig>;
+
+    case "sec_edgar":
+      return {
+        filing_types: ["form4"],
+        max_filings_per_fetch: 50,
+      } as Partial<SecEdgarConfig>;
+
+    case "congress_trading":
+      return {
+        max_trades_per_fetch: 50,
+      } as Partial<CongressTradingConfig>;
 
     default:
       return {};

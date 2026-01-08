@@ -5,4 +5,6 @@ export { HnConfigForm } from "./HnConfigForm";
 export { YoutubeConfigForm } from "./YoutubeConfigForm";
 export { XPostsConfigForm } from "./XPostsConfigForm";
 export { SignalConfigForm } from "./SignalConfigForm";
+export { SecEdgarConfigForm } from "./SecEdgarConfigForm";
+export { CongressTradingConfigForm } from "./CongressTradingConfigForm";
 export type * from "./types";

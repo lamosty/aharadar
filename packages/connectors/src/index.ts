@@ -6,5 +6,6 @@ export * from "./rss";
 export * from "./youtube";
 export * from "./signal";
 export * from "./sec_edgar";
+export * from "./congress_trading";
 
 export * from "./registry";

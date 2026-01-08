@@ -1,4 +1,5 @@
 import type { Connector } from "./types";
+import { congressTradingConnector } from "./congress_trading";
 import { hnConnector } from "./hn";
 import { redditConnector } from "./reddit";
 import { rssConnector } from "./rss";
@@ -12,6 +13,7 @@ export const CONNECTORS: Connector[] = [
   hnConnector,
   rssConnector,
   secEdgarConnector,
+  congressTradingConnector,
   youtubeConnector,
   signalConnector,
   xPostsConnector,
