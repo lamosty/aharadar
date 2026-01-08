@@ -17,6 +17,8 @@ interface AskRequestBody {
   options?: {
     timeWindow?: { from?: string; to?: string };
     maxClusters?: number;
+    /** Include verbose debug information in response */
+    debug?: boolean;
   };
 }
 
@@ -82,9 +84,9 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
 
     const db = getDb();
 
-    // Verify topic exists and belongs to user
-    const topicRes = await db.query<{ id: string }>(
-      `select id::text from topics where id = $1::uuid and user_id = $2::uuid`,
+    // Verify topic exists and belongs to user, get topic name for debug
+    const topicRes = await db.query<{ id: string; name: string }>(
+      `select id::text, name from topics where id = $1::uuid and user_id = $2::uuid`,
       [topicId, ctx.userId]
     );
     if (topicRes.rows.length === 0) {
@@ -96,6 +98,8 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
         },
       });
     }
+
+    const topicName = topicRes.rows[0].name;
 
     try {
       const askRequest: AskRequest = {
@@ -109,6 +113,7 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
         request: askRequest,
         userId: ctx.userId,
         tier: "normal", // Use normal tier for Q&A
+        topicName, // Pass topic name for debug info
       });
 
       return {

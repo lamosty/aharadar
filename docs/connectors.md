@@ -387,6 +387,99 @@ QUIVER_API_KEY=your_quiver_api_key_here
 
 Sign up for free at https://www.quiverquant.com/ to get an API key. Free tier allows ~100 requests/day.
 
+### Polymarket (`type = "polymarket"`)
+
+**Purpose**
+Ingest prediction market data including market questions, probabilities, volume, and price movements from the free public Polymarket Gamma API.
+
+**config_json**
+
+```json
+{
+  "categories": ["politics", "economics", "crypto"],
+  "min_volume": 10000,
+  "min_liquidity": 5000,
+  "probability_change_threshold": 5,
+  "include_resolved": false,
+  "max_markets_per_fetch": 50
+}
+```
+
+**Fields:**
+- `categories` (optional): Filter by market categories
+- `min_volume` (default: 0): Minimum total volume in USD
+- `min_liquidity` (default: 0): Minimum current liquidity
+- `probability_change_threshold` (default: 0): Only include markets with probability change >= this percentage points since last check
+- `include_resolved` (default: false): Include resolved markets
+- `max_markets_per_fetch` (default: 50, clamped 1-200): Max markets per fetch
+
+**cursor_json**
+
+```json
+{
+  "last_fetch_at": "2025-01-08T08:00:00Z",
+  "seen_condition_ids": ["id1", "id2"],
+  "last_prices": {
+    "condition_id_1": 0.65,
+    "condition_id_2": 0.42
+  }
+}
+```
+
+Note: `last_prices` tracks previous probabilities to calculate change since last fetch.
+
+**Fetch**
+
+- Calls Polymarket Gamma API (`https://gamma-api.polymarket.com/markets`)
+- No authentication required (free public API)
+- Applies local filters (volume, liquidity, probability change threshold)
+- Tracks seen markets and previous prices for change detection
+- Conservative rate limiting with exponential backoff on 429
+
+**Normalize**
+
+- `external_id`: `pm_{condition_id}`
+- `canonical_url`: `https://polymarket.com/event/{slug}` or `https://polymarket.com/market/{condition_id}`
+- `title`: `{Question} - {X}%` or `{Question} - {X}% ({change}pp)` if significant movement
+- `body_text`: Market description, probability, volume stats, resolution info
+- `published_at`: Market creation date
+- `author`: `"Polymarket"`
+- `metadata`:
+  - `condition_id`: Market condition ID
+  - `question`: Full market question
+  - `probability`: Current probability (decimal 0-1)
+  - `probability_percent`: Current probability as percentage
+  - `probability_change`: Change in percentage points since last check (if available)
+  - `volume`: Total volume in USD
+  - `volume_24h`: 24-hour volume
+  - `liquidity`: Current liquidity
+  - `spread`: Bid-ask spread
+  - `outcomes`: Array of outcome names
+  - `outcome_prices`: Array of outcome probabilities
+  - `is_active`: Whether market is accepting trades
+  - `is_closed`: Whether market is resolved
+  - `resolution_status`: `"open"` | `"resolved"`
+  - `end_date`: Market resolution date
+  - `days_to_resolution`: Days until resolution
+  - `resolution_source`: Data authority for resolution
+
+**Use Cases**
+
+1. **All active markets with volume filter:**
+   ```json
+   { "min_volume": 10000 }
+   ```
+
+2. **Alert on significant probability movements:**
+   ```json
+   { "probability_change_threshold": 5, "min_volume": 50000 }
+   ```
+
+3. **High-liquidity markets only:**
+   ```json
+   { "min_volume": 100000, "min_liquidity": 25000 }
+   ```
+
 ### RSS (`type = "rss"`)
 
 **Purpose**

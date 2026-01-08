@@ -17,24 +17,33 @@ export interface RetrievedItem {
   url: string;
   sourceType: string;
   publishedAt: string;
+  similarity: number;
 }
 
 export interface RetrievedCluster {
   id: string;
   summary: string;
+  similarity: number;
   items: RetrievedItem[];
 }
 
 export interface RetrievedContext {
   clusters: RetrievedCluster[];
   totalItems: number;
+  /** Total clusters searched before filtering */
+  clustersSearched: number;
+  /** Minimum similarity threshold used */
+  minSimilarityThreshold: number;
   embeddingCost: {
     inputTokens: number;
     costEstimateCredits: number;
     provider: string;
     model: string;
     endpoint: string;
+    durationMs: number;
   };
+  /** Duration of DB retrieval queries */
+  retrievalDurationMs: number;
 }
 
 interface ClusterSearchRow {
@@ -64,6 +73,8 @@ function truncate(text: string, maxChars: number): string {
   return text.slice(0, maxChars) + "...";
 }
 
+const MIN_SIMILARITY_THRESHOLD = 0.3;
+
 export async function retrieveContext(params: {
   db: Db;
   question: string;
@@ -76,14 +87,19 @@ export async function retrieveContext(params: {
   const embeddingsClient = createEnvEmbeddingsClient();
 
   // 1. Embed the question
+  const embedStart = Date.now();
   const ref = embeddingsClient.chooseModel(params.tier);
   const embedResult = await embeddingsClient.embed(ref, [params.question]);
+  const embedDurationMs = Date.now() - embedStart;
+
   const embedding = embedResult.vectors[0];
   if (!embedding || embedding.length === 0) {
     throw new Error("Failed to generate embedding for question");
   }
 
   // 2. Search clusters by centroid similarity (topic-scoped)
+  const retrievalStart = Date.now();
+
   // Build time window filter if provided
   let timeFilter = "";
   const queryArgs: unknown[] = [params.userId, params.topicId, asVectorLiteral(embedding), maxClusters];
@@ -120,7 +136,8 @@ export async function retrieveContext(params: {
     queryArgs
   );
 
-  const similarClusters = clustersRes.rows.filter((r) => r.similarity >= 0.3);
+  const clustersSearched = clustersRes.rows.length;
+  const similarClusters = clustersRes.rows.filter((r) => r.similarity >= MIN_SIMILARITY_THRESHOLD);
 
   // 3. For each cluster, fetch top items with their content
   const clustersWithItems: RetrievedCluster[] = [];
@@ -152,6 +169,7 @@ export async function retrieveContext(params: {
       url: item.canonical_url ?? "",
       sourceType: item.source_type,
       publishedAt: item.published_at ?? "",
+      similarity: item.similarity,
     }));
 
     totalItems += items.length;
@@ -159,19 +177,26 @@ export async function retrieveContext(params: {
     clustersWithItems.push({
       id: cluster.cluster_id,
       summary: cluster.summary ?? "",
+      similarity: cluster.similarity,
       items,
     });
   }
 
+  const retrievalDurationMs = Date.now() - retrievalStart;
+
   return {
     clusters: clustersWithItems,
     totalItems,
+    clustersSearched,
+    minSimilarityThreshold: MIN_SIMILARITY_THRESHOLD,
     embeddingCost: {
       inputTokens: embedResult.inputTokens,
       costEstimateCredits: embedResult.costEstimateCredits,
       provider: embedResult.provider,
       model: embedResult.model,
       endpoint: embedResult.endpoint,
+      durationMs: embedDurationMs,
     },
+    retrievalDurationMs,
   };
 }
