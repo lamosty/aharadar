@@ -8,6 +8,19 @@ import { canUseClaudeSubscription, getUsageLimitsFromEnv } from "./usage_tracker
 
 type Provider = "openai" | "anthropic" | "claude-subscription";
 
+/**
+ * Runtime configuration for LLM router.
+ * These values override environment variables when passed to createConfiguredLlmRouter.
+ */
+export interface LlmRuntimeConfig {
+  provider?: Provider;
+  anthropicModel?: string;
+  openaiModel?: string;
+  claudeSubscriptionEnabled?: boolean;
+  claudeTriageThinking?: boolean;
+  claudeCallsPerHour?: number;
+}
+
 function firstEnv(env: NodeJS.ProcessEnv, names: string[]): string | undefined {
   for (const name of names) {
     const value = env[name];
@@ -217,4 +230,41 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
       });
     },
   };
+}
+
+/**
+ * Create an LLM router with runtime configuration that overrides env vars.
+ * Use this when you have database-stored settings or per-run overrides.
+ */
+export function createConfiguredLlmRouter(
+  env: NodeJS.ProcessEnv = process.env,
+  config?: LlmRuntimeConfig
+): LlmRouter {
+  if (!config) {
+    return createEnvLlmRouter(env);
+  }
+
+  // Build effective env by merging runtime config over actual env
+  const effectiveEnv: NodeJS.ProcessEnv = { ...env };
+
+  if (config.provider !== undefined) {
+    effectiveEnv.LLM_PROVIDER = config.provider;
+  }
+  if (config.claudeSubscriptionEnabled !== undefined) {
+    effectiveEnv.CLAUDE_USE_SUBSCRIPTION = config.claudeSubscriptionEnabled ? "true" : "false";
+  }
+  if (config.claudeTriageThinking !== undefined) {
+    effectiveEnv.CLAUDE_TRIAGE_THINKING = config.claudeTriageThinking ? "true" : "false";
+  }
+  if (config.claudeCallsPerHour !== undefined) {
+    effectiveEnv.CLAUDE_CALLS_PER_HOUR = String(config.claudeCallsPerHour);
+  }
+  if (config.anthropicModel !== undefined) {
+    effectiveEnv.ANTHROPIC_MODEL = config.anthropicModel;
+  }
+  if (config.openaiModel !== undefined) {
+    effectiveEnv.OPENAI_MODEL = config.openaiModel;
+  }
+
+  return createEnvLlmRouter(effectiveEnv);
 }

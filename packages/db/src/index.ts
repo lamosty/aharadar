@@ -15,3 +15,4 @@ export * from "./repos/users";
 export * from "./repos/auth_tokens";
 export * from "./repos/sessions";
 export * from "./repos/user_api_keys";
+export * from "./repos/llm_settings";

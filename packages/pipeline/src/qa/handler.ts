@@ -11,7 +11,7 @@ import type {
   QALlmResponse,
   BudgetTier,
 } from "@aharadar/shared";
-import { createEnvLlmRouter, type TaskType } from "@aharadar/llm";
+import { createConfiguredLlmRouter, type LlmRuntimeConfig, type TaskType } from "@aharadar/llm";
 
 import { retrieveContext, type RetrievedContext } from "./retrieval";
 import { buildQAPrompt, QA_SYSTEM_PROMPT } from "./prompt";
@@ -51,6 +51,8 @@ export async function handleAskQuestion(params: {
   tier: BudgetTier;
   /** Optional topic name for debug info */
   topicName?: string;
+  /** Optional runtime LLM configuration (overrides env vars) */
+  llmConfig?: LlmRuntimeConfig;
 }): Promise<AskResponse> {
   const { db, request, userId, tier, topicName } = params;
   const { question, topicId, options } = request;
@@ -161,7 +163,7 @@ export async function handleAskQuestion(params: {
   const userPrompt = buildQAPrompt(question, context);
 
   // 4. Call LLM
-  const llmRouter = createEnvLlmRouter();
+  const llmRouter = createConfiguredLlmRouter(process.env, params.llmConfig);
   const taskType = "qa" as TaskType;
   const modelRef = llmRouter.chooseModel(taskType, tier);
 

@@ -1,8 +1,9 @@
 import type { Db } from "@aharadar/db";
 import {
-  createEnvLlmRouter,
+  createConfiguredLlmRouter,
   deepSummarizeCandidate,
   type DeepSummaryOutput,
+  type LlmRuntimeConfig,
   type TriageOutput,
 } from "@aharadar/llm";
 import { createLogger, type BudgetTier, type ProviderCallDraft } from "@aharadar/shared";
@@ -72,6 +73,8 @@ export async function enrichTopCandidates(params: {
     triage: TriageOutput | null;
   }>;
   limits?: Partial<EnrichLimits>;
+  /** Optional runtime LLM configuration (overrides env vars) */
+  llmConfig?: LlmRuntimeConfig;
 }): Promise<{ summaries: Map<string, DeepSummaryOutput>; result: EnrichRunResult }> {
   const maxCalls =
     params.limits?.maxCalls ?? parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_CALLS_PER_RUN) ?? 0;
@@ -84,9 +87,9 @@ export async function enrichTopCandidates(params: {
     };
   }
 
-  let router: ReturnType<typeof createEnvLlmRouter> | null = null;
+  let router: ReturnType<typeof createConfiguredLlmRouter> | null = null;
   try {
-    router = createEnvLlmRouter();
+    router = createConfiguredLlmRouter(process.env, params.llmConfig);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.warn({ err: message }, "LLM deep summary disabled");

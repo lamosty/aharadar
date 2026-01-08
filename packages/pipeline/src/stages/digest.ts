@@ -1,5 +1,10 @@
 import type { Db } from "@aharadar/db";
-import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharadar/llm";
+import {
+  createConfiguredLlmRouter,
+  triageCandidate,
+  type LlmRuntimeConfig,
+  type TriageOutput,
+} from "@aharadar/llm";
 import { canonicalizeUrl, sha256Hex, createLogger, type BudgetTier, type SourceType } from "@aharadar/shared";
 
 const log = createLogger({ component: "digest" });
@@ -411,12 +416,13 @@ async function triageCandidates(params: {
   windowEnd: string;
   mode: DigestMode;
   maxCalls: number;
+  llmConfig?: LlmRuntimeConfig;
 }): Promise<Map<string, TriageOutput>> {
   if (params.maxCalls <= 0 || params.candidates.length === 0) return new Map();
 
-  let router: ReturnType<typeof createEnvLlmRouter> | null = null;
+  let router: ReturnType<typeof createConfiguredLlmRouter> | null = null;
   try {
-    router = createEnvLlmRouter();
+    router = createConfiguredLlmRouter(process.env, params.llmConfig);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.warn({ err: message }, "LLM triage disabled");
@@ -538,6 +544,8 @@ export async function persistDigestFromContentItems(params: {
   filter?: IngestSourceFilter;
   /** If false, skip LLM triage (heuristic-only scoring; triage_json stays null) */
   paidCallsAllowed?: boolean;
+  /** Optional runtime LLM configuration (overrides env vars) */
+  llmConfig?: LlmRuntimeConfig;
 }): Promise<DigestRunResult | null> {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? 20;
@@ -750,6 +758,7 @@ export async function persistDigestFromContentItems(params: {
       windowEnd: params.windowEnd,
       mode: params.mode,
       maxCalls: triageLimit,
+      llmConfig: params.llmConfig,
     });
   } else {
     triageMap = new Map();

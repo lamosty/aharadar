@@ -16,6 +16,7 @@ import { createUsersRepo } from "./repos/users";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createSessionsRepo } from "./repos/sessions";
 import { createUserApiKeysRepo } from "./repos/user_api_keys";
+import { createLlmSettingsRepo } from "./repos/llm_settings";
 
 export interface Queryable {
   query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<QueryResult<T>>;
@@ -37,6 +38,7 @@ export type DbContext = Queryable & {
   authTokens: ReturnType<typeof createAuthTokensRepo>;
   sessions: ReturnType<typeof createSessionsRepo>;
   userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
+  llmSettings: ReturnType<typeof createLlmSettingsRepo>;
 };
 
 export interface Db extends DbContext {
@@ -62,6 +64,7 @@ function createContext(db: Queryable): DbContext {
     authTokens: createAuthTokensRepo(db),
     sessions: createSessionsRepo(db),
     userApiKeys: createUserApiKeysRepo(db),
+    llmSettings: createLlmSettingsRepo(db),
   };
 }
 
