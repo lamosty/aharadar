@@ -53,166 +53,150 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
           data-testid="why-shown-panel"
         >
           <dl className={styles.featureList}>
-              {features.aha_score && (
+              {/* Aha Score - top level fields */}
+              {typeof features.aha_score === "number" && (
                 <FeatureSection title={t("digests.whyShown.ahaScore")}>
-                  {features.aha_score.score != null && (
-                    <div className={styles.scoreRow}>
-                      <span className={styles.scoreValue}>{features.aha_score.score}</span>
-                      <span className={styles.scoreMax}>/100</span>
-                    </div>
-                  )}
-                  {features.aha_score.reason && <p className={styles.reason}>{features.aha_score.reason}</p>}
+                  <div className={styles.scoreRow}>
+                    <span className={styles.scoreValue}>{features.aha_score}</span>
+                    <span className={styles.scoreMax}>/100</span>
+                  </div>
+                  {features.reason && <p className={styles.reason}>{features.reason}</p>}
                 </FeatureSection>
               )}
 
-              {features.novelty_v1 && (
+              {/* System features from ranking */}
+              {features.system_features?.novelty_v1 && (
                 <FeatureSection title={t("digests.whyShown.novelty")}>
                   <div className={styles.metaGrid}>
-                    {typeof features.novelty_v1.score === "number" && (
+                    {typeof features.system_features.novelty_v1.novelty01 === "number" && (
                       <div className={styles.metaItem}>
                         <dt>{t("digests.whyShown.noveltyScore")}</dt>
-                        <dd>{(features.novelty_v1.score * 100).toFixed(0)}%</dd>
+                        <dd>{(features.system_features.novelty_v1.novelty01 * 100).toFixed(0)}%</dd>
                       </div>
                     )}
-                    {typeof features.novelty_v1.lookback_days === "number" && (
+                    {typeof features.system_features.novelty_v1.lookback_days === "number" && (
                       <div className={styles.metaItem}>
                         <dt>{t("digests.whyShown.lookbackDays")}</dt>
-                        <dd>{features.novelty_v1.lookback_days} days</dd>
-                      </div>
-                    )}
-                    {typeof features.novelty_v1.similar_items_count === "number" && (
-                      <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.similarItems")}</dt>
-                        <dd>{features.novelty_v1.similar_items_count}</dd>
+                        <dd>{features.system_features.novelty_v1.lookback_days} days</dd>
                       </div>
                     )}
                   </div>
                 </FeatureSection>
               )}
 
-              {features.source_weight_v1 && (
+              {features.system_features?.recency_decay_v1 && (
+                <FeatureSection title={t("digests.whyShown.recencyDecay")}>
+                  <div className={styles.metaGrid}>
+                    <div className={styles.metaItem}>
+                      <dt>{t("digests.whyShown.freshness")}</dt>
+                      <dd>{(features.system_features.recency_decay_v1.decay_factor * 100).toFixed(0)}%</dd>
+                    </div>
+                    <div className={styles.metaItem}>
+                      <dt>{t("digests.whyShown.age")}</dt>
+                      <dd>{features.system_features.recency_decay_v1.age_hours.toFixed(1)}h</dd>
+                    </div>
+                  </div>
+                </FeatureSection>
+              )}
+
+              {features.system_features?.source_weight_v1 && (
                 <FeatureSection title={t("digests.whyShown.sourceWeight")}>
                   <div className={styles.metaGrid}>
-                    {features.source_weight_v1.source_name && (
+                    {features.system_features.source_weight_v1.source_name && (
                       <div className={styles.metaItem}>
                         <dt>{t("digests.whyShown.sourceName")}</dt>
-                        <dd>{features.source_weight_v1.source_name}</dd>
+                        <dd>{features.system_features.source_weight_v1.source_name}</dd>
                       </div>
                     )}
-                    {features.source_weight_v1.source_type && (
+                    {features.system_features.source_weight_v1.source_type && (
                       <div className={styles.metaItem}>
                         <dt>{t("digests.whyShown.sourceType")}</dt>
-                        <dd className={styles.sourceType}>{features.source_weight_v1.source_type}</dd>
+                        <dd className={styles.sourceType}>{features.system_features.source_weight_v1.source_type}</dd>
                       </div>
                     )}
-                    {typeof features.source_weight_v1.weight === "number" && (
-                      <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.weight")}</dt>
-                        <dd>{features.source_weight_v1.weight.toFixed(1)}x</dd>
-                      </div>
-                    )}
+                    {typeof features.system_features.source_weight_v1.effective_weight === "number" &&
+                      features.system_features.source_weight_v1.effective_weight !== 1.0 && (
+                        <div className={styles.metaItem}>
+                          <dt>{t("digests.whyShown.weight")}</dt>
+                          <dd>{features.system_features.source_weight_v1.effective_weight.toFixed(1)}x</dd>
+                        </div>
+                      )}
                   </div>
                 </FeatureSection>
               )}
 
-              {features.signal_corroboration_v1 && (
+              {features.system_features?.signal_corroboration_v1?.matched && (
                 <FeatureSection title={t("digests.whyShown.corroboration")}>
-                  {typeof features.signal_corroboration_v1.score === "number" && (
-                    <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.corroborationScore")}</dt>
-                      <dd>{(features.signal_corroboration_v1.score * 100).toFixed(0)}%</dd>
-                    </div>
-                  )}
-
-                  {features.signal_corroboration_v1.corroborating_topics?.length > 0 && (
-                    <div className={styles.tagSection}>
-                      <dt>{t("digests.whyShown.corroboratingTopics")}</dt>
-                      <dd className={styles.tagList}>
-                        {features.signal_corroboration_v1.corroborating_topics.map((topic) => (
-                          <span key={topic} className={styles.tag}>
-                            {topic}
-                          </span>
-                        ))}
-                      </dd>
-                    </div>
-                  )}
-
-                  {features.signal_corroboration_v1.corroborating_urls?.length > 0 && (
+                  {features.system_features.signal_corroboration_v1.matched_url && (
                     <div className={styles.urlSection}>
                       <dt>{t("digests.whyShown.corroboratingUrls")}</dt>
                       <dd>
-                        <ul className={styles.urlList}>
-                          {features.signal_corroboration_v1.corroborating_urls.map((url) => (
-                            <li key={url}>
-                              <a href={url} target="_blank" rel="noopener noreferrer" className={styles.url}>
-                                {truncateUrl(url)}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
+                        <a
+                          href={features.system_features.signal_corroboration_v1.matched_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.url}
+                        >
+                          {truncateUrl(features.system_features.signal_corroboration_v1.matched_url)}
+                        </a>
                       </dd>
                     </div>
                   )}
                 </FeatureSection>
               )}
 
-              {features.user_preference_v1 && (
+              {features.system_features?.user_preference_v1 && (
                 <FeatureSection title={t("digests.whyShown.userPreference")}>
                   <div className={styles.metaGrid}>
-                    {features.user_preference_v1.source_type && (
+                    {features.system_features.user_preference_v1.source_type && (
                       <div className={styles.metaItem}>
                         <dt>{t("digests.whyShown.userPrefSourceType")}</dt>
-                        <dd className={styles.sourceType}>{features.user_preference_v1.source_type}</dd>
+                        <dd className={styles.sourceType}>{features.system_features.user_preference_v1.source_type}</dd>
                       </div>
                     )}
-                    {typeof features.user_preference_v1.source_type_weight === "number" &&
-                      features.user_preference_v1.source_type_weight !== 1.0 && (
+                    {typeof features.system_features.user_preference_v1.source_type_weight === "number" &&
+                      features.system_features.user_preference_v1.source_type_weight !== 1.0 && (
                         <div className={styles.metaItem}>
                           <dt>{t("digests.whyShown.userPrefSourceTypeWeight")}</dt>
-                          <dd>{features.user_preference_v1.source_type_weight.toFixed(1)}x</dd>
+                          <dd>{features.system_features.user_preference_v1.source_type_weight.toFixed(1)}x</dd>
                         </div>
                       )}
-                    {features.user_preference_v1.author && (
+                    {features.system_features.user_preference_v1.author && (
                       <div className={styles.metaItem}>
                         <dt>{t("digests.whyShown.userPrefAuthor")}</dt>
-                        <dd>{features.user_preference_v1.author}</dd>
+                        <dd>{features.system_features.user_preference_v1.author}</dd>
                       </div>
                     )}
-                    {typeof features.user_preference_v1.author_weight === "number" &&
-                      features.user_preference_v1.author_weight !== 1.0 && (
+                    {typeof features.system_features.user_preference_v1.author_weight === "number" &&
+                      features.system_features.user_preference_v1.author_weight !== 1.0 && (
                         <div className={styles.metaItem}>
                           <dt>{t("digests.whyShown.userPrefAuthorWeight")}</dt>
-                          <dd>{features.user_preference_v1.author_weight.toFixed(1)}x</dd>
+                          <dd>{features.system_features.user_preference_v1.author_weight.toFixed(1)}x</dd>
                         </div>
                       )}
-                    {typeof features.user_preference_v1.effective_weight === "number" &&
-                      features.user_preference_v1.effective_weight !== 1.0 && (
+                    {typeof features.system_features.user_preference_v1.effective_weight === "number" &&
+                      features.system_features.user_preference_v1.effective_weight !== 1.0 && (
                         <div className={styles.metaItem}>
                           <dt>{t("digests.whyShown.userPrefEffectiveWeight")}</dt>
-                          <dd>{features.user_preference_v1.effective_weight.toFixed(1)}x</dd>
+                          <dd>{features.system_features.user_preference_v1.effective_weight.toFixed(1)}x</dd>
                         </div>
                       )}
                   </div>
                 </FeatureSection>
               )}
 
-              {/* Render any unknown future features gracefully */}
-              {Object.entries(features)
-                .filter(
-                  ([key]) =>
-                    ![
-                      "aha_score",
-                      "novelty_v1",
-                      "source_weight_v1",
-                      "signal_corroboration_v1",
-                      "user_preference_v1",
-                    ].includes(key)
-                )
-                .map(([key, value]) => (
-                  <FeatureSection key={key} title={key}>
-                    <pre className={styles.rawJson}>{JSON.stringify(value, null, 2)}</pre>
-                  </FeatureSection>
-                ))}
+              {/* Categories from LLM triage */}
+              {features.categories && features.categories.length > 0 && (
+                <FeatureSection title={t("digests.whyShown.categories")}>
+                  <div className={styles.tagList}>
+                    {features.categories.map((cat) => (
+                      <span key={cat} className={styles.tag}>
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
+                </FeatureSection>
+              )}
           </dl>
         </div>
       )}

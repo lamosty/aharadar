@@ -347,7 +347,11 @@
       "userPrefEffectiveWeight": "Combined boost",
       "noFeatures": "No ranking features available",
       "unavailable": "Ranking details unavailable",
-      "unavailableReason": "Triage was not run for this item"
+      "unavailableReason": "Triage was not run for this item",
+      "recencyDecay": "Freshness",
+      "freshness": "Fresh score",
+      "age": "Age",
+      "categories": "Categories"
     },
     "feedback": {
       "like": "Like",

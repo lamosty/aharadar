@@ -12,33 +12,54 @@ export interface DigestSummary {
   createdAt: string;
 }
 
+// TriageFeatures matches the actual triageJson structure from the pipeline
+// Top-level fields come from LLM triage, system_features come from rankCandidates
 export interface TriageFeatures {
-  signal_corroboration_v1?: {
-    corroborating_urls: string[];
-    corroborating_topics: string[];
-    score: number;
+  // Top-level LLM triage output
+  aha_score?: number;
+  reason?: string;
+  is_relevant?: boolean;
+  is_novel?: boolean;
+  should_deep_summarize?: boolean;
+  categories?: string[];
+  model?: string;
+  provider?: string;
+  prompt_id?: string;
+  schema_version?: string;
+
+  // System features computed during ranking
+  system_features?: {
+    signal_corroboration_v1?: {
+      matched: boolean;
+      matched_url: string | null;
+      signal_url_sample: string[];
+    };
+    novelty_v1?: {
+      novelty01: number;
+      lookback_days: number;
+      max_similarity: number;
+    };
+    source_weight_v1?: {
+      source_type?: string;
+      type_weight: number;
+      source_weight: number;
+      effective_weight: number;
+      source_name?: string;
+    };
+    user_preference_v1?: {
+      source_type: string;
+      source_type_weight: number;
+      author: string | null;
+      author_weight: number;
+      effective_weight: number;
+    };
+    recency_decay_v1?: {
+      age_hours: number;
+      decay_hours: number;
+      decay_factor: number;
+    };
   };
-  novelty_v1?: {
-    score: number;
-    lookback_days: number;
-    similar_items_count: number;
-  };
-  source_weight_v1?: {
-    source_type: string;
-    weight: number;
-    source_name: string;
-  };
-  user_preference_v1?: {
-    source_type: string;
-    source_type_weight: number;
-    author: string | null;
-    author_weight: number;
-    effective_weight: number;
-  };
-  aha_score?: {
-    score: number;
-    reason: string;
-  };
+
   [key: string]: unknown; // Future features
 }
 
@@ -55,9 +76,7 @@ export interface DigestItem {
     sourceType: string;
     triageSummary?: string;
   };
-  triageJson?: {
-    system_features?: TriageFeatures;
-  };
+  triageJson?: TriageFeatures;
   feedback?: "like" | "dislike" | "save" | "skip" | null;
 }
 
@@ -131,15 +150,16 @@ const mockDigestItems: DigestItem[] = [
       triageSummary: "Major advancement in AI-assisted coding with measurable productivity improvements.",
     },
     triageJson: {
+      aha_score: 95,
+      reason: "Highly relevant to AI/ML interests, novel findings",
+      is_relevant: true,
+      is_novel: true,
+      categories: ["AI", "productivity", "code generation"],
       system_features: {
-        aha_score: { score: 95, reason: "Highly relevant to AI/ML interests, novel findings" },
-        novelty_v1: { score: 0.92, lookback_days: 7, similar_items_count: 1 },
-        source_weight_v1: { source_type: "hn", weight: 1.5, source_name: "Hacker News" },
-        signal_corroboration_v1: {
-          corroborating_urls: ["https://twitter.com/ai_researcher/123"],
-          corroborating_topics: ["AI", "productivity", "code generation"],
-          score: 0.8,
-        },
+        novelty_v1: { novelty01: 0.92, lookback_days: 7, max_similarity: 0.08 },
+        source_weight_v1: { source_type: "hn", type_weight: 1, source_weight: 1.5, effective_weight: 1.5, source_name: "Hacker News" },
+        signal_corroboration_v1: { matched: true, matched_url: "https://twitter.com/ai_researcher/123", signal_url_sample: [] },
+        recency_decay_v1: { age_hours: 2.5, decay_hours: 24, decay_factor: 0.90 },
       },
     },
     feedback: null,
@@ -158,10 +178,15 @@ const mockDigestItems: DigestItem[] = [
       triageSummary: "PostgreSQL 17 released with significant query optimization and storage improvements.",
     },
     triageJson: {
+      aha_score: 88,
+      reason: "Important database update, matches tech infrastructure interests",
+      is_relevant: true,
+      is_novel: true,
+      categories: ["databases", "postgres"],
       system_features: {
-        aha_score: { score: 88, reason: "Important database update, matches tech infrastructure interests" },
-        novelty_v1: { score: 0.85, lookback_days: 7, similar_items_count: 2 },
-        source_weight_v1: { source_type: "reddit", weight: 1.2, source_name: "r/programming" },
+        novelty_v1: { novelty01: 0.85, lookback_days: 7, max_similarity: 0.15 },
+        source_weight_v1: { source_type: "reddit", type_weight: 1, source_weight: 1.2, effective_weight: 1.2, source_name: "r/programming" },
+        recency_decay_v1: { age_hours: 4, decay_hours: 24, decay_factor: 0.85 },
       },
     },
     feedback: "like",
@@ -179,10 +204,15 @@ const mockDigestItems: DigestItem[] = [
       sourceType: "rss",
     },
     triageJson: {
+      aha_score: 82,
+      reason: "Technical deep dive matching frontend development interests",
+      is_relevant: true,
+      is_novel: false,
+      categories: ["react", "frontend"],
       system_features: {
-        aha_score: { score: 82, reason: "Technical deep dive matching frontend development interests" },
-        novelty_v1: { score: 0.7, lookback_days: 7, similar_items_count: 4 },
-        source_weight_v1: { source_type: "rss", weight: 1.0, source_name: "Frontend Weekly RSS" },
+        novelty_v1: { novelty01: 0.7, lookback_days: 7, max_similarity: 0.3 },
+        source_weight_v1: { source_type: "rss", type_weight: 1, source_weight: 1.0, effective_weight: 1.0, source_name: "Frontend Weekly RSS" },
+        recency_decay_v1: { age_hours: 6, decay_hours: 24, decay_factor: 0.78 },
       },
     },
     feedback: null,
@@ -200,10 +230,15 @@ const mockDigestItems: DigestItem[] = [
       sourceType: "youtube",
     },
     triageJson: {
+      aha_score: 75,
+      reason: "Yearly review of TypeScript ecosystem",
+      is_relevant: true,
+      is_novel: false,
+      categories: ["typescript", "programming"],
       system_features: {
-        aha_score: { score: 75, reason: "Yearly review of TypeScript ecosystem" },
-        novelty_v1: { score: 0.65, lookback_days: 7, similar_items_count: 3 },
-        source_weight_v1: { source_type: "youtube", weight: 0.9, source_name: "Tech Talks" },
+        novelty_v1: { novelty01: 0.65, lookback_days: 7, max_similarity: 0.35 },
+        source_weight_v1: { source_type: "youtube", type_weight: 1, source_weight: 0.9, effective_weight: 0.9, source_name: "Tech Talks" },
+        recency_decay_v1: { age_hours: 15, decay_hours: 24, decay_factor: 0.53 },
       },
     },
     feedback: "save",
@@ -222,10 +257,15 @@ const mockDigestItems: DigestItem[] = [
       triageSummary: "Overview of new features in Kubernetes 1.30 with migration recommendations.",
     },
     triageJson: {
+      aha_score: 68,
+      reason: "Infrastructure update, moderate relevance",
+      is_relevant: true,
+      is_novel: false,
+      categories: ["kubernetes", "infrastructure"],
       system_features: {
-        aha_score: { score: 68, reason: "Infrastructure update, moderate relevance" },
-        novelty_v1: { score: 0.55, lookback_days: 7, similar_items_count: 5 },
-        source_weight_v1: { source_type: "hn", weight: 1.5, source_name: "Hacker News" },
+        novelty_v1: { novelty01: 0.55, lookback_days: 7, max_similarity: 0.45 },
+        source_weight_v1: { source_type: "hn", type_weight: 1, source_weight: 1.5, effective_weight: 1.5, source_name: "Hacker News" },
+        recency_decay_v1: { age_hours: 19, decay_hours: 24, decay_factor: 0.45 },
       },
     },
     feedback: "dislike",
@@ -361,7 +401,7 @@ function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
         : undefined,
     },
     triageJson: apiItem.triageJson
-      ? { system_features: apiItem.triageJson as unknown as TriageFeatures }
+      ? (apiItem.triageJson as unknown as TriageFeatures)
       : undefined,
     feedback: null, // API doesn't return feedback state per item currently
   };
