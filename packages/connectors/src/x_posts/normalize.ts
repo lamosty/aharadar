@@ -81,6 +81,9 @@ export async function normalizeXPosts(raw: unknown, params: FetchParams): Promis
       : [];
   const primaryUrl = extractedUrls[0] ?? canonicalUrl ?? null;
 
+  // User display name from Grok response (e.g., "Elon Musk")
+  const userDisplayName = asString(rec.user_display_name);
+
   return {
     title: null,
     bodyText,
@@ -101,6 +104,7 @@ export async function normalizeXPosts(raw: unknown, params: FetchParams): Promis
       post_date: dateDay,
       extracted_urls: extractedUrls,
       primary_url: primaryUrl,
+      user_display_name: userDisplayName,
     },
     raw: {
       kind: "x_post_v1",

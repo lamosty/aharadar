@@ -86,7 +86,13 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
           <span className={styles.subreddit}>r/{item.item.metadata.subreddit}</span>
         )}
         <span className={styles.meta}>
-          {item.item.author && <span className={styles.author}>{item.item.author}</span>}
+          {item.item.author && (
+            <span className={styles.author}>
+              {item.item.sourceType === "x_posts" && item.item.metadata?.user_display_name
+                ? `${item.item.metadata.user_display_name} (${item.item.author})`
+                : item.item.author}
+            </span>
+          )}
           {item.item.author && item.item.publishedAt && <span className={styles.separator}>·</span>}
           {item.item.publishedAt && (
             <time className={styles.time} dateTime={item.item.publishedAt}>

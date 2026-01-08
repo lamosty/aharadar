@@ -132,6 +132,7 @@ function extractPostRawItems(params: {
       date: asString(r.date),
       url: asString(r.url),
       text: asString(r.text),
+      user_display_name: asString(r.user_display_name),
     });
     if (out.length >= 200) break;
   }
