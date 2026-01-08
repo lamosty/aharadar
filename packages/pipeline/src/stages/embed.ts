@@ -1,7 +1,8 @@
 import type { Db } from "@aharadar/db";
 import { createEnvEmbeddingsClient } from "@aharadar/llm";
-import type { BudgetTier, ProviderCallDraft } from "@aharadar/shared";
-import { sha256Hex } from "@aharadar/shared";
+import { sha256Hex, createLogger, type BudgetTier, type ProviderCallDraft } from "@aharadar/shared";
+
+const log = createLogger({ component: "embed" });
 
 export interface EmbedLimits {
   maxItems: number;
@@ -112,7 +113,7 @@ export async function embedTopicContentItems(params: {
     client = createEnvEmbeddingsClient();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`Embeddings disabled: ${message}`);
+    log.warn({ err: message }, "Embeddings disabled");
     return {
       attempted: 0,
       embedded: 0,
@@ -173,7 +174,7 @@ export async function embedTopicContentItems(params: {
         updatedHashOnly += 1;
       } catch (err) {
         errors += 1;
-        console.warn(`content_items hash_text update failed (content_item_id=${row.content_item_id})`, err);
+        log.warn({ contentItemId: row.content_item_id, err }, "content_items hash_text update failed");
       }
       continue;
     }
@@ -275,7 +276,7 @@ export async function embedTopicContentItems(params: {
       try {
         await params.db.providerCalls.insert(draft);
       } catch (err) {
-        console.warn("provider_calls insert failed (embedding)", err);
+        log.warn({ err }, "provider_calls insert failed (embedding)");
       }
     } catch (err) {
       providerCallsError += 1;
@@ -313,11 +314,12 @@ export async function embedTopicContentItems(params: {
         };
         await params.db.providerCalls.insert(draft);
       } catch (err) {
-        console.warn("provider_calls insert failed (embedding error)", err);
+        log.warn({ err }, "provider_calls insert failed (embedding error)");
       }
 
-      console.warn(
-        `embedding failed for batch (${batch.length} items): ${err instanceof Error ? err.message : String(err)}`
+      log.warn(
+        { batchSize: batch.length, err: err instanceof Error ? err.message : String(err) },
+        "Embedding failed for batch"
       );
       continue;
     }

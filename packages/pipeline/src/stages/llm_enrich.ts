@@ -5,7 +5,9 @@ import {
   type DeepSummaryOutput,
   type TriageOutput,
 } from "@aharadar/llm";
-import type { BudgetTier, ProviderCallDraft } from "@aharadar/shared";
+import { createLogger, type BudgetTier, type ProviderCallDraft } from "@aharadar/shared";
+
+const log = createLogger({ component: "llm_enrich" });
 
 export interface EnrichLimits {
   /**
@@ -87,7 +89,7 @@ export async function enrichTopCandidates(params: {
     router = createEnvLlmRouter();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`LLM deep summary disabled: ${message}`);
+    log.warn({ err: message }, "LLM deep summary disabled");
     return {
       summaries: new Map(),
       result: { attempted: 0, enriched: 0, skipped: 0, errors: 0, providerCallsOk: 0, providerCallsError: 0 },
@@ -172,7 +174,7 @@ export async function enrichTopCandidates(params: {
       try {
         await params.db.providerCalls.insert(draft);
       } catch (err) {
-        console.warn("provider_calls insert failed (deep_summary)", err);
+        log.warn({ err }, "provider_calls insert failed (deep_summary)");
       }
     } catch (err) {
       providerCallsError += 1;
@@ -211,10 +213,11 @@ export async function enrichTopCandidates(params: {
       try {
         await params.db.providerCalls.insert(draft);
       } catch (err) {
-        console.warn("provider_calls insert failed (deep_summary error)", err);
+        log.warn({ err }, "provider_calls insert failed (deep_summary error)");
       }
-      console.warn(
-        `deep summary failed for candidate ${candidate.candidateId}: ${err instanceof Error ? err.message : String(err)}`
+      log.warn(
+        { candidateId: candidate.candidateId, err: err instanceof Error ? err.message : String(err) },
+        "Deep summary failed for candidate"
       );
     }
   }

@@ -1,4 +1,7 @@
 import type { Db } from "@aharadar/db";
+import { createLogger } from "@aharadar/shared";
+
+const log = createLogger({ component: "cluster" });
 
 export interface ClusterLimits {
   /** Max number of (topic-scoped) items to cluster per run. */
@@ -252,7 +255,7 @@ export async function clusterTopicContentItems(params: {
         }
       } catch (err) {
         errors += 1;
-        console.warn(`cluster stage failed for content_item_id=${row.content_item_id}`, err);
+        log.warn({ contentItemId: row.content_item_id, err }, "Cluster stage failed for content item");
       }
     }
   });

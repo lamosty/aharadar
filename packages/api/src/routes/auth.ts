@@ -1,8 +1,11 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { createLogger } from "@aharadar/shared";
 import { getDb } from "../lib/db.js";
 import { sendMagicLinkEmail } from "../lib/email.js";
 import { generateToken, hashToken } from "../auth/crypto.js";
 import { sessionAuth, getUserId } from "../auth/session.js";
+
+const log = createLogger({ component: "auth" });
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
@@ -68,7 +71,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
 
       // In dev mode without RESEND_API_KEY, return token directly for testing
       if (IS_DEV && !process.env.RESEND_API_KEY) {
-        console.log(`[auth] DEV MODE: Magic link for ${normalizedEmail}: ${verifyUrl}`);
+        log.info({ email: normalizedEmail, verifyUrl }, "DEV MODE: Magic link generated");
         return {
           ok: true,
           message: "Dev mode: Check console or use the returned verifyUrl",
@@ -84,7 +87,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
 
       // In dev mode with Resend configured, still return verifyUrl for convenience
       if (IS_DEV) {
-        console.log(`[auth] Magic link sent to ${normalizedEmail}: ${verifyUrl}`);
+        log.info({ email: normalizedEmail, verifyUrl }, "Magic link sent");
         return {
           ok: true,
           message: "Magic link sent! Check your email.",
@@ -98,7 +101,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       // Production: Never expose token or URL
       return { ok: true, message: "If this email exists, a login link has been sent" };
     } catch (err) {
-      console.error("[auth] Error sending magic link:", err);
+      log.error({ err }, "Error sending magic link");
       // Still return success to prevent email enumeration
       return { ok: true, message: "If this email exists, a login link has been sent" };
     }

@@ -1,12 +1,15 @@
 import { createDb } from "@aharadar/db";
 import { parseSchedulerConfig, generateDueWindows, getSchedulableTopics } from "@aharadar/pipeline";
-import { loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
+import { loadDotEnvIfPresent, loadRuntimeEnv, createLogger } from "@aharadar/shared";
 
 import { createPipelineQueue } from "./queues";
 import { createPipelineWorker } from "./workers/pipeline.worker";
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
+
+const log = createLogger({ component: "worker" });
+const schedulerLog = createLogger({ component: "scheduler" });
 
 /**
  * Parse scheduler tick interval from env.
@@ -31,7 +34,7 @@ async function runSchedulerTick(
   const topics = await getSchedulableTopics(db);
 
   if (topics.length === 0) {
-    console.log("[scheduler] No topics to schedule");
+    schedulerLog.debug("No topics to schedule");
     return;
   }
 
@@ -56,19 +59,19 @@ async function runSchedulerTick(
         removeOnFail: 50, // Keep last 50 failed jobs
       });
 
-      console.log(`[scheduler] Enqueued job ${jobId.slice(0, 60)}... for topic=${topicId.slice(0, 8)}...`);
+      schedulerLog.info({ jobId: jobId.slice(0, 60), topicId: topicId.slice(0, 8) }, "Enqueued job");
     }
   }
 }
 
 async function main(): Promise<void> {
-  console.log("[worker] Starting Aha Radar worker...");
+  log.info("Starting Aha Radar worker");
 
   const env = loadRuntimeEnv();
   const schedulerConfig = parseSchedulerConfig();
   const tickIntervalMs = getSchedulerIntervalMs();
 
-  console.log(`[worker] Scheduler mode: ${schedulerConfig.windowMode}, tick: ${tickIntervalMs / 60000}min`);
+  log.info({ windowMode: schedulerConfig.windowMode, tickMinutes: tickIntervalMs / 60000 }, "Scheduler configured");
 
   // Create DB connection for scheduler
   const schedulerDb = createDb(env.databaseUrl);
@@ -79,7 +82,7 @@ async function main(): Promise<void> {
   // Create worker to process jobs
   const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
 
-  console.log("[worker] Worker started, listening for jobs...");
+  log.info("Worker started, listening for jobs");
 
   // Run scheduler immediately on startup
   await runSchedulerTick(schedulerDb, queue, schedulerConfig);
@@ -89,13 +92,13 @@ async function main(): Promise<void> {
     try {
       await runSchedulerTick(schedulerDb, queue, schedulerConfig);
     } catch (err) {
-      console.error("[scheduler] Error during tick:", err);
+      schedulerLog.error({ err }, "Error during tick");
     }
   }, tickIntervalMs);
 
   // Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
-    console.log(`[worker] Received ${signal}, shutting down...`);
+    log.info({ signal }, "Received signal, shutting down");
 
     clearInterval(schedulerInterval);
 
@@ -104,7 +107,7 @@ async function main(): Promise<void> {
     await schedulerDb.close();
     await workerDb.close();
 
-    console.log("[worker] Shutdown complete");
+    log.info("Shutdown complete");
     process.exit(0);
   };
 
@@ -113,6 +116,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("[worker] Fatal error:", err);
+  log.fatal({ err }, "Fatal error");
   process.exit(1);
 });

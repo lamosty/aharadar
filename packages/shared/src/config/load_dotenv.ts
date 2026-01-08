@@ -1,5 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createLogger } from "../logging.js";
+
+const log = createLogger({ component: "config" });
 
 function stripInlineComment(value: string): string {
   // Treat " # ..." as a comment delimiter for unquoted values (common dotenv style).
@@ -63,7 +66,7 @@ export function loadDotEnvIfPresent(cwd: string = process.cwd()): void {
       raw = readFileSync(fullPath, "utf8");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.warn(`warning: failed to read ${filename}: ${message}`);
+      log.warn({ filename, err: message }, "Failed to read env file");
       continue;
     }
     for (const line of raw.split(/\r?\n/)) {

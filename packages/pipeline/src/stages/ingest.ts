@@ -1,7 +1,8 @@
 import type { Db, SourceRow } from "@aharadar/db";
-import type { ContentItemDraft, FetchParams, ProviderCallDraft } from "@aharadar/shared";
-import { canonicalizeUrl, sha256Hex } from "@aharadar/shared";
+import { canonicalizeUrl, sha256Hex, createLogger, type ContentItemDraft, type FetchParams, type ProviderCallDraft } from "@aharadar/shared";
 import { getConnector } from "@aharadar/connectors";
+
+const log = createLogger({ component: "ingest" });
 
 export interface IngestLimits {
   maxItemsPerSource: number;
@@ -322,7 +323,7 @@ export async function ingestEnabledSources(params: {
           // Provider call accounting failures should not abort ingestion.
           baseResult.errors += 1;
           totals.errors += 1;
-          console.warn("provider_calls insert failed", err);
+          log.warn({ err }, "provider_calls insert failed");
         }
       }
 
@@ -349,12 +350,12 @@ export async function ingestEnabledSources(params: {
             // This mapping is helpful for topic scoping, but failures should not abort ingest.
             baseResult.errors += 1;
             totals.errors += 1;
-            console.warn("content_item_sources upsert failed", err);
+            log.warn({ err }, "content_item_sources upsert failed");
           }
         } catch (err) {
           baseResult.errors += 1;
           totals.errors += 1;
-          console.warn("normalize/upsert failed", err);
+          log.warn({ err }, "normalize/upsert failed");
         }
       }
 

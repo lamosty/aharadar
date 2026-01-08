@@ -1,4 +1,7 @@
 import type { Db } from "@aharadar/db";
+import { createLogger } from "@aharadar/shared";
+
+const log = createLogger({ component: "budget" });
 
 /**
  * Credits status computed at the start of a pipeline run.
@@ -118,21 +121,41 @@ export function printCreditsWarning(status: CreditsStatus): boolean {
 
   if (status.warningLevel === "critical") {
     if (!status.paidCallsAllowed) {
-      console.warn(
-        `[BUDGET] Credits exhausted. Monthly: ${status.monthlyUsed}/${status.monthlyLimit} (${monthlyPct}%)` +
-          (dailyPct !== null ? `, Daily: ${status.dailyUsed}/${status.dailyLimit} (${dailyPct}%)` : "") +
-          `. Paid calls disabled; falling back to heuristic-only digest.`
+      log.warn(
+        {
+          monthlyUsed: status.monthlyUsed,
+          monthlyLimit: status.monthlyLimit,
+          monthlyPct,
+          dailyUsed: status.dailyUsed,
+          dailyLimit: status.dailyLimit,
+          dailyPct,
+        },
+        "Credits exhausted; paid calls disabled, falling back to heuristic-only digest"
       );
     } else {
-      console.warn(
-        `[BUDGET] Credits critical (>=95%). Monthly: ${status.monthlyUsed}/${status.monthlyLimit} (${monthlyPct}%)` +
-          (dailyPct !== null ? `, Daily: ${status.dailyUsed}/${status.dailyLimit} (${dailyPct}%)` : "")
+      log.warn(
+        {
+          monthlyUsed: status.monthlyUsed,
+          monthlyLimit: status.monthlyLimit,
+          monthlyPct,
+          dailyUsed: status.dailyUsed,
+          dailyLimit: status.dailyLimit,
+          dailyPct,
+        },
+        "Credits critical (>=95%)"
       );
     }
   } else {
-    console.warn(
-      `[BUDGET] Credits approaching limit (>=80%). Monthly: ${status.monthlyUsed}/${status.monthlyLimit} (${monthlyPct}%)` +
-        (dailyPct !== null ? `, Daily: ${status.dailyUsed}/${status.dailyLimit} (${dailyPct}%)` : "")
+    log.warn(
+      {
+        monthlyUsed: status.monthlyUsed,
+        monthlyLimit: status.monthlyLimit,
+        monthlyPct,
+        dailyUsed: status.dailyUsed,
+        dailyLimit: status.dailyLimit,
+        dailyPct,
+      },
+      "Credits approaching limit (>=80%)"
     );
   }
 

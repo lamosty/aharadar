@@ -1,6 +1,8 @@
 import type { Db } from "@aharadar/db";
 import { createEnvLlmRouter, triageCandidate, type TriageOutput } from "@aharadar/llm";
-import { canonicalizeUrl, sha256Hex, type BudgetTier, type SourceType } from "@aharadar/shared";
+import { canonicalizeUrl, sha256Hex, createLogger, type BudgetTier, type SourceType } from "@aharadar/shared";
+
+const log = createLogger({ component: "digest" });
 
 import type { IngestSourceFilter } from "./ingest";
 import {
@@ -345,9 +347,9 @@ async function computeNoveltyForCandidates(params: {
       );
     } catch (err) {
       // On error, skip novelty for this candidate (don't break the whole run)
-      console.warn(
-        `novelty query failed for candidate ${candidate.candidateId}:`,
-        err instanceof Error ? err.message : String(err)
+      log.warn(
+        { candidateId: candidate.candidateId, err: err instanceof Error ? err.message : String(err) },
+        "Novelty query failed for candidate"
       );
     }
   }
@@ -417,7 +419,7 @@ async function triageCandidates(params: {
     router = createEnvLlmRouter();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`LLM triage disabled: ${message}`);
+    log.warn({ err: message }, "LLM triage disabled");
     return new Map();
   }
   if (!router) return new Map();
@@ -478,7 +480,7 @@ async function triageCandidates(params: {
           status: "ok",
         });
       } catch (err) {
-        console.warn("provider_calls insert failed (triage)", err);
+        log.warn({ err }, "provider_calls insert failed (triage)");
       }
     } catch (err) {
       const endedAt = new Date().toISOString();
@@ -512,11 +514,12 @@ async function triageCandidates(params: {
           },
         });
       } catch (err) {
-        console.warn("provider_calls insert failed (triage error)", err);
+        log.warn({ err }, "provider_calls insert failed (triage error)");
       }
 
-      console.warn(
-        `triage failed for candidate ${candidate.candidateId}: ${err instanceof Error ? err.message : String(err)}`
+      log.warn(
+        { candidateId: candidate.candidateId, err: err instanceof Error ? err.message : String(err) },
+        "Triage failed for candidate"
       );
     }
   }
@@ -899,11 +902,11 @@ export async function persistDigestFromContentItems(params: {
 
   // Log triage status for visibility
   if (!paidCallsAllowed) {
-    console.warn(`[digest] Triage skipped (budget exhausted). Items: ${items.length}, all heuristic-only.`);
+    log.warn({ itemCount: items.length }, "Triage skipped (budget exhausted), all heuristic-only");
   } else if (triagedCount < items.length) {
-    console.log(`[digest] Partial triage: ${triagedCount}/${items.length} items have LLM scores.`);
+    log.info({ triaged: triagedCount, total: items.length }, "Partial triage completed");
   } else {
-    console.log(`[digest] Full triage: ${triagedCount}/${items.length} items have LLM scores.`);
+    log.info({ triaged: triagedCount, total: items.length }, "Full triage completed");
   }
 
   return {

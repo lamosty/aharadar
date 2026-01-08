@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
-import { loadDotEnvIfPresent } from "@aharadar/shared";
+import { loadDotEnvIfPresent, createLogger } from "@aharadar/shared";
 import { apiKeyAuth } from "./auth/api_key.js";
 import { sessionAuth } from "./auth/session.js";
 import { closePipelineQueue } from "./lib/queue.js";
@@ -16,6 +16,8 @@ import { topicsRoutes } from "./routes/topics.js";
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
+
+const log = createLogger({ component: "api" });
 
 const PORT = parseInt(process.env.API_PORT ?? process.env.PORT ?? "3001", 10);
 
@@ -91,10 +93,10 @@ async function main() {
   const server = await buildServer();
 
   const shutdown = async (signal: string): Promise<void> => {
-    console.log(`[api] Received ${signal}, shutting down...`);
+    log.info({ signal }, "Received signal, shutting down");
     await server.close();
     await closePipelineQueue();
-    console.log("[api] Shutdown complete");
+    log.info("Shutdown complete");
     process.exit(0);
   };
 
@@ -103,7 +105,7 @@ async function main() {
 
   try {
     await server.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`API server listening on port ${PORT}`);
+    log.info({ port: PORT }, "API server listening");
   } catch (err) {
     server.log.error(err);
     process.exit(1);

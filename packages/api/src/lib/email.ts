@@ -1,4 +1,7 @@
 import { Resend } from "resend";
+import { createLogger } from "@aharadar/shared";
+
+const log = createLogger({ component: "email" });
 
 let resend: Resend | null = null;
 
@@ -56,9 +59,9 @@ export async function sendMagicLinkEmail(params: SendMagicLinkParams): Promise<v
   });
 
   if (error) {
-    console.error("[email] Failed to send magic link:", error);
+    log.error({ err: error, to }, "Failed to send magic link");
     throw new Error(`Failed to send email: ${error.message}`);
   }
 
-  console.log(`[email] Magic link sent to ${to}`);
+  log.info({ to }, "Magic link sent");
 }
