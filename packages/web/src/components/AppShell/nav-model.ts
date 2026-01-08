@@ -53,7 +53,7 @@ export const mainNavItems: NavItem[] = [
   },
   {
     id: "topics",
-    href: "/app/settings",
+    href: "/app/topics",
     labelKey: "nav.topics",
     icon: "topics",
     mobileNav: false,

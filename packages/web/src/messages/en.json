@@ -392,6 +392,10 @@
     "hoursAgo": "{count}h ago",
     "daysAgo": "{count}d ago"
   },
+  "topics": {
+    "emptyTitle": "No topics yet",
+    "emptyDescription": "Create your first topic to organize sources and personalize your feed."
+  },
   "feed": {
     "topic": "Topic",
     "title": "Feed",
