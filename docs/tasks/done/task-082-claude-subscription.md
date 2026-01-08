@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 082 — `feat(llm): Claude subscription mode with enhanced triage (experimental)`
 
 - **Owner**: Claude Code Opus 4.5 (implementer)

@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 069: WhyShown Shows Nothing When Expanded
 
 ## Priority: High

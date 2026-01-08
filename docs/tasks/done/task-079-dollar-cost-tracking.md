@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 079 — `feat(shared,db,pipeline): real USD cost tracking for LLM calls`
 
 - **Owner**: Claude Code Opus 4.5 (implementer)

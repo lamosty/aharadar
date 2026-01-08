@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 081a — `spike: Claude Agent SDK authentication for background services`
 
 - **Owner**: Claude Code Opus 4.5 (investigator)

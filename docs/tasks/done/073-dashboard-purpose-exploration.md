@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 073: Dashboard Purpose & Widget Exploration
 
 ## Priority: Medium

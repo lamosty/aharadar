@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 080 — `feat(web,api): API keys management and usage dashboard UI`
 
 - **Owner**: Claude Code Opus 4.5 (implementer)

@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 081 — `feat(llm): add Anthropic as standard API provider`
 
 - **Owner**: Claude Code Opus 4.5 (implementer)

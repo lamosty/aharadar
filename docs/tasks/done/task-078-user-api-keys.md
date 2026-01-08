@@ -1,3 +1,5 @@
+# ✅ DONE
+
 # Task 078 — `feat(db,api): encrypted user API key storage`
 
 - **Owner**: Claude Code Opus 4.5 (implementer)
