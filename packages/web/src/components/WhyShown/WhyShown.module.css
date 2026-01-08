@@ -131,16 +131,15 @@
   gap: var(--space-1);
 }
 
-.metaItem dt {
+.metaLabel {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
-.metaItem dd {
+.metaValue {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
-  margin: 0;
 }
 
 .sourceType {
@@ -155,19 +154,9 @@
 
 .tagSection,
 .urlSection {
-  margin-top: var(--space-2);
-}
-
-.tagSection dt,
-.urlSection dt {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-1);
-}
-
-.tagSection dd,
-.urlSection dd {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .tagList {

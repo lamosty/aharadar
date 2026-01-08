@@ -161,8 +161,9 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
           onFeedback={handleFeedback}
           variant="compact"
         />
-        <WhyShown features={item.triageJson as TriageFeatures | undefined} />
       </div>
+
+      <WhyShown features={item.triageJson as TriageFeatures | undefined} />
     </article>
   );
 }

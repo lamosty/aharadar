@@ -71,14 +71,14 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                   <div className={styles.metaGrid}>
                     {typeof features.system_features.novelty_v1.novelty01 === "number" && (
                       <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.noveltyScore")}</dt>
-                        <dd>{(features.system_features.novelty_v1.novelty01 * 100).toFixed(0)}%</dd>
+                        <span className={styles.metaLabel}>{t("digests.whyShown.noveltyScore")}</span>
+                        <span className={styles.metaValue}>{(features.system_features.novelty_v1.novelty01 * 100).toFixed(0)}%</span>
                       </div>
                     )}
                     {typeof features.system_features.novelty_v1.lookback_days === "number" && (
                       <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.lookbackDays")}</dt>
-                        <dd>{features.system_features.novelty_v1.lookback_days} days</dd>
+                        <span className={styles.metaLabel}>{t("digests.whyShown.lookbackDays")}</span>
+                        <span className={styles.metaValue}>{features.system_features.novelty_v1.lookback_days} days</span>
                       </div>
                     )}
                   </div>
@@ -89,12 +89,12 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                 <FeatureSection title={t("digests.whyShown.recencyDecay")} tooltipKey="tooltips.freshness">
                   <div className={styles.metaGrid}>
                     <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.freshness")}</dt>
-                      <dd>{(features.system_features.recency_decay_v1.decay_factor * 100).toFixed(0)}%</dd>
+                      <span className={styles.metaLabel}>{t("digests.whyShown.freshness")}</span>
+                      <span className={styles.metaValue}>{(features.system_features.recency_decay_v1.decay_factor * 100).toFixed(0)}%</span>
                     </div>
                     <div className={styles.metaItem}>
-                      <dt>{t("digests.whyShown.age")}</dt>
-                      <dd>{features.system_features.recency_decay_v1.age_hours.toFixed(1)}h</dd>
+                      <span className={styles.metaLabel}>{t("digests.whyShown.age")}</span>
+                      <span className={styles.metaValue}>{features.system_features.recency_decay_v1.age_hours.toFixed(1)}h</span>
                     </div>
                   </div>
                 </FeatureSection>
@@ -105,21 +105,21 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                   <div className={styles.metaGrid}>
                     {features.system_features.source_weight_v1.source_name && (
                       <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.sourceName")}</dt>
-                        <dd>{features.system_features.source_weight_v1.source_name}</dd>
+                        <span className={styles.metaLabel}>{t("digests.whyShown.sourceName")}</span>
+                        <span className={styles.metaValue}>{features.system_features.source_weight_v1.source_name}</span>
                       </div>
                     )}
                     {features.system_features.source_weight_v1.source_type && (
                       <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.sourceType")}</dt>
-                        <dd className={styles.sourceType}>{features.system_features.source_weight_v1.source_type}</dd>
+                        <span className={styles.metaLabel}>{t("digests.whyShown.sourceType")}</span>
+                        <span className={`${styles.metaValue} ${styles.sourceType}`}>{features.system_features.source_weight_v1.source_type}</span>
                       </div>
                     )}
                     {typeof features.system_features.source_weight_v1.effective_weight === "number" &&
                       features.system_features.source_weight_v1.effective_weight !== 1.0 && (
                         <div className={styles.metaItem}>
-                          <dt>{t("digests.whyShown.weight")}</dt>
-                          <dd>{features.system_features.source_weight_v1.effective_weight.toFixed(1)}x</dd>
+                          <span className={styles.metaLabel}>{t("digests.whyShown.weight")}</span>
+                          <span className={styles.metaValue}>{features.system_features.source_weight_v1.effective_weight.toFixed(1)}x</span>
                         </div>
                       )}
                   </div>
@@ -130,17 +130,15 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                 <FeatureSection title={t("digests.whyShown.corroboration")}>
                   {features.system_features.signal_corroboration_v1.matched_url && (
                     <div className={styles.urlSection}>
-                      <dt>{t("digests.whyShown.corroboratingUrls")}</dt>
-                      <dd>
-                        <a
-                          href={features.system_features.signal_corroboration_v1.matched_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.url}
-                        >
-                          {truncateUrl(features.system_features.signal_corroboration_v1.matched_url)}
-                        </a>
-                      </dd>
+                      <span className={styles.metaLabel}>{t("digests.whyShown.corroboratingUrls")}</span>
+                      <a
+                        href={features.system_features.signal_corroboration_v1.matched_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.url}
+                      >
+                        {truncateUrl(features.system_features.signal_corroboration_v1.matched_url)}
+                      </a>
                     </div>
                   )}
                 </FeatureSection>
@@ -151,35 +149,35 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                   <div className={styles.metaGrid}>
                     {features.system_features.user_preference_v1.source_type && (
                       <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.userPrefSourceType")}</dt>
-                        <dd className={styles.sourceType}>{features.system_features.user_preference_v1.source_type}</dd>
+                        <span className={styles.metaLabel}>{t("digests.whyShown.userPrefSourceType")}</span>
+                        <span className={`${styles.metaValue} ${styles.sourceType}`}>{features.system_features.user_preference_v1.source_type}</span>
                       </div>
                     )}
                     {typeof features.system_features.user_preference_v1.source_type_weight === "number" &&
                       features.system_features.user_preference_v1.source_type_weight !== 1.0 && (
                         <div className={styles.metaItem}>
-                          <dt>{t("digests.whyShown.userPrefSourceTypeWeight")}</dt>
-                          <dd>{features.system_features.user_preference_v1.source_type_weight.toFixed(1)}x</dd>
+                          <span className={styles.metaLabel}>{t("digests.whyShown.userPrefSourceTypeWeight")}</span>
+                          <span className={styles.metaValue}>{features.system_features.user_preference_v1.source_type_weight.toFixed(1)}x</span>
                         </div>
                       )}
                     {features.system_features.user_preference_v1.author && (
                       <div className={styles.metaItem}>
-                        <dt>{t("digests.whyShown.userPrefAuthor")}</dt>
-                        <dd>{features.system_features.user_preference_v1.author}</dd>
+                        <span className={styles.metaLabel}>{t("digests.whyShown.userPrefAuthor")}</span>
+                        <span className={styles.metaValue}>{features.system_features.user_preference_v1.author}</span>
                       </div>
                     )}
                     {typeof features.system_features.user_preference_v1.author_weight === "number" &&
                       features.system_features.user_preference_v1.author_weight !== 1.0 && (
                         <div className={styles.metaItem}>
-                          <dt>{t("digests.whyShown.userPrefAuthorWeight")}</dt>
-                          <dd>{features.system_features.user_preference_v1.author_weight.toFixed(1)}x</dd>
+                          <span className={styles.metaLabel}>{t("digests.whyShown.userPrefAuthorWeight")}</span>
+                          <span className={styles.metaValue}>{features.system_features.user_preference_v1.author_weight.toFixed(1)}x</span>
                         </div>
                       )}
                     {typeof features.system_features.user_preference_v1.effective_weight === "number" &&
                       features.system_features.user_preference_v1.effective_weight !== 1.0 && (
                         <div className={styles.metaItem}>
-                          <dt>{t("digests.whyShown.userPrefEffectiveWeight")}</dt>
-                          <dd>{features.system_features.user_preference_v1.effective_weight.toFixed(1)}x</dd>
+                          <span className={styles.metaLabel}>{t("digests.whyShown.userPrefEffectiveWeight")}</span>
+                          <span className={styles.metaValue}>{features.system_features.user_preference_v1.effective_weight.toFixed(1)}x</span>
                         </div>
                       )}
                   </div>
