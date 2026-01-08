@@ -2,10 +2,11 @@
 
 import { Suspense, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useItems, useFeedback, useTopicMarkChecked } from "@/lib/hooks";
+import { useItems, useFeedback, useTopicMarkChecked, useTopics } from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
 import { useTopic } from "@/components/TopicProvider";
+import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
@@ -41,6 +42,9 @@ function FeedPageContent() {
   const router = useRouter();
   const { addToast } = useToast();
   const { currentTopicId, isReady: topicReady } = useTopic();
+  const { data: topicsData, isLoading: topicsLoading } = useTopics();
+
+  const hasTopics = topicsData?.topics && topicsData.topics.length > 0;
 
   // Parse URL params
   const sourcesParam = searchParams.get("sources");
@@ -125,13 +129,70 @@ function FeedPageContent() {
   const allItems = data?.pages.flatMap((page) => page.items) ?? [];
   const totalCount = data?.pages[0]?.pagination.total;
 
+  // Show onboarding when no topics exist
+  if (!topicsLoading && !hasTopics) {
+    return (
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.headerTop}>
+            <div>
+              <h1 className={styles.title}>{t("feed.title")}</h1>
+              <p className={styles.subtitle}>{t("feed.onboarding.subtitle")}</p>
+            </div>
+          </div>
+        </header>
+
+        <div className={styles.onboardingState}>
+          <div className={styles.onboardingIcon}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <h2 className={styles.onboardingTitle}>{t("feed.onboarding.title")}</h2>
+          <p className={styles.onboardingMessage}>{t("feed.onboarding.message")}</p>
+
+          <div className={styles.onboardingSteps}>
+            <div className={styles.onboardingStep}>
+              <span className={styles.stepNumber}>1</span>
+              <span className={styles.stepText}>{t("feed.onboarding.step1")}</span>
+            </div>
+            <div className={styles.onboardingStep}>
+              <span className={styles.stepNumber}>2</span>
+              <span className={styles.stepText}>{t("feed.onboarding.step2")}</span>
+            </div>
+            <div className={styles.onboardingStep}>
+              <span className={styles.stepNumber}>3</span>
+              <span className={styles.stepText}>{t("feed.onboarding.step3")}</span>
+            </div>
+          </div>
+
+          <Link href="/app/settings" className={`btn btn-primary ${styles.onboardingCta}`}>
+            {t("feed.onboarding.cta")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
             <h1 className={styles.title}>{t("feed.title")}</h1>
-            <p className={styles.subtitle}>All your ranked items in one place</p>
+            <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
             <TopicSwitcher />

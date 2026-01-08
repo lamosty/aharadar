@@ -390,7 +390,17 @@
   "feed": {
     "topic": "Topic",
     "title": "Feed",
+    "subtitle": "All your ranked items in one place",
     "empty": "No items yet",
-    "emptyDescription": "Items will appear here after running the pipeline."
+    "emptyDescription": "Items will appear here after running the pipeline.",
+    "onboarding": {
+      "subtitle": "Get started with personalized content",
+      "title": "Welcome to your feed",
+      "message": "Set up your first topic to start discovering relevant content from across the web.",
+      "step1": "Create a topic to organize your interests",
+      "step2": "Add sources like Reddit, HN, RSS, or X",
+      "step3": "Run the pipeline to fetch and rank items",
+      "cta": "Get Started"
+    }
   }
 }
