@@ -36,6 +36,8 @@ import {
   getTopic,
   patchTopicViewingProfile,
   postTopicMarkChecked,
+  createTopic,
+  deleteTopic,
   type HealthResponse,
   type DigestsListResponse,
   type DigestDetailResponse,
@@ -61,6 +63,9 @@ import {
   type TopicViewingProfileUpdateResponse,
   type TopicViewingProfileUpdateRequest,
   type TopicMarkCheckedResponse,
+  type CreateTopicRequest,
+  type CreateTopicResponse,
+  type DeleteTopicResponse,
   type ViewingProfile,
   type FeedbackAction,
   ApiError,
@@ -541,6 +546,48 @@ export function useTopicMarkChecked(
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
       // Invalidate items to update isNew flags
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to create a new topic.
+ */
+export function useCreateTopic(
+  options?: Omit<
+    UseMutationOptions<CreateTopicResponse, ApiError | NetworkError, CreateTopicRequest>,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => createTopic(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to delete a topic.
+ */
+export function useDeleteTopic(
+  options?: Omit<
+    UseMutationOptions<DeleteTopicResponse, ApiError | NetworkError, string>,
+    "mutationFn"
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (topicId) => deleteTopic(topicId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+      // Also invalidate sources since they may have moved
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.sources });
     },
     ...options,
   });

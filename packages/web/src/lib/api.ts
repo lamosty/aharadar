@@ -752,3 +752,77 @@ export async function postTopicMarkChecked(
     signal,
   });
 }
+
+/** Create topic request */
+export interface CreateTopicRequest {
+  name: string;
+  description?: string;
+  viewingProfile?: ViewingProfile;
+  decayHours?: number;
+}
+
+/** Create topic response */
+export interface CreateTopicResponse {
+  ok: true;
+  topic: Topic;
+}
+
+/** Update topic request */
+export interface UpdateTopicRequest {
+  name?: string;
+  description?: string | null;
+}
+
+/** Update topic response */
+export interface UpdateTopicResponse {
+  ok: true;
+  topic: Topic;
+}
+
+/** Delete topic response */
+export interface DeleteTopicResponse {
+  ok: true;
+  message: string;
+}
+
+/**
+ * Create a new topic.
+ */
+export async function createTopic(
+  data: CreateTopicRequest,
+  signal?: AbortSignal
+): Promise<CreateTopicResponse> {
+  return apiFetch<CreateTopicResponse>("/topics", {
+    method: "POST",
+    body: data,
+    signal,
+  });
+}
+
+/**
+ * Update a topic's name/description.
+ */
+export async function updateTopic(
+  id: string,
+  data: UpdateTopicRequest,
+  signal?: AbortSignal
+): Promise<UpdateTopicResponse> {
+  return apiFetch<UpdateTopicResponse>(`/topics/${id}`, {
+    method: "PATCH",
+    body: data,
+    signal,
+  });
+}
+
+/**
+ * Delete a topic.
+ */
+export async function deleteTopic(
+  id: string,
+  signal?: AbortSignal
+): Promise<DeleteTopicResponse> {
+  return apiFetch<DeleteTopicResponse>(`/topics/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}

@@ -4,10 +4,113 @@
   gap: var(--spacing-md);
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
 .description {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   margin: 0;
+  flex: 1;
+}
+
+.createButton {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.createButton:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: white;
+}
+
+.createButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.createForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-background-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.createInput {
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.createInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-subtle);
+}
+
+.createActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.createConfirm {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: white;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.createConfirm:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.createConfirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.createCancel {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.createCancel:hover:not(:disabled) {
+  background: var(--color-background-subtle);
+}
+
+.createCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .topicsList {
@@ -25,9 +128,15 @@
 
 .topicHeader {
   display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.topicHeaderButton {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
+  flex: 1;
   padding: var(--spacing-md);
   border: none;
   background: transparent;
@@ -36,8 +145,81 @@
   transition: background-color 0.15s ease;
 }
 
-.topicHeader:hover {
+.topicHeaderButton:hover {
   background: var(--color-background-subtle);
+}
+
+.topicActions {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding-right: var(--spacing-md);
+}
+
+.deleteButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.deleteButton:hover:not(:disabled) {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background: var(--color-error-subtle, rgba(239, 68, 68, 0.1));
+}
+
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.deleteConfirm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: white;
+  background: var(--color-error);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.deleteConfirm:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.deleteConfirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.deleteCancel {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.deleteCancel:hover:not(:disabled) {
+  background: var(--color-background-subtle);
+}
+
+.deleteCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .topicInfo {

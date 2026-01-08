@@ -5,6 +5,7 @@
     "error": "An error occurred",
     "retry": "Retry",
     "save": "Save",
+    "saving": "Saving...",
     "cancel": "Cancel",
     "close": "Close",
     "back": "Back",
@@ -16,7 +17,9 @@
     "disabled": "Disabled",
     "expandAll": "Expand all",
     "collapseAll": "Collapse all",
-    "delete": "Delete"
+    "delete": "Delete",
+    "create": "Create",
+    "confirmDelete": "Confirm"
   },
   "nav": {
     "home": "Home",
@@ -129,7 +132,14 @@
     "topics": {
       "title": "Topics",
       "description": "Configure viewing profile settings for each topic. Click a topic to expand its settings.",
-      "noTopics": "No topics configured yet. Topics will appear here once created."
+      "noTopics": "No topics configured yet. Topics will appear here once created.",
+      "create": "Create Topic",
+      "namePlaceholder": "Topic name (e.g., Tech News)",
+      "created": "Topic created",
+      "createFailed": "Failed to create topic",
+      "deleted": "Topic deleted",
+      "deleteFailed": "Failed to delete topic",
+      "delete": "Delete topic"
     },
     "dev": {
       "title": "Developer Settings",
