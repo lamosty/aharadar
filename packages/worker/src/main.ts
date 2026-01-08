@@ -2,8 +2,11 @@ import { createDb } from "@aharadar/db";
 import { parseSchedulerConfig, generateDueWindows, getSchedulableTopics } from "@aharadar/pipeline";
 import { loadDotEnvIfPresent, loadRuntimeEnv, createLogger } from "@aharadar/shared";
 
+import { startMetricsServer, updateQueueDepth } from "./metrics";
 import { createPipelineQueue } from "./queues";
 import { createPipelineWorker } from "./workers/pipeline.worker";
+
+const METRICS_PORT = parseInt(process.env.WORKER_METRICS_PORT ?? "9091", 10);
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
@@ -82,6 +85,20 @@ async function main(): Promise<void> {
   // Create worker to process jobs
   const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
 
+  // Start metrics server
+  const metricsServer = startMetricsServer(METRICS_PORT);
+  log.info({ port: METRICS_PORT }, "Metrics server started");
+
+  // Update queue depth periodically
+  const queueDepthInterval = setInterval(async () => {
+    try {
+      const counts = await queue.getJobCounts("waiting", "active", "delayed");
+      updateQueueDepth("pipeline", counts.waiting + counts.active + counts.delayed);
+    } catch (err) {
+      log.warn({ err }, "Failed to update queue depth");
+    }
+  }, 15_000); // Every 15 seconds
+
   log.info("Worker started, listening for jobs");
 
   // Run scheduler immediately on startup
@@ -101,7 +118,9 @@ async function main(): Promise<void> {
     log.info({ signal }, "Received signal, shutting down");
 
     clearInterval(schedulerInterval);
+    clearInterval(queueDepthInterval);
 
+    await metricsServer.close();
     await worker.close();
     await queue.close();
     await schedulerDb.close();

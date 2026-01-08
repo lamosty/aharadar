@@ -21,6 +21,7 @@
     "@fastify/cors": "^11.2.0",
     "bullmq": "^5.34.8",
     "fastify": "^5.2.1",
+    "prom-client": "^15.1.0",
     "resend": "^6.6.0"
   }
 }

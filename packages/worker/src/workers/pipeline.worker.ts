@@ -3,12 +3,13 @@ import { createDb, type Db } from "@aharadar/db";
 import { runPipelineOnce, type PipelineRunResult } from "@aharadar/pipeline";
 import { loadRuntimeEnv, createJobLogger, type Logger } from "@aharadar/shared";
 
+import { recordPipelineStage, recordIngestItems } from "../metrics";
 import { PIPELINE_QUEUE_NAME, parseRedisConnection, type RunWindowJobData } from "../queues";
 
 /**
- * Log a concise summary of the pipeline run result.
+ * Log a concise summary and record metrics for the pipeline run result.
  */
-function logSummary(log: Logger, result: PipelineRunResult): void {
+function logSummaryAndRecordMetrics(log: Logger, result: PipelineRunResult, durationSec: number): void {
   const ingestTotal = result.ingest.totals.upserted;
   const embedCount = result.embed.embedded;
   const clusterCount = result.cluster.attachedToExisting + result.cluster.created;
@@ -22,9 +23,23 @@ function logSummary(log: Logger, result: PipelineRunResult): void {
       embed: embedCount,
       cluster: clusterCount,
       digest: digestItems,
+      durationSec,
     },
     "Pipeline run completed"
   );
+
+  // Record pipeline metrics
+  recordPipelineStage({ stage: "full", status: "success", durationSec });
+
+  // Record ingest metrics per source type
+  for (const source of result.ingest.perSource) {
+    const status = source.status === "ok" ? "success" : source.status === "skipped" ? "skipped" : "error";
+    recordIngestItems({
+      sourceType: source.sourceType,
+      status,
+      count: source.upserted,
+    });
+  }
 }
 
 /**
@@ -39,24 +54,32 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
     async (job: Job<RunWindowJobData>) => {
       const { userId, topicId, windowStart, windowEnd, mode } = job.data;
       const jobLog = createJobLogger(job.id ?? "unknown");
+      const startTime = process.hrtime.bigint();
 
       jobLog.info({ topicId: topicId.slice(0, 8) }, "Starting pipeline run");
 
-      const result = await runPipelineOnce(db, {
-        userId,
-        topicId,
-        windowStart,
-        windowEnd,
-        mode,
-        budget: {
-          monthlyCredits: env.monthlyCredits,
-          dailyThrottleCredits: env.dailyThrottleCredits,
-        },
-      });
+      try {
+        const result = await runPipelineOnce(db, {
+          userId,
+          topicId,
+          windowStart,
+          windowEnd,
+          mode,
+          budget: {
+            monthlyCredits: env.monthlyCredits,
+            dailyThrottleCredits: env.dailyThrottleCredits,
+          },
+        });
 
-      logSummary(jobLog, result);
+        const durationSec = Number(process.hrtime.bigint() - startTime) / 1e9;
+        logSummaryAndRecordMetrics(jobLog, result, durationSec);
 
-      return result;
+        return result;
+      } catch (err) {
+        const durationSec = Number(process.hrtime.bigint() - startTime) / 1e9;
+        recordPipelineStage({ stage: "full", status: "error", durationSec });
+        throw err;
+      }
     },
     {
       connection: parseRedisConnection(redisUrl),

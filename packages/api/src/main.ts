@@ -5,6 +5,7 @@ import { loadDotEnvIfPresent, createLogger } from "@aharadar/shared";
 import { apiKeyAuth } from "./auth/api_key.js";
 import { sessionAuth } from "./auth/session.js";
 import { closePipelineQueue } from "./lib/queue.js";
+import { registerMetricsHooks } from "./metrics.js";
 import { adminRoutes } from "./routes/admin.js";
 import { authRoutes } from "./routes/auth.js";
 import { digestsRoutes } from "./routes/digests.js";
@@ -46,6 +47,9 @@ async function buildServer() {
   await fastify.register(cookie, {
     parseOptions: {},
   });
+
+  // Register Prometheus metrics hooks
+  registerMetricsHooks(fastify);
 
   fastify.setErrorHandler((error: Error & { statusCode?: number; code?: string }, _request, reply) => {
     const statusCode = error.statusCode ?? 500;
