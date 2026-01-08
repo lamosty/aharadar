@@ -1,5 +1,6 @@
 import { loadDotEnvIfPresent } from "@aharadar/shared";
 
+import { askCommand } from "./commands/ask";
 import { inboxCommand } from "./commands/inbox";
 import { reviewCommand } from "./commands/review";
 import { searchCommand } from "./commands/search";
@@ -27,6 +28,7 @@ function printHelp(): void {
   console.log("aharadar CLI");
   console.log("");
   console.log("Commands:");
+  console.log('  ask [--topic <id-or-name>] [--max-clusters N] "<question>"');
   console.log("  inbox [--cards|--table] [--topic <id-or-name>]");
   console.log("  review [--topic <id-or-name>]");
   console.log('  search [--topic <id-or-name>] [--limit N] "<query>"');
@@ -70,6 +72,9 @@ async function main(): Promise<void> {
 
   let result: CommandResult;
   switch (cmd) {
+    case "ask":
+      result = askCommand(rest);
+      break;
     case "inbox":
       result = inboxCommand(rest);
       break;
