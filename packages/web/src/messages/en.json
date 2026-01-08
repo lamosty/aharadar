@@ -328,7 +328,7 @@
     },
     "whyShown": {
       "title": "Why shown",
-      "ahaScore": "Aha Score",
+      "ahaScore": "AI Score",
       "reason": "Reason",
       "novelty": "Novelty",
       "noveltyScore": "Novelty score",
@@ -415,5 +415,26 @@
       "step3": "Run the pipeline to fetch and rank items",
       "cta": "Get Started"
     }
+  },
+  "tooltips": {
+    "ahaScore": "Your personalized relevance score. Combines AI analysis with freshness, novelty, and your preferences. Higher = more relevant to you right now.",
+    "aiScore": "AI's assessment of how relevant this item is to your topic (0-100). This raw score is then adjusted by freshness, novelty, and your preferences.",
+    "novelty": "How unique this content is compared to what you've seen recently. Higher = more novel information.",
+    "freshness": "How recent this content is. Older items gradually fade to make room for new ones.",
+    "sourceWeight": "Priority multiplier for this source. Sources you trust more can be weighted higher.",
+    "userPreferences": "Boosts applied based on your liked sources and authors.",
+    "categories": "Topics the AI identified in this content.",
+    "feedbackLike": "Mark as interesting - helps surface similar content in the future.",
+    "feedbackDislike": "Mark as not relevant - helps filter out similar content.",
+    "feedbackSave": "Bookmark for later reference.",
+    "feedbackSkip": "Dismiss without affecting your preferences.",
+    "sourceHN": "Hacker News - tech news and community discussions.",
+    "sourceReddit": "Reddit community post.",
+    "sourceRSS": "RSS/Atom feed article.",
+    "sourceYouTube": "YouTube video.",
+    "sourceX": "Post from X (formerly Twitter).",
+    "sourceSignal": "X/Twitter search signal via Grok AI.",
+    "sourcesInterval": "How often this source is checked for new content.",
+    "sourcesWeight": "Priority multiplier for items from this source (1.0 = normal)."
   }
 }

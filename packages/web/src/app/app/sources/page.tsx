@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useAdminSources } from "@/lib/hooks";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./page.module.css";
 
 export default function SourcesPage() {
@@ -76,13 +77,21 @@ export default function SourcesPage() {
                     <h3 className={styles.sourceName}>{source.name}</h3>
                     <div className={styles.sourceStats}>
                       <div className={styles.stat}>
-                        <span className={styles.statLabel}>Interval</span>
+                        <span className={styles.statLabel}>
+                          Interval
+                          <HelpTooltip content={t("tooltips.sourcesInterval")} />
+                        </span>
                         <span className={styles.statValue}>
-                          {source.config.cadence?.every_minutes ?? "-"} min
+                          {source.config.cadence?.every_minutes
+                            ? `${source.config.cadence.every_minutes} min`
+                            : "Not set"}
                         </span>
                       </div>
                       <div className={styles.stat}>
-                        <span className={styles.statLabel}>Weight</span>
+                        <span className={styles.statLabel}>
+                          Weight
+                          <HelpTooltip content={t("tooltips.sourcesWeight")} />
+                        </span>
                         <span className={styles.statValue}>{source.config.weight?.toFixed(1) ?? "1.0"}</span>
                       </div>
                     </div>

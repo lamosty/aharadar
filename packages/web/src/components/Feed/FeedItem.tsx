@@ -3,8 +3,9 @@
 import { type FeedItem as FeedItemType } from "@/lib/api";
 import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { Tooltip } from "@/components/Tooltip";
 import { type TriageFeatures } from "@/lib/mock-data";
-import { t } from "@/lib/i18n";
+import { t, type MessageKey } from "@/lib/i18n";
 import styles from "./FeedItem.module.css";
 
 interface FeedItemProps {
@@ -52,6 +53,23 @@ function getSourceColor(type: string): string {
   return colors[type] || "var(--color-text-muted)";
 }
 
+function getSourceTooltip(type: string, subreddit?: string): string {
+  const tooltipKeys: Record<string, MessageKey> = {
+    hn: "tooltips.sourceHN",
+    reddit: "tooltips.sourceReddit",
+    rss: "tooltips.sourceRSS",
+    youtube: "tooltips.sourceYouTube",
+    x_posts: "tooltips.sourceX",
+    signal: "tooltips.sourceSignal",
+  };
+  const key = tooltipKeys[type];
+  const baseTooltip = key ? t(key) : `Content from ${type}`;
+  if (type === "reddit" && subreddit) {
+    return `r/${subreddit} - ${baseTooltip}`;
+  }
+  return baseTooltip;
+}
+
 function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trim() + "…";
@@ -73,18 +91,22 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
 
   const scorePercent = Math.round(item.score * 100);
 
+  const subreddit = item.item.metadata?.subreddit as string | undefined;
+
   return (
     <article className={styles.card} data-testid={`feed-item-${item.id}`}>
       <div className={styles.header}>
         {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
-        <span
-          className={styles.sourceTag}
-          style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
-        >
-          {formatSourceType(item.item.sourceType)}
-        </span>
-        {item.item.sourceType === "reddit" && item.item.metadata?.subreddit && (
-          <span className={styles.subreddit}>r/{item.item.metadata.subreddit}</span>
+        <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
+          <span
+            className={styles.sourceTag}
+            style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
+          >
+            {formatSourceType(item.item.sourceType)}
+          </span>
+        </Tooltip>
+        {item.item.sourceType === "reddit" && subreddit && (
+          <span className={styles.subreddit}>r/{subreddit}</span>
         )}
         {item.item.sourceType === "hn" && item.item.externalId && (
           <a
@@ -113,10 +135,12 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
             </time>
           )}
         </span>
-        <div className={styles.score} title={`Score: ${scorePercent}%`}>
-          <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
-          <span className={styles.scoreText}>{scorePercent}</span>
-        </div>
+        <Tooltip content={t("tooltips.ahaScore")}>
+          <div className={styles.score}>
+            <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
+            <span className={styles.scoreText}>{scorePercent}</span>
+          </div>
+        </Tooltip>
       </div>
 
       <h3 className={styles.title}>

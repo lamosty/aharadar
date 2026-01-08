@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { t } from "@/lib/i18n";
+import { t, type MessageKey } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import styles from "./FeedbackButtons.module.css";
 
@@ -119,7 +119,15 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
     skip: t("digests.feedback.skipped"),
   };
 
+  const tooltipKeys: Record<FeedbackAction, MessageKey> = {
+    like: "tooltips.feedbackLike",
+    dislike: "tooltips.feedbackDislike",
+    save: "tooltips.feedbackSave",
+    skip: "tooltips.feedbackSkip",
+  };
+
   const Icon = feedbackIcons[action];
+  const tooltip = t(tooltipKeys[action]);
 
   return (
     <button
@@ -129,7 +137,7 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
       disabled={isPending}
       aria-pressed={isActive}
       aria-label={isActive ? activeLabels[action] : labels[action]}
-      title={isActive ? activeLabels[action] : labels[action]}
+      title={tooltip}
       data-testid={`feedback-${action}`}
     >
       <Icon filled={isActive} />

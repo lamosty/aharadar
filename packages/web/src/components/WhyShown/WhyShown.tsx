@@ -2,7 +2,8 @@
 
 import { useState, useId } from "react";
 import { type TriageFeatures } from "@/lib/mock-data";
-import { t } from "@/lib/i18n";
+import { t, type MessageKey } from "@/lib/i18n";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./WhyShown.module.css";
 
 interface WhyShownProps {
@@ -53,9 +54,9 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
           data-testid="why-shown-panel"
         >
           <dl className={styles.featureList}>
-              {/* Aha Score - top level fields */}
+              {/* AI Score - LLM triage score */}
               {typeof features.aha_score === "number" && (
-                <FeatureSection title={t("digests.whyShown.ahaScore")}>
+                <FeatureSection title={t("digests.whyShown.ahaScore")} tooltipKey="tooltips.aiScore">
                   <div className={styles.scoreRow}>
                     <span className={styles.scoreValue}>{features.aha_score}</span>
                     <span className={styles.scoreMax}>/100</span>
@@ -66,7 +67,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
 
               {/* System features from ranking */}
               {features.system_features?.novelty_v1 && (
-                <FeatureSection title={t("digests.whyShown.novelty")}>
+                <FeatureSection title={t("digests.whyShown.novelty")} tooltipKey="tooltips.novelty">
                   <div className={styles.metaGrid}>
                     {typeof features.system_features.novelty_v1.novelty01 === "number" && (
                       <div className={styles.metaItem}>
@@ -85,7 +86,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
               )}
 
               {features.system_features?.recency_decay_v1 && (
-                <FeatureSection title={t("digests.whyShown.recencyDecay")}>
+                <FeatureSection title={t("digests.whyShown.recencyDecay")} tooltipKey="tooltips.freshness">
                   <div className={styles.metaGrid}>
                     <div className={styles.metaItem}>
                       <dt>{t("digests.whyShown.freshness")}</dt>
@@ -100,7 +101,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
               )}
 
               {features.system_features?.source_weight_v1 && (
-                <FeatureSection title={t("digests.whyShown.sourceWeight")}>
+                <FeatureSection title={t("digests.whyShown.sourceWeight")} tooltipKey="tooltips.sourceWeight">
                   <div className={styles.metaGrid}>
                     {features.system_features.source_weight_v1.source_name && (
                       <div className={styles.metaItem}>
@@ -146,7 +147,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
               )}
 
               {features.system_features?.user_preference_v1 && (
-                <FeatureSection title={t("digests.whyShown.userPreference")}>
+                <FeatureSection title={t("digests.whyShown.userPreference")} tooltipKey="tooltips.userPreferences">
                   <div className={styles.metaGrid}>
                     {features.system_features.user_preference_v1.source_type && (
                       <div className={styles.metaItem}>
@@ -187,7 +188,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
 
               {/* Categories from LLM triage */}
               {features.categories && features.categories.length > 0 && (
-                <FeatureSection title={t("digests.whyShown.categories")}>
+                <FeatureSection title={t("digests.whyShown.categories")} tooltipKey="tooltips.categories">
                   <div className={styles.tagList}>
                     {features.categories.map((cat) => (
                       <span key={cat} className={styles.tag}>
@@ -206,13 +207,17 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
 
 interface FeatureSectionProps {
   title: string;
+  tooltipKey?: MessageKey;
   children: React.ReactNode;
 }
 
-function FeatureSection({ title, children }: FeatureSectionProps) {
+function FeatureSection({ title, tooltipKey, children }: FeatureSectionProps) {
   return (
     <div className={styles.featureSection}>
-      <dt className={styles.featureTitle}>{title}</dt>
+      <dt className={styles.featureTitle}>
+        {title}
+        {tooltipKey && <HelpTooltip content={t(tooltipKey)} />}
+      </dt>
       <dd className={styles.featureContent}>{children}</dd>
     </div>
   );
