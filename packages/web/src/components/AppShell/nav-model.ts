@@ -7,7 +7,7 @@ export interface NavItem {
   id: string;
   href: string;
   labelKey: string; // i18n key
-  icon: "home" | "feed" | "digest" | "sources" | "settings" | "admin";
+  icon: "home" | "feed" | "digest" | "sources" | "topics" | "settings" | "admin";
   /** Whether this item should appear in mobile bottom nav */
   mobileNav?: boolean;
   /** Child items for nested navigation (e.g., admin sub-pages) */
@@ -50,6 +50,13 @@ export const mainNavItems: NavItem[] = [
     labelKey: "nav.sources",
     icon: "sources",
     mobileNav: true,
+  },
+  {
+    id: "topics",
+    href: "/app/settings",
+    labelKey: "nav.topics",
+    icon: "topics",
+    mobileNav: false,
   },
   {
     id: "admin",
