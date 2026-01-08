@@ -16,6 +16,11 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
 
   const hasFeatures = features && Object.keys(features).length > 0;
 
+  // Hide component when no features available (triage not run)
+  if (!hasFeatures) {
+    return null;
+  }
+
   return (
     <div className={styles.container} data-testid="why-shown">
       <button
@@ -40,10 +45,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
           aria-label={t("digests.whyShown.title")}
           data-testid="why-shown-panel"
         >
-          {!hasFeatures ? (
-            <p className={styles.noFeatures}>{t("digests.whyShown.noFeatures")}</p>
-          ) : (
-            <dl className={styles.featureList}>
+          <dl className={styles.featureList}>
               {features.aha_score && (
                 <FeatureSection title={t("digests.whyShown.ahaScore")}>
                   {features.aha_score.score != null && (
@@ -204,8 +206,7 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
                     <pre className={styles.rawJson}>{JSON.stringify(value, null, 2)}</pre>
                   </FeatureSection>
                 ))}
-            </dl>
-          )}
+          </dl>
         </div>
       )}
     </div>
