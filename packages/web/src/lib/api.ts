@@ -201,6 +201,7 @@ export interface AdminRunRequest {
   windowStart: string;
   windowEnd: string;
   mode?: RunMode;
+  topicId?: string;
 }
 
 /** Admin run response */

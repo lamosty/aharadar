@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
-import { useAdminRun } from "@/lib/hooks";
+import { useAdminRun, useTopics } from "@/lib/hooks";
 import type { RunMode } from "@/lib/api";
 import styles from "./page.module.css";
 
@@ -22,9 +22,13 @@ function getDefaultWindowEnd(): string {
 
 export default function AdminRunPage() {
   const { addToast } = useToast();
+  const { data: topicsData } = useTopics();
+  const topics = topicsData?.topics ?? [];
+
   const [windowStart, setWindowStart] = useState(getDefaultWindowStart);
   const [windowEnd, setWindowEnd] = useState(getDefaultWindowEnd);
   const [mode, setMode] = useState<RunMode>("normal");
+  const [topicId, setTopicId] = useState<string>("");
   const [jobId, setJobId] = useState<string | null>(null);
 
   const runMutation = useAdminRun({
@@ -48,6 +52,7 @@ export default function AdminRunPage() {
       windowStart: startDate.toISOString(),
       windowEnd: endDate.toISOString(),
       mode,
+      topicId: topicId || undefined,
     });
   };
 
@@ -57,6 +62,7 @@ export default function AdminRunPage() {
     setWindowStart(getDefaultWindowStart());
     setWindowEnd(getDefaultWindowEnd());
     setMode("normal");
+    setTopicId("");
   };
 
   const isLoading = runMutation.isPending;
@@ -123,6 +129,29 @@ export default function AdminRunPage() {
               required
             />
           </div>
+
+          {topics.length > 1 && (
+            <div className={styles.formGroup}>
+              <label htmlFor="topic" className={styles.label}>
+                {t("admin.run.topic")}
+              </label>
+              <select
+                id="topic"
+                name="topic"
+                value={topicId || topics[0]?.id || ""}
+                onChange={(e) => setTopicId(e.target.value)}
+                className={styles.select}
+                disabled={isLoading}
+              >
+                {topics.map((topic) => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.name}
+                  </option>
+                ))}
+              </select>
+              <p className={styles.hint}>{t("admin.run.topicHint")}</p>
+            </div>
+          )}
 
           <fieldset className={styles.fieldset} disabled={isLoading}>
             <legend className={styles.legend}>{t("admin.run.mode")}</legend>

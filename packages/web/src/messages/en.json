@@ -219,7 +219,9 @@
       "successJobId": "Job ID: {jobId}",
       "viewDigests": "View Digests",
       "error": "Failed to start run",
-      "sinceLastRun": "Since last run"
+      "sinceLastRun": "Since last run",
+      "topic": "Topic",
+      "topicHint": "Run pipeline for sources assigned to this topic"
     },
     "sources": {
       "title": "Sources Management",

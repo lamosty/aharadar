@@ -41,6 +41,7 @@ interface AdminRunRequestBody {
   windowStart: string;
   windowEnd: string;
   mode?: RunMode;
+  topicId?: string;
 }
 
 /** Supported source types */
@@ -219,7 +220,18 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { windowStart, windowEnd, mode } = body as Record<string, unknown>;
+    const { windowStart, windowEnd, mode, topicId } = body as Record<string, unknown>;
+
+    // Validate topicId if provided
+    if (topicId !== undefined && !isValidUuid(topicId)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "topicId must be a valid UUID",
+        },
+      });
+    }
 
     if (!isValidIsoDate(windowStart)) {
       return reply.code(400).send({
@@ -263,19 +275,37 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    // Resolve target topic: use provided topicId or fall back to context default
+    const targetTopicId = typeof topicId === "string" ? topicId : ctx.topicId;
+
+    // Verify topic belongs to user if custom topicId provided
+    const db = getDb();
+    if (topicId !== undefined) {
+      const topic = await db.topics.getById(targetTopicId);
+      if (!topic || topic.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+    }
+
     const queue = getPipelineQueue();
 
     // Deterministic job ID including mode to avoid collision with scheduled runs
     // BullMQ doesn't allow colons in job IDs, so replace them with underscores
     const sanitizedStart = windowStart.replace(/:/g, "_");
     const sanitizedEnd = windowEnd.replace(/:/g, "_");
-    const jobId = `${RUN_WINDOW_JOB_NAME}_${ctx.userId}_${ctx.topicId}_${sanitizedStart}_${sanitizedEnd}_${resolvedMode}`;
+    const jobId = `${RUN_WINDOW_JOB_NAME}_${ctx.userId}_${targetTopicId}_${sanitizedStart}_${sanitizedEnd}_${resolvedMode}`;
 
     await queue.add(
       RUN_WINDOW_JOB_NAME,
       {
         userId: ctx.userId,
-        topicId: ctx.topicId,
+        topicId: targetTopicId,
         windowStart,
         windowEnd,
         mode: resolvedMode,
