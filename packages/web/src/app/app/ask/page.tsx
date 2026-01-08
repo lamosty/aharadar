@@ -282,6 +282,8 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
   );
 }
 
+const MAX_QUESTION_LENGTH = 2000;
+
 export default function AskPage() {
   const { currentTopicId, setCurrentTopicId } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
@@ -292,12 +294,25 @@ export default function AskPage() {
   const [debugMode, setDebugMode] = useState(true); // Debug on by default for experimentation
   const [maxClusters, setMaxClusters] = useState(5);
   const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
+  const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
 
   const topics = topicsData?.topics ?? [];
 
-  // Check if feature is enabled on mount
+  // Check if feature is enabled on mount (client-side toggle + server status)
   useEffect(() => {
     setFeatureEnabled(isExperimentalFeatureEnabled("qa"));
+
+    // Also check server status
+    fetch("/api/ask/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok) {
+          setServerEnabled(data.enabled);
+        }
+      })
+      .catch(() => {
+        // Ignore errors, will show when user tries to ask
+      });
   }, []);
 
   // Show loading while checking feature status
@@ -422,12 +437,22 @@ export default function AskPage() {
           <textarea
             id="question"
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_LENGTH))}
             placeholder={t("ask.questionPlaceholder")}
             rows={3}
+            maxLength={MAX_QUESTION_LENGTH}
             required
           />
+          <div className={styles.charCount}>
+            {question.length} / {MAX_QUESTION_LENGTH}
+          </div>
         </div>
+
+        {serverEnabled === false && (
+          <div className={styles.serverWarning}>
+            Server has Q&A disabled (QA_ENABLED=false in .env). Enable it to use this feature.
+          </div>
+        )}
 
         <div className={styles.formActions}>
           <label className={styles.debugToggle}>

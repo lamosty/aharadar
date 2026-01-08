@@ -542,3 +542,21 @@ span.citationTitle {
 .enableLink:hover {
   opacity: 0.9;
 }
+
+/* Character count */
+.charCount {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 0.25rem;
+}
+
+/* Server warning */
+.serverWarning {
+  padding: 0.75rem 1rem;
+  background: var(--warning-bg, #fffbeb);
+  border: 1px solid var(--warning-border, #fde68a);
+  border-radius: 0.5rem;
+  color: var(--warning-text, #92400e);
+  font-size: 0.875rem;
+}

@@ -225,9 +225,14 @@ export async function handleAskQuestion(params: {
     };
   });
 
-  // 7. Log usage
-  const startedAt = new Date().toISOString();
-  const endedAt = new Date().toISOString();
+  // 7. Log usage with accurate timestamps
+  // Embedding started at totalStart and took embeddingMs
+  const embeddingStartedAt = new Date(totalStart).toISOString();
+  const embeddingEndedAt = new Date(totalStart + context.embeddingCost.durationMs).toISOString();
+  // LLM started at llmStart and took llmDurationMs
+  const llmStartedAt = new Date(llmStart).toISOString();
+  const llmEndedAt = new Date(llmStart + llmDurationMs).toISOString();
+
   try {
     // Log embedding call
     await db.providerCalls.insert({
@@ -244,8 +249,8 @@ export async function handleAskQuestion(params: {
         question,
         clustersFound: context.clusters.length,
       },
-      startedAt,
-      endedAt,
+      startedAt: embeddingStartedAt,
+      endedAt: embeddingEndedAt,
       status: "ok",
     });
 
@@ -265,8 +270,8 @@ export async function handleAskQuestion(params: {
         clustersUsed: context.clusters.length,
         itemsUsed: context.totalItems,
       },
-      startedAt,
-      endedAt,
+      startedAt: llmStartedAt,
+      endedAt: llmEndedAt,
       status: "ok",
     });
   } catch {
@@ -275,11 +280,25 @@ export async function handleAskQuestion(params: {
 
   const totalDurationMs = Date.now() - totalStart;
 
-  // 8. Build response
+  // 8. Validate and normalize confidence score
+  let confidence = { score: 0.5, reasoning: "Unknown" };
+  if (parsed.confidence && typeof parsed.confidence === "object") {
+    const score = parsed.confidence.score;
+    const reasoning = parsed.confidence.reasoning;
+    // Ensure score is a valid number between 0 and 1
+    if (typeof score === "number" && Number.isFinite(score)) {
+      confidence.score = Math.max(0, Math.min(1, score));
+    }
+    if (typeof reasoning === "string" && reasoning.trim().length > 0) {
+      confidence.reasoning = reasoning;
+    }
+  }
+
+  // 9. Build response
   const response: AskResponse = {
-    answer: parsed.answer,
+    answer: parsed.answer || "",
     citations,
-    confidence: parsed.confidence || { score: 0.5, reasoning: "Unknown" },
+    confidence,
     dataGaps: parsed.data_gaps,
     usage: {
       clustersRetrieved: context.clusters.length,
@@ -290,7 +309,7 @@ export async function handleAskQuestion(params: {
     },
   };
 
-  // 9. Add debug info if requested
+  // 10. Add debug info if requested
   if (includeDebug) {
     const debugInfo: AskDebugInfo = {
       request: {

@@ -3,6 +3,7 @@
   "references": [
     { "path": "../shared" },
     { "path": "../db" },
+    { "path": "../llm" },
     { "path": "../pipeline" },
     { "path": "../queues" }
   ],

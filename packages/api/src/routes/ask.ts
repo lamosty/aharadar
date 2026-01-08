@@ -23,6 +23,19 @@ interface AskRequestBody {
 }
 
 export async function askRoutes(fastify: FastifyInstance): Promise<void> {
+  // GET /api/ask/status - Check if Q&A feature is enabled on server
+  fastify.get("/ask/status", async () => {
+    const qaEnabled = process.env.QA_ENABLED === "true";
+    return {
+      ok: true,
+      enabled: qaEnabled,
+      limits: {
+        maxQuestionLength: 2000,
+        maxClusters: { min: 1, max: 50 },
+      },
+    };
+  });
+
   fastify.post<{ Body: AskRequestBody }>("/ask", async (request, reply) => {
     // Check experimental flag
     const qaEnabled = process.env.QA_ENABLED === "true";
@@ -50,12 +63,27 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
 
     const { question, topicId, options } = body;
 
+    // Validation constants
+    const MAX_QUESTION_LENGTH = 2000;
+    const MIN_MAX_CLUSTERS = 1;
+    const MAX_MAX_CLUSTERS = 50;
+
     if (!question || typeof question !== "string" || question.trim().length === 0) {
       return reply.code(400).send({
         ok: false,
         error: {
           code: "INVALID_PARAM",
           message: "question is required and must be a non-empty string",
+        },
+      });
+    }
+
+    if (question.trim().length > MAX_QUESTION_LENGTH) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `question exceeds maximum length of ${MAX_QUESTION_LENGTH} characters`,
         },
       });
     }
@@ -68,6 +96,20 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
           message: "topicId is required",
         },
       });
+    }
+
+    // Validate maxClusters if provided
+    if (options?.maxClusters !== undefined) {
+      const mc = options.maxClusters;
+      if (typeof mc !== "number" || !Number.isFinite(mc) || mc < MIN_MAX_CLUSTERS || mc > MAX_MAX_CLUSTERS) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `maxClusters must be a number between ${MIN_MAX_CLUSTERS} and ${MAX_MAX_CLUSTERS}`,
+          },
+        });
+      }
     }
 
     // Get user context
