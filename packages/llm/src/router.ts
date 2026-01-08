@@ -1,10 +1,12 @@
 import type { BudgetTier } from "@aharadar/shared";
 
 import { callAnthropicApi } from "./anthropic";
+import { callClaudeSubscription } from "./claude_subscription";
 import { callOpenAiCompat } from "./openai_compat";
 import type { LlmCallResult, LlmRequest, LlmRouter, ModelRef, TaskType } from "./types";
+import { canUseClaudeSubscription, getUsageLimitsFromEnv } from "./usage_tracker";
 
-type Provider = "openai" | "anthropic";
+type Provider = "openai" | "anthropic" | "claude-subscription";
 
 function firstEnv(env: NodeJS.ProcessEnv, names: string[]): string | undefined {
   for (const name of names) {
@@ -87,20 +89,58 @@ function resolveAnthropicModel(env: NodeJS.ProcessEnv, task: TaskType, tier: Bud
   return defaults[tier];
 }
 
-// Provider resolution
-function resolveProvider(env: NodeJS.ProcessEnv, task: TaskType): Provider {
+// Claude subscription model resolution (uses same model names as Anthropic API)
+function resolveClaudeSubscriptionModel(env: NodeJS.ProcessEnv, task: TaskType, tier: BudgetTier): string {
+  // Check for subscription-specific model override
+  const subKey = `CLAUDE_${task.toUpperCase()}_MODEL`;
+  const byTask = env[subKey];
+  if (byTask && byTask.trim().length > 0) return byTask.trim();
+
+  const globalSub = env.CLAUDE_MODEL;
+  if (globalSub && globalSub.trim().length > 0) return globalSub.trim();
+
+  // Fall back to Anthropic model resolution
+  return resolveAnthropicModel(env, task, tier);
+}
+
+// Provider resolution with subscription priority
+function resolveProvider(
+  env: NodeJS.ProcessEnv,
+  task: TaskType,
+  openaiApiKey: string | undefined,
+  anthropicApiKey: string | undefined
+): Provider {
+  // Check if subscription mode is enabled and available
+  if (env.CLAUDE_USE_SUBSCRIPTION === "true") {
+    const limits = getUsageLimitsFromEnv(env);
+    if (canUseClaudeSubscription(limits)) {
+      return "claude-subscription";
+    }
+    console.warn("[llm] Claude subscription quota exceeded, falling back to API");
+  }
+
   // Check for task-specific provider override
   const taskKey = `LLM_${task.toUpperCase()}_PROVIDER`;
   const taskProvider = env[taskKey]?.toLowerCase();
-  if (taskProvider === "anthropic" || taskProvider === "openai") {
-    return taskProvider;
+  if (taskProvider === "anthropic" && anthropicApiKey) {
+    return "anthropic";
+  }
+  if (taskProvider === "openai" && openaiApiKey) {
+    return "openai";
   }
 
   // Check for global provider preference
   const globalProvider = env.LLM_PROVIDER?.toLowerCase();
-  if (globalProvider === "anthropic" || globalProvider === "openai") {
-    return globalProvider;
+  if (globalProvider === "anthropic" && anthropicApiKey) {
+    return "anthropic";
   }
+  if (globalProvider === "openai" && openaiApiKey) {
+    return "openai";
+  }
+
+  // Auto-select based on available keys
+  if (anthropicApiKey) return "anthropic";
+  if (openaiApiKey) return "openai";
 
   // Default to openai for backward compatibility
   return "openai";
@@ -109,15 +149,25 @@ function resolveProvider(env: NodeJS.ProcessEnv, task: TaskType): Provider {
 export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRouter {
   const openaiApiKey = firstEnv(env, ["OPENAI_API_KEY"]);
   const anthropicApiKey = firstEnv(env, ["ANTHROPIC_API_KEY"]);
+  const subscriptionEnabled = env.CLAUDE_USE_SUBSCRIPTION === "true";
+  const enableThinking = env.CLAUDE_TRIAGE_THINKING === "true";
 
   // Validate at least one provider is configured
-  if (!openaiApiKey && !anthropicApiKey) {
-    throw new Error("Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY");
+  if (!openaiApiKey && !anthropicApiKey && !subscriptionEnabled) {
+    throw new Error("Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION)");
   }
 
   return {
     chooseModel(task: TaskType, tier: BudgetTier): ModelRef {
-      const provider = resolveProvider(env, task);
+      const provider = resolveProvider(env, task, openaiApiKey, anthropicApiKey);
+
+      if (provider === "claude-subscription") {
+        return {
+          provider: "claude-subscription",
+          model: resolveClaudeSubscriptionModel(env, task, tier),
+          endpoint: "claude-subscription",
+        };
+      }
 
       if (provider === "anthropic") {
         if (!anthropicApiKey) {
@@ -142,6 +192,12 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
     },
 
     async call(task: TaskType, ref: ModelRef, request: LlmRequest): Promise<LlmCallResult> {
+      if (ref.provider === "claude-subscription") {
+        return callClaudeSubscription(ref, request, {
+          enableThinking: task === "triage" && enableThinking,
+        });
+      }
+
       if (ref.provider === "anthropic") {
         if (!anthropicApiKey) {
           throw new Error("ANTHROPIC_API_KEY required for Anthropic calls");
