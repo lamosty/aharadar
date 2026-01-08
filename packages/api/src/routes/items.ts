@@ -47,6 +47,7 @@ interface UnifiedItemRow {
   published_at: string | null;
   source_type: string;
   source_id: string;
+  metadata_json: Record<string, unknown> | null;
   feedback_action: FeedbackAction | null;
 }
 
@@ -236,6 +237,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ci.published_at::text,
         ci.source_type,
         ci.source_id::text,
+        ci.metadata_json,
         fe.action as feedback_action
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
@@ -310,6 +312,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
           publishedAt: row.published_at,
           sourceType: row.source_type,
           sourceId: row.source_id,
+          metadata: row.metadata_json,
         },
         triageJson: row.triage_json,
         feedback: row.feedback_action,

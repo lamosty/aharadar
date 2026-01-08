@@ -114,6 +114,19 @@ export interface ItemDetailResponse {
   item: ContentItem;
 }
 
+/** Source-specific metadata */
+export interface ItemMetadata {
+  // Reddit
+  subreddit?: string;
+  ups?: number;
+  num_comments?: number;
+  upvote_ratio?: number;
+  // X posts
+  user_display_name?: string;
+  // Generic
+  [key: string]: unknown;
+}
+
 /** Unified feed item (from GET /items endpoint) */
 export interface FeedItem {
   id: string;
@@ -131,6 +144,7 @@ export interface FeedItem {
     publishedAt: string | null;
     sourceType: string;
     sourceId: string;
+    metadata?: ItemMetadata | null;
   };
   triageJson: Record<string, unknown> | null;
   feedback: FeedbackAction | null;

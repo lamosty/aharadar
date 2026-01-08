@@ -82,6 +82,9 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
         >
           {formatSourceType(item.item.sourceType)}
         </span>
+        {item.item.sourceType === "reddit" && item.item.metadata?.subreddit && (
+          <span className={styles.subreddit}>r/{item.item.metadata.subreddit}</span>
+        )}
         <span className={styles.meta}>
           {item.item.author && <span className={styles.author}>{item.item.author}</span>}
           {item.item.author && item.item.publishedAt && <span className={styles.separator}>·</span>}
