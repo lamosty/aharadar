@@ -103,10 +103,47 @@ From [Claude Agent SDK documentation](https://platform.claude.com/docs/en/api/ag
 
 > Unless previously approved, we do not allow third party developers to offer Claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK. Please use the API key authentication methods described in this document instead.
 
-**Interpretation**:
-- Personal/experimental use: Allowed (you're not offering a product to others)
-- SaaS production: Not allowed (using subscription auth for a product)
-- Internal tools: Likely allowed (not offered to third parties)
+**Key phrase**: "offer Claude.ai login...for their products"
+
+### Interpretation by Use Case
+
+| Use Case | Allowed? | Rationale |
+|----------|----------|-----------|
+| Personal/experimental use | Yes | You're not offering a product to others |
+| Internal tools | Yes | Not offered to third parties |
+| Open-source (users bring own credentials) | Likely Yes | See below |
+| SaaS (developer provides auth) | No | Developer is "offering" auth to third parties |
+| Hosted service (shared subscription) | No | Using subscription for multiple users |
+
+### Open-Source Distribution
+
+AhaRadar is open-source. When users clone and run it locally with their own Claude Code credentials:
+
+1. **Developer is NOT "offering" authentication** - users configure their own credentials locally
+2. **Each user uses their own subscription** for their own personal use
+3. **No centralized auth** - credentials stay on user's machine (macOS Keychain)
+4. **Analogous to** open-source tools with "bring your own API key" patterns
+
+This appears consistent with ToS because the prohibition targets developers who "offer" Claude.ai login as part of their product/service, not open-source tools where each user independently authenticates with their own subscription.
+
+### Recommended Documentation for Users
+
+When distributing AhaRadar, document both options:
+
+```markdown
+## Authentication Options
+
+### Option 1: Anthropic API Key (Recommended for production)
+export ANTHROPIC_API_KEY=your-api-key
+
+### Option 2: Claude Subscription (Personal use only)
+If you have Claude Code installed and logged in, the SDK will automatically
+use your subscription credentials. This is for personal use only.
+```
+
+### Disclaimer
+
+This interpretation is not legal advice. If you need certainty for your specific use case, contact [Anthropic directly](https://www.anthropic.com/contact-sales).
 
 ## Recommendations
 
