@@ -545,8 +545,8 @@ describe("rankCandidates", () => {
 
       const [result] = rankCandidates({ candidates });
 
-      // baseScore = 0.5 + 0.05 * (0.8 - 0.2) = 0.5 + 0.03 = 0.53
-      expect(result.score).toBeCloseTo(0.53, 5);
+      // baseScore = 0.5 + 0.15 * (0.8 - 0.2) = 0.5 + 0.09 = 0.59
+      expect(result.score).toBeCloseTo(0.59, 5);
     });
 
     it("handles null similarity values as 0", () => {

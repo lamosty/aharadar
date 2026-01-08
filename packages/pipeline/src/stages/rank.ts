@@ -40,6 +40,7 @@ export interface SignalCorroborationFeature {
  * Source weight feature for explainability.
  */
 export interface SourceWeightFeature {
+  source_type?: string;
   type_weight: number;
   source_weight: number;
   effective_weight: number;
@@ -84,6 +85,7 @@ export function computeEffectiveSourceWeight(params: {
   const effectiveWeight = Math.max(0.1, Math.min(3.0, raw));
 
   return {
+    source_type: params.sourceType,
     type_weight: typeWeight,
     source_weight: sourceWeight,
     effective_weight: effectiveWeight,
@@ -269,6 +271,7 @@ export function rankCandidates(params: {
 
     if (c.sourceWeight) {
       systemFeatures.source_weight_v1 = {
+        source_type: c.sourceWeight.source_type,
         type_weight: c.sourceWeight.type_weight,
         source_weight: c.sourceWeight.source_weight,
         effective_weight: c.sourceWeight.effective_weight,
