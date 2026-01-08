@@ -153,17 +153,51 @@ export function computeUserPreferenceWeight(params: {
   };
 }
 
+/**
+ * Recency decay feature for explainability.
+ */
+export interface RecencyDecayFeature {
+  age_hours: number;
+  decay_hours: number;
+  decay_factor: number;
+}
+
+/**
+ * Compute exponential decay factor based on age.
+ * decay_factor = exp(-age_hours / decay_hours)
+ * At age = decay_hours, factor ≈ 0.37 (1/e)
+ */
+export function computeDecayFactor(params: {
+  candidateAtMs: number;
+  nowMs: number;
+  decayHours: number;
+}): RecencyDecayFeature {
+  const ageMs = params.nowMs - params.candidateAtMs;
+  const ageHours = Math.max(0, ageMs / (1000 * 60 * 60));
+  const decayFactor = Math.exp(-ageHours / params.decayHours);
+  return {
+    age_hours: ageHours,
+    decay_hours: params.decayHours,
+    decay_factor: decayFactor,
+  };
+}
+
 export function rankCandidates(params: {
   candidates: RankCandidateInput[];
   weights?: Partial<RankWeights>;
   /** User preferences from feedback - applied as score multiplier */
   userPreferences?: UserPreferences;
+  /** Hours for exponential decay half-life. If provided, older items score lower. */
+  decayHours?: number | null;
 }): RankedCandidate[] {
   const wAha = params.weights?.wAha ?? 0.8;
   const wHeuristic = params.weights?.wHeuristic ?? 0.15;
   const wPref = params.weights?.wPref ?? 0.15; // Increased from 0.05 to make preferences more impactful
   const wSignal = params.weights?.wSignal ?? 0.05;
   const wNovelty = params.weights?.wNovelty ?? 0.05;
+
+  const nowMs = Date.now();
+  const decayHours = params.decayHours ?? null;
 
   const scored = params.candidates.map((c) => {
     const triage = c.triage;
@@ -189,12 +223,24 @@ export function rankCandidates(params: {
     });
     const userPrefWeight = userPrefFeature?.effective_weight ?? 1.0;
 
+    // Recency decay (if configured)
+    let decayFeature: RecencyDecayFeature | null = null;
+    let decayMultiplier = 1.0;
+    if (decayHours && decayHours > 0) {
+      decayFeature = computeDecayFactor({
+        candidateAtMs: c.candidateAtMs,
+        nowMs,
+        decayHours,
+      });
+      decayMultiplier = decayFeature.decay_factor;
+    }
+
     // Compute score with signal boost and novelty, then apply source weight and user preference
     const baseScore = triage
       ? wAha * aha01 + wHeuristic * c.heuristicScore + wPref * pref
       : c.heuristicScore + wPref * pref;
     const preWeightScore = baseScore + wSignal * signalCorr01 + wNovelty * novelty01;
-    const score = preWeightScore * effectiveWeight * userPrefWeight;
+    const score = preWeightScore * effectiveWeight * userPrefWeight * decayMultiplier;
 
     // Build triageJson with system_features for explainability
     let triageJson: Record<string, unknown> | null = null;
@@ -236,6 +282,14 @@ export function rankCandidates(params: {
         author: userPrefFeature.author,
         author_weight: userPrefFeature.author_weight,
         effective_weight: userPrefFeature.effective_weight,
+      };
+    }
+
+    if (decayFeature) {
+      systemFeatures.recency_decay_v1 = {
+        age_hours: Math.round(decayFeature.age_hours * 10) / 10, // Round to 1 decimal
+        decay_hours: decayFeature.decay_hours,
+        decay_factor: Math.round(decayFeature.decay_factor * 100) / 100, // Round to 2 decimals
       };
     }
 

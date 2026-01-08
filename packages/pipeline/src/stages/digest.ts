@@ -781,8 +781,13 @@ export async function persistDigestFromContentItems(params: {
     authorWeights: feedbackPrefs.authorWeights,
   };
 
+  // Get topic's decay hours for recency-based score adjustment
+  const topic = await params.db.topics.getById(params.topicId);
+  const topicDecayHours = topic?.decay_hours ?? null;
+
   const ranked = rankCandidates({
     userPreferences,
+    decayHours: topicDecayHours,
     candidates: scored.map((c) => {
       // Compute candidate primary URL for corroboration matching
       const primaryUrl = getPrimaryUrl({ canonicalUrl: c.canonicalUrl, metadata: c.metadata });
