@@ -12,3 +12,9 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:9091"]
     metrics_path: /metrics
+
+  - job_name: "aharadar-storage"
+    static_configs:
+      - targets: ["host.docker.internal:3001"]
+    metrics_path: /api/storage/metrics
+    scrape_interval: 60s

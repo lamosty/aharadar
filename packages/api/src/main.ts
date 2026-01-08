@@ -13,6 +13,7 @@ import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
 import { itemsRoutes } from "./routes/items.js";
 import { preferencesRoutes } from "./routes/preferences.js";
+import { storageRoutes } from "./routes/storage.js";
 import { topicsRoutes } from "./routes/topics.js";
 
 // Load .env and .env.local files (must happen before reading env vars)
@@ -66,6 +67,7 @@ async function buildServer() {
   // Public routes (no auth required)
   await fastify.register(healthRoutes, { prefix: "/api" });
   await fastify.register(authRoutes, { prefix: "/api" });
+  await fastify.register(storageRoutes, { prefix: "/api" });
 
   // Protected routes - allow either session cookie OR API key
   await fastify.register(
