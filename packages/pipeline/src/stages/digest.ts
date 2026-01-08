@@ -26,6 +26,10 @@ export interface DigestRunResult {
   windowStart: string;
   windowEnd: string;
   items: number;
+  /** Number of items that have triage data (LLM-scored) */
+  triaged: number;
+  /** Whether paid LLM calls were allowed for this run */
+  paidCallsAllowed: boolean;
 }
 
 type CandidateRow = {
@@ -891,6 +895,17 @@ export async function persistDigestFromContentItems(params: {
     return res;
   });
 
+  const triagedCount = items.filter((i) => i.triageJson !== null).length;
+
+  // Log triage status for visibility
+  if (!paidCallsAllowed) {
+    console.warn(`[digest] Triage skipped (budget exhausted). Items: ${items.length}, all heuristic-only.`);
+  } else if (triagedCount < items.length) {
+    console.log(`[digest] Partial triage: ${triagedCount}/${items.length} items have LLM scores.`);
+  } else {
+    console.log(`[digest] Full triage: ${triagedCount}/${items.length} items have LLM scores.`);
+  }
+
   return {
     digestId: digest.id,
     mode: params.mode,
@@ -898,5 +913,7 @@ export async function persistDigestFromContentItems(params: {
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     items: items.length,
+    triaged: triagedCount,
+    paidCallsAllowed,
   };
 }
