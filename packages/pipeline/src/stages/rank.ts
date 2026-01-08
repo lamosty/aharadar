@@ -161,7 +161,7 @@ export function rankCandidates(params: {
 }): RankedCandidate[] {
   const wAha = params.weights?.wAha ?? 0.8;
   const wHeuristic = params.weights?.wHeuristic ?? 0.15;
-  const wPref = params.weights?.wPref ?? 0.05;
+  const wPref = params.weights?.wPref ?? 0.15; // Increased from 0.05 to make preferences more impactful
   const wSignal = params.weights?.wSignal ?? 0.05;
   const wNovelty = params.weights?.wNovelty ?? 0.05;
 
