@@ -8,5 +8,6 @@ export * from "./signal";
 export * from "./sec_edgar";
 export * from "./congress_trading";
 export * from "./polymarket";
+export * from "./options_flow";
 
 export * from "./registry";

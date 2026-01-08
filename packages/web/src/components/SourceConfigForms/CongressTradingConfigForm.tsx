@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { CongressTradingConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { ApiKeyGuidance, ApiKeyBanner } from "@/components/ApiKeyGuidance";
 import styles from "./SourceConfigForms.module.css";
 
 export function CongressTradingConfigForm({
@@ -9,6 +11,7 @@ export function CongressTradingConfigForm({
   onChange,
   errors,
 }: SourceConfigFormProps<CongressTradingConfig>) {
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const handleChange = <K extends keyof CongressTradingConfig>(key: K, val: CongressTradingConfig[K]) => {
     onChange({ ...value, [key]: val });
   };
@@ -65,13 +68,14 @@ export function CongressTradingConfigForm({
         </div>
       </div>
 
+      <ApiKeyBanner provider="quiver" onSetupClick={() => setShowApiKeyModal(true)} />
+
+      <ApiKeyGuidance provider="quiver" isOpen={showApiKeyModal} onClose={() => setShowApiKeyModal(false)} />
+
       <div className={styles.helpBox}>
         <p>
           Track stock trades disclosed by members of the U.S. Congress. Congress members must disclose trades within
           45 days. Data provided by Quiver Quantitative API.
-        </p>
-        <p className={styles.helpNote}>
-          <strong>Note:</strong> Requires QUIVER_API_KEY environment variable. Sign up free at quiverquant.com.
         </p>
       </div>
 

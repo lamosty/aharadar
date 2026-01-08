@@ -20,6 +20,8 @@ const SOURCE_LABELS: Record<SupportedSourceType, string> = {
   signal: "Signal",
   sec_edgar: "SEC",
   congress_trading: "Congress",
+  polymarket: "Polymarket",
+  options_flow: "Options",
 };
 
 const SORT_OPTIONS = [

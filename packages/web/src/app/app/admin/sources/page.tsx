@@ -195,6 +195,8 @@ export default function AdminSourcesPage() {
       signal: "Signal Search",
       sec_edgar: "SEC EDGAR Filings",
       congress_trading: "Congress Trading",
+      polymarket: "Polymarket",
+      options_flow: "Options Flow",
     };
     return names[type] ?? type;
   };

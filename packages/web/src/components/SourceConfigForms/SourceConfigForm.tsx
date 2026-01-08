@@ -10,6 +10,8 @@ import type {
   SignalConfig,
   SecEdgarConfig,
   CongressTradingConfig,
+  PolymarketConfig,
+  OptionsFlowConfig,
   SourceTypeConfig,
 } from "./types";
 import { RssConfigForm } from "./RssConfigForm";
@@ -20,6 +22,8 @@ import { XPostsConfigForm } from "./XPostsConfigForm";
 import { SignalConfigForm } from "./SignalConfigForm";
 import { SecEdgarConfigForm } from "./SecEdgarConfigForm";
 import { CongressTradingConfigForm } from "./CongressTradingConfigForm";
+import { PolymarketConfigForm } from "./PolymarketConfigForm";
+import { OptionsFlowConfigForm } from "./OptionsFlowConfigForm";
 
 interface SourceConfigFormProps {
   sourceType: SupportedSourceType;
@@ -63,6 +67,24 @@ export function SourceConfigForm({ sourceType, config, onChange, errors }: Sourc
       return (
         <CongressTradingConfigForm
           value={config as Partial<CongressTradingConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
+
+    case "polymarket":
+      return (
+        <PolymarketConfigForm
+          value={config as Partial<PolymarketConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
+
+    case "options_flow":
+      return (
+        <OptionsFlowConfigForm
+          value={config as Partial<OptionsFlowConfig>}
           onChange={onChange}
           errors={errors}
         />
@@ -160,6 +182,14 @@ export function validateSourceConfig(
     case "congress_trading":
       // No required fields - all filters are optional
       break;
+
+    case "polymarket":
+      // No required fields - all filters are optional
+      break;
+
+    case "options_flow":
+      // No required fields - all filters are optional
+      break;
   }
 
   return errors;
@@ -231,6 +261,19 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
       return {
         max_trades_per_fetch: 50,
       } as Partial<CongressTradingConfig>;
+
+    case "polymarket":
+      return {
+        max_markets_per_fetch: 50,
+      } as Partial<PolymarketConfig>;
+
+    case "options_flow":
+      return {
+        min_premium: 50000,
+        include_etfs: true,
+        expiry_max_days: 90,
+        max_alerts_per_fetch: 50,
+      } as Partial<OptionsFlowConfig>;
 
     default:
       return {};

@@ -256,7 +256,7 @@ export interface SourcePatchResponse {
 }
 
 /** Supported source types */
-export const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube", "sec_edgar", "congress_trading"] as const;
+export const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube", "sec_edgar", "congress_trading", "polymarket", "options_flow"] as const;
 
 export type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
 

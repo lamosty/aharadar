@@ -7,4 +7,6 @@ export { XPostsConfigForm } from "./XPostsConfigForm";
 export { SignalConfigForm } from "./SignalConfigForm";
 export { SecEdgarConfigForm } from "./SecEdgarConfigForm";
 export { CongressTradingConfigForm } from "./CongressTradingConfigForm";
+export { PolymarketConfigForm } from "./PolymarketConfigForm";
+export { OptionsFlowConfigForm } from "./OptionsFlowConfigForm";
 export type * from "./types";

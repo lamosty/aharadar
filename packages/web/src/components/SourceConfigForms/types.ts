@@ -74,6 +74,27 @@ export interface CongressTradingConfig {
   max_trades_per_fetch?: number;
 }
 
+// Polymarket Source Config
+export interface PolymarketConfig {
+  categories?: string[];
+  min_volume?: number;
+  min_liquidity?: number;
+  probability_change_threshold?: number;
+  include_resolved?: boolean;
+  max_markets_per_fetch?: number;
+}
+
+// Options Flow Source Config
+export interface OptionsFlowConfig {
+  symbols?: string[];
+  min_premium?: number;
+  flow_types?: ("sweep" | "block" | "unusual")[];
+  sentiment_filter?: "bullish" | "bearish";
+  include_etfs?: boolean;
+  expiry_max_days?: number;
+  max_alerts_per_fetch?: number;
+}
+
 // Union type for all configs
 export type SourceTypeConfig =
   | RssConfig
@@ -83,7 +104,9 @@ export type SourceTypeConfig =
   | XPostsConfig
   | SignalConfig
   | SecEdgarConfig
-  | CongressTradingConfig;
+  | CongressTradingConfig
+  | PolymarketConfig
+  | OptionsFlowConfig;
 
 // Form props interface
 export interface SourceConfigFormProps<T> {

@@ -480,6 +480,109 @@ Note: `last_prices` tracks previous probabilities to calculate change since last
    { "min_volume": 100000, "min_liquidity": 25000 }
    ```
 
+### Options Flow (`type = "options_flow"`)
+
+**Purpose**
+Ingest unusual options activity including sweeps, blocks, and unusual volume using the Unusual Whales API.
+
+**config_json**
+
+```json
+{
+  "symbols": ["SPY", "QQQ", "AAPL", "NVDA", "TSLA"],
+  "min_premium": 100000,
+  "flow_types": ["sweep", "block", "unusual"],
+  "sentiment_filter": null,
+  "include_etfs": true,
+  "expiry_max_days": 90,
+  "max_alerts_per_fetch": 50
+}
+```
+
+**Fields:**
+- `symbols` (optional): Filter by specific tickers (empty = all)
+- `min_premium` (default: 50000): Minimum order premium in USD
+- `flow_types` (optional): Array of `"sweep"`, `"block"`, `"unusual"` (empty = all)
+- `sentiment_filter` (optional): `"bullish"` | `"bearish"` | null for all
+- `include_etfs` (default: true): Include ETF options (SPY, QQQ, etc.)
+- `expiry_max_days` (default: 90): Max days to expiration
+- `max_alerts_per_fetch` (default: 50, clamped 1-100): Max alerts per fetch
+
+**cursor_json**
+
+```json
+{
+  "last_fetch_at": "2025-01-08T14:30:00Z",
+  "last_seen_id": "flow_12345",
+  "seen_ids": ["flow_12340", "flow_12341", "flow_12342"]
+}
+```
+
+**Fetch**
+
+- Calls Unusual Whales public API (`https://api.unusualwhales.com/api/flow`)
+- Requires `UNUSUAL_WHALES_API_KEY` environment variable
+- Applies local filters (symbols, premium, flow type, sentiment, expiry)
+- Tracks seen flow IDs to avoid duplicates
+- Gracefully skips if no API key configured
+
+**Normalize**
+
+- `external_id`: `of_{flow_id}`
+- `canonical_url`: `https://unusualwhales.com/flow?symbol={SYMBOL}`
+- `title`: `[FLOW_TYPE] $SYMBOL $STRIKEC/P EXPIRY - $PREMIUM (SENTIMENT)`
+  - Example: `[SWEEP] $AAPL $180C 1/17 - $2.1M (Bullish)`
+- `bodyText`: Contract details, order info, volume/OI comparison
+- `publishedAt`: Order timestamp
+- `author`: `"Options Flow"`
+- `metadata`:
+  - `symbol`: Underlying ticker
+  - `strike`: Strike price
+  - `expiry`: Expiration date
+  - `contract_type`: `"call"` | `"put"`
+  - `flow_type`: `"sweep"` | `"block"` | `"unusual"`
+  - `sentiment`: `"bullish"` | `"bearish"` | `"neutral"`
+  - `premium`: Total premium in USD
+  - `volume`: Number of contracts
+  - `open_interest`: Prior OI
+  - `volume_oi_ratio`: volume / open_interest
+  - `spot_price`: Underlying price at order time
+  - `days_to_expiry`: Days until expiration
+  - `is_weekly`: Boolean (weekly options)
+  - `is_otm`: Boolean (out of the money)
+
+**Sentiment Classification**
+
+If the API doesn't provide sentiment, it's classified locally:
+- Sweeps on OTM calls = bullish
+- Sweeps on OTM puts = bearish
+- ITM options = neutral (could be hedging)
+
+**Environment Variable**
+
+```bash
+UNUSUAL_WHALES_API_KEY=your_api_key_here
+```
+
+Sign up at https://unusualwhales.com/ for API access.
+
+**Use Cases**
+
+1. **Track major stocks with large orders:**
+   ```json
+   { "symbols": ["SPY", "QQQ", "AAPL", "NVDA"], "min_premium": 100000 }
+   ```
+
+2. **Bullish sweeps only:**
+   ```json
+   { "flow_types": ["sweep"], "sentiment_filter": "bullish", "min_premium": 500000 }
+   ```
+
+3. **Near-term plays (weeklies):**
+   ```json
+   { "expiry_max_days": 14, "min_premium": 50000 }
+   ```
+
 ### RSS (`type = "rss"`)
 
 **Purpose**

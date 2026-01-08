@@ -293,7 +293,9 @@
         "x_posts": "Fetch posts from X/Twitter accounts",
         "youtube": "Fetch videos from YouTube channels (coming soon)",
         "sec_edgar": "SEC EDGAR filings (Form 4, 13F)",
-        "congress_trading": "Congressional trading disclosures"
+        "congress_trading": "Congressional trading disclosures",
+        "polymarket": "Prediction market probabilities",
+        "options_flow": "Unusual options activity & sweeps"
       }
     },
     "budgets": {
