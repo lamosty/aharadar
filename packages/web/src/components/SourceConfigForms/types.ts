@@ -11,12 +11,11 @@ export interface RssConfig {
 
 // Reddit Source Config
 export interface RedditConfig {
-  subreddits: string[];
+  subreddit: string;
   listing?: "new" | "top" | "hot";
   timeFilter?: "hour" | "day" | "week" | "month" | "year" | "all";
   includeComments?: boolean;
   maxCommentCount?: number;
-  includeNsfw?: boolean;
 }
 
 // Hacker News Source Config

@@ -1,37 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import type { RedditConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 
 export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormProps<RedditConfig>) {
-  const [subredditInput, setSubredditInput] = useState("");
-
   const handleChange = <K extends keyof RedditConfig>(key: K, val: RedditConfig[K]) => {
     onChange({ ...value, [key]: val });
   };
 
-  const addSubreddit = () => {
-    const trimmed = subredditInput.trim().replace(/^r\//, "");
-    if (trimmed && !value.subreddits?.includes(trimmed)) {
-      handleChange("subreddits", [...(value.subreddits ?? []), trimmed]);
-      setSubredditInput("");
-    }
-  };
-
-  const removeSubreddit = (sub: string) => {
-    handleChange(
-      "subreddits",
-      (value.subreddits ?? []).filter((s) => s !== sub)
-    );
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addSubreddit();
-    }
+  const handleSubredditChange = (input: string) => {
+    // Remove r/ prefix if user enters it
+    const cleaned = input.trim().replace(/^r\//, "");
+    handleChange("subreddit", cleaned);
   };
 
   return (
@@ -42,82 +23,55 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
         </div>
         <div className={styles.sourceTypeInfo}>
           <h4 className={styles.sourceTypeName}>Reddit</h4>
-          <p className={styles.sourceTypeDesc}>Fetch posts from public subreddits</p>
+          <p className={styles.sourceTypeDesc}>Fetch posts from a subreddit</p>
         </div>
       </div>
 
       <div className={styles.helpBox}>
         <p>
-          Add one or more subreddits to monitor. Enter subreddit names without the <code>r/</code> prefix
-          (e.g., &quot;MachineLearning&quot; not &quot;r/MachineLearning&quot;).
+          Enter a subreddit name without the <code>r/</code> prefix (e.g., &quot;wallstreetbets&quot; not
+          &quot;r/wallstreetbets&quot;). Create one source per subreddit for independent configuration.
         </p>
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="reddit-subreddits" className={styles.label}>
-          Subreddits<span className={styles.required}>*</span>
+        <label htmlFor="reddit-subreddit" className={styles.label}>
+          Subreddit<span className={styles.required}>*</span>
           <HelpTooltip
-            title="Subreddits to Monitor"
+            title="Subreddit to Monitor"
             content={
               <>
                 <p>
-                  <strong>Required.</strong> Add at least one subreddit to fetch posts from.
+                  <strong>Required.</strong> The subreddit to fetch posts from.
                 </p>
                 <p>
-                  <strong>What are subreddits?</strong> Communities on Reddit organized around specific
-                  topics. Each subreddit has its own posts, discussions, and rules.
+                  <strong>One subreddit per source:</strong> Each Reddit source monitors a single subreddit. This
+                  allows independent weight, cadence, and enable/disable settings per subreddit.
                 </p>
                 <p>
                   <strong>How to enter:</strong> Type the subreddit name without the <code>r/</code> prefix.
-                  For example, enter &quot;MachineLearning&quot; not &quot;r/MachineLearning&quot;.
                 </p>
                 <p>
-                  <strong>Examples:</strong> technology, worldnews, science, programming
+                  <strong>Examples:</strong> wallstreetbets, programming, worldnews, MachineLearning
                 </p>
               </>
             }
           />
         </label>
-        <div className={styles.tagInputWrapper}>
-          <div className={styles.tagInput}>
-            <input
-              type="text"
-              id="reddit-subreddits"
-              value={subredditInput}
-              onChange={(e) => setSubredditInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter subreddit name..."
-              className={`${styles.textInput} ${errors?.subreddits ? styles.hasError : ""}`}
-            />
-            <button
-              type="button"
-              onClick={addSubreddit}
-              disabled={!subredditInput.trim()}
-              className={styles.addButton}
-            >
-              Add
-            </button>
-          </div>
-          {value.subreddits && value.subreddits.length > 0 && (
-            <div className={styles.tagList}>
-              {value.subreddits.map((sub) => (
-                <span key={sub} className={styles.tag}>
-                  r/{sub}
-                  <button
-                    type="button"
-                    onClick={() => removeSubreddit(sub)}
-                    className={styles.tagRemove}
-                    aria-label={`Remove ${sub}`}
-                  >
-                    x
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        {errors?.subreddits && <p className={styles.error}>{errors.subreddits}</p>}
-        <p className={styles.hint}>Press Enter or click Add to add each subreddit</p>
+        <input
+          type="text"
+          id="reddit-subreddit"
+          value={value.subreddit ?? ""}
+          onChange={(e) => handleSubredditChange(e.target.value)}
+          placeholder="e.g., wallstreetbets"
+          className={`${styles.textInput} ${errors?.subreddit ? styles.hasError : ""}`}
+        />
+        {value.subreddit && (
+          <p className={styles.hint}>
+            Will fetch from: <strong>r/{value.subreddit}</strong>
+          </p>
+        )}
+        {errors?.subreddit && <p className={styles.error}>{errors.subreddit}</p>}
       </div>
 
       <div className={styles.formSection}>
@@ -134,16 +88,16 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     <>
                       <p>How posts are sorted when fetching from the subreddit.</p>
                       <p>
-                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date with the
-                        latest content.
+                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date with the latest
+                        content.
                       </p>
                       <p>
-                        <strong>Hot:</strong> Currently trending posts based on recent votes and comments.
-                        Best for popular discussions happening right now.
+                        <strong>Hot:</strong> Currently trending posts based on recent votes and comments. Best for
+                        popular discussions happening right now.
                       </p>
                       <p>
-                        <strong>Top:</strong> Highest-voted posts within the selected time period. Best for
-                        finding the most valuable content.
+                        <strong>Top:</strong> Highest-voted posts within the selected time period. Best for finding
+                        the most valuable content.
                       </p>
                     </>
                   }
@@ -175,8 +129,7 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                         &quot;Top&quot;. Ignored for New and Hot sorting.
                       </p>
                       <p>
-                        <strong>What it does:</strong> Limits which posts are considered when ranking by
-                        votes.
+                        <strong>What it does:</strong> Limits which posts are considered when ranking by votes.
                       </p>
                       <ul>
                         <li>
@@ -247,8 +200,8 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     <strong>What it does:</strong> Fetches the top-voted comments along with each post.
                   </p>
                   <p>
-                    <strong>Why enable:</strong> Comments often contain valuable insights, corrections,
-                    additional context, or expert opinions that add to the original post.
+                    <strong>Why enable:</strong> Comments often contain valuable insights, corrections, additional
+                    context, or expert opinions that add to the original post.
                   </p>
                   <p>
                     <strong>Impact:</strong> Increases the amount of content per post, which can improve AI
@@ -273,8 +226,7 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                 content={
                   <>
                     <p>
-                      <strong>What it does:</strong> Limits how many top-level comments are fetched for each
-                      post.
+                      <strong>What it does:</strong> Limits how many top-level comments are fetched for each post.
                     </p>
                     <p>
                       <strong>How it works:</strong> Comments are sorted by votes, so you get the most upvoted
@@ -316,42 +268,6 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
             <p className={styles.hint}>Maximum comments to fetch per post</p>
           </div>
         )}
-
-        <div className={styles.checkboxField}>
-          <input
-            type="checkbox"
-            id="reddit-includeNsfw"
-            checked={value.includeNsfw ?? false}
-            onChange={(e) => handleChange("includeNsfw", e.target.checked)}
-            className={styles.checkbox}
-          />
-          <label htmlFor="reddit-includeNsfw" className={styles.checkboxLabel}>
-            Include NSFW content
-            <HelpTooltip
-              title="Include NSFW Content"
-              content={
-                <>
-                  <p>
-                    <strong>What is NSFW?</strong> &quot;Not Safe For Work&quot; - content that Reddit has
-                    marked as adult-only or potentially sensitive.
-                  </p>
-                  <p>
-                    <strong>Disabled (default):</strong> Posts marked as NSFW are filtered out. This keeps
-                    your feed work-appropriate and family-friendly.
-                  </p>
-                  <p>
-                    <strong>Enabled:</strong> NSFW posts are included in results. Only enable if you
-                    specifically need this content and understand it may contain adult themes.
-                  </p>
-                  <p>
-                    <strong>Note:</strong> Some subreddits are entirely NSFW. If you add one of these and
-                    leave this disabled, you may get no results.
-                  </p>
-                </>
-              }
-            />
-          </label>
-        </div>
       </div>
     </div>
   );

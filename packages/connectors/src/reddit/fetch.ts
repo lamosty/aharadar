@@ -3,7 +3,7 @@ import type { FetchParams, FetchResult } from "@aharadar/shared";
 import { parseRedditSourceConfig } from "./config";
 
 type RedditCursorJson = {
-  per_subreddit?: Record<string, { last_seen_created_utc?: number }>;
+  last_seen_created_utc?: number;
 };
 
 type RedditListingResponse = {
@@ -28,14 +28,8 @@ function asNumber(value: unknown): number | null {
 }
 
 function parseCursor(cursor: Record<string, unknown>): RedditCursorJson {
-  const per = asRecord(cursor.per_subreddit);
-  const perSubreddit: RedditCursorJson["per_subreddit"] = {};
-  for (const [key, value] of Object.entries(per)) {
-    const v = asRecord(value);
-    const last = asNumber(v.last_seen_created_utc);
-    perSubreddit[key] = last ? { last_seen_created_utc: last } : {};
-  }
-  return { per_subreddit: perSubreddit };
+  const lastSeen = asNumber(cursor.last_seen_created_utc);
+  return lastSeen ? { last_seen_created_utc: lastSeen } : {};
 }
 
 function buildListingUrl(params: {
@@ -100,73 +94,63 @@ async function fetchTopComments(params: { permalink: string; maxCommentCount: nu
 
 export async function fetchReddit(params: FetchParams): Promise<FetchResult> {
   const config = parseRedditSourceConfig(params.config);
-  if (config.subreddits.length === 0) {
-    throw new Error('Reddit source config must include non-empty "subreddits" array');
+  if (!config.subreddit) {
+    throw new Error('Reddit source config must include non-empty "subreddit" string');
   }
 
   const cursorIn = parseCursor(params.cursor);
-  const perSub = cursorIn.per_subreddit ?? {};
-  const nextCursor: RedditCursorJson = { per_subreddit: { ...perSub } };
+  const lastSeen = cursorIn.last_seen_created_utc ?? 0;
+  let newestSeen = lastSeen;
 
   const rawItems: unknown[] = [];
   const maxItems = Math.max(0, Math.floor(params.limits.maxItems));
 
-  // For non-incremental listings, we still fetch, but we don't attempt to advance the cursor.
+  // For non-incremental listings (top/hot), we still fetch but don't advance cursor.
   const isIncremental = config.listing === "new";
 
   let httpRequests = 0;
-  for (const subreddit of config.subreddits) {
+  let after: string | null = null;
+  let done = false;
+
+  // Page until we hit lastSeen (incremental) or we fill maxItems.
+  for (let page = 0; page < 10; page += 1) {
     if (rawItems.length >= maxItems) break;
+    if (done) break;
 
-    const lastSeen = asNumber(perSub[subreddit]?.last_seen_created_utc) ?? 0;
-    let newestSeen = lastSeen;
-    let after: string | null = null;
-    let done = false;
+    const url = buildListingUrl({
+      subreddit: config.subreddit,
+      listing: config.listing ?? "new",
+      timeFilter: config.timeFilter ?? "day",
+      after,
+      limit: Math.min(100, maxItems - rawItems.length),
+    });
 
-    // Page until we hit lastSeen (incremental) or we fill maxItems.
-    for (let page = 0; page < 10; page += 1) {
+    const payload = (await fetchJson(url)) as RedditListingResponse;
+    httpRequests += 1;
+
+    const children = payload?.data?.children ?? [];
+    if (children.length === 0) break;
+
+    for (const child of children) {
       if (rawItems.length >= maxItems) break;
-      if (done) break;
+      const data = child?.data ?? {};
+      const createdUtc = asNumber(data.created_utc);
 
-      const url = buildListingUrl({
-        subreddit,
-        listing: config.listing ?? "new",
-        timeFilter: config.timeFilter ?? "day",
-        after,
-        limit: Math.min(100, maxItems - rawItems.length),
-      });
-
-      const payload = (await fetchJson(url)) as RedditListingResponse;
-      httpRequests += 1;
-
-      const children = payload?.data?.children ?? [];
-      if (children.length === 0) break;
-
-      for (const child of children) {
-        if (rawItems.length >= maxItems) break;
-        const data = child?.data ?? {};
-        const createdUtc = asNumber(data.created_utc);
-        const over18 = data.over_18 === true;
-        if (!config.includeNsfw && over18) continue;
-
-        if (isIncremental && createdUtc !== null && createdUtc <= lastSeen) {
-          done = true;
-          break;
-        }
-
-        if (createdUtc !== null && createdUtc > newestSeen) newestSeen = createdUtc;
-        rawItems.push(data);
+      if (isIncremental && createdUtc !== null && createdUtc <= lastSeen) {
+        done = true;
+        break;
       }
 
-      after = payload?.data?.after ? String(payload.data.after) : null;
-      if (!after) break;
+      if (createdUtc !== null && createdUtc > newestSeen) newestSeen = createdUtc;
+      rawItems.push(data);
     }
 
-    if (isIncremental) {
-      nextCursor.per_subreddit ??= {};
-      nextCursor.per_subreddit[subreddit] = { last_seen_created_utc: newestSeen };
-    }
+    after = payload?.data?.after ? String(payload.data.after) : null;
+    if (!after) break;
   }
+
+  // Build next cursor
+  const nextCursor: RedditCursorJson = isIncremental ? { last_seen_created_utc: newestSeen } : {};
 
   // Optional: enrich with top comments (extra HTTP calls) for better embedding signal.
   if (config.includeComments && config.maxCommentCount && config.maxCommentCount > 0) {
@@ -188,7 +172,7 @@ export async function fetchReddit(params: FetchParams): Promise<FetchResult> {
     meta: {
       requests: httpRequests,
       listing: config.listing ?? "new",
-      subreddits: config.subreddits,
+      subreddit: config.subreddit,
       incremental: isIncremental,
     },
   };

@@ -86,8 +86,8 @@ export function validateSourceConfig(
 
     case "reddit": {
       const redditConfig = config as Partial<RedditConfig>;
-      if (!redditConfig.subreddits || redditConfig.subreddits.length === 0) {
-        errors.subreddits = "At least one subreddit is required";
+      if (!redditConfig.subreddit?.trim()) {
+        errors.subreddit = "Subreddit is required";
       }
       break;
     }
