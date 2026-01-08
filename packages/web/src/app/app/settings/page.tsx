@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { t } from "@/lib/i18n";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { DevSettingsForm } from "@/components/DevSettings";
+import { ExperimentalFeaturesForm } from "@/components/ExperimentalFeatures";
 import { TopicsList } from "@/components/TopicViewingProfile";
 import { ApiKeysSettings } from "@/components/ApiKeysSettings";
 import styles from "./page.module.css";
@@ -35,6 +36,13 @@ export default function SettingsPage() {
         <h2 className={styles.sectionTitle}>{t("settings.appearance.title")}</h2>
         <div className={styles.sectionContent}>
           <ThemeSwitcher showLayout={true} />
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>{t("settings.experimental.title")}</h2>
+        <div className={styles.sectionContent}>
+          <ExperimentalFeaturesForm />
         </div>
       </section>
 

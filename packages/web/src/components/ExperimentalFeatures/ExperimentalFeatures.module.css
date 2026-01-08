@@ -1,0 +1,202 @@
+.experimentalFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.info {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--color-primary-ghost, rgba(59, 130, 246, 0.1));
+  border: 1px solid var(--color-primary-border, rgba(59, 130, 246, 0.3));
+  border-radius: var(--radius-md);
+  color: var(--color-primary, #3b82f6);
+  font-size: var(--font-size-sm);
+}
+
+.info svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.featuresList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.featureCard {
+  padding: var(--space-4);
+  background-color: var(--color-surface, white);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.featureCard:hover {
+  border-color: var(--color-border-strong);
+}
+
+.featureHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.featureInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.featureName {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.featureLink {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.featureLink:hover {
+  text-decoration: underline;
+}
+
+.featureDescription {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.featureStatus {
+  margin-top: var(--space-3);
+}
+
+.statusEnabled,
+.statusDisabled {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.statusEnabled {
+  background-color: var(--color-success-surface, #dcfce7);
+  color: var(--color-success-text, #166534);
+}
+
+.statusDisabled {
+  background-color: var(--color-surface-secondary, #f1f5f9);
+  color: var(--color-text-tertiary);
+}
+
+/* Toggle Switch */
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleTrack {
+  width: 44px;
+  height: 24px;
+  background-color: var(--color-border-strong, #cbd5e1);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.toggle input:checked + .toggleTrack {
+  background-color: var(--color-primary, #3b82f6);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 9999px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle input:checked + .toggleTrack .toggleThumb {
+  transform: translateX(20px);
+}
+
+.toggle input:focus-visible + .toggleTrack {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.resetButton {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.resetButton:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.resetButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--color-surface-secondary, #f8fafc);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.loading {
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}

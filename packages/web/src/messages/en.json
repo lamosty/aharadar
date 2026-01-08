@@ -46,7 +46,9 @@
     "citations": "Sources",
     "confidence": "Confidence",
     "dataGaps": "Data Gaps",
-    "featureDisabled": "Q&A feature is not enabled"
+    "featureDisabled": "Feature Not Enabled",
+    "enableInSettings": "Enable the Q&A experimental feature in Settings to start asking questions about your knowledge base.",
+    "goToSettings": "Go to Settings"
   },
   "landing": {
     "hero": {
@@ -167,6 +169,19 @@
       "deleteFailed": "Failed to delete topic",
       "edit": "Edit topic",
       "delete": "Delete topic"
+    },
+    "experimental": {
+      "title": "Experimental Features",
+      "info": "Toggle experimental features on or off. These features are in development and may change or be removed.",
+      "reset": "All features reset to defaults",
+      "resetAll": "Reset All",
+      "serverNote": "Note: Some features also require server-side configuration (QA_ENABLED=true in .env). The toggle here controls client-side access.",
+      "features": {
+        "qa": {
+          "label": "Q&A / Ask Your Knowledge Base",
+          "description": "Ask natural language questions about your ingested content. Uses cluster-based RAG to search and generate answers with citations."
+        }
+      }
     },
     "dev": {
       "title": "Developer Settings",

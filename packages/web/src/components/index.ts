@@ -8,6 +8,7 @@ export { ToastProvider, useToast } from "./Toast";
 export { JsonViewer } from "./JsonViewer";
 export { QueryProvider } from "./QueryProvider";
 export { DevSettingsForm } from "./DevSettings";
+export { ExperimentalFeaturesForm } from "./ExperimentalFeatures";
 export { OfflineBanner, StaleIndicator } from "./OfflineBanner";
 export {
   Skeleton,

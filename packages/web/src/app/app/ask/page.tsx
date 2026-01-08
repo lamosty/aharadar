@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
+import Link from "next/link";
 import { useTopic } from "@/components/TopicProvider";
 import { useTopics } from "@/lib/hooks";
+import { isExperimentalFeatureEnabled } from "@/lib/experimental";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -289,8 +291,44 @@ export default function AskPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(true); // Debug on by default for experimentation
   const [maxClusters, setMaxClusters] = useState(5);
+  const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
 
   const topics = topicsData?.topics ?? [];
+
+  // Check if feature is enabled on mount
+  useEffect(() => {
+    setFeatureEnabled(isExperimentalFeatureEnabled("qa"));
+  }, []);
+
+  // Show loading while checking feature status
+  if (featureEnabled === null) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingState}>{t("common.loading")}</div>
+      </div>
+    );
+  }
+
+  // Show enable prompt if feature is disabled
+  if (!featureEnabled) {
+    return (
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <h1 className={styles.title}>{t("ask.title")}</h1>
+          <p className={styles.subtitle}>{t("ask.subtitle")}</p>
+        </header>
+
+        <div className={styles.featureDisabled}>
+          <div className={styles.featureDisabledIcon}>?</div>
+          <h2 className={styles.featureDisabledTitle}>{t("ask.featureDisabled")}</h2>
+          <p className={styles.featureDisabledText}>{t("ask.enableInSettings")}</p>
+          <Link href="/app/settings" className={styles.enableLink}>
+            {t("ask.goToSettings")} →
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
