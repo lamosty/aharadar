@@ -396,7 +396,8 @@
   },
   "topics": {
     "emptyTitle": "No topics yet",
-    "emptyDescription": "Create your first topic to organize sources and personalize your feed."
+    "emptyDescription": "Create your first topic to organize sources and personalize your feed.",
+    "guidance": "Organize content by creating topics for different interests. Consider splitting a topic when sources have very different content types (news vs memes), or when one source consistently gets buried by others."
   },
   "feed": {
     "topic": "Topic",
