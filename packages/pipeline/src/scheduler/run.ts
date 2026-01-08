@@ -1,4 +1,5 @@
 import type { Db } from "@aharadar/db";
+import type { LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 
 import {
@@ -27,6 +28,8 @@ export interface PipelineRunParams {
     monthlyCredits: number;
     dailyThrottleCredits?: number;
   };
+  /** Optional runtime LLM configuration (overrides env vars) */
+  llmConfig?: LlmRuntimeConfig;
 }
 
 export interface PipelineRunResult {
@@ -119,6 +122,7 @@ export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promis
     limits: { maxItems: params.digest?.maxItems ?? 20 },
     filter: params.ingestFilter,
     paidCallsAllowed,
+    llmConfig: params.llmConfig,
   });
 
   return {

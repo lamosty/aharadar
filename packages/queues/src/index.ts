@@ -13,6 +13,14 @@ export const PIPELINE_QUEUE_NAME = "pipeline";
 export const RUN_WINDOW_JOB_NAME = "run_window";
 
 /**
+ * Per-run LLM provider override for manual runs.
+ */
+export interface ProviderOverride {
+  provider?: "openai" | "anthropic" | "claude-subscription";
+  model?: string;
+}
+
+/**
  * Job payload for a pipeline run window.
  */
 export interface RunWindowJobData {
@@ -21,6 +29,8 @@ export interface RunWindowJobData {
   windowStart: string;
   windowEnd: string;
   mode?: BudgetTier | "catch_up";
+  /** Optional per-run provider override (for manual runs) */
+  providerOverride?: ProviderOverride;
 }
 
 /**

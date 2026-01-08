@@ -1,5 +1,6 @@
 import { Worker, type Job } from "bullmq";
 import { createDb, type Db } from "@aharadar/db";
+import type { LlmRuntimeConfig } from "@aharadar/llm";
 import { runPipelineOnce, type PipelineRunResult } from "@aharadar/pipeline";
 import { loadRuntimeEnv, createJobLogger, type Logger } from "@aharadar/shared";
 
@@ -52,13 +53,43 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
   const worker = new Worker<RunWindowJobData>(
     PIPELINE_QUEUE_NAME,
     async (job: Job<RunWindowJobData>) => {
-      const { userId, topicId, windowStart, windowEnd, mode } = job.data;
+      const { userId, topicId, windowStart, windowEnd, mode, providerOverride } = job.data;
       const jobLog = createJobLogger(job.id ?? "unknown");
       const startTime = process.hrtime.bigint();
 
       jobLog.info({ topicId: topicId.slice(0, 8) }, "Starting pipeline run");
 
       try {
+        // Load LLM settings from DB
+        const llmSettings = await db.llmSettings.get();
+
+        // Build runtime config from DB settings
+        const llmConfig: LlmRuntimeConfig = {
+          provider: llmSettings.provider,
+          anthropicModel: llmSettings.anthropic_model,
+          openaiModel: llmSettings.openai_model,
+          claudeSubscriptionEnabled: llmSettings.claude_subscription_enabled,
+          claudeTriageThinking: llmSettings.claude_triage_thinking,
+          claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+        };
+
+        // Apply per-run override if present (for manual runs)
+        if (providerOverride?.provider) {
+          llmConfig.provider = providerOverride.provider;
+        }
+        if (providerOverride?.model) {
+          if (providerOverride.provider === "anthropic" || providerOverride.provider === "claude-subscription") {
+            llmConfig.anthropicModel = providerOverride.model;
+          } else if (providerOverride.provider === "openai") {
+            llmConfig.openaiModel = providerOverride.model;
+          }
+        }
+
+        jobLog.info(
+          { provider: llmConfig.provider, model: llmConfig.anthropicModel || llmConfig.openaiModel },
+          "Using LLM config"
+        );
+
         const result = await runPipelineOnce(db, {
           userId,
           topicId,
@@ -69,6 +100,7 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
             monthlyCredits: env.monthlyCredits,
             dailyThrottleCredits: env.dailyThrottleCredits,
           },
+          llmConfig,
         });
 
         const durationSec = Number(process.hrtime.bigint() - startTime) / 1e9;

@@ -6,6 +6,7 @@
   "types": "dist/main.d.ts",
   "dependencies": {
     "@aharadar/db": "workspace:*",
+    "@aharadar/llm": "workspace:*",
     "@aharadar/pipeline": "workspace:*",
     "@aharadar/queues": "workspace:*",
     "@aharadar/shared": "workspace:*",
