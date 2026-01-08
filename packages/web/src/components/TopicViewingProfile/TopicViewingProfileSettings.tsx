@@ -66,12 +66,14 @@ export function TopicViewingProfileSettings({ topic }: TopicViewingProfileSettin
             onClick={() => handleProfileChange(option.value)}
             disabled={isPending}
           >
-            <span className={styles.profileLabel}>{t(`settings.viewing.profiles.${option.value}`)}</span>
-            <span className={styles.profileDescription}>
-              {t(`settings.viewing.profileDescriptions.${option.value}`)}
-            </span>
+            <div className={styles.profileContent}>
+              <span className={styles.profileLabel}>{t(`settings.viewing.profiles.${option.value}`)}</span>
+              <span className={styles.profileDescription}>
+                {t(`settings.viewing.profileDescriptions.${option.value}`)}
+              </span>
+            </div>
             {option.value !== "custom" && (
-              <span className={styles.profileDecay}>{option.decayHours}h decay</span>
+              <span className={styles.profileDecay}>{option.decayHours}h</span>
             )}
           </button>
         ))}
