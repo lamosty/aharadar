@@ -30,6 +30,8 @@ export interface RunWindowJobData {
   windowEnd: string;
   // catch_up mode removed per task-121; now uses only BudgetTier values
   mode?: BudgetTier;
+  /** Trigger source: scheduled (by scheduler tick) or manual (admin run) */
+  trigger?: "scheduled" | "manual";
   /** Optional per-run provider override (for manual runs) */
   providerOverride?: ProviderOverride;
 }

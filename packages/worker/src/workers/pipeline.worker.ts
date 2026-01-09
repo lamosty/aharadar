@@ -1,11 +1,13 @@
 import { createDb, type Db } from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
 import { type PipelineRunResult, runPipelineOnce } from "@aharadar/pipeline";
-import { createJobLogger, type Logger, loadRuntimeEnv } from "@aharadar/shared";
+import { createJobLogger, createLogger, type Logger, loadRuntimeEnv } from "@aharadar/shared";
 import { type Job, Worker } from "bullmq";
 
 import { recordIngestItems, recordPipelineStage } from "../metrics";
 import { PIPELINE_QUEUE_NAME, parseRedisConnection, type RunWindowJobData } from "../queues";
+
+const cursorLog = createLogger({ component: "cursor" });
 
 /**
  * Log a concise summary and record metrics for the pipeline run result.
@@ -119,6 +121,22 @@ export function createPipelineWorker(redisUrl: string): {
 
         const durationSec = Number(process.hrtime.bigint() - startTime) / 1e9;
         logSummaryAndRecordMetrics(jobLog, result, durationSec);
+
+        // Update cursor only for scheduled runs (not manual/admin runs)
+        // This must happen even if digest was skipped due to credits exhaustion
+        // to prevent the scheduler from re-enqueuing the same window
+        if (job.data.trigger === "scheduled") {
+          try {
+            await db.topics.updateDigestCursorEnd(topicId, windowEnd);
+            cursorLog.debug(
+              { topicId: topicId.slice(0, 8), cursorEnd: windowEnd },
+              "Updated digest cursor",
+            );
+          } catch (err) {
+            cursorLog.warn({ topicId: topicId.slice(0, 8), err }, "Failed to update digest cursor");
+            // Don't fail the job - cursor update is best-effort
+          }
+        }
 
         return result;
       } catch (err) {

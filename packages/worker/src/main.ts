@@ -54,18 +54,28 @@ async function runSchedulerTick(
       // BullMQ doesn't allow colons in job IDs, so replace them with underscores
       const sanitizedStart = window.windowStart.replace(/:/g, "_");
       const sanitizedEnd = window.windowEnd.replace(/:/g, "_");
-      const jobId = `run_window_${userId}_${topicId}_${sanitizedStart}_${sanitizedEnd}`;
+      // Include mode in job ID (per task-123)
+      const jobId = `run_window_${userId}_${topicId}_${sanitizedStart}_${sanitizedEnd}_${window.mode}`;
 
-      await queue.add("run_window", window, {
-        jobId,
-        removeOnComplete: 100, // Keep last 100 completed jobs
-        removeOnFail: 50, // Keep last 50 failed jobs
-      });
+      try {
+        await queue.add("run_window", window, {
+          jobId,
+          removeOnComplete: 100, // Keep last 100 completed jobs
+          removeOnFail: 50, // Keep last 50 failed jobs
+        });
 
-      schedulerLog.info(
-        { jobId: jobId.slice(0, 60), topicId: topicId.slice(0, 8) },
-        "Enqueued job",
-      );
+        schedulerLog.info(
+          { jobId: jobId.slice(0, 60), topicId: topicId.slice(0, 8), mode: window.mode },
+          "Enqueued job",
+        );
+      } catch (err) {
+        // Handle duplicate job ID gracefully (idempotent tick)
+        if (err instanceof Error && err.message.includes("Job with id")) {
+          schedulerLog.debug({ jobId: jobId.slice(0, 60) }, "Job already exists (idempotent skip)");
+        } else {
+          throw err;
+        }
+      }
     }
   }
 }
@@ -78,7 +88,11 @@ async function main(): Promise<void> {
   const tickIntervalMs = getSchedulerIntervalMs();
 
   log.info(
-    { windowMode: schedulerConfig.windowMode, tickMinutes: tickIntervalMs / 60000 },
+    {
+      maxBackfillWindows: schedulerConfig.maxBackfillWindows,
+      minWindowSeconds: schedulerConfig.minWindowSeconds,
+      tickMinutes: tickIntervalMs / 60000,
+    },
     "Scheduler configured",
   );
 

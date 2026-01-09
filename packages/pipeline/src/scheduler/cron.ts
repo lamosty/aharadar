@@ -1,71 +1,88 @@
-import type { Db } from "@aharadar/db";
+import type { Db, TopicRow } from "@aharadar/db";
 import type { BudgetTier } from "@aharadar/shared";
 
-/**
- * Scheduler window mode.
- * - fixed_3x_daily: UTC windows [00:00,08:00), [08:00,16:00), [16:00,24:00)
- * - since_last_run: windowStart = last digest window_end (or now-24h), windowEnd = now
- */
-export type SchedulerWindowMode = "fixed_3x_daily" | "since_last_run";
+// ============================================================================
+// Scheduler Config
+// ============================================================================
 
 export interface SchedulerConfig {
-  windowMode: SchedulerWindowMode;
+  /**
+   * Max windows to backfill per topic per tick.
+   * Prevents runaway backfill when cursor is far behind.
+   */
+  maxBackfillWindows: number;
+
+  /**
+   * Minimum window duration in seconds.
+   * Windows shorter than this are skipped.
+   */
+  minWindowSeconds: number;
+
+  /**
+   * Lag in seconds before a window is considered due.
+   * Prevents scheduling windows too close to "now".
+   */
+  lagSeconds: number;
 }
+
+const DEFAULT_MAX_BACKFILL_WINDOWS = 6;
+const DEFAULT_MIN_WINDOW_SECONDS = 60;
+const DEFAULT_LAG_SECONDS = 60;
+
+/**
+ * Parse scheduler config from environment variables.
+ */
+export function parseSchedulerConfig(env: NodeJS.ProcessEnv = process.env): SchedulerConfig {
+  const maxBackfillWindows = parseInt(env.SCHEDULER_MAX_BACKFILL_WINDOWS ?? "", 10);
+  const minWindowSeconds = parseInt(env.SCHEDULER_MIN_WINDOW_SECONDS ?? "", 10);
+
+  return {
+    maxBackfillWindows:
+      Number.isFinite(maxBackfillWindows) && maxBackfillWindows > 0
+        ? maxBackfillWindows
+        : DEFAULT_MAX_BACKFILL_WINDOWS,
+    minWindowSeconds:
+      Number.isFinite(minWindowSeconds) && minWindowSeconds > 0
+        ? minWindowSeconds
+        : DEFAULT_MIN_WINDOW_SECONDS,
+    lagSeconds: DEFAULT_LAG_SECONDS,
+  };
+}
+
+// ============================================================================
+// Scheduled Window
+// ============================================================================
 
 export interface ScheduledWindow {
   userId: string;
   topicId: string;
   windowStart: string;
   windowEnd: string;
-  mode?: BudgetTier;
+  mode: BudgetTier;
+  /** Trigger source: scheduled (by scheduler tick) or manual (admin run) */
+  trigger: "scheduled" | "manual";
 }
 
-/**
- * Parse SCHEDULER_WINDOW_MODE env var (default: fixed_3x_daily).
- */
-export function parseSchedulerConfig(env: NodeJS.ProcessEnv = process.env): SchedulerConfig {
-  const raw = env.SCHEDULER_WINDOW_MODE ?? "fixed_3x_daily";
-  const windowMode: SchedulerWindowMode =
-    raw === "since_last_run" ? "since_last_run" : "fixed_3x_daily";
-  return { windowMode };
-}
+// ============================================================================
+// Window Generation (Topic-based)
+// ============================================================================
 
 /**
- * Fixed 3× daily window boundaries in UTC.
- * Returns [start, end) for windows: [00:00,08:00), [08:00,16:00), [16:00,24:00)
- */
-const FIXED_WINDOW_HOURS: Array<{ startHour: number; endHour: number }> = [
-  { startHour: 0, endHour: 8 },
-  { startHour: 8, endHour: 16 },
-  { startHour: 16, endHour: 24 },
-];
-
-/**
- * Compute the current fixed window based on UTC time.
- */
-function getCurrentFixedWindow(now: Date): { windowStart: Date; windowEnd: Date } {
-  const hour = now.getUTCHours();
-  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-
-  for (const { startHour, endHour } of FIXED_WINDOW_HOURS) {
-    if (hour >= startHour && hour < endHour) {
-      const windowStart = new Date(dayStart.getTime() + startHour * 60 * 60 * 1000);
-      const windowEnd = new Date(dayStart.getTime() + endHour * 60 * 60 * 1000);
-      return { windowStart, windowEnd };
-    }
-  }
-
-  // Fallback (shouldn't happen)
-  const windowStart = new Date(dayStart.getTime() + 16 * 60 * 60 * 1000);
-  const windowEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-  return { windowStart, windowEnd };
-}
-
-/**
- * Generate due windows for a user/topic based on the scheduler mode.
+ * Generate due windows for a topic based on its digest schedule settings.
  *
- * For fixed_3x_daily: returns the current window if no digest exists for it yet.
- * For since_last_run: returns window from last digest end to now.
+ * Algorithm:
+ * 1. Load topic row and read: digest_schedule_enabled, digest_interval_minutes,
+ *    digest_mode, digest_cursor_end
+ * 2. If schedule disabled → return []
+ * 3. Compute intervalMs and initialize cursor:
+ *    - if digest_cursor_end exists: cursorEndMs = Date(digest_cursor_end).getTime()
+ *    - else: cursorEndMs = floor(nowMs / 60_000)*60_000 - intervalMs
+ * 4. Generate up to maxBackfillWindows windows where:
+ *    - windowStart = cursorEndMs
+ *    - windowEnd = cursorEndMs + intervalMs
+ *    - only emit if windowEnd <= nowMs - lagSeconds
+ *    - advance cursorEndMs per emitted window
+ * 5. Return windows with mode: topic.digest_mode
  */
 export async function generateDueWindows(params: {
   db: Db;
@@ -74,84 +91,91 @@ export async function generateDueWindows(params: {
   config: SchedulerConfig;
   now?: Date;
 }): Promise<ScheduledWindow[]> {
-  const now = params.now ?? new Date();
-  const { db, userId, topicId, config } = params;
+  const { db, userId, topicId, config, now: nowParam } = params;
+  const now = nowParam ?? new Date();
+  const nowMs = now.getTime();
 
-  if (config.windowMode === "since_last_run") {
-    // Get last digest for this user/topic
-    const lastDigest = await db.digests.getLatestByUserAndTopic({ userId, topicId });
-
-    let windowStart: Date;
-    if (lastDigest) {
-      windowStart = new Date(lastDigest.window_end);
-    } else {
-      // No previous digest: start 24h ago
-      windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    }
-
-    const windowEnd = now;
-
-    // Only generate if window has meaningful duration (at least 1 minute)
-    if (windowEnd.getTime() - windowStart.getTime() < 60 * 1000) {
-      return [];
-    }
-
-    return [
-      {
-        userId,
-        topicId,
-        windowStart: windowStart.toISOString(),
-        windowEnd: windowEnd.toISOString(),
-      },
-    ];
-  }
-
-  // fixed_3x_daily mode
-  const { windowStart, windowEnd } = getCurrentFixedWindow(now);
-
-  // Scheduled runs use 'normal' mode by default
-  const scheduledMode = "normal";
-
-  // Check if digest already exists for this exact window + mode
-  const existingDigest = await db.query<{ id: string }>(
-    `SELECT id FROM digests
-     WHERE user_id = $1
-       AND topic_id = $2::uuid
-       AND window_start = $3::timestamptz
-       AND window_end = $4::timestamptz
-       AND mode = $5
-     LIMIT 1`,
-    [userId, topicId, windowStart.toISOString(), windowEnd.toISOString(), scheduledMode],
-  );
-
-  if (existingDigest.rows.length > 0) {
-    // Window already processed for this mode
+  // Load topic to get digest settings
+  const topic = await db.topics.getById(topicId);
+  if (!topic) {
     return [];
   }
 
-  return [
-    {
+  // Check if scheduling is enabled
+  if (!topic.digest_schedule_enabled) {
+    return [];
+  }
+
+  // Calculate interval in milliseconds
+  const intervalMs = topic.digest_interval_minutes * 60 * 1000;
+
+  // Initialize cursor
+  let cursorEndMs: number;
+  if (topic.digest_cursor_end) {
+    cursorEndMs = new Date(topic.digest_cursor_end).getTime();
+  } else {
+    // No cursor: start from now-rounded-to-minute minus one interval
+    // This ensures we don't immediately generate a bunch of windows
+    cursorEndMs = Math.floor(nowMs / 60_000) * 60_000 - intervalMs;
+  }
+
+  // Generate windows
+  const windows: ScheduledWindow[] = [];
+  const lagMs = config.lagSeconds * 1000;
+  const maxWindows = config.maxBackfillWindows;
+
+  for (let i = 0; i < maxWindows; i++) {
+    const windowStart = cursorEndMs;
+    const windowEnd = cursorEndMs + intervalMs;
+
+    // Only emit if windowEnd is at least lagMs in the past
+    if (windowEnd > nowMs - lagMs) {
+      break;
+    }
+
+    // Safety check: window must be at least minWindowSeconds
+    if (intervalMs < config.minWindowSeconds * 1000) {
+      break;
+    }
+
+    windows.push({
       userId,
       topicId,
-      windowStart: windowStart.toISOString(),
-      windowEnd: windowEnd.toISOString(),
-      mode: scheduledMode,
-    },
-  ];
+      windowStart: new Date(windowStart).toISOString(),
+      windowEnd: new Date(windowEnd).toISOString(),
+      mode: topic.digest_mode as BudgetTier,
+      trigger: "scheduled",
+    });
+
+    // Advance cursor for next iteration
+    cursorEndMs = windowEnd;
+  }
+
+  return windows;
 }
 
+// ============================================================================
+// Topic Discovery
+// ============================================================================
+
 /**
- * Get all topics for a user that should be scheduled.
- * For MVP, we schedule all topics for the singleton user.
+ * Get all topics that should be scheduled.
+ * Returns topics where digest_schedule_enabled=true for all users.
  */
 export async function getSchedulableTopics(
   db: Db,
 ): Promise<Array<{ userId: string; topicId: string }>> {
+  // For MVP: get all topics for the first user
+  // In future, this could iterate over all users
   const user = await db.users.getFirstUser();
   if (!user) {
     return [];
   }
 
   const topics = await db.topics.listByUser(user.id);
-  return topics.map((t) => ({ userId: user.id, topicId: t.id }));
+
+  // Filter to only topics with scheduling enabled
+  return topics
+    .filter((t: TopicRow) => t.digest_schedule_enabled)
+    .map((t: TopicRow) => ({ userId: user.id, topicId: t.id }));
 }
