@@ -24,14 +24,6 @@ export default function AdminPage() {
           <p className={styles.cardDescription}>{t("admin.cards.run.description")}</p>
         </Link>
 
-        <Link href="/app/admin/sources" className={styles.card}>
-          <div className={styles.cardIcon}>
-            <SourcesIcon />
-          </div>
-          <h2 className={styles.cardTitle}>{t("admin.cards.sources.title")}</h2>
-          <p className={styles.cardDescription}>{t("admin.cards.sources.description")}</p>
-        </Link>
-
         <Link href="/app/admin/budgets" className={styles.card}>
           <div className={styles.cardIcon}>
             <BudgetIcon />
@@ -66,25 +58,6 @@ function PlayIcon() {
       aria-hidden="true"
     >
       <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  );
-}
-
-function SourcesIcon() {
-  return (
-    <svg
-      width="32"
-      height="32"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="2" />
-      <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
     </svg>
   );
 }
