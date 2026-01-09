@@ -56,7 +56,8 @@ function truncateString(value: string, maxChars: number): string {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -126,7 +127,9 @@ function tryParseJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
-function extractStructuredErrorCode(response: unknown): { code: string; message: string | null } | null {
+function extractStructuredErrorCode(
+  response: unknown,
+): { code: string; message: string | null } | null {
   const content = extractAssistantContent(response);
   if (!content) return null;
   const obj = tryParseJsonObject(content);
@@ -159,7 +162,9 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function extractUsageTokens(response: unknown): { inputTokens: number; outputTokens: number } | null {
+function extractUsageTokens(
+  response: unknown,
+): { inputTokens: number; outputTokens: number } | null {
   const obj = asRecord(response);
   const usage = obj.usage;
   if (!usage || typeof usage !== "object" || Array.isArray(usage)) return null;
@@ -214,13 +219,14 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
 
   const explicitEndpoint = firstEnv(["SIGNAL_GROK_ENDPOINT"]);
   const baseUrl = firstEnv(["SIGNAL_GROK_BASE_URL", "GROK_BASE_URL"]);
-  const enableXSearchTool = (firstEnv(["SIGNAL_GROK_ENABLE_X_SEARCH_TOOL"]) ?? "1").toLowerCase() !== "0";
+  const enableXSearchTool =
+    (firstEnv(["SIGNAL_GROK_ENABLE_X_SEARCH_TOOL"]) ?? "1").toLowerCase() !== "0";
   const responsesEndpointDefault = baseUrl ? withV1(baseUrl, "/responses") : undefined;
 
   let endpoint = explicitEndpoint ?? responsesEndpointDefault;
   if (!endpoint) {
     throw new Error(
-      "Missing required env var for Grok x_search: SIGNAL_GROK_ENDPOINT (or SIGNAL_GROK_BASE_URL / GROK_BASE_URL)"
+      "Missing required env var for Grok x_search: SIGNAL_GROK_ENDPOINT (or SIGNAL_GROK_BASE_URL / GROK_BASE_URL)",
     );
   }
   // Always prefer Responses API. If endpoint points to chat/completions, auto-swap to /responses.
@@ -311,7 +317,9 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     (err as unknown as Record<string, unknown>).model = model;
     (err as unknown as Record<string, unknown>).responseSnippet = snippet;
     (err as unknown as Record<string, unknown>).requestId =
-      res.headers.get("x-request-id") ?? res.headers.get("xai-request-id") ?? res.headers.get("cf-ray");
+      res.headers.get("x-request-id") ??
+      res.headers.get("xai-request-id") ??
+      res.headers.get("cf-ray");
     throw err;
   }
 

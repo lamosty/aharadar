@@ -1,7 +1,7 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
-import { type QuiverCongressTrade, getChamber, parseAmountRange, generateTradeId } from "./fetch";
+import { generateTradeId, getChamber, parseAmountRange, type QuiverCongressTrade } from "./fetch";
 
-function asString(value: unknown): string | null {
+function _asString(value: unknown): string | null {
   const s = String(value ?? "").trim();
   return s.length > 0 ? s : null;
 }
@@ -20,7 +20,7 @@ function calculateDaysToDisclose(transactionDate: string, reportDate: string): n
   try {
     const txnDate = new Date(transactionDate);
     const rptDate = new Date(reportDate);
-    if (isNaN(txnDate.getTime()) || isNaN(rptDate.getTime())) return null;
+    if (Number.isNaN(txnDate.getTime()) || Number.isNaN(rptDate.getTime())) return null;
     const diffMs = rptDate.getTime() - txnDate.getTime();
     return Math.round(diffMs / (1000 * 60 * 60 * 24));
   } catch {
@@ -89,14 +89,14 @@ function generateBodyText(trade: QuiverCongressTrade): string {
  */
 export async function normalizeCongressTrading(
   raw: unknown,
-  _params: FetchParams
+  _params: FetchParams,
 ): Promise<ContentItemDraft> {
   const trade = asRecord(raw) as unknown as QuiverCongressTrade;
 
   // Validate required fields
   if (!trade.Representative || !trade.Ticker || !trade.Transaction) {
     throw new Error(
-      "Malformed Congress trade: missing required fields (Representative, Ticker, Transaction)"
+      "Malformed Congress trade: missing required fields (Representative, Ticker, Transaction)",
     );
   }
 
@@ -117,7 +117,7 @@ export async function normalizeCongressTrading(
   if (trade.ReportDate) {
     try {
       const date = new Date(trade.ReportDate);
-      if (!isNaN(date.getTime())) {
+      if (!Number.isNaN(date.getTime())) {
         publishedAt = date.toISOString();
       }
     } catch {

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useTopics, useCreateTopic, useUpdateTopic, useDeleteTopic } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
+import { useCreateTopic, useDeleteTopic, useTopics, useUpdateTopic } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
-import { TopicViewingProfileSettings } from "./TopicViewingProfileSettings";
 import styles from "./TopicsList.module.css";
+import { TopicViewingProfileSettings } from "./TopicViewingProfileSettings";
 
 export function TopicsList() {
   const { data, isLoading, isError } = useTopics();
@@ -89,7 +89,8 @@ export function TopicsList() {
     }
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const isPending =
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className={styles.container}>
@@ -123,7 +124,6 @@ export function TopicsList() {
               }
             }}
             disabled={createMutation.isPending}
-            autoFocus
           />
           <div className={styles.createActions}>
             <button
@@ -180,7 +180,6 @@ export function TopicsList() {
                           if (e.key === "Escape") cancelEditing();
                         }}
                         disabled={updateMutation.isPending}
-                        autoFocus
                       />
                     </div>
                     <div className={styles.editField}>
@@ -240,7 +239,9 @@ export function TopicsList() {
                             {t(`settings.viewing.profiles.${topic.viewingProfile}`)}
                           </span>
                           <span className={styles.topicDecay}>{topic.decayHours}h</span>
-                          <span className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ""}`}>
+                          <span
+                            className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ""}`}
+                          >
                             <svg
                               width="10"
                               height="10"
@@ -325,7 +326,10 @@ export function TopicsList() {
                     </div>
                     {isExpanded && (
                       <div className={styles.topicContent}>
-                        <TopicViewingProfileSettings topic={topic} profileOptions={profileOptions} />
+                        <TopicViewingProfileSettings
+                          topic={topic}
+                          profileOptions={profileOptions}
+                        />
                       </div>
                     )}
                   </>

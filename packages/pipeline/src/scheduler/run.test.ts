@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the stage functions before importing
 vi.mock("../stages/ingest", () => ({
@@ -27,13 +27,13 @@ vi.mock("../budgets/credits", () => ({
 }));
 
 import type { Db } from "@aharadar/db";
-import { runPipelineOnce } from "./run";
-import { ingestEnabledSources } from "../stages/ingest";
-import { embedTopicContentItems } from "../stages/embed";
-import { dedupeTopicContentItems } from "../stages/dedupe";
-import { clusterTopicContentItems } from "../stages/cluster";
-import { persistDigestFromContentItems } from "../stages/digest";
 import { computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
+import { clusterTopicContentItems } from "../stages/cluster";
+import { dedupeTopicContentItems } from "../stages/dedupe";
+import { persistDigestFromContentItems } from "../stages/digest";
+import { embedTopicContentItems } from "../stages/embed";
+import { ingestEnabledSources } from "../stages/ingest";
+import { runPipelineOnce } from "./run";
 
 describe("runPipelineOnce", () => {
   const mockDb = {} as Db;
@@ -74,25 +74,31 @@ describe("runPipelineOnce", () => {
     it("passes paidCallsAllowed=true to all stages", async () => {
       await runPipelineOnce(mockDb, baseParams);
 
-      expect(ingestEnabledSources).toHaveBeenCalledWith(expect.objectContaining({ paidCallsAllowed: true }));
+      expect(ingestEnabledSources).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true }),
+      );
       expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: true })
+        expect.objectContaining({ paidCallsAllowed: true }),
       );
       expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: true })
+        expect.objectContaining({ paidCallsAllowed: true }),
       );
     });
 
     it("uses normal mode for digest by default", async () => {
       await runPipelineOnce(mockDb, baseParams);
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "normal" }));
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "normal" }),
+      );
     });
 
     it("resolves tier to high for catch_up mode", async () => {
       await runPipelineOnce(mockDb, { ...baseParams, mode: "catch_up" });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }));
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "high" }),
+      );
     });
   });
 
@@ -131,12 +137,14 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(ingestEnabledSources).toHaveBeenCalledWith(expect.objectContaining({ paidCallsAllowed: true }));
+      expect(ingestEnabledSources).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: true }),
+      );
       expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: true })
+        expect.objectContaining({ paidCallsAllowed: true }),
       );
       expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: true })
+        expect.objectContaining({ paidCallsAllowed: true }),
       );
     });
 
@@ -146,7 +154,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "normal" }));
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "normal" }),
+      );
     });
 
     it("uses specified mode for digest when provided", async () => {
@@ -156,7 +166,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "high" }));
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "high" }),
+      );
     });
 
     it("includes creditsStatus in result", async () => {
@@ -190,7 +202,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(ingestEnabledSources).toHaveBeenCalledWith(expect.objectContaining({ paidCallsAllowed: false }));
+      expect(ingestEnabledSources).toHaveBeenCalledWith(
+        expect.objectContaining({ paidCallsAllowed: false }),
+      );
     });
 
     it("passes paidCallsAllowed=false to embed", async () => {
@@ -200,7 +214,7 @@ describe("runPipelineOnce", () => {
       });
 
       expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: false })
+        expect.objectContaining({ paidCallsAllowed: false }),
       );
     });
 
@@ -211,7 +225,7 @@ describe("runPipelineOnce", () => {
       });
 
       expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: false })
+        expect.objectContaining({ paidCallsAllowed: false }),
       );
     });
 
@@ -232,7 +246,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(expect.objectContaining({ mode: "low" }));
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "low" }),
+      );
     });
 
     it("calls printCreditsWarning", async () => {
@@ -276,7 +292,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "normal" }));
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "normal" }),
+      );
     });
 
     it("uses high tier when mode is high", async () => {
@@ -286,7 +304,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }));
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "high" }),
+      );
     });
 
     it("uses high tier when mode is catch_up", async () => {
@@ -296,7 +316,9 @@ describe("runPipelineOnce", () => {
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }));
+      expect(embedTopicContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: "high" }),
+      );
     });
   });
 });

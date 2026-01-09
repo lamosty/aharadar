@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseCadence, parseLastFetchAt, isSourceDue, type CadenceConfig } from "./ingest";
+import { describe, expect, it } from "vitest";
+import { type CadenceConfig, isSourceDue, parseCadence, parseLastFetchAt } from "./ingest";
 
 describe("parseCadence", () => {
   it("returns null when cadence is missing", () => {

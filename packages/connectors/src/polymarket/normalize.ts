@@ -1,5 +1,5 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
-import { type PolymarketRawMarket, parseVolume, parseProbability, generateMarketId } from "./fetch";
+import { generateMarketId, type PolymarketRawMarket, parseProbability, parseVolume } from "./fetch";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -23,7 +23,7 @@ function formatVolume(volume: number): string {
 function calculateDaysToResolution(endDateIso: string): number | null {
   try {
     const endDate = new Date(endDateIso);
-    if (isNaN(endDate.getTime())) return null;
+    if (Number.isNaN(endDate.getTime())) return null;
     const now = new Date();
     const diffMs = endDate.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
@@ -37,7 +37,8 @@ function calculateDaysToResolution(endDateIso: string): number | null {
  * Format: "{Question} - {X}%" or "{Question} - Now {X}% ({change} 24h)"
  */
 function generateTitle(market: PolymarketRawMarket, probChange: number | null): string {
-  const probability = market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) * 100 : 0;
+  const probability =
+    market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) * 100 : 0;
   const probStr = probability.toFixed(0);
 
   if (probChange !== null && Math.abs(probChange) >= 5) {
@@ -52,7 +53,8 @@ function generateTitle(market: PolymarketRawMarket, probChange: number | null): 
  * Generate body text with market details
  */
 function generateBodyText(market: PolymarketRawMarket, probChange: number | null): string {
-  const probability = market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) * 100 : 0;
+  const probability =
+    market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) * 100 : 0;
   const volume = parseVolume(market.volume);
   const volume24hr = parseVolume(market.volume24hr);
   const liquidity = parseVolume(market.liquidity);
@@ -106,7 +108,10 @@ function buildCanonicalUrl(market: PolymarketRawMarket): string {
 /**
  * Normalize Polymarket market to ContentItemDraft
  */
-export async function normalizePolymarket(raw: unknown, params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizePolymarket(
+  raw: unknown,
+  params: FetchParams,
+): Promise<ContentItemDraft> {
   const market = asRecord(raw) as unknown as PolymarketRawMarket;
 
   // Validate required fields
@@ -116,7 +121,8 @@ export async function normalizePolymarket(raw: unknown, params: FetchParams): Pr
 
   // Calculate probability change from cursor if available
   let probChange: number | null = null;
-  const currentProb = market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
+  const currentProb =
+    market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
   const lastPrices = params.cursor?.last_prices as Record<string, number> | undefined;
   if (lastPrices && market.conditionId in lastPrices) {
     probChange = (currentProb - lastPrices[market.conditionId]) * 100;
@@ -138,7 +144,7 @@ export async function normalizePolymarket(raw: unknown, params: FetchParams): Pr
   if (market.createdAt) {
     try {
       const date = new Date(market.createdAt);
-      if (!isNaN(date.getTime())) {
+      if (!Number.isNaN(date.getTime())) {
         publishedAt = date.toISOString();
       }
     } catch {

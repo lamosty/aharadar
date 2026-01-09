@@ -1,16 +1,16 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "fs";
-import { join } from "path";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { GenericContainer, type StartedTestContainer } from "testcontainers";
-import { Queue, QueueEvents } from "bullmq";
 import { createDb, type Db } from "@aharadar/db";
 import {
   PIPELINE_QUEUE_NAME,
-  RUN_WINDOW_JOB_NAME,
   parseRedisConnection,
+  RUN_WINDOW_JOB_NAME,
   type RunWindowJobData,
 } from "@aharadar/queues";
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
+import { Queue, QueueEvents } from "bullmq";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { GenericContainer, type StartedTestContainer } from "testcontainers";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPipelineWorker } from "./workers/pipeline.worker";
 
 /**
@@ -111,14 +111,14 @@ describe("BullMQ pipeline worker integration", () => {
     // Create user
     const userResult = await db.query<{ id: string }>(
       `INSERT INTO users (email) VALUES ('test@example.com') RETURNING id`,
-      []
+      [],
     );
     userId = userResult.rows[0].id;
 
     // Create topic
     const topicResult = await db.query<{ id: string }>(
       `INSERT INTO topics (user_id, name) VALUES ($1, 'default') RETURNING id`,
-      [userId]
+      [userId],
     );
     topicId = topicResult.rows[0].id;
 
@@ -126,7 +126,7 @@ describe("BullMQ pipeline worker integration", () => {
     const sourceResult = await db.query<{ id: string }>(
       `INSERT INTO sources (user_id, topic_id, type, name, is_enabled)
        VALUES ($1, $2, 'rss', 'Test Source', false) RETURNING id`,
-      [userId, topicId]
+      [userId, topicId],
     );
     sourceId = sourceResult.rows[0].id;
 
@@ -161,14 +161,22 @@ describe("BullMQ pipeline worker integration", () => {
            (user_id, source_id, source_type, external_id, canonical_url, title, body_text, published_at, fetched_at)
          VALUES ($1, $2, 'rss', $3, $4, $5, $6, $7::timestamptz, $7::timestamptz)
          RETURNING id`,
-        [userId, sourceId, item.externalId, item.canonicalUrl, item.title, item.bodyText, item.publishedAt]
+        [
+          userId,
+          sourceId,
+          item.externalId,
+          item.canonicalUrl,
+          item.title,
+          item.bodyText,
+          item.publishedAt,
+        ],
       );
 
       // Link content item to source (for topic membership)
-      await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
-        result.rows[0].id,
-        sourceId,
-      ]);
+      await db.query(
+        `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+        [result.rows[0].id, sourceId],
+      );
     }
   }
 
@@ -208,7 +216,7 @@ describe("BullMQ pipeline worker integration", () => {
           jobId,
           removeOnComplete: 100,
           removeOnFail: 50,
-        }
+        },
       );
 
       // Wait for job to complete (30 second timeout)
@@ -225,7 +233,7 @@ describe("BullMQ pipeline worker integration", () => {
         `SELECT id, mode FROM digests
          WHERE user_id = $1 AND topic_id = $2::uuid
            AND window_start = $3::timestamptz AND window_end = $4::timestamptz`,
-        [userId, topicId, windowStart, windowEnd]
+        [userId, topicId, windowStart, windowEnd],
       );
       expect(digestResult.rows.length).toBeGreaterThanOrEqual(1);
 
@@ -234,7 +242,7 @@ describe("BullMQ pipeline worker integration", () => {
       // Verify digest_items exist
       const digestItemsResult = await db.query<{ digest_id: string; rank: number }>(
         `SELECT digest_id, rank FROM digest_items WHERE digest_id = $1 ORDER BY rank`,
-        [digestId]
+        [digestId],
       );
       expect(digestItemsResult.rows.length).toBeGreaterThanOrEqual(1);
       expect(digestItemsResult.rows[0].rank).toBe(1);

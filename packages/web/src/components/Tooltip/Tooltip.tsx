@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import styles from "./Tooltip.module.css";
 
 interface TooltipProps {

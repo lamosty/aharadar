@@ -11,7 +11,8 @@ import { canonicalizeUrl, loadRuntimeEnv, sha256Hex } from "@aharadar/shared";
 import { formatTopicList, resolveTopicForUser } from "../topics";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -204,12 +205,12 @@ function parseRunNowArgs(args: string[]): RunNowOptions {
 function printRunNowUsage(): void {
   console.log("Usage:");
   console.log(
-    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--max-digest-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--max-digest-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]",
   );
   console.log("");
   console.log("Example:");
   console.log(
-    "  pnpm dev:cli -- admin:run-now --topic finance --source-type reddit --max-items-per-source 200"
+    "  pnpm dev:cli -- admin:run-now --topic finance --source-type reddit --max-items-per-source 200",
   );
   console.log("  pnpm dev:cli -- admin:run-now --source-type signal");
 }
@@ -219,7 +220,9 @@ function printEmbedNowUsage(): void {
   console.log("  admin:embed-now [--topic <id-or-name>] [--max-items N]");
   console.log("");
   console.log("Notes:");
-  console.log("- Does NOT run ingest (no connector fetch). Embeds existing content_items already in the DB.");
+  console.log(
+    "- Does NOT run ingest (no connector fetch). Embeds existing content_items already in the DB.",
+  );
   console.log("- Respects OPENAI_EMBED_MAX_ITEMS_PER_RUN unless overridden with --max-items.");
   console.log("");
   console.log("Example:");
@@ -229,11 +232,13 @@ function printEmbedNowUsage(): void {
 function printDigestNowUsage(): void {
   console.log("Usage:");
   console.log(
-    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]",
   );
   console.log("");
   console.log("Notes:");
-  console.log("- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.");
+  console.log(
+    "- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.",
+  );
   console.log("- If --max-items is omitted, uses a dev-friendly default: all candidates (capped).");
   console.log("");
   console.log("Example:");
@@ -268,7 +273,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
     console.log(
-      `Running pipeline (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItemsPerSource=${opts.maxItemsPerSource})...`
+      `Running pipeline (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItemsPerSource=${opts.maxItemsPerSource})...`,
     );
 
     const ingestFilter =
@@ -381,7 +386,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       for (const s of ingest.perSource) {
         const suffix = s.error ? ` (${s.error.message})` : "";
         console.log(
-          `- ${s.sourceType}:${s.sourceName} status=${s.status} fetched=${s.fetched} upserted=${s.upserted} inserted=${s.inserted} errors=${s.errors}${suffix}`
+          `- ${s.sourceType}:${s.sourceName} status=${s.status} fetched=${s.fetched} upserted=${s.upserted} inserted=${s.inserted} errors=${s.errors}${suffix}`,
         );
       }
     }
@@ -400,7 +405,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
          group by 1
          order by count(*) desc
          limit 5`,
-        [user.id, windowEnd]
+        [user.id, windowEnd],
       );
 
       if (summary.rows.length > 0) {
@@ -429,13 +434,15 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
          and purpose = 'signal_search'
          and status = 'ok'
          and meta_json->>'windowEnd' = $2`,
-      [user.id, windowEnd]
+      [user.id, windowEnd],
     );
     const okRow = signalOk.rows[0];
     if (okRow) {
       console.log("");
       console.log("Signal usage (this run):");
-      console.log(`- calls: ${okRow.calls} (cap=${process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN ?? "(none)"})`);
+      console.log(
+        `- calls: ${okRow.calls} (cap=${process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN ?? "(none)"})`,
+      );
       console.log(`- tokens_in: ${okRow.input_tokens}`);
       console.log(`- tokens_out: ${okRow.output_tokens}`);
       console.log(`- cost_estimate_credits: ${okRow.credits}`);
@@ -491,7 +498,7 @@ export async function adminEmbedNowCommand(args: string[] = []): Promise<void> {
     console.log("");
     console.log("Next:");
     console.log(
-      `- semantic search: pnpm dev:cli -- search --topic ${JSON.stringify(topic.name)} "your query"`
+      `- semantic search: pnpm dev:cli -- search --topic ${JSON.stringify(topic.name)} "your query"`,
     );
   } finally {
     await db.close();
@@ -559,14 +566,14 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
          and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
          and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
          ${filterSql}`,
-      candidateCountArgs
+      candidateCountArgs,
     );
     const candidateCount = candidateCountRes.rows[0]?.candidate_count ?? 0;
     const digestMaxItemsDefault = Math.min(500, Math.max(20, candidateCount));
     const digestMaxItems = opts.maxItems ?? digestMaxItemsDefault;
 
     console.log(
-      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${digestMaxItems})...`
+      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${digestMaxItems})...`,
     );
 
     // Keep clustering/dedupe reasonably fresh even when re-running digest without ingest.
@@ -672,14 +679,14 @@ export async function adminSourcesListCommand(): Promise<void> {
        join topics t on t.id = s.topic_id
        where s.user_id = $1
        order by s.created_at asc`,
-      [user.id]
+      [user.id],
     );
     if (sources.rows.length === 0) {
       console.log("No sources yet.");
       console.log("");
       console.log("Add one with:");
       console.log(
-        '  pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config \'{"subreddits":["MachineLearning"],"listing":"new"}\''
+        '  pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config \'{"subreddits":["MachineLearning"],"listing":"new"}\'',
       );
       return;
     }
@@ -734,19 +741,18 @@ export async function adminSourcesAddCommand(args: string[]): Promise<void> {
       if (a === "--cursor") {
         cursorStr = args[i + 1] ? String(args[i + 1]).trim() : null;
         i += 1;
-        continue;
       }
     }
 
     if (!type || !name) {
       console.log("Usage:");
       console.log(
-        "  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]"
+        "  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]",
       );
       console.log("");
       console.log("Example (reddit):");
       console.log(
-        '  pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config \'{"subreddits":["MachineLearning"],"listing":"new"}\''
+        '  pnpm dev:cli -- admin:sources-add --type reddit --name "reddit:MachineLearning" --config \'{"subreddits":["MachineLearning"],"listing":"new"}\'',
       );
       return;
     }
@@ -851,7 +857,6 @@ export async function adminSourcesSetTopicCommand(args: string[]): Promise<void>
       if (a === "--topic") {
         topicArg = args[i + 1] ? String(args[i + 1]).trim() : null;
         i += 1;
-        continue;
       }
     }
 
@@ -859,7 +864,9 @@ export async function adminSourcesSetTopicCommand(args: string[]): Promise<void>
       console.log("Usage:");
       console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
       console.log("");
-      console.log("Tip: list topics with `admin:topics-list` and sources with `admin:sources-list`.");
+      console.log(
+        "Tip: list topics with `admin:topics-list` and sources with `admin:sources-list`.",
+      );
       return;
     }
 
@@ -876,21 +883,23 @@ export async function adminSourcesSetTopicCommand(args: string[]): Promise<void>
 function printSourcesSetCadenceUsage(): void {
   console.log("Usage:");
   console.log(
-    "  admin:sources-set-cadence (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) (--every-minutes <int> | --clear) [--dry-run]"
+    "  admin:sources-set-cadence (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) (--every-minutes <int> | --clear) [--dry-run]",
   );
   console.log("");
   console.log("Examples:");
   console.log("  # Set daily cadence for a single source:");
-  console.log("  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-cadence --source-id <uuid> --every-minutes 1440",
+  );
   console.log("");
   console.log("  # Set daily cadence for all x_posts sources in a topic:");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440"
+    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440",
   );
   console.log("");
   console.log("  # Set 8-hour cadence for multiple source types:");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type rss,reddit --every-minutes 480"
+    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type rss,reddit --every-minutes 480",
   );
   console.log("");
   console.log("  # Clear cadence (fetch on every run):");
@@ -898,7 +907,7 @@ function printSourcesSetCadenceUsage(): void {
   console.log("");
   console.log("  # Dry run (preview changes without persisting):");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440 --dry-run"
+    "  pnpm dev:cli -- admin:sources-set-cadence --topic default --source-type x_posts --every-minutes 1440 --dry-run",
   );
   console.log("");
   console.log("Tip: list sources with `admin:sources-list`.");
@@ -1000,14 +1009,17 @@ export async function adminSourcesSetCadenceCommand(args: string[]): Promise<voi
     } else {
       // Bulk mode: resolve topic and find matching sources
       const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
-      const allSources = await db.sources.listEnabledByUserAndTopic({ userId: user.id, topicId: topic.id });
+      const allSources = await db.sources.listEnabledByUserAndTopic({
+        userId: user.id,
+        topicId: topic.id,
+      });
       targetSources = allSources
         .filter((s) => sourceTypes.includes(s.type))
         .map((s) => ({ id: s.id, type: s.type, name: s.name }));
 
       if (targetSources.length === 0) {
         console.log(
-          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`
+          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`,
         );
         return;
       }
@@ -1025,7 +1037,7 @@ export async function adminSourcesSetCadenceCommand(args: string[]): Promise<voi
         console.log(`- ${source.id} ${source.type}:${source.name}`);
         console.log(`  previous: ${currentCadence ? JSON.stringify(currentCadence) : "(none)"}`);
         console.log(
-          `  new: ${cadence ? JSON.stringify({ mode: cadence.mode, every_minutes: cadence.everyMinutes }) : "(cleared)"}`
+          `  new: ${cadence ? JSON.stringify({ mode: cadence.mode, every_minutes: cadence.everyMinutes }) : "(cleared)"}`,
         );
       } else {
         const result = await db.sources.updateConfigCadence({
@@ -1075,7 +1087,7 @@ export async function adminSignalResetCursorCommand(args: string[]): Promise<voi
        where user_id = $1
          and type = 'signal'
        returning id, name`,
-      [user.id, JSON.stringify(cursor)]
+      [user.id, JSON.stringify(cursor)],
     );
 
     console.log(`Reset cursor for ${res.rows.length} signal source(s).`);
@@ -1137,7 +1149,6 @@ function parseSignalDebugArgs(args: string[]): SignalDebugOptions {
       const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
       if (Number.isFinite(parsed) && parsed > 0) limit = parsed;
       i += 1;
-      continue;
     }
   }
 
@@ -1279,7 +1290,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
          ${kindSql}
        order by fetched_at desc
        limit $2`,
-      [user.id, opts.limit]
+      [user.id, opts.limit],
     );
 
     const providerCalls = await db.query<{
@@ -1308,7 +1319,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
          and purpose = 'signal_search'
        order by started_at desc
        limit $2`,
-      [user.id, Math.max(10, opts.limit * 5)]
+      [user.id, Math.max(10, opts.limit * 5)],
     );
 
     const normalized = signalItems.rows.map((row) => {
@@ -1330,7 +1341,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
         primaryUrl: asString((meta as Record<string, unknown>).primary_url),
         extractedUrls: Array.isArray((meta as Record<string, unknown>).extracted_urls)
           ? ((meta as Record<string, unknown>).extracted_urls as unknown[]).filter(
-              (u) => typeof u === "string"
+              (u) => typeof u === "string",
             )
           : [],
         signalResults,
@@ -1351,8 +1362,8 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
             providerCalls: providerCalls.rows,
           },
           null,
-          2
-        )
+          2,
+        ),
       );
       return;
     }
@@ -1406,7 +1417,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
     if (!opts.verbose) {
       console.log("");
       console.log(
-        "Tip: add --verbose to print full results and recent provider calls; use --json for structured output; filter with --kind post|bundle|all. For paging: append `| less -R`."
+        "Tip: add --verbose to print full results and recent provider calls; use --json for structured output; filter with --kind post|bundle|all. For paging: append `| less -R`.",
       );
       return;
     }
@@ -1428,7 +1439,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
 
       console.log("");
       console.log(
-        `- kind=${item.kind} who=${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`
+        `- kind=${item.kind} who=${who} fetched=${formatShortLocalTimestamp(item.fetchedAt)} results=${rc}`,
       );
       if (topPost) console.log(`  top_post: ${topPost}`);
       if (primary) console.log(`  primary_url: ${primary}`);
@@ -1439,7 +1450,9 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
           item.extractedUrls.length > preview.length
             ? ` (+${item.extractedUrls.length - preview.length} more)`
             : "";
-        console.log(`  extracted_urls (${item.extractedUrls.length}): ${preview.join(" ")}${suffix}`);
+        console.log(
+          `  extracted_urls (${item.extractedUrls.length}): ${preview.join(" ")}${suffix}`,
+        );
       }
 
       if (item.signalResults.length > 0) {
@@ -1462,7 +1475,9 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
 
     if (providerCalls.rows.length > 0) {
       console.log("");
-      console.log(`Latest provider_calls (purpose='signal_search', showing ${providerCalls.rows.length}):`);
+      console.log(
+        `Latest provider_calls (purpose='signal_search', showing ${providerCalls.rows.length}):`,
+      );
       for (const c of providerCalls.rows) {
         const meta = c.meta_json ?? {};
         const query = asString((meta as Record<string, unknown>).query) ?? "(unknown query)";
@@ -1471,7 +1486,7 @@ export async function adminSignalDebugCommand(args: string[]): Promise<void> {
         const resultsCount = (meta as Record<string, unknown>).results_count;
         const winEnd = asString((meta as Record<string, unknown>).windowEnd);
         console.log(
-          `- ${formatShortLocalTimestamp(c.started_at)} status=${c.status} who=${JSON.stringify(who)} results=${resultsCount ?? "?"} tokens_in=${c.input_tokens} tokens_out=${c.output_tokens} credits=${c.cost_estimate_credits} windowEnd=${winEnd ?? "?"}`
+          `- ${formatShortLocalTimestamp(c.started_at)} status=${c.status} who=${JSON.stringify(who)} results=${resultsCount ?? "?"} tokens_in=${c.input_tokens} tokens_out=${c.output_tokens} credits=${c.cost_estimate_credits} windowEnd=${winEnd ?? "?"}`,
         );
       }
     }
@@ -1509,7 +1524,6 @@ function parseSignalExplodeArgs(args: string[]): SignalExplodeOptions {
       }
       limitBundles = parsed;
       i += 1;
-      continue;
     }
   }
 
@@ -1579,7 +1593,7 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
          and canonical_url is null
        order by fetched_at desc
        limit $2`,
-      [user.id, opts.limitBundles]
+      [user.id, opts.limitBundles],
     );
 
     let bundlesScanned = 0;
@@ -1596,7 +1610,8 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
       const provider = asString((meta as Record<string, unknown>).provider) ?? "x_search";
       const vendor = asString((meta as Record<string, unknown>).vendor) ?? "grok";
       const query = asString((meta as Record<string, unknown>).query) ?? "signal";
-      const dayBucket = asString((meta as Record<string, unknown>).day_bucket) ?? b.fetched_at.slice(0, 10);
+      const dayBucket =
+        asString((meta as Record<string, unknown>).day_bucket) ?? b.fetched_at.slice(0, 10);
 
       const results = asSignalResults((meta as Record<string, unknown>).signal_results);
       if (results.length === 0) continue;
@@ -1618,7 +1633,8 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
         const text = r.text ? r.text.replaceAll("\n", " ").trim() : null;
         const extractedUrls = text ? extractUrlsFromText(text).filter((u) => u !== canon) : [];
         const primaryUrl = extractedUrls[0] ?? canon;
-        const externalId = statusId ?? sha256Hex([provider, vendor, query, dayBucket, canon].join("|"));
+        const externalId =
+          statusId ?? sha256Hex([provider, vendor, query, dayBucket, canon].join("|"));
 
         postsAttempted += 1;
         if (opts.dryRun) continue;
@@ -1660,7 +1676,10 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
           if (upsertRes.inserted) postsInserted += 1;
 
           try {
-            await db.contentItemSources.upsert({ contentItemId: upsertRes.id, sourceId: b.source_id });
+            await db.contentItemSources.upsert({
+              contentItemId: upsertRes.id,
+              sourceId: b.source_id,
+            });
           } catch (err) {
             errors += 1;
             console.warn("content_item_sources upsert failed (signal explode)", err);
@@ -1680,7 +1699,7 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
              where id = $1::uuid
                and (metadata_json->>'kind') is null
              returning true as updated`,
-            [b.id]
+            [b.id],
           );
           if (updated.rows.length > 0) bundlesMarked += 1;
         } catch (err) {
@@ -1698,7 +1717,7 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
            set deleted_at = now()
            where id = any($1::uuid[])
            returning id::text as id`,
-          [ids]
+          [ids],
         );
         bundlesDeleted = res.rows.length;
       } catch (err) {
@@ -1728,7 +1747,7 @@ export async function adminSignalExplodeBundlesCommand(args: string[] = []): Pro
 function printSourcesSetWeightUsage(): void {
   console.log("Usage:");
   console.log(
-    "  admin:sources-set-weight (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --weight <number> [--dry-run]"
+    "  admin:sources-set-weight (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --weight <number> [--dry-run]",
   );
   console.log("");
   console.log("Notes:");
@@ -1740,11 +1759,13 @@ function printSourcesSetWeightUsage(): void {
   console.log("  pnpm dev:cli -- admin:sources-set-weight --source-id <uuid> --weight 0.5");
   console.log("");
   console.log("  # Set weight for all rss sources in a topic:");
-  console.log("  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type rss --weight 1.5");
+  console.log(
+    "  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type rss --weight 1.5",
+  );
   console.log("");
   console.log("  # Dry run (preview changes without persisting):");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type x_posts --weight 0.8 --dry-run"
+    "  pnpm dev:cli -- admin:sources-set-weight --topic default --source-type x_posts --weight 0.8 --dry-run",
   );
 }
 
@@ -1838,14 +1859,17 @@ export async function adminSourcesSetWeightCommand(args: string[]): Promise<void
     } else {
       // Bulk mode: resolve topic and find matching sources
       const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
-      const allSources = await db.sources.listByUserAndTopic({ userId: user.id, topicId: topic.id });
+      const allSources = await db.sources.listByUserAndTopic({
+        userId: user.id,
+        topicId: topic.id,
+      });
       targetSources = allSources
         .filter((s) => sourceTypes.includes(s.type))
         .map((s) => ({ id: s.id, type: s.type, name: s.name }));
 
       if (targetSources.length === 0) {
         console.log(
-          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`
+          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`,
         );
         return;
       }
@@ -1884,7 +1908,7 @@ export async function adminSourcesSetWeightCommand(args: string[]): Promise<void
 
     console.log("");
     console.log(
-      `Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, unchanged=${unchanged})`}.`
+      `Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, unchanged=${unchanged})`}.`,
     );
   } finally {
     await db.close();
@@ -1894,7 +1918,7 @@ export async function adminSourcesSetWeightCommand(args: string[]): Promise<void
 function printSourcesSetEnabledUsage(): void {
   console.log("Usage:");
   console.log(
-    "  admin:sources-set-enabled (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --enabled <true|false> [--dry-run]"
+    "  admin:sources-set-enabled (--source-id <uuid> | --topic <id-or-name> --source-type <type>[,<type>...]) --enabled <true|false> [--dry-run]",
   );
   console.log("");
   console.log("Examples:");
@@ -1903,17 +1927,17 @@ function printSourcesSetEnabledUsage(): void {
   console.log("");
   console.log("  # Disable all rss sources in a topic:");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type rss --enabled false"
+    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type rss --enabled false",
   );
   console.log("");
   console.log("  # Re-enable all x_posts sources:");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type x_posts --enabled true"
+    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type x_posts --enabled true",
   );
   console.log("");
   console.log("  # Dry run:");
   console.log(
-    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type signal --enabled false --dry-run"
+    "  pnpm dev:cli -- admin:sources-set-enabled --topic default --source-type signal --enabled false --dry-run",
   );
 }
 
@@ -2005,18 +2029,23 @@ export async function adminSourcesSetEnabledCommand(args: string[]): Promise<voi
         process.exitCode = 1;
         return;
       }
-      targetSources = [{ id: source.id, type: source.type, name: source.name, isEnabled: source.is_enabled }];
+      targetSources = [
+        { id: source.id, type: source.type, name: source.name, isEnabled: source.is_enabled },
+      ];
     } else {
       // Bulk mode: resolve topic and find matching sources (include disabled sources)
       const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
-      const allSources = await db.sources.listByUserAndTopic({ userId: user.id, topicId: topic.id });
+      const allSources = await db.sources.listByUserAndTopic({
+        userId: user.id,
+        topicId: topic.id,
+      });
       targetSources = allSources
         .filter((s) => sourceTypes.includes(s.type))
         .map((s) => ({ id: s.id, type: s.type, name: s.name, isEnabled: s.is_enabled }));
 
       if (targetSources.length === 0) {
         console.log(
-          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`
+          `No sources found matching topic="${topic.name}" and source_type in [${sourceTypes.join(", ")}].`,
         );
         return;
       }
@@ -2024,7 +2053,9 @@ export async function adminSourcesSetEnabledCommand(args: string[]): Promise<voi
 
     // Apply changes
     console.log(
-      dryRun ? "Dry run (no changes will be persisted):" : `${enabled ? "Enabling" : "Disabling"} sources:`
+      dryRun
+        ? "Dry run (no changes will be persisted):"
+        : `${enabled ? "Enabling" : "Disabling"} sources:`,
     );
     console.log("");
 
@@ -2037,7 +2068,9 @@ export async function adminSourcesSetEnabledCommand(args: string[]): Promise<voi
       if (dryRun) {
         console.log(`- ${source.id} ${source.type}:${source.name}`);
         console.log(`  currently: ${source.isEnabled ? "enabled" : "disabled"}`);
-        console.log(`  would be: ${enabled ? "enabled" : "disabled"}${wouldChange ? "" : " (no change)"}`);
+        console.log(
+          `  would be: ${enabled ? "enabled" : "disabled"}${wouldChange ? "" : " (no change)"}`,
+        );
       } else {
         const result = await db.sources.updateEnabled({
           sourceId: source.id,
@@ -2057,7 +2090,7 @@ export async function adminSourcesSetEnabledCommand(args: string[]): Promise<voi
 
     console.log("");
     console.log(
-      `Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, already_${enabled ? "enabled" : "disabled"}=${alreadyInState})`}.`
+      `Total: ${targetSources.length} source(s)${dryRun ? " (dry run)" : ` (changed=${changed}, already_${enabled ? "enabled" : "disabled"}=${alreadyInState})`}.`,
     );
   } finally {
     await db.close();

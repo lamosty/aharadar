@@ -1,5 +1,5 @@
-import type { FastifyInstance } from "fastify";
 import type { FeedbackAction } from "@aharadar/shared";
+import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -94,7 +94,7 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
            join sources s on s.id = cis.source_id
            where cis.content_item_id = $1::uuid
            limit 1`,
-          [contentItemId]
+          [contentItemId],
         );
         const topicRow = topicRes.rows[0];
 

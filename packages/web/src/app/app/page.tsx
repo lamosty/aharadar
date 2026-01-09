@@ -1,8 +1,8 @@
 "use client";
 
-import { t } from "@/lib/i18n";
 import { useIsAdmin } from "@/components/AuthProvider";
-import { TopicOverviewWidget, TopItemsWidget, BudgetWidget } from "@/components/Dashboard";
+import { BudgetWidget, TopItemsWidget, TopicOverviewWidget } from "@/components/Dashboard";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 export default function DashboardPage() {

@@ -70,7 +70,9 @@ function resolveOpenAiModel(env: NodeJS.ProcessEnv, task: TaskType, tier: Budget
   if (byTask && byTask.trim().length > 0) return byTask.trim();
   const fallback = env.OPENAI_MODEL;
   if (fallback && fallback.trim().length > 0) return fallback.trim();
-  throw new Error(`Missing model env var for OpenAI task: ${task} (set ${toOpenAiEnvKey(task, "MODEL")})`);
+  throw new Error(
+    `Missing model env var for OpenAI task: ${task} (set ${toOpenAiEnvKey(task, "MODEL")})`,
+  );
 }
 
 // Anthropic model resolution
@@ -103,7 +105,11 @@ function resolveAnthropicModel(env: NodeJS.ProcessEnv, task: TaskType, tier: Bud
 }
 
 // Claude subscription model resolution (uses same model names as Anthropic API)
-function resolveClaudeSubscriptionModel(env: NodeJS.ProcessEnv, task: TaskType, tier: BudgetTier): string {
+function resolveClaudeSubscriptionModel(
+  env: NodeJS.ProcessEnv,
+  task: TaskType,
+  tier: BudgetTier,
+): string {
   // Check for subscription-specific model override
   const subKey = `CLAUDE_${task.toUpperCase()}_MODEL`;
   const byTask = env[subKey];
@@ -121,7 +127,7 @@ function resolveProvider(
   env: NodeJS.ProcessEnv,
   task: TaskType,
   openaiApiKey: string | undefined,
-  anthropicApiKey: string | undefined
+  anthropicApiKey: string | undefined,
 ): Provider {
   // Check if subscription mode is enabled and available
   if (env.CLAUDE_USE_SUBSCRIPTION === "true") {
@@ -168,7 +174,7 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
   // Validate at least one provider is configured
   if (!openaiApiKey && !anthropicApiKey && !subscriptionEnabled) {
     throw new Error(
-      "Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION)"
+      "Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION)",
     );
   }
 
@@ -240,7 +246,7 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
  */
 export function createConfiguredLlmRouter(
   env: NodeJS.ProcessEnv = process.env,
-  config?: LlmRuntimeConfig
+  config?: LlmRuntimeConfig,
 ): LlmRouter {
   if (!config) {
     return createEnvLlmRouter(env);

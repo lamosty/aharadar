@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { t } from "@/lib/i18n";
 import { JsonViewer } from "@/components";
 import { useItem } from "@/lib/hooks";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 function formatDate(dateString: string | null): string {

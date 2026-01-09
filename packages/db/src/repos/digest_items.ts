@@ -33,7 +33,7 @@ export function createDigestItemsRepo(db: Queryable) {
         // digest_id is always $1
         // rank is i+1 (1-based)
         values.push(
-          `($1, $${idx}::uuid, $${idx + 1}::uuid, ${i + 1}, $${idx + 2}, $${idx + 3}::jsonb, $${idx + 4}::jsonb, $${idx + 5}::jsonb)`
+          `($1, $${idx}::uuid, $${idx + 1}::uuid, ${i + 1}, $${idx + 2}, $${idx + 3}::jsonb, $${idx + 4}::jsonb, $${idx + 5}::jsonb)`,
         );
         args.push(
           item.clusterId,
@@ -41,7 +41,7 @@ export function createDigestItemsRepo(db: Queryable) {
           item.score,
           item.triageJson ? JSON.stringify(item.triageJson) : null,
           item.summaryJson ? JSON.stringify(item.summaryJson) : null,
-          item.entitiesJson ? JSON.stringify(item.entitiesJson) : null
+          item.entitiesJson ? JSON.stringify(item.entitiesJson) : null,
         );
         idx += 6;
       }
@@ -49,7 +49,7 @@ export function createDigestItemsRepo(db: Queryable) {
       await db.query(
         `insert into digest_items (digest_id, cluster_id, content_item_id, rank, score, triage_json, summary_json, entities_json)
          values ${values.join(", ")}`,
-        args
+        args,
       );
     },
   };

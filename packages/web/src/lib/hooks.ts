@@ -8,76 +8,76 @@
  * - Optimistic updates for feedback
  */
 
-import { useState, useCallback } from "react";
 import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-  type UseQueryOptions,
   type UseMutationOptions,
+  type UseQueryOptions,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import {
-  getHealth,
-  getDigests,
-  getDigest,
-  getItem,
-  getItems,
-  postFeedback,
-  postAdminRun,
-  getAdminSources,
-  patchAdminSource,
-  postAdminSource,
-  deleteAdminSource,
-  getAdminBudgets,
-  getAdminLlmSettings,
-  patchAdminLlmSettings,
-  getPreferences,
-  patchPreferences,
-  postMarkChecked,
-  getTopics,
-  getTopic,
-  patchTopicViewingProfile,
-  postTopicMarkChecked,
-  createTopic,
-  updateTopic,
-  deleteTopic,
-  type HealthResponse,
-  type DigestsListResponse,
-  type DigestDetailResponse,
-  type ItemDetailResponse,
-  type ItemsListResponse,
-  type ItemsListParams,
-  type FeedbackRequest,
-  type FeedbackResponse,
   type AdminRunRequest,
   type AdminRunResponse,
-  type SourcesListResponse,
-  type SourcePatchRequest,
-  type SourcePatchResponse,
+  type ApiError,
+  type BudgetsResponse,
+  type CreateTopicRequest,
+  type CreateTopicResponse,
+  createTopic,
+  type DeleteTopicResponse,
+  type DigestDetailResponse,
+  type DigestsListResponse,
+  deleteAdminSource,
+  deleteTopic,
+  type FeedbackAction,
+  type FeedbackRequest,
+  type FeedbackResponse,
+  getAdminBudgets,
+  getAdminLlmSettings,
+  getAdminSources,
+  getDigest,
+  getDigests,
+  getHealth,
+  getItem,
+  getItems,
+  getPreferences,
+  getTopic,
+  getTopics,
+  type HealthResponse,
+  type ItemDetailResponse,
+  type ItemsListParams,
+  type ItemsListResponse,
+  type LlmSettingsResponse,
+  type LlmSettingsUpdateRequest,
+  type NetworkError,
+  type PreferencesGetResponse,
+  type PreferencesMarkCheckedResponse,
+  type PreferencesUpdateResponse,
+  patchAdminLlmSettings,
+  patchAdminSource,
+  patchPreferences,
+  patchTopicViewingProfile,
+  postAdminRun,
+  postAdminSource,
+  postFeedback,
+  postMarkChecked,
+  postTopicMarkChecked,
   type SourceCreateRequest,
   type SourceCreateResponse,
   type SourceDeleteResponse,
-  type BudgetsResponse,
-  type LlmSettingsResponse,
-  type LlmSettingsUpdateRequest,
-  type PreferencesGetResponse,
-  type PreferencesUpdateResponse,
-  type PreferencesMarkCheckedResponse,
-  type TopicsListResponse,
+  type SourcePatchRequest,
+  type SourcePatchResponse,
+  type SourcesListResponse,
   type TopicDetailResponse,
-  type TopicViewingProfileUpdateResponse,
-  type TopicViewingProfileUpdateRequest,
   type TopicMarkCheckedResponse,
-  type CreateTopicRequest,
-  type CreateTopicResponse,
+  type TopicsListResponse,
+  type TopicViewingProfileUpdateRequest,
+  type TopicViewingProfileUpdateResponse,
   type UpdateTopicRequest,
   type UpdateTopicResponse,
-  type DeleteTopicResponse,
+  updateTopic,
   type ViewingProfile,
-  type FeedbackAction,
-  ApiError,
-  NetworkError,
 } from "./api";
 
 // ============================================================================
@@ -114,7 +114,7 @@ export const queryKeys = {
 // ============================================================================
 
 export function useHealth(
-  options?: Omit<UseQueryOptions<HealthResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<HealthResponse, ApiError | NetworkError>, "queryKey" | "queryFn">,
 ) {
   return useQuery({
     queryKey: queryKeys.health,
@@ -129,7 +129,10 @@ export function useHealth(
 
 export function useDigests(
   params?: { from?: string; to?: string },
-  options?: Omit<UseQueryOptions<DigestsListResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<DigestsListResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.digests.list(params),
@@ -140,7 +143,10 @@ export function useDigests(
 
 export function useDigest(
   id: string,
-  options?: Omit<UseQueryOptions<DigestDetailResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<DigestDetailResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.digests.detail(id),
@@ -156,7 +162,10 @@ export function useDigest(
 
 export function useItem(
   id: string,
-  options?: Omit<UseQueryOptions<ItemDetailResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<ItemDetailResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.items.detail(id),
@@ -175,7 +184,8 @@ export function useItems(params?: Omit<ItemsListParams, "offset">) {
 
   return useInfiniteQuery({
     queryKey: queryKeys.items.list(params),
-    queryFn: ({ signal, pageParam }) => getItems({ ...params, limit, offset: pageParam as number }, signal),
+    queryFn: ({ signal, pageParam }) =>
+      getItems({ ...params, limit, offset: pageParam as number }, signal),
     initialPageParam: 0,
     getNextPageParam: (lastPage: ItemsListResponse) => {
       if (!lastPage.pagination.hasMore) return undefined;
@@ -207,7 +217,10 @@ export function usePagedItems(params: UsePagedItemsParams) {
 /**
  * LocalStorage hook for persisting values across sessions.
  */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T,
+): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === "undefined") {
       return initialValue;
@@ -232,7 +245,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
         console.warn(`Error setting localStorage key "${key}":`, error);
       }
     },
-    [key, storedValue]
+    [key, storedValue],
   );
 
   return [storedValue, setValue];
@@ -266,7 +279,12 @@ interface UseFeedbackOptions {
 export function useFeedback(options?: UseFeedbackOptions) {
   const queryClient = useQueryClient();
 
-  return useMutation<FeedbackResponse, ApiError | NetworkError, FeedbackRequest, FeedbackMutationContext>({
+  return useMutation<
+    FeedbackResponse,
+    ApiError | NetworkError,
+    FeedbackRequest,
+    FeedbackMutationContext
+  >({
     mutationFn: (feedback) => postFeedback(feedback),
 
     // Optimistic update: update cache before request completes
@@ -281,11 +299,13 @@ export function useFeedback(options?: UseFeedbackOptions) {
 
       // Snapshot the previous values
       const previousDigest = feedback.digestId
-        ? queryClient.getQueryData<DigestDetailResponse>(queryKeys.digests.detail(feedback.digestId))
+        ? queryClient.getQueryData<DigestDetailResponse>(
+            queryKeys.digests.detail(feedback.digestId),
+          )
         : undefined;
 
       const previousItem = queryClient.getQueryData<ItemDetailResponse>(
-        queryKeys.items.detail(feedback.contentItemId)
+        queryKeys.items.detail(feedback.contentItemId),
       );
 
       // We could optimistically update the UI here if we had a local feedback state
@@ -299,10 +319,16 @@ export function useFeedback(options?: UseFeedbackOptions) {
     onError: (_error, feedback, context) => {
       // Restore the previous values
       if (context?.previousDigest && feedback.digestId) {
-        queryClient.setQueryData(queryKeys.digests.detail(feedback.digestId), context.previousDigest);
+        queryClient.setQueryData(
+          queryKeys.digests.detail(feedback.digestId),
+          context.previousDigest,
+        );
       }
       if (context?.previousItem) {
-        queryClient.setQueryData(queryKeys.items.detail(feedback.contentItemId), context.previousItem);
+        queryClient.setQueryData(
+          queryKeys.items.detail(feedback.contentItemId),
+          context.previousItem,
+        );
       }
 
       options?.onError?.(_error);
@@ -344,7 +370,10 @@ export interface LocalFeedbackState {
 // ============================================================================
 
 export function useAdminRun(
-  options?: Omit<UseMutationOptions<AdminRunResponse, ApiError | NetworkError, AdminRunRequest>, "mutationFn">
+  options?: Omit<
+    UseMutationOptions<AdminRunResponse, ApiError | NetworkError, AdminRunRequest>,
+    "mutationFn"
+  >,
 ) {
   return useMutation({
     mutationFn: (request) => postAdminRun(request),
@@ -353,7 +382,10 @@ export function useAdminRun(
 }
 
 export function useAdminSources(
-  options?: Omit<UseQueryOptions<SourcesListResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<SourcesListResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.admin.sources,
@@ -371,7 +403,7 @@ export function useAdminSourcePatch(
   options?: Omit<
     UseMutationOptions<SourcePatchResponse, ApiError | NetworkError, PatchSourceVariables>,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -389,7 +421,7 @@ export function useAdminSourceCreate(
   options?: Omit<
     UseMutationOptions<SourceCreateResponse, ApiError | NetworkError, SourceCreateRequest>,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -404,7 +436,10 @@ export function useAdminSourceCreate(
 }
 
 export function useAdminSourceDelete(
-  options?: Omit<UseMutationOptions<SourceDeleteResponse, ApiError | NetworkError, string>, "mutationFn">
+  options?: Omit<
+    UseMutationOptions<SourceDeleteResponse, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -419,7 +454,7 @@ export function useAdminSourceDelete(
 }
 
 export function useAdminBudgets(
-  options?: Omit<UseQueryOptions<BudgetsResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<BudgetsResponse, ApiError | NetworkError>, "queryKey" | "queryFn">,
 ) {
   return useQuery({
     queryKey: queryKeys.admin.budgets,
@@ -434,7 +469,10 @@ export function useAdminBudgets(
  * Query for LLM settings.
  */
 export function useAdminLlmSettings(
-  options?: Omit<UseQueryOptions<LlmSettingsResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<LlmSettingsResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.admin.llmSettings,
@@ -451,7 +489,7 @@ export function useAdminLlmSettingsUpdate(
   options?: Omit<
     UseMutationOptions<LlmSettingsResponse, ApiError | NetworkError, LlmSettingsUpdateRequest>,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -506,7 +544,10 @@ export function usePrefetchItem() {
  * Query for user preferences (viewing profile, decay settings, etc.)
  */
 export function usePreferences(
-  options?: Omit<UseQueryOptions<PreferencesGetResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<PreferencesGetResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.preferences,
@@ -524,10 +565,14 @@ export function useUpdatePreferences(
     UseMutationOptions<
       PreferencesUpdateResponse,
       ApiError | NetworkError,
-      { viewingProfile?: ViewingProfile; decayHours?: number; customSettings?: Record<string, unknown> }
+      {
+        viewingProfile?: ViewingProfile;
+        decayHours?: number;
+        customSettings?: Record<string, unknown>;
+      }
     >,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -550,7 +595,7 @@ export function useMarkChecked(
   options?: Omit<
     UseMutationOptions<PreferencesMarkCheckedResponse, ApiError | NetworkError, void>,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -574,7 +619,10 @@ export function useMarkChecked(
  * Query for all topics with their viewing profiles.
  */
 export function useTopics(
-  options?: Omit<UseQueryOptions<TopicsListResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<TopicsListResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.topics.list(),
@@ -589,7 +637,10 @@ export function useTopics(
  */
 export function useTopic(
   id: string,
-  options?: Omit<UseQueryOptions<TopicDetailResponse, ApiError | NetworkError>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<TopicDetailResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: queryKeys.topics.detail(id),
@@ -612,7 +663,7 @@ export function useUpdateTopicViewingProfile(
       TopicViewingProfileUpdateRequest
     >,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -633,7 +684,10 @@ export function useUpdateTopicViewingProfile(
  */
 export function useTopicMarkChecked(
   topicId: string,
-  options?: Omit<UseMutationOptions<TopicMarkCheckedResponse, ApiError | NetworkError, void>, "mutationFn">
+  options?: Omit<
+    UseMutationOptions<TopicMarkCheckedResponse, ApiError | NetworkError, void>,
+    "mutationFn"
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -656,7 +710,7 @@ export function useCreateTopic(
   options?: Omit<
     UseMutationOptions<CreateTopicResponse, ApiError | NetworkError, CreateTopicRequest>,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -680,7 +734,7 @@ export function useUpdateTopic(
       { topicId: string; data: UpdateTopicRequest }
     >,
     "mutationFn"
-  >
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -697,7 +751,10 @@ export function useUpdateTopic(
  * Mutation to delete a topic.
  */
 export function useDeleteTopic(
-  options?: Omit<UseMutationOptions<DeleteTopicResponse, ApiError | NetworkError, string>, "mutationFn">
+  options?: Omit<
+    UseMutationOptions<DeleteTopicResponse, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
 ) {
   const queryClient = useQueryClient();
 
@@ -717,15 +774,15 @@ export function useDeleteTopic(
 // ============================================================================
 
 import { useEffect } from "react";
+import { useTheme } from "@/components/ThemeProvider";
 import {
+  clearPageLayout as clearStoredPageLayout,
+  getPageLayout,
+  LAYOUTS,
   type Layout,
   type LayoutPage,
-  LAYOUTS,
-  getPageLayout,
   setPageLayout as storePageLayout,
-  clearPageLayout as clearStoredPageLayout,
 } from "@/lib/theme";
-import { useTheme } from "@/components/ThemeProvider";
 
 interface UsePageLayoutResult {
   /** Current effective layout for this page */
@@ -768,7 +825,7 @@ export function usePageLayout(page: LayoutPage): UsePageLayoutResult {
       storePageLayout(page, newLayout);
       setPageOverride(newLayout);
     },
-    [page]
+    [page],
   );
 
   const resetToGlobal = useCallback(() => {

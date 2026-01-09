@@ -1,6 +1,11 @@
 import http from "node:http";
-import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
-import { MetricLabels, MetricNames, PIPELINE_DURATION_BUCKETS, LLM_DURATION_BUCKETS } from "@aharadar/shared";
+import {
+  LLM_DURATION_BUCKETS,
+  MetricLabels,
+  MetricNames,
+  PIPELINE_DURATION_BUCKETS,
+} from "@aharadar/shared";
+import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
 
 /** Global registry for Worker metrics */
 export const registry = new Registry();
@@ -46,7 +51,12 @@ export const llmCallDuration = new Histogram({
 export const llmCallsTotal = new Counter({
   name: MetricNames.LLM_CALLS_TOTAL,
   help: "Total number of LLM calls",
-  labelNames: [MetricLabels.PROVIDER, MetricLabels.MODEL, MetricLabels.PURPOSE, MetricLabels.STATUS],
+  labelNames: [
+    MetricLabels.PROVIDER,
+    MetricLabels.MODEL,
+    MetricLabels.PURPOSE,
+    MetricLabels.STATUS,
+  ],
   registers: [registry],
 });
 
@@ -127,7 +137,7 @@ export function recordLlmCall(params: {
         [MetricLabels.PROVIDER]: params.provider,
         [MetricLabels.PURPOSE]: params.purpose,
       },
-      params.credits
+      params.credits,
     );
   }
 }

@@ -1,5 +1,5 @@
-import type { SourceType } from "@aharadar/shared";
 import type { TriageOutput } from "@aharadar/llm";
+import type { SourceType } from "@aharadar/shared";
 import type { NoveltyFeature } from "../scoring/novelty";
 
 export interface RankWeights {
@@ -320,7 +320,7 @@ export function rankCandidates(params: {
     (a, b) =>
       b.score - a.score ||
       b.candidateAtMs - a.candidateAtMs ||
-      (a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0)
+      (a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0),
   );
   return scored;
 }

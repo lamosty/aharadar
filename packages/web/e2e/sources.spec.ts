@@ -7,7 +7,7 @@
  * - Help tooltips on labels
  */
 
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 // Mock data for sources
 const mockSources = [

@@ -5,7 +5,7 @@
  * and key elements are present and interactive.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Landing Page", () => {
   test.beforeEach(async ({ page }) => {

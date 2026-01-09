@@ -1,4 +1,4 @@
-import type { FastifyRequest, FastifyReply } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { getDb } from "../lib/db.js";
 import { hashToken } from "./crypto.js";
 

@@ -6,7 +6,7 @@
  * - Fetch errors (network failures)
  */
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 export interface NetworkStatus {
   /** Whether the browser reports being online */
@@ -71,11 +71,17 @@ function getServerSnapshot(): boolean {
  */
 export function useNetworkStatus(): NetworkStatus {
   // Use useSyncExternalStore for browser online/offline status
-  const isOnline = useSyncExternalStore(subscribeToOnlineStatus, getOnlineStatus, getServerSnapshot);
+  const isOnline = useSyncExternalStore(
+    subscribeToOnlineStatus,
+    getOnlineStatus,
+    getServerSnapshot,
+  );
 
   // Track recent fetch errors
   const [hasRecentErrors, setHasRecentErrors] = useState(false);
-  const [errorClearTimeout, setErrorClearTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [errorClearTimeout, setErrorClearTimeout] = useState<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const markError = useCallback(() => {
     setHasRecentErrors(true);

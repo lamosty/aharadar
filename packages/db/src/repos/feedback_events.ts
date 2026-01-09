@@ -33,7 +33,7 @@ export function createFeedbackEventsRepo(db: Queryable) {
         `insert into feedback_events (user_id, digest_id, content_item_id, action)
          values ($1, $2::uuid, $3::uuid, $4)
          returning id`,
-        [params.userId, params.digestId ?? null, params.contentItemId, params.action]
+        [params.userId, params.digestId ?? null, params.contentItemId, params.action],
       );
       const row = res.rows[0];
       if (!row) throw new Error("Failed to insert feedback_event");
@@ -53,7 +53,7 @@ export function createFeedbackEventsRepo(db: Queryable) {
          where user_id = $1
          order by created_at desc
          limit $2`,
-        [params.userId, Math.max(1, Math.min(500, Math.floor(params.limit)))]
+        [params.userId, Math.max(1, Math.min(500, Math.floor(params.limit)))],
       );
       return res.rows;
     },
@@ -93,7 +93,7 @@ export function createFeedbackEventsRepo(db: Queryable) {
            ${ageFilter}
          order by fe.created_at desc
          limit 1000`,
-        [userId]
+        [userId],
       );
 
       // Aggregate by source type and author

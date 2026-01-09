@@ -38,54 +38,56 @@ interface DigestItemRow {
 function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const d = new Date(value);
-  return !isNaN(d.getTime());
+  return !Number.isNaN(d.getTime());
 }
 
 export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
-  fastify.get<{ Querystring: { from?: string; to?: string } }>("/digests", async (request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
-      return reply.code(503).send({
-        ok: false,
-        error: {
-          code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
-        },
-      });
-    }
+  fastify.get<{ Querystring: { from?: string; to?: string } }>(
+    "/digests",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
 
-    const { from, to } = request.query;
+      const { from, to } = request.query;
 
-    if (from !== undefined && !isValidIsoDate(from)) {
-      return reply.code(400).send({
-        ok: false,
-        error: {
-          code: "INVALID_PARAM",
-          message: "Invalid 'from' parameter: must be ISO date string",
-        },
-      });
-    }
+      if (from !== undefined && !isValidIsoDate(from)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "Invalid 'from' parameter: must be ISO date string",
+          },
+        });
+      }
 
-    if (to !== undefined && !isValidIsoDate(to)) {
-      return reply.code(400).send({
-        ok: false,
-        error: {
-          code: "INVALID_PARAM",
-          message: "Invalid 'to' parameter: must be ISO date string",
-        },
-      });
-    }
+      if (to !== undefined && !isValidIsoDate(to)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "Invalid 'to' parameter: must be ISO date string",
+          },
+        });
+      }
 
-    const db = getDb();
-    const now = new Date();
-    const defaultFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const defaultTo = now.toISOString();
+      const db = getDb();
+      const now = new Date();
+      const defaultFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const defaultTo = now.toISOString();
 
-    const fromDate = from ?? defaultFrom;
-    const toDate = to ?? defaultTo;
+      const fromDate = from ?? defaultFrom;
+      const toDate = to ?? defaultTo;
 
-    const result = await db.query<DigestListRow>(
-      `SELECT
+      const result = await db.query<DigestListRow>(
+        `SELECT
          d.id,
          d.mode,
          d.window_start::text,
@@ -97,21 +99,22 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
          AND d.created_at >= $3::timestamptz AND d.created_at <= $4::timestamptz
        ORDER BY d.created_at DESC
        LIMIT 100`,
-      [ctx.userId, ctx.topicId, fromDate, toDate]
-    );
+        [ctx.userId, ctx.topicId, fromDate, toDate],
+      );
 
-    return {
-      ok: true,
-      digests: result.rows.map((row) => ({
-        id: row.id,
-        mode: row.mode,
-        windowStart: row.window_start,
-        windowEnd: row.window_end,
-        createdAt: row.created_at,
-        itemCount: Number.parseInt(row.item_count, 10),
-      })),
-    };
-  });
+      return {
+        ok: true,
+        digests: result.rows.map((row) => ({
+          id: row.id,
+          mode: row.mode,
+          windowStart: row.window_start,
+          windowEnd: row.window_end,
+          createdAt: row.created_at,
+          itemCount: Number.parseInt(row.item_count, 10),
+        })),
+      };
+    },
+  );
 
   fastify.get<{ Params: { id: string } }>("/digests/:id", async (request, reply) => {
     const ctx = await getSingletonContext();
@@ -132,7 +135,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
       `SELECT id, user_id, topic_id::text, mode, window_start::text, window_end::text, created_at::text
        FROM digests
        WHERE id = $1`,
-      [id]
+      [id],
     );
 
     const digest = digestResult.rows[0];
@@ -178,7 +181,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
        LEFT JOIN content_items ci_rep ON ci_rep.id = cl.representative_content_item_id
        WHERE di.digest_id = $1
        ORDER BY di.rank ASC`,
-      [id]
+      [id],
     );
 
     return {

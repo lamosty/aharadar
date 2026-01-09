@@ -4,11 +4,11 @@
  * Provides immediate UI feedback on actions with automatic rollback on failure.
  */
 
-import { useState, useCallback, useMemo } from "react";
-import { useFeedback } from "./hooks";
+import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { t } from "@/lib/i18n";
 import type { FeedbackAction } from "./api";
+import { useFeedback } from "./hooks";
 
 export interface FeedbackState {
   action: FeedbackAction | null;
@@ -59,7 +59,7 @@ export function useOptimisticFeedback(): OptimisticFeedback {
         }
       );
     },
-    [feedbackStates]
+    [feedbackStates],
   );
 
   const submitFeedback = useCallback(
@@ -116,10 +116,10 @@ export function useOptimisticFeedback(): OptimisticFeedback {
               return next;
             });
           },
-        }
+        },
       );
     },
-    [mutation]
+    [mutation],
   );
 
   const isPending = useMemo(() => pendingItems.size > 0, [pendingItems]);
@@ -138,7 +138,7 @@ export function useOptimisticFeedback(): OptimisticFeedback {
  * or initialize with known values.
  */
 export function createInitialFeedbackState(
-  items: Array<{ contentItemId: string; action: FeedbackAction }>
+  items: Array<{ contentItemId: string; action: FeedbackAction }>,
 ): Map<string, FeedbackState> {
   const map = new Map<string, FeedbackState>();
   for (const item of items) {

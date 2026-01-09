@@ -1,15 +1,17 @@
 "use client";
 
-import { type DigestItem } from "@/lib/mock-data";
-import { t } from "@/lib/i18n";
-import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { WhyShown } from "@/components/WhyShown";
+import type { DigestItem } from "@/lib/mock-data";
 import styles from "./DigestDetailTimeline.module.css";
 
 interface DigestDetailTimelineProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function formatTime(dateStr: string | null): string {
@@ -50,7 +52,7 @@ function formatSourceType(type: string): string {
 export function DigestDetailTimeline({ items, digestId, onFeedback }: DigestDetailTimelineProps) {
   return (
     <div className={styles.container} data-testid="digest-detail">
-      <ol className={styles.timeline} role="list">
+      <ol className={styles.timeline}>
         {items.map((item, index) => (
           <li key={item.id} className={styles.timelineItem}>
             <div className={styles.timelineLine}>
@@ -75,7 +77,10 @@ function getScoreClass(score: number): string {
 interface DigestItemPostProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
@@ -127,7 +132,9 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
           </p>
         )}
 
-        {item.contentItem.triageSummary && <p className={styles.summary}>{item.contentItem.triageSummary}</p>}
+        {item.contentItem.triageSummary && (
+          <p className={styles.summary}>{item.contentItem.triageSummary}</p>
+        )}
       </div>
 
       <footer className={styles.postFooter}>
@@ -160,7 +167,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
 export function DigestDetailTimelineSkeleton() {
   return (
     <div className={styles.container}>
-      <ol className={styles.timeline} role="list" aria-busy="true">
+      <ol className={styles.timeline} aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
           <li key={i} className={styles.timelineItem}>
             <div className={styles.timelineLine}>

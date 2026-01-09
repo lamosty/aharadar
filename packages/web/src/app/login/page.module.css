@@ -17,7 +17,11 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(ellipse 100% 80% at 50% 0%, var(--color-primary-subtle) 0%, transparent 50%);
+  background: radial-gradient(
+    ellipse 100% 80% at 50% 0%,
+    var(--color-primary-subtle) 0%,
+    transparent 50%
+  );
   pointer-events: none;
   opacity: 0.4;
 }

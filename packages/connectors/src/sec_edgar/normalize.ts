@@ -6,8 +6,9 @@ function asString(value: unknown): string | null {
   return s.length > 0 ? s : null;
 }
 
-function asNumber(value: unknown): number | null {
-  const num = typeof value === "number" ? value : typeof value === "string" ? parseFloat(value) : NaN;
+function _asNumber(value: unknown): number | null {
+  const num =
+    typeof value === "number" ? value : typeof value === "string" ? parseFloat(value) : NaN;
   return Number.isFinite(num) ? num : null;
 }
 
@@ -23,7 +24,7 @@ function formatCurrency(amount: number | null): string {
   return `$${Math.round(amount).toLocaleString()}`;
 }
 
-function formatDate(isoString: string | null): string {
+function _formatDate(isoString: string | null): string {
   if (!isoString) return "unknown date";
   try {
     const date = new Date(isoString);
@@ -39,7 +40,7 @@ function formatDate(isoString: string | null): string {
 function normalizeForm4(
   raw: Record<string, unknown>,
   form4: Form4Entry,
-  _params: FetchParams
+  _params: FetchParams,
 ): ContentItemDraft {
   const accessionNumber = asString(raw.accession_number) ?? form4.accessionNumber;
   const filingDate = form4.filingDate ?? asString(raw.filing_date);
@@ -85,8 +86,11 @@ function normalizeForm4(
     for (const txn of form4.transactions.slice(0, 10)) {
       // Limit to first 10 transactions
       const shareStr =
-        txn.shares !== null ? `${Math.round(txn.shares).toLocaleString()} shares` : "unknown shares";
-      const priceStr = txn.pricePerShare !== null ? ` at $${txn.pricePerShare.toFixed(2)}/share` : "";
+        txn.shares !== null
+          ? `${Math.round(txn.shares).toLocaleString()} shares`
+          : "unknown shares";
+      const priceStr =
+        txn.pricePerShare !== null ? ` at $${txn.pricePerShare.toFixed(2)}/share` : "";
       const valueStr = txn.totalValue !== null ? ` (${formatCurrency(txn.totalValue)})` : "";
       const typeLabel = txn.type.charAt(0).toUpperCase() + txn.type.slice(1);
       bodyText += `- ${typeLabel}: ${shareStr}${priceStr}${valueStr}\n`;
@@ -159,7 +163,7 @@ function normalizeForm4(
 function normalize13f(
   raw: Record<string, unknown>,
   form13f: Form13fEntry,
-  _params: FetchParams
+  _params: FetchParams,
 ): ContentItemDraft {
   const accessionNumber = asString(raw.accession_number) ?? form13f.accessionNumber;
   const filingDate = form13f.filingDate ?? asString(raw.filing_date);
@@ -189,8 +193,11 @@ function normalize13f(
     for (const holding of topHoldings) {
       const name = holding.name || holding.ticker || "Unknown";
       const shares =
-        holding.shares !== null ? `${Math.round(holding.shares).toLocaleString()} shares` : "position";
-      const value = holding.value !== null ? ` ($${Math.round(holding.value * 1000).toLocaleString()})` : "";
+        holding.shares !== null
+          ? `${Math.round(holding.shares).toLocaleString()} shares`
+          : "position";
+      const value =
+        holding.value !== null ? ` ($${Math.round(holding.value * 1000).toLocaleString()})` : "";
       bodyText += `- ${name}: ${shares}${value}\n`;
     }
   }
@@ -258,7 +265,10 @@ function normalize13f(
 /**
  * Main normalize function for SEC EDGAR filings
  */
-export async function normalizeSecEdgar(raw: unknown, params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeSecEdgar(
+  raw: unknown,
+  params: FetchParams,
+): Promise<ContentItemDraft> {
   const item = asRecord(raw);
 
   const filingType = asString(item.filing_type);

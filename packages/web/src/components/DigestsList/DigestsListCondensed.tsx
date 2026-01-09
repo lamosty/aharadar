@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type DigestSummary } from "@/lib/mock-data";
 import { t } from "@/lib/i18n";
+import type { DigestSummary } from "@/lib/mock-data";
 import styles from "./DigestsListCondensed.module.css";
 
 interface DigestsListCondensedProps {
@@ -54,7 +54,7 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
 export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
   return (
     <div className={styles.container} data-testid="digests-list">
-      <table className={styles.table} role="grid">
+      <table className={styles.table}>
         <thead className={styles.tableHead}>
           <tr>
             <th scope="col" className={styles.thWindow}>
@@ -75,7 +75,11 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
           {digests.map((digest) => (
             <tr key={digest.id} className={styles.row} data-testid={`digest-item-${digest.id}`}>
               <td className={styles.tdWindow}>
-                <Link href={`/app/digests/${digest.id}`} className={styles.windowLink} prefetch={true}>
+                <Link
+                  href={`/app/digests/${digest.id}`}
+                  className={styles.windowLink}
+                  prefetch={true}
+                >
                   {formatWindowRange(digest.windowStart, digest.windowEnd)}
                 </Link>
               </td>
@@ -101,7 +105,7 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
 export function DigestsListCondensedSkeleton() {
   return (
     <div className={styles.container}>
-      <table className={styles.table} role="grid" aria-busy="true">
+      <table className={styles.table} aria-busy="true">
         <thead className={styles.tableHead}>
           <tr>
             <th scope="col" className={styles.thWindow}>

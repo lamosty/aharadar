@@ -26,7 +26,10 @@ export function parseRssSourceConfig(config: Record<string, unknown>): RssSource
   const maxRaw = config.max_item_count ?? config.maxItemCount;
   const maxItemCount = Math.max(1, Math.min(200, asNumber(maxRaw, 50)));
 
-  const preferContentEncoded = asBool(config.prefer_content_encoded ?? config.preferContentEncoded, true);
+  const preferContentEncoded = asBool(
+    config.prefer_content_encoded ?? config.preferContentEncoded,
+    true,
+  );
 
   return {
     feedUrl,

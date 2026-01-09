@@ -64,7 +64,8 @@ export function generateTradeId(trade: QuiverCongressTrade): string {
 
 function parseCursor(cursor: Record<string, unknown>): CongressTradingCursorJson {
   const lastFetchAt = typeof cursor.last_fetch_at === "string" ? cursor.last_fetch_at : undefined;
-  const lastReportDate = typeof cursor.last_report_date === "string" ? cursor.last_report_date : undefined;
+  const lastReportDate =
+    typeof cursor.last_report_date === "string" ? cursor.last_report_date : undefined;
   const seenTradeIds = Array.isArray(cursor.seen_trade_ids)
     ? cursor.seen_trade_ids.filter((id) => typeof id === "string")
     : undefined;
@@ -112,7 +113,7 @@ async function fetchQuiverApi(apiKey: string): Promise<QuiverCongressTrade[]> {
     // Retry on rate limit or server errors
     if (res.status === 429 || res.status >= 500) {
       if (retries < maxRetries) {
-        const delayMs = baseDelayMs * Math.pow(2, retries);
+        const delayMs = baseDelayMs * 2 ** retries;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         retries++;
         continue;

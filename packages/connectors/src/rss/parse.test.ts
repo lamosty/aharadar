@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { parseFeed } from "./fetch";
 
 // --- RSS 2.0 fixture ---
@@ -200,7 +200,7 @@ describe("parseFeed", () => {
     it("extracts contentHtml from content:encoded when both present", () => {
       const result = parseFeed(RSS_WITH_CONTENT_ENCODED);
       expect(result.entries[0].contentHtml).toBe(
-        "<p>This is the <strong>full content</strong> with HTML.</p>"
+        "<p>This is the <strong>full content</strong> with HTML.</p>",
       );
     });
 

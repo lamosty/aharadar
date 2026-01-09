@@ -32,7 +32,7 @@ const DEFAULT_CONFIG: ClaudeSubscriptionConfig = {
 export async function callClaudeSubscription(
   ref: ModelRef,
   request: LlmRequest,
-  config: ClaudeSubscriptionConfig = {}
+  config: ClaudeSubscriptionConfig = {},
 ): Promise<LlmCallResult> {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 

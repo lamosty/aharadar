@@ -13,7 +13,7 @@ export interface CongressTradingSourceConfig {
   max_trades_per_fetch?: number;
 }
 
-function asString(value: unknown): string {
+function _asString(value: unknown): string {
   if (typeof value === "string") return value.trim();
   return "";
 }
@@ -61,7 +61,7 @@ function asTransactionTypes(value: unknown): ("purchase" | "sale")[] {
 }
 
 export function parseCongressTradingSourceConfig(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
 ): CongressTradingSourceConfig {
   const politicians = asStringArray(config.politicians);
   const chambers = asChambers(config.chambers);
@@ -70,7 +70,10 @@ export function parseCongressTradingSourceConfig(
   const minAmount = Math.max(0, Math.floor(asNumber(config.min_amount ?? config.minAmount, 0)));
   const maxTrades = Math.max(
     1,
-    Math.min(100, Math.floor(asNumber(config.max_trades_per_fetch ?? config.maxTradesPerFetch, 50)))
+    Math.min(
+      100,
+      Math.floor(asNumber(config.max_trades_per_fetch ?? config.maxTradesPerFetch, 50)),
+    ),
   );
 
   return {

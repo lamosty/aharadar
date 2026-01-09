@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import styles from "./JsonViewer.module.css";
 
 interface JsonViewerProps {
@@ -31,10 +31,17 @@ interface JsonNodeProps {
 
 function truncateString(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength) + "...";
+  return `${str.slice(0, maxLength)}...`;
 }
 
-function JsonNode({ value, depth, maxDepth, maxStringLength, maxArrayItems, keyName }: JsonNodeProps) {
+function JsonNode({
+  value,
+  depth,
+  maxDepth,
+  maxStringLength,
+  maxArrayItems,
+  keyName,
+}: JsonNodeProps) {
   const [isExpanded, setIsExpanded] = useState(depth < 1);
 
   const keyPrefix = keyName ? <span className={styles.key}>{keyName}: </span> : null;
@@ -134,7 +141,9 @@ function JsonNode({ value, depth, maxDepth, maxStringLength, maxArrayItems, keyN
                 keyName={String(index)}
               />
             ))}
-            {hasMore && <div className={styles.more}>... {value.length - maxArrayItems} more items</div>}
+            {hasMore && (
+              <div className={styles.more}>... {value.length - maxArrayItems} more items</div>
+            )}
           </div>
         )}
         {isExpanded && <span className={styles.bracket}>]</span>}

@@ -1,8 +1,8 @@
 "use client";
 
-import { type Layout, LAYOUTS } from "@/lib/theme";
 import { Tooltip } from "@/components/Tooltip";
 import { t } from "@/lib/i18n";
+import { LAYOUTS, type Layout } from "@/lib/theme";
 import styles from "./LayoutToggle.module.css";
 
 interface LayoutToggleProps {

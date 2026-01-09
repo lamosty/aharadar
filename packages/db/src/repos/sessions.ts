@@ -33,7 +33,7 @@ export function createSessionsRepo(db: Queryable) {
           params.userAgent ?? null,
           params.ipAddress ?? null,
           params.expiresAt.toISOString(),
-        ]
+        ],
       );
       const row = result.rows[0];
       if (!row) throw new Error("Failed to create session");
@@ -46,7 +46,7 @@ export function createSessionsRepo(db: Queryable) {
                 expires_at::text, created_at::text, last_activity_at::text
          FROM sessions
          WHERE token_hash = $1`,
-        [tokenHash]
+        [tokenHash],
       );
       return result.rows[0] ?? null;
     },
@@ -58,7 +58,7 @@ export function createSessionsRepo(db: Queryable) {
          FROM sessions
          WHERE token_hash = $1
            AND expires_at > now()`,
-        [tokenHash]
+        [tokenHash],
       );
       return result.rows[0] ?? null;
     },
@@ -92,7 +92,7 @@ export function createSessionsRepo(db: Queryable) {
          FROM sessions
          WHERE user_id = $1
          ORDER BY last_activity_at DESC`,
-        [userId]
+        [userId],
       );
       return result.rows;
     },

@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { OptionsFlowConfig, SourceConfigFormProps } from "./types";
+import { ApiKeyBanner, ApiKeyGuidance } from "@/components/ApiKeyGuidance";
 import { HelpTooltip } from "@/components/HelpTooltip";
-import { ApiKeyGuidance, ApiKeyBanner } from "@/components/ApiKeyGuidance";
 import styles from "./SourceConfigForms.module.css";
+import type { OptionsFlowConfig, SourceConfigFormProps } from "./types";
 
-export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps<OptionsFlowConfig>) {
+export function OptionsFlowConfigForm({
+  value,
+  onChange,
+}: SourceConfigFormProps<OptionsFlowConfig>) {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   const handleChange = <K extends keyof OptionsFlowConfig>(key: K, val: OptionsFlowConfig[K]) => {
@@ -20,7 +23,7 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
     } else {
       handleChange(
         "flow_types",
-        current.filter((t) => t !== type)
+        current.filter((t) => t !== type),
       );
     }
   };
@@ -41,7 +44,9 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
         </div>
         <div className={styles.sourceTypeInfo}>
           <h4 className={styles.sourceTypeName}>Options Flow</h4>
-          <p className={styles.sourceTypeDesc}>Unusual options activity, sweeps, and large orders</p>
+          <p className={styles.sourceTypeDesc}>
+            Unusual options activity, sweeps, and large orders
+          </p>
         </div>
       </div>
 
@@ -55,8 +60,9 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
 
       <div className={styles.helpBox}>
         <p>
-          Track unusual options activity including sweeps (urgent multi-exchange orders), blocks (large
-          negotiated trades), and unusual volume spikes. Options flow often leads stock price movements.
+          Track unusual options activity including sweeps (urgent multi-exchange orders), blocks
+          (large negotiated trades), and unusual volume spikes. Options flow often leads stock price
+          movements.
         </p>
       </div>
 
@@ -70,7 +76,9 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
               title="Filter by Symbols"
               content={
                 <>
-                  <p>Comma-separated list of stock tickers to track (e.g., SPY, QQQ, AAPL, NVDA).</p>
+                  <p>
+                    Comma-separated list of stock tickers to track (e.g., SPY, QQQ, AAPL, NVDA).
+                  </p>
                   <p>Leave empty to track all symbols.</p>
                 </>
               }
@@ -95,14 +103,16 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
               content={
                 <>
                   <p>
-                    <strong>Sweep:</strong> Market order split across multiple exchanges to fill quickly -
-                    usually indicates urgency and conviction.
+                    <strong>Sweep:</strong> Market order split across multiple exchanges to fill
+                    quickly - usually indicates urgency and conviction.
                   </p>
                   <p>
-                    <strong>Block:</strong> Large privately negotiated order - often institutional activity.
+                    <strong>Block:</strong> Large privately negotiated order - often institutional
+                    activity.
                   </p>
                   <p>
-                    <strong>Unusual:</strong> Volume significantly higher than normal for that contract.
+                    <strong>Unusual:</strong> Volume significantly higher than normal for that
+                    contract.
                   </p>
                 </>
               }
@@ -173,7 +183,7 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
             onChange={(e) =>
               handleChange(
                 "sentiment_filter",
-                e.target.value === "" ? undefined : (e.target.value as "bullish" | "bearish")
+                e.target.value === "" ? undefined : (e.target.value as "bullish" | "bearish"),
               )
             }
             className={styles.selectInput}
@@ -206,7 +216,10 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
                 min={0}
                 value={value.min_premium ?? ""}
                 onChange={(e) =>
-                  handleChange("min_premium", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "min_premium",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
                 }
                 placeholder="50000"
                 className={styles.numberInput}
@@ -234,7 +247,10 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
                 min={1}
                 value={value.expiry_max_days ?? ""}
                 onChange={(e) =>
-                  handleChange("expiry_max_days", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "expiry_max_days",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
                 }
                 placeholder="90"
                 className={styles.numberInput}
@@ -267,7 +283,7 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
                 onChange={(e) =>
                   handleChange(
                     "max_alerts_per_fetch",
-                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
                   )
                 }
                 placeholder="50"
@@ -291,8 +307,8 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
               title="Include ETF Options"
               content={
                 <p>
-                  Include options flow for ETFs like SPY, QQQ, IWM. ETF flow can indicate broad market
-                  sentiment.
+                  Include options flow for ETFs like SPY, QQQ, IWM. ETF flow can indicate broad
+                  market sentiment.
                 </p>
               }
             />

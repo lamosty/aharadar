@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTopic } from "@/components/TopicProvider";
-import { useTopics } from "@/lib/hooks";
 import { isExperimentalFeatureEnabled } from "@/lib/experimental";
+import { useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -113,7 +113,11 @@ function DebugSection({
 
   return (
     <div className={styles.debugSection}>
-      <button className={styles.debugSectionHeader} onClick={() => setIsOpen(!isOpen)} type="button">
+      <button
+        className={styles.debugSectionHeader}
+        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+      >
         <span className={styles.debugSectionChevron}>{isOpen ? "▼" : "▶"}</span>
         <span>{title}</span>
       </button>
@@ -122,7 +126,15 @@ function DebugSection({
   );
 }
 
-function DebugRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+function DebugRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
   return (
     <div className={styles.debugRow}>
       <span className={styles.debugLabel}>{label}</span>
@@ -187,7 +199,11 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
       {/* Request Details */}
       <DebugSection title="Request">
         <DebugRow label="Question" value={debug.request.question} />
-        <DebugRow label="Topic" value={`${debug.request.topicName || "?"} (${debug.request.topicId})`} mono />
+        <DebugRow
+          label="Topic"
+          value={`${debug.request.topicName || "?"} (${debug.request.topicId})`}
+          mono
+        />
         <DebugRow label="Max Clusters" value={debug.request.maxClusters} />
         {debug.request.timeWindow && (
           <DebugRow
@@ -212,7 +228,10 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
       >
         <DebugRow label="Clusters Searched" value={debug.retrieval.clustersSearched} />
         <DebugRow label="Clusters Matched" value={debug.retrieval.clustersMatched} />
-        <DebugRow label="Min Similarity" value={debug.retrieval.minSimilarityThreshold.toFixed(2)} />
+        <DebugRow
+          label="Min Similarity"
+          value={debug.retrieval.minSimilarityThreshold.toFixed(2)}
+        />
 
         {debug.retrieval.clusters.length > 0 && (
           <div className={styles.clustersList}>
@@ -262,7 +281,10 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
           label="Total Tokens"
           value={(debug.llm.inputTokens + debug.llm.outputTokens).toLocaleString()}
         />
-        <DebugRow label="Parse Success" value={debug.llm.parseSuccess ? "✓ Yes" : "✗ No (fallback to raw)"} />
+        <DebugRow
+          label="Parse Success"
+          value={debug.llm.parseSuccess ? "✓ Yes" : "✗ No (fallback to raw)"}
+        />
 
         <div className={styles.debugCodeBlock}>
           <div className={styles.debugCodeHeader}>
@@ -281,7 +303,10 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
       <DebugSection title="Cost Summary">
         <DebugRow label="Embedding" value={`${debug.cost.embeddingCredits.toFixed(6)} credits`} />
         <DebugRow label="LLM" value={`${debug.cost.llmCredits.toFixed(6)} credits`} />
-        <DebugRow label="Total" value={<strong>{debug.cost.totalCredits.toFixed(6)} credits</strong>} />
+        <DebugRow
+          label="Total"
+          value={<strong>{debug.cost.totalCredits.toFixed(6)} credits</strong>}
+        />
       </DebugSection>
     </div>
   );
@@ -432,7 +457,9 @@ export default function AskPage() {
               min={1}
               max={20}
               value={maxClusters}
-              onChange={(e) => setMaxClusters(Math.max(1, Math.min(20, parseInt(e.target.value) || 5)))}
+              onChange={(e) =>
+                setMaxClusters(Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 5)))
+              }
             />
           </div>
         </div>
@@ -461,7 +488,11 @@ export default function AskPage() {
 
         <div className={styles.formActions}>
           <label className={styles.debugToggle}>
-            <input type="checkbox" checked={debugMode} onChange={(e) => setDebugMode(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => setDebugMode(e.target.checked)}
+            />
             <span>Show debug info</span>
           </label>
 
@@ -481,7 +512,7 @@ export default function AskPage() {
         </div>
       )}
 
-      {response && response.ok && (
+      {response?.ok && (
         <div className={styles.response}>
           <section className={styles.answerSection}>
             <h2>{t("ask.answer")}</h2>

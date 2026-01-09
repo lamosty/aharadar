@@ -116,7 +116,7 @@ async function fetchItemsConcurrent(ids: number[], concurrency: number): Promise
           // If a single item fails, continue with others
           return null;
         }
-      })
+      }),
     );
 
     for (const item of batchResults) {
@@ -133,7 +133,7 @@ async function fetchItemsConcurrent(ids: number[], concurrency: number): Promise
 
 export async function fetchHn(params: FetchParams): Promise<FetchResult> {
   const config = parseHnSourceConfig(params.config);
-  const cursorIn = parseCursor(params.cursor);
+  const _cursorIn = parseCursor(params.cursor);
 
   // Fetch story IDs from the configured feed
   const storyIds = await fetchStoryIds(config.feed);

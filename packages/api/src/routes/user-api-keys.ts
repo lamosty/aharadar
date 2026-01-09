@@ -1,7 +1,7 @@
-import type { FastifyInstance } from "fastify";
-import { encryptApiKey, getMasterKey, getKeySuffix } from "../auth/crypto.js";
-import { getDb, getSingletonContext } from "../lib/db.js";
 import { createLogger } from "@aharadar/shared";
+import type { FastifyInstance } from "fastify";
+import { encryptApiKey, getKeySuffix, getMasterKey } from "../auth/crypto.js";
+import { getDb, getSingletonContext } from "../lib/db.js";
 
 const log = createLogger({ component: "user-api-keys" });
 

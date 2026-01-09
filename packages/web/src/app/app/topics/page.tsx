@@ -1,33 +1,33 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { t } from "@/lib/i18n";
+import { useEffect, useState } from "react";
 import {
-  useTopics,
-  useCreateTopic,
-  useUpdateTopic,
-  useDeleteTopic,
-  useAdminSources,
-  useAdminSourceCreate,
-  useAdminSourcePatch,
-  useAdminSourceDelete,
-} from "@/lib/hooks";
+  getDefaultConfig,
+  SourceConfigForm,
+  type SourceTypeConfig,
+  validateSourceConfig,
+} from "@/components/SourceConfigForms";
 import { useToast } from "@/components/Toast";
+import { TopicViewingProfileSettings } from "@/components/TopicViewingProfile/TopicViewingProfileSettings";
 import {
+  type Source,
+  type SourceConfig,
   SUPPORTED_SOURCE_TYPES,
   type SupportedSourceType,
-  type Source,
   type Topic,
-  type SourceConfig,
 } from "@/lib/api";
 import {
-  SourceConfigForm,
-  validateSourceConfig,
-  getDefaultConfig,
-  type SourceTypeConfig,
-} from "@/components/SourceConfigForms";
-import { TopicViewingProfileSettings } from "@/components/TopicViewingProfile/TopicViewingProfileSettings";
+  useAdminSourceCreate,
+  useAdminSourceDelete,
+  useAdminSourcePatch,
+  useAdminSources,
+  useCreateTopic,
+  useDeleteTopic,
+  useTopics,
+  useUpdateTopic,
+} from "@/lib/hooks";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 export default function TopicsPage() {
@@ -68,7 +68,7 @@ export default function TopicsPage() {
   const [newSourceCadence, setNewSourceCadence] = useState(60);
   const [newSourceWeight, setNewSourceWeight] = useState(1.0);
   const [newSourceConfig, setNewSourceConfig] = useState<Partial<SourceTypeConfig>>(() =>
-    getDefaultConfig("rss")
+    getDefaultConfig("rss"),
   );
   const [newSourceErrors, setNewSourceErrors] = useState<Record<string, string>>({});
 
@@ -341,7 +341,6 @@ export default function TopicsPage() {
               }
             }}
             disabled={createTopicMutation.isPending}
-            autoFocus
           />
           <input
             type="text"
@@ -390,7 +389,11 @@ export default function TopicsPage() {
           <TopicsIcon />
           <h2 className={styles.emptyTitle}>{t("topics.emptyTitle")}</h2>
           <p className={styles.emptyDescription}>{t("topics.emptyDescription")}</p>
-          <button type="button" className={styles.emptyButton} onClick={() => setIsCreatingTopic(true)}>
+          <button
+            type="button"
+            className={styles.emptyButton}
+            onClick={() => setIsCreatingTopic(true)}
+          >
             + {t("settings.topics.create")}
           </button>
         </div>
@@ -414,7 +417,6 @@ export default function TopicsPage() {
                         value={editTopicName}
                         onChange={(e) => setEditTopicName(e.target.value)}
                         placeholder={t("settings.topics.name")}
-                        autoFocus
                       />
                       <input
                         type="text"
@@ -454,7 +456,9 @@ export default function TopicsPage() {
                         }}
                       >
                         <h3 className={styles.topicName}>{topic.name}</h3>
-                        {topic.description && <p className={styles.topicDescription}>{topic.description}</p>}
+                        {topic.description && (
+                          <p className={styles.topicDescription}>{topic.description}</p>
+                        )}
                         <div className={styles.topicMeta}>
                           <span className={styles.profileBadge}>
                             {t(`settings.viewing.profiles.${topic.viewingProfile}`)}
@@ -471,7 +475,9 @@ export default function TopicsPage() {
                           className={styles.expandButton}
                           onClick={() => toggleExpanded(topic.id)}
                           aria-expanded={isExpanded}
-                          title={isExpanded ? t("topics.collapseSettings") : t("topics.expandSettings")}
+                          title={
+                            isExpanded ? t("topics.collapseSettings") : t("topics.expandSettings")
+                          }
                         >
                           <ChevronIcon expanded={isExpanded} />
                         </button>
@@ -550,7 +556,9 @@ export default function TopicsPage() {
                             <label className={styles.formLabel}>{t("admin.sources.type")}</label>
                             <select
                               value={newSourceType}
-                              onChange={(e) => setNewSourceType(e.target.value as SupportedSourceType)}
+                              onChange={(e) =>
+                                setNewSourceType(e.target.value as SupportedSourceType)
+                              }
                               className={styles.selectInput}
                             >
                               {SUPPORTED_SOURCE_TYPES.map((type) => (
@@ -583,25 +591,33 @@ export default function TopicsPage() {
                           </div>
                           <div className={styles.formRowInline}>
                             <div className={styles.formRowHalf}>
-                              <label className={styles.formLabel}>{t("admin.sources.cadenceMinutes")}</label>
+                              <label className={styles.formLabel}>
+                                {t("admin.sources.cadenceMinutes")}
+                              </label>
                               <input
                                 type="number"
                                 min={1}
                                 max={1440}
                                 value={newSourceCadence}
-                                onChange={(e) => setNewSourceCadence(parseInt(e.target.value, 10) || 60)}
+                                onChange={(e) =>
+                                  setNewSourceCadence(parseInt(e.target.value, 10) || 60)
+                                }
                                 className={styles.numberInput}
                               />
                             </div>
                             <div className={styles.formRowHalf}>
-                              <label className={styles.formLabel}>{t("admin.sources.weight")}</label>
+                              <label className={styles.formLabel}>
+                                {t("admin.sources.weight")}
+                              </label>
                               <input
                                 type="number"
                                 min={0}
                                 max={10}
                                 step={0.1}
                                 value={newSourceWeight}
-                                onChange={(e) => setNewSourceWeight(parseFloat(e.target.value) || 1.0)}
+                                onChange={(e) =>
+                                  setNewSourceWeight(parseFloat(e.target.value) || 1.0)
+                                }
                                 className={styles.numberInput}
                               />
                             </div>
@@ -666,7 +682,9 @@ export default function TopicsPage() {
                                       />
                                     </div>
                                     <div className={styles.editSourceRow}>
-                                      <label className={styles.formLabel}>{t("admin.sources.weight")}</label>
+                                      <label className={styles.formLabel}>
+                                        {t("admin.sources.weight")}
+                                      </label>
                                       <input
                                         type="number"
                                         min={0}
@@ -730,7 +748,9 @@ export default function TopicsPage() {
                                   <>
                                     <div className={styles.sourceInfo}>
                                       <span className={styles.sourceType}>
-                                        {getSourceTypeDisplayName(source.type as SupportedSourceType)}
+                                        {getSourceTypeDisplayName(
+                                          source.type as SupportedSourceType,
+                                        )}
                                       </span>
                                       <span className={styles.sourceName}>{source.name}</span>
                                       <span className={styles.sourceMeta}>

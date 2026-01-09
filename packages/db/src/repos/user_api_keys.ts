@@ -26,7 +26,7 @@ export function createUserApiKeysRepo(db: Queryable) {
       provider: string,
       encryptedKey: Buffer,
       iv: Buffer,
-      keySuffix: string
+      keySuffix: string,
     ): Promise<UserApiKeyRow> {
       const result = await db.query<UserApiKeyRow>(
         `INSERT INTO user_api_keys (user_id, provider, encrypted_key, iv, key_suffix)
@@ -37,7 +37,7 @@ export function createUserApiKeysRepo(db: Queryable) {
            key_suffix = EXCLUDED.key_suffix,
            updated_at = now()
          RETURNING id, user_id, provider, encrypted_key, iv, key_suffix, created_at, updated_at`,
-        [userId, provider, encryptedKey, iv, keySuffix]
+        [userId, provider, encryptedKey, iv, keySuffix],
       );
       const row = result.rows[0];
       if (!row) throw new Error("Failed to upsert user API key");
@@ -49,7 +49,7 @@ export function createUserApiKeysRepo(db: Queryable) {
         `SELECT id, user_id, provider, encrypted_key, iv, key_suffix, created_at, updated_at
          FROM user_api_keys
          WHERE user_id = $1 AND provider = $2`,
-        [userId, provider]
+        [userId, provider],
       );
       return result.rows[0] ?? null;
     },
@@ -60,21 +60,24 @@ export function createUserApiKeysRepo(db: Queryable) {
          FROM user_api_keys
          WHERE user_id = $1
          ORDER BY provider`,
-        [userId]
+        [userId],
       );
       return result.rows;
     },
 
     async delete(userId: string, id: string): Promise<boolean> {
-      const result = await db.query(`DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2`, [id, userId]);
+      const result = await db.query(`DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2`, [
+        id,
+        userId,
+      ]);
       return (result.rowCount ?? 0) > 0;
     },
 
     async deleteByProvider(userId: string, provider: string): Promise<boolean> {
-      const result = await db.query(`DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`, [
-        userId,
-        provider,
-      ]);
+      const result = await db.query(
+        `DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`,
+        [userId, provider],
+      );
       return (result.rowCount ?? 0) > 0;
     },
   };

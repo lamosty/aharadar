@@ -1,6 +1,6 @@
-import type { Queue } from "bullmq";
 import { createPipelineQueue, type RunWindowJobData } from "@aharadar/queues";
 import { loadRuntimeEnv } from "@aharadar/shared";
+import type { Queue } from "bullmq";
 
 let pipelineQueue: Queue<RunWindowJobData> | null = null;
 

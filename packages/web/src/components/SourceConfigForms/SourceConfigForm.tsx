@@ -1,31 +1,31 @@
 "use client";
 
 import type { SupportedSourceType } from "@/lib/api";
-import type {
-  RssConfig,
-  RedditConfig,
-  HnConfig,
-  YoutubeConfig,
-  XPostsConfig,
-  SignalConfig,
-  SecEdgarConfig,
-  CongressTradingConfig,
-  PolymarketConfig,
-  OptionsFlowConfig,
-  MarketSentimentConfig,
-  SourceTypeConfig,
-} from "./types";
-import { RssConfigForm } from "./RssConfigForm";
-import { RedditConfigForm } from "./RedditConfigForm";
-import { HnConfigForm } from "./HnConfigForm";
-import { YoutubeConfigForm } from "./YoutubeConfigForm";
-import { XPostsConfigForm } from "./XPostsConfigForm";
-import { SignalConfigForm } from "./SignalConfigForm";
-import { SecEdgarConfigForm } from "./SecEdgarConfigForm";
 import { CongressTradingConfigForm } from "./CongressTradingConfigForm";
-import { PolymarketConfigForm } from "./PolymarketConfigForm";
-import { OptionsFlowConfigForm } from "./OptionsFlowConfigForm";
+import { HnConfigForm } from "./HnConfigForm";
 import { MarketSentimentConfigForm } from "./MarketSentimentConfigForm";
+import { OptionsFlowConfigForm } from "./OptionsFlowConfigForm";
+import { PolymarketConfigForm } from "./PolymarketConfigForm";
+import { RedditConfigForm } from "./RedditConfigForm";
+import { RssConfigForm } from "./RssConfigForm";
+import { SecEdgarConfigForm } from "./SecEdgarConfigForm";
+import { SignalConfigForm } from "./SignalConfigForm";
+import type {
+  CongressTradingConfig,
+  HnConfig,
+  MarketSentimentConfig,
+  OptionsFlowConfig,
+  PolymarketConfig,
+  RedditConfig,
+  RssConfig,
+  SecEdgarConfig,
+  SignalConfig,
+  SourceTypeConfig,
+  XPostsConfig,
+  YoutubeConfig,
+} from "./types";
+import { XPostsConfigForm } from "./XPostsConfigForm";
+import { YoutubeConfigForm } from "./YoutubeConfigForm";
 
 interface SourceConfigFormProps {
   sourceType: SupportedSourceType;
@@ -41,28 +41,58 @@ interface SourceConfigFormProps {
 export function SourceConfigForm({ sourceType, config, onChange, errors }: SourceConfigFormProps) {
   switch (sourceType) {
     case "rss":
-      return <RssConfigForm value={config as Partial<RssConfig>} onChange={onChange} errors={errors} />;
+      return (
+        <RssConfigForm value={config as Partial<RssConfig>} onChange={onChange} errors={errors} />
+      );
 
     case "reddit":
-      return <RedditConfigForm value={config as Partial<RedditConfig>} onChange={onChange} errors={errors} />;
+      return (
+        <RedditConfigForm
+          value={config as Partial<RedditConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
 
     case "hn":
-      return <HnConfigForm value={config as Partial<HnConfig>} onChange={onChange} errors={errors} />;
+      return (
+        <HnConfigForm value={config as Partial<HnConfig>} onChange={onChange} errors={errors} />
+      );
 
     case "youtube":
       return (
-        <YoutubeConfigForm value={config as Partial<YoutubeConfig>} onChange={onChange} errors={errors} />
+        <YoutubeConfigForm
+          value={config as Partial<YoutubeConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
       );
 
     case "x_posts":
-      return <XPostsConfigForm value={config as Partial<XPostsConfig>} onChange={onChange} errors={errors} />;
+      return (
+        <XPostsConfigForm
+          value={config as Partial<XPostsConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
 
     case "signal":
-      return <SignalConfigForm value={config as Partial<SignalConfig>} onChange={onChange} errors={errors} />;
+      return (
+        <SignalConfigForm
+          value={config as Partial<SignalConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
+      );
 
     case "sec_edgar":
       return (
-        <SecEdgarConfigForm value={config as Partial<SecEdgarConfig>} onChange={onChange} errors={errors} />
+        <SecEdgarConfigForm
+          value={config as Partial<SecEdgarConfig>}
+          onChange={onChange}
+          errors={errors}
+        />
       );
 
     case "congress_trading":
@@ -116,7 +146,7 @@ export function SourceConfigForm({ sourceType, config, onChange, errors }: Sourc
  */
 export function validateSourceConfig(
   sourceType: SupportedSourceType,
-  config: Partial<SourceTypeConfig>
+  config: Partial<SourceTypeConfig>,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 

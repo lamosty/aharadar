@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
 import styles from "./Toast.module.css";
 
 type ToastType = "info" | "success" | "warning" | "error";

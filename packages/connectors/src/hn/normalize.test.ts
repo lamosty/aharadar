@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { normalizeHn } from "./normalize";
 import type { FetchParams } from "@aharadar/shared";
+import { describe, expect, it } from "vitest";
+import { normalizeHn } from "./normalize";
 
 // Mock FetchParams for testing
 const mockParams: FetchParams = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./ApiKeyGuidance.module.css";
 
 export type ApiKeyProvider = "quiver" | "unusual_whales" | "sec_edgar" | "finnhub";
@@ -128,7 +128,8 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
   },
   sec_edgar: {
     name: "SEC EDGAR",
-    description: "Access SEC filings including Form 4 (insider trading) and 13F (institutional holdings)",
+    description:
+      "Access SEC filings including Form 4 (insider trading) and 13F (institutional holdings)",
     envVar: "SEC_EDGAR_USER_AGENT",
     website: "sec.gov",
     signupUrl: "https://www.sec.gov/",
@@ -140,7 +141,8 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
         content: (
           <>
             <p>
-              The SEC EDGAR API is <strong>free and public</strong>. No account or API key is required.
+              The SEC EDGAR API is <strong>free and public</strong>. No account or API key is
+              required.
             </p>
             <p>However, the SEC requires a valid User-Agent header with contact information.</p>
           </>
@@ -155,8 +157,8 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
             </p>
             <pre>SEC_EDGAR_USER_AGENT=YourApp/1.0 (your@email.com)</pre>
             <p>
-              Per SEC guidelines, include your app name and a valid email address where they can contact you
-              if needed.
+              Per SEC guidelines, include your app name and a valid email address where they can
+              contact you if needed.
             </p>
           </>
         ),

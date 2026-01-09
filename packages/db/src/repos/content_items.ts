@@ -92,7 +92,7 @@ export function createContentItemsRepo(db: Queryable) {
         item.raw ? JSON.stringify(item.raw) : null,
         item.hashUrl,
         item.hashText,
-      ]
+      ],
     );
     const row = res.rows[0];
     if (!row) throw new Error("Failed to upsert content_item");
@@ -148,7 +148,7 @@ export function createContentItemsRepo(db: Queryable) {
         item.raw ? JSON.stringify(item.raw) : null,
         item.hashUrl,
         item.hashText,
-      ]
+      ],
     );
     const row = res.rows[0];
     if (!row) throw new Error("Failed to upsert content_item (hash_url)");
@@ -183,7 +183,7 @@ export function createContentItemsRepo(db: Queryable) {
          where user_id = $1 and deleted_at is null
          order by fetched_at desc
          limit $2`,
-        [userId, limit]
+        [userId, limit],
       );
       return res.rows;
     },

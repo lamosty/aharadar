@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { type DigestItem } from "@/lib/mock-data";
-import { t } from "@/lib/i18n";
-import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { WhyShown } from "@/components/WhyShown";
+import type { DigestItem } from "@/lib/mock-data";
 import styles from "./DigestDetailCondensed.module.css";
 
 interface DigestDetailCondensedProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -36,7 +37,7 @@ function formatSourceType(type: string): string {
 export function DigestDetailCondensed({ items, digestId, onFeedback }: DigestDetailCondensedProps) {
   return (
     <div className={styles.container} data-testid="digest-detail">
-      <table className={styles.table} role="grid">
+      <table className={styles.table}>
         <thead className={styles.tableHead}>
           <tr>
             <th scope="col" className={styles.thRank}>
@@ -72,7 +73,10 @@ export function DigestDetailCondensed({ items, digestId, onFeedback }: DigestDet
 interface DigestItemRowProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
@@ -100,7 +104,9 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
             ) : (
               <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
             )}
-            {item.contentItem.author && <span className={styles.author}>by {item.contentItem.author}</span>}
+            {item.contentItem.author && (
+              <span className={styles.author}>by {item.contentItem.author}</span>
+            )}
           </div>
         </td>
         <td className={styles.tdSource}>
@@ -132,7 +138,7 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
 export function DigestDetailCondensedSkeleton() {
   return (
     <div className={styles.container}>
-      <table className={styles.table} role="grid" aria-busy="true">
+      <table className={styles.table} aria-busy="true">
         <thead className={styles.tableHead}>
           <tr>
             <th scope="col" className={styles.thRank}>

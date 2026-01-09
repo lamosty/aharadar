@@ -34,7 +34,7 @@ function resolveEndpoint(env: NodeJS.ProcessEnv): string {
   const legacy = firstEnv(env, ["OPENAI_ENDPOINT"]);
   if (!legacy) {
     throw new Error(
-      "Missing required env var: OPENAI_EMBED_ENDPOINT (or OPENAI_BASE_URL or OPENAI_ENDPOINT)"
+      "Missing required env var: OPENAI_EMBED_ENDPOINT (or OPENAI_BASE_URL or OPENAI_ENDPOINT)",
     );
   }
 

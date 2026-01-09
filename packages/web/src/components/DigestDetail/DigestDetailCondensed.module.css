@@ -27,7 +27,7 @@
 
 .thRank {
   width: 40px;
-  text-align: center !important;
+  text-align: center;
 }
 
 .thTitle {
@@ -44,7 +44,7 @@
 
 .thScore {
   width: 60px;
-  text-align: right !important;
+  text-align: right;
 }
 
 .thActions {
@@ -95,7 +95,7 @@
 }
 
 .tdSource {
-  vertical-align: middle !important;
+  vertical-align: middle;
 }
 
 .sourceType {
@@ -112,13 +112,13 @@
 .tdDate {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  vertical-align: middle !important;
+  vertical-align: middle;
 }
 
 .tdScore {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  vertical-align: middle !important;
+  vertical-align: middle;
 }
 
 .score {
@@ -132,7 +132,7 @@
 }
 
 .tdActions {
-  vertical-align: middle !important;
+  vertical-align: middle;
 }
 
 .expandableRow {

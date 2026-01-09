@@ -57,12 +57,19 @@ export function canUseWebSearch(limits: ClaudeUsageLimits = DEFAULT_LIMITS): boo
   return usageState.searchesThisHour < limits.searchesPerHour;
 }
 
-export function canUseThinking(budgetTokens: number, limits: ClaudeUsageLimits = DEFAULT_LIMITS): boolean {
+export function canUseThinking(
+  budgetTokens: number,
+  limits: ClaudeUsageLimits = DEFAULT_LIMITS,
+): boolean {
   maybeResetHour();
   return usageState.thinkingTokensThisHour + budgetTokens <= limits.thinkingTokensPerHour;
 }
 
-export function recordUsage(opts: { calls?: number; searches?: number; thinkingTokens?: number }): void {
+export function recordUsage(opts: {
+  calls?: number;
+  searches?: number;
+  thinkingTokens?: number;
+}): void {
   maybeResetHour();
   usageState.callsThisHour += opts.calls ?? 0;
   usageState.searchesThisHour += opts.searches ?? 0;
@@ -76,10 +83,12 @@ export function getUsageState(): Readonly<ClaudeUsageState> {
 
 export function getUsageLimitsFromEnv(env: NodeJS.ProcessEnv = process.env): ClaudeUsageLimits {
   return {
-    callsPerHour: parseInt(env.CLAUDE_CALLS_PER_HOUR ?? "") || DEFAULT_LIMITS.callsPerHour,
-    searchesPerHour: parseInt(env.CLAUDE_SEARCHES_PER_HOUR ?? "") || DEFAULT_LIMITS.searchesPerHour,
+    callsPerHour: parseInt(env.CLAUDE_CALLS_PER_HOUR ?? "", 10) || DEFAULT_LIMITS.callsPerHour,
+    searchesPerHour:
+      parseInt(env.CLAUDE_SEARCHES_PER_HOUR ?? "", 10) || DEFAULT_LIMITS.searchesPerHour,
     thinkingTokensPerHour:
-      parseInt(env.CLAUDE_THINKING_TOKENS_PER_HOUR ?? "") || DEFAULT_LIMITS.thinkingTokensPerHour,
+      parseInt(env.CLAUDE_THINKING_TOKENS_PER_HOUR ?? "", 10) ||
+      DEFAULT_LIMITS.thinkingTokensPerHour,
   };
 }
 

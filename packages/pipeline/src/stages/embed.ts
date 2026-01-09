@@ -1,6 +1,6 @@
 import type { Db } from "@aharadar/db";
 import { createEnvEmbeddingsClient } from "@aharadar/llm";
-import { sha256Hex, createLogger, type BudgetTier, type ProviderCallDraft } from "@aharadar/shared";
+import { type BudgetTier, createLogger, type ProviderCallDraft, sha256Hex } from "@aharadar/shared";
 
 const log = createLogger({ component: "embed" });
 
@@ -68,13 +68,18 @@ export interface EmbedTextResult {
   endpoint: string;
 }
 
-export async function embedText(params: { text: string; tier: BudgetTier }): Promise<EmbedTextResult> {
+export async function embedText(params: {
+  text: string;
+  tier: BudgetTier;
+}): Promise<EmbedTextResult> {
   const client = createEnvEmbeddingsClient();
   const ref = client.chooseModel(params.tier);
   const call = await client.embed(ref, [params.text]);
   const vector = call.vectors[0];
   if (!vector || vector.length !== EXPECTED_DIMS) {
-    throw new Error(`Embedding dims mismatch: got ${vector ? vector.length : 0}, expected ${EXPECTED_DIMS}`);
+    throw new Error(
+      `Embedding dims mismatch: got ${vector ? vector.length : 0}, expected ${EXPECTED_DIMS}`,
+    );
   }
   for (const n of vector) {
     if (typeof n !== "number" || !Number.isFinite(n)) {
@@ -103,8 +108,10 @@ export async function embedTopicContentItems(params: {
   paidCallsAllowed?: boolean;
 }): Promise<EmbedRunResult> {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
-  const maxItems = params.limits?.maxItems ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_ITEMS_PER_RUN) ?? 100;
-  const batchSize = params.limits?.batchSize ?? parseIntEnv(process.env.OPENAI_EMBED_BATCH_SIZE) ?? 16;
+  const maxItems =
+    params.limits?.maxItems ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_ITEMS_PER_RUN) ?? 100;
+  const batchSize =
+    params.limits?.batchSize ?? parseIntEnv(process.env.OPENAI_EMBED_BATCH_SIZE) ?? 16;
   const maxInputChars =
     params.limits?.maxInputChars ?? parseIntEnv(process.env.OPENAI_EMBED_MAX_INPUT_CHARS) ?? 8000;
 
@@ -156,7 +163,11 @@ export async function embedTopicContentItems(params: {
   for (const row of candidates) {
     attempted += 1;
 
-    const text = buildEmbeddingInput({ title: row.title, bodyText: row.body_text, maxChars: maxInputChars });
+    const text = buildEmbeddingInput({
+      title: row.title,
+      bodyText: row.body_text,
+      maxChars: maxInputChars,
+    });
     if (!text) {
       skipped += 1;
       continue;
@@ -165,7 +176,11 @@ export async function embedTopicContentItems(params: {
     const hashText = sha256Hex(text);
 
     // If we already have an embedding with the target model/dims, we can just backfill hash_text.
-    if (row.embedding_model === ref.model && row.embedding_dims === EXPECTED_DIMS && row.hash_text === null) {
+    if (
+      row.embedding_model === ref.model &&
+      row.embedding_dims === EXPECTED_DIMS &&
+      row.hash_text === null
+    ) {
       try {
         await params.db.query(`update content_items set hash_text = $2 where id = $1::uuid`, [
           row.content_item_id,
@@ -174,7 +189,10 @@ export async function embedTopicContentItems(params: {
         updatedHashOnly += 1;
       } catch (err) {
         errors += 1;
-        log.warn({ contentItemId: row.content_item_id, err }, "content_items hash_text update failed");
+        log.warn(
+          { contentItemId: row.content_item_id, err },
+          "content_items hash_text update failed",
+        );
       }
       continue;
     }
@@ -210,7 +228,7 @@ export async function embedTopicContentItems(params: {
 
       if (call.vectors.length !== batch.length) {
         throw new Error(
-          `Embedding provider returned ${call.vectors.length} vectors for ${batch.length} inputs`
+          `Embedding provider returned ${call.vectors.length} vectors for ${batch.length} inputs`,
         );
       }
 
@@ -219,7 +237,7 @@ export async function embedTopicContentItems(params: {
         const vec = call.vectors[i]!;
         if (vec.length !== EXPECTED_DIMS) {
           throw new Error(
-            `Embedding dims mismatch for batch index ${i}: got ${vec.length}, expected ${EXPECTED_DIMS}`
+            `Embedding dims mismatch for batch index ${i}: got ${vec.length}, expected ${EXPECTED_DIMS}`,
           );
         }
         for (const n of vec) {
@@ -319,9 +337,8 @@ export async function embedTopicContentItems(params: {
 
       log.warn(
         { batchSize: batch.length, err: err instanceof Error ? err.message : String(err) },
-        "Embedding failed for batch"
+        "Embedding failed for batch",
       );
-      continue;
     }
   }
 

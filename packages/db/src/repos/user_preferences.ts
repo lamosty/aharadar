@@ -63,7 +63,7 @@ export function createUserPreferencesRepo(db: Queryable) {
            updated_at::text
          FROM user_preferences
          WHERE user_id = $1`,
-        [userId]
+        [userId],
       );
 
       if (existing.rows[0]) {
@@ -83,7 +83,7 @@ export function createUserPreferencesRepo(db: Queryable) {
            custom_settings,
            created_at::text,
            updated_at::text`,
-        [userId]
+        [userId],
       );
 
       if (result.rows[0]) {
@@ -102,7 +102,7 @@ export function createUserPreferencesRepo(db: Queryable) {
            updated_at::text
          FROM user_preferences
          WHERE user_id = $1`,
-        [userId]
+        [userId],
       );
 
       if (!refetch.rows[0]) {
@@ -172,7 +172,7 @@ export function createUserPreferencesRepo(db: Queryable) {
            custom_settings,
            created_at::text,
            updated_at::text`,
-        values
+        values,
       );
 
       if (!result.rows[0]) {
@@ -203,7 +203,7 @@ export function createUserPreferencesRepo(db: Queryable) {
            custom_settings,
            created_at::text,
            updated_at::text`,
-        [userId]
+        [userId],
       );
 
       if (!result.rows[0]) {

@@ -25,7 +25,8 @@ export interface ScheduledWindow {
  */
 export function parseSchedulerConfig(env: NodeJS.ProcessEnv = process.env): SchedulerConfig {
   const raw = env.SCHEDULER_WINDOW_MODE ?? "fixed_3x_daily";
-  const windowMode: SchedulerWindowMode = raw === "since_last_run" ? "since_last_run" : "fixed_3x_daily";
+  const windowMode: SchedulerWindowMode =
+    raw === "since_last_run" ? "since_last_run" : "fixed_3x_daily";
   return { windowMode };
 }
 
@@ -121,7 +122,7 @@ export async function generateDueWindows(params: {
        AND window_end = $4::timestamptz
        AND mode = $5
      LIMIT 1`,
-    [userId, topicId, windowStart.toISOString(), windowEnd.toISOString(), scheduledMode]
+    [userId, topicId, windowStart.toISOString(), windowEnd.toISOString(), scheduledMode],
   );
 
   if (existingDigest.rows.length > 0) {
@@ -144,7 +145,9 @@ export async function generateDueWindows(params: {
  * Get all topics for a user that should be scheduled.
  * For MVP, we schedule all topics for the singleton user.
  */
-export async function getSchedulableTopics(db: Db): Promise<Array<{ userId: string; topicId: string }>> {
+export async function getSchedulableTopics(
+  db: Db,
+): Promise<Array<{ userId: string; topicId: string }>> {
   const user = await db.users.getFirstUser();
   if (!user) {
     return [];

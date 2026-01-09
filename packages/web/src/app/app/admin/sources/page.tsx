@@ -1,23 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { useEffect, useState } from "react";
+import {
+  getDefaultConfig,
+  SourceConfigForm,
+  type SourceTypeConfig,
+  validateSourceConfig,
+} from "@/components/SourceConfigForms";
 import { useToast } from "@/components/Toast";
 import {
-  useAdminSources,
-  useAdminSourcePatch,
+  type Source,
+  type SourceConfig,
+  SUPPORTED_SOURCE_TYPES,
+  type SupportedSourceType,
+} from "@/lib/api";
+import {
   useAdminSourceCreate,
   useAdminSourceDelete,
+  useAdminSourcePatch,
+  useAdminSources,
   useTopics,
 } from "@/lib/hooks";
-import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType, type Source, type SourceConfig } from "@/lib/api";
-import {
-  SourceConfigForm,
-  validateSourceConfig,
-  getDefaultConfig,
-  type SourceTypeConfig,
-} from "@/components/SourceConfigForms";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 export default function AdminSourcesPage() {
@@ -46,7 +51,9 @@ export default function AdminSourcesPage() {
   const [createType, setCreateType] = useState<SupportedSourceType>("rss");
   const [createName, setCreateName] = useState("");
   const [createTopicId, setCreateTopicId] = useState<string>("");
-  const [createConfig, setCreateConfig] = useState<Partial<SourceTypeConfig>>(() => getDefaultConfig("rss"));
+  const [createConfig, setCreateConfig] = useState<Partial<SourceTypeConfig>>(() =>
+    getDefaultConfig("rss"),
+  );
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
 
   // Reset config when source type changes
@@ -175,7 +182,7 @@ export default function AdminSourcesPage() {
     }
   };
 
-  const getTypeDescription = (type: SupportedSourceType): string => {
+  const _getTypeDescription = (type: SupportedSourceType): string => {
     const key = `admin.sources.typeDescriptions.${type}` as const;
     return t(key);
   };
@@ -465,7 +472,9 @@ export default function AdminSourcesPage() {
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>{t("admin.sources.weight")}</span>
-                    <span className={styles.detailValue}>{source.config.weight?.toFixed(1) ?? "1.0"}</span>
+                    <span className={styles.detailValue}>
+                      {source.config.weight?.toFixed(1) ?? "1.0"}
+                    </span>
                   </div>
                   <div className={styles.actionButtons}>
                     <button
@@ -478,7 +487,9 @@ export default function AdminSourcesPage() {
                     </button>
                     {confirmDeleteId === source.id ? (
                       <div className={styles.confirmDelete}>
-                        <span className={styles.confirmText}>{t("admin.sources.confirmDelete")}</span>
+                        <span className={styles.confirmText}>
+                          {t("admin.sources.confirmDelete")}
+                        </span>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}

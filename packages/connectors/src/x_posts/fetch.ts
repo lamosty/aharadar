@@ -6,9 +6,8 @@
  * Cadence gating is handled by the pipeline (ADR 0009), not here.
  */
 import type { FetchParams, FetchResult, ProviderCallDraft } from "@aharadar/shared";
-
-import type { XPostsSourceConfig } from "./config";
 import { grokXSearch } from "../x_shared/grok_x_search";
+import type { XPostsSourceConfig } from "./config";
 
 let lastRunKey: string | null = null;
 let runSearchCallsUsed = 0;
@@ -20,7 +19,8 @@ function parseIntEnv(value: string | undefined): number | null {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -42,7 +42,7 @@ function resetRunBudgetIfNeeded(params: FetchParams): void {
 
 function getMaxSearchCallsPerRun(): number | null {
   return parseIntEnv(
-    process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN ?? process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN
+    process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN ?? process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN,
   );
 }
 
@@ -160,7 +160,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
   const queries = compileQueries(config);
   if (queries.length === 0) return { rawItems: [], nextCursor: { ...params.cursor } };
 
-  const sinceId = getCursorString(params.cursor, "since_id") ?? getCursorString(params.cursor, "sinceId");
+  const sinceId =
+    getCursorString(params.cursor, "since_id") ?? getCursorString(params.cursor, "sinceId");
   const sinceTime =
     getCursorString(params.cursor, "since_time") ?? getCursorString(params.cursor, "sinceTime");
 
@@ -235,7 +236,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
             dayBucket,
             windowStart: params.windowStart,
             windowEnd: params.windowEnd,
-          })
+          }),
         );
       }
     } catch (err) {
@@ -245,7 +246,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       const endpoint = typeof errObj.endpoint === "string" ? errObj.endpoint : undefined;
       const providerModel = typeof errObj.model === "string" ? errObj.model : undefined;
       const requestId = typeof errObj.requestId === "string" ? errObj.requestId : undefined;
-      const responseSnippet = typeof errObj.responseSnippet === "string" ? errObj.responseSnippet : undefined;
+      const responseSnippet =
+        typeof errObj.responseSnippet === "string" ? errObj.responseSnippet : undefined;
 
       providerCalls.push({
         userId: params.userId,
@@ -277,12 +279,13 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       });
       // Auth/permission errors are almost certainly global.
       if (statusCode === 401 || statusCode === 403 || statusCode === 422) break;
-      continue;
     }
   }
 
   // Cursor: only advance if at least one provider call succeeded.
-  const nextCursor = anySuccess ? { ...params.cursor, since_time: params.windowEnd } : { ...params.cursor };
+  const nextCursor = anySuccess
+    ? { ...params.cursor, since_time: params.windowEnd }
+    : { ...params.cursor };
 
   return {
     rawItems,

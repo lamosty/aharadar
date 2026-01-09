@@ -20,7 +20,7 @@ export function createFetchRunsRepo(db: Queryable) {
     async start(sourceId: string, cursorIn: Record<string, unknown>): Promise<{ id: string }> {
       const res = await db.query<{ id: string }>(
         "insert into fetch_runs (source_id, status, cursor_in_json, cursor_out_json, counts_json) values ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb) returning id",
-        [sourceId, "ok", JSON.stringify(cursorIn), JSON.stringify({}), JSON.stringify({})]
+        [sourceId, "ok", JSON.stringify(cursorIn), JSON.stringify({}), JSON.stringify({})],
       );
       const row = res.rows[0];
       if (!row) throw new Error("Failed to start fetch_run");
@@ -42,7 +42,7 @@ export function createFetchRunsRepo(db: Queryable) {
           JSON.stringify(params.cursorOut),
           JSON.stringify(params.counts),
           params.error ? JSON.stringify(params.error) : null,
-        ]
+        ],
       );
     },
   };

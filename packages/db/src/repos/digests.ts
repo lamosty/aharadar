@@ -21,19 +21,22 @@ export function createDigestsRepo(db: Queryable) {
          where user_id = $1
          order by created_at desc
          limit 1`,
-        [userId]
+        [userId],
       );
       return res.rows[0] ?? null;
     },
 
-    async getLatestByUserAndTopic(params: { userId: string; topicId: string }): Promise<DigestRow | null> {
+    async getLatestByUserAndTopic(params: {
+      userId: string;
+      topicId: string;
+    }): Promise<DigestRow | null> {
       const res = await db.query<DigestRow>(
         `select id, user_id, topic_id::text as topic_id, window_start::text as window_start, window_end::text as window_end, mode, created_at::text as created_at
          from digests
          where user_id = $1 and topic_id = $2::uuid
          order by created_at desc
          limit 1`,
-        [params.userId, params.topicId]
+        [params.userId, params.topicId],
       );
       return res.rows[0] ?? null;
     },
@@ -51,7 +54,7 @@ export function createDigestsRepo(db: Queryable) {
          on conflict (user_id, topic_id, window_start, window_end, mode)
          do update set window_start = excluded.window_start
          returning id, (xmax = 0) as inserted`,
-        [params.userId, params.topicId, params.windowStart, params.windowEnd, params.mode]
+        [params.userId, params.topicId, params.windowStart, params.windowEnd, params.mode],
       );
       const row = res.rows[0];
       if (!row) throw new Error("digests.upsert failed: no row returned");

@@ -1,2 +1,2 @@
-export { TopicViewingProfileSettings } from "./TopicViewingProfileSettings";
 export { TopicsList } from "./TopicsList";
+export { TopicViewingProfileSettings } from "./TopicViewingProfileSettings";

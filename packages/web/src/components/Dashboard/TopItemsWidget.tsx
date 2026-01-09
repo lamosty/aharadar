@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
+import type { Topic } from "@/lib/api";
 import { useItems, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
-import { type Topic } from "@/lib/api";
 import styles from "./Dashboard.module.css";
 
 export function TopItemsWidget() {
@@ -109,18 +109,28 @@ function TopicItemsSection({ topic }: TopicItemsSectionProps) {
                       {item.item.title || item.item.bodyText?.slice(0, 100) || "(Untitled)"}
                     </span>
                   )}
-                  <span className={styles.itemSource}>{formatSourceType(item.item.sourceType)}</span>
+                  <span className={styles.itemSource}>
+                    {formatSourceType(item.item.sourceType)}
+                  </span>
                 </div>
               </li>
             ))}
           </ul>
           {hasMore && !expanded && (
-            <button type="button" className={styles.showMoreButton} onClick={() => setExpanded(true)}>
+            <button
+              type="button"
+              className={styles.showMoreButton}
+              onClick={() => setExpanded(true)}
+            >
               Show more
             </button>
           )}
           {expanded && (
-            <button type="button" className={styles.showMoreButton} onClick={() => setExpanded(false)}>
+            <button
+              type="button"
+              className={styles.showMoreButton}
+              onClick={() => setExpanded(false)}
+            >
               Show less
             </button>
           )}

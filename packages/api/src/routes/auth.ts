@@ -1,9 +1,9 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { createLogger } from "@aharadar/shared";
+import type { FastifyInstance } from "fastify";
+import { generateToken, hashToken } from "../auth/crypto.js";
+import { getUserId, sessionAuth } from "../auth/session.js";
 import { getDb } from "../lib/db.js";
 import { sendMagicLinkEmail } from "../lib/email.js";
-import { generateToken, hashToken } from "../auth/crypto.js";
-import { sessionAuth, getUserId } from "../auth/session.js";
 
 const log = createLogger({ component: "auth" });
 

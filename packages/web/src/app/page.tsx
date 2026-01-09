@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LandingNav } from "@/components/LandingNav";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -12,11 +13,7 @@ export default function LandingPage() {
             <RadarIcon />
             <span>{t("common.appName")}</span>
           </Link>
-          <nav className={styles.headerNav}>
-            <Link href="/login" className={styles.headerLink}>
-              {t("nav.login")}
-            </Link>
-          </nav>
+          <LandingNav />
         </div>
       </header>
 
@@ -29,7 +26,11 @@ export default function LandingPage() {
             </h1>
             <p className={styles.heroSubtitle}>{t("landing.hero.subtitle")}</p>
             <div className={styles.heroActions}>
-              <Link href="/app" className={`btn btn-primary ${styles.heroCta}`} data-testid="hero-cta">
+              <Link
+                href="/app"
+                className={`btn btn-primary ${styles.heroCta}`}
+                data-testid="hero-cta"
+              >
                 {t("landing.hero.cta")}
               </Link>
             </div>
@@ -123,8 +124,22 @@ function RadarAnimation() {
       <circle cx="100" cy="100" r="20" fill="none" stroke="var(--color-border)" strokeWidth="1" />
 
       {/* Cross lines */}
-      <line x1="100" y1="20" x2="100" y2="180" stroke="var(--color-border-subtle)" strokeWidth="1" />
-      <line x1="20" y1="100" x2="180" y2="100" stroke="var(--color-border-subtle)" strokeWidth="1" />
+      <line
+        x1="100"
+        y1="20"
+        x2="100"
+        y2="180"
+        stroke="var(--color-border-subtle)"
+        strokeWidth="1"
+      />
+      <line
+        x1="20"
+        y1="100"
+        x2="180"
+        y2="100"
+        stroke="var(--color-border-subtle)"
+        strokeWidth="1"
+      />
 
       {/* Sweeping line */}
       <line

@@ -3,27 +3,26 @@
  */
 
 import type { Db } from "@aharadar/db";
-import type {
-  AskRequest,
-  AskResponse,
-  AskDebugInfo,
-  DebugCluster,
-  QALlmResponse,
-  BudgetTier,
-} from "@aharadar/shared";
 import {
   createConfiguredLlmRouter,
   estimateLlmCredits,
   type LlmRuntimeConfig,
   type TaskType,
 } from "@aharadar/llm";
-
-import { retrieveContext, type RetrievedContext } from "./retrieval";
+import type {
+  AskDebugInfo,
+  AskRequest,
+  AskResponse,
+  BudgetTier,
+  DebugCluster,
+  QALlmResponse,
+} from "@aharadar/shared";
 import { buildQAPrompt, QA_SYSTEM_PROMPT } from "./prompt";
+import { type RetrievedContext, retrieveContext } from "./retrieval";
 
 function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + "...";
+  return `${text.slice(0, maxChars)}...`;
 }
 
 /**
@@ -218,7 +217,7 @@ export async function handleAskQuestion(params: {
     const matchingItem = allItems.find(
       (item) =>
         item.title.toLowerCase().includes(cite.title.toLowerCase()) ||
-        cite.title.toLowerCase().includes(item.title.toLowerCase())
+        cite.title.toLowerCase().includes(item.title.toLowerCase()),
     );
 
     return {
@@ -295,7 +294,7 @@ export async function handleAskQuestion(params: {
   const totalDurationMs = Date.now() - totalStart;
 
   // 9. Validate and normalize confidence score
-  let confidence = { score: 0.5, reasoning: "Unknown" };
+  const confidence = { score: 0.5, reasoning: "Unknown" };
   if (parsed.confidence && typeof parsed.confidence === "object") {
     const score = parsed.confidence.score;
     const reasoning = parsed.confidence.reasoning;

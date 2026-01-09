@@ -3,12 +3,12 @@ import { spawn } from "node:child_process";
 import { createDb, type Db } from "@aharadar/db";
 import type { FeedbackAction } from "@aharadar/shared";
 import { loadRuntimeEnv } from "@aharadar/shared";
-
-import { DEFAULT_KEYMAP } from "../ui/keymap";
 import { resolveTopicForUser } from "../topics";
+import { DEFAULT_KEYMAP } from "../ui/keymap";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -148,7 +148,7 @@ async function computeWhyShown(params: {
      from embeddings
      where content_item_id = $1::uuid
      limit 1`,
-    [params.contentItemId]
+    [params.contentItemId],
   );
   const vectorText = target.rows[0]?.vector_text ?? null;
   if (!vectorText) {
@@ -174,7 +174,7 @@ async function computeWhyShown(params: {
         end) as negative_sim
      from topic_preference_profiles
      where user_id = $1::uuid and topic_id = $2::uuid`,
-    [params.userId, params.topicId, vectorText]
+    [params.userId, params.topicId, vectorText],
   );
   const profileRow = prof.rows[0] ?? null;
 
@@ -228,12 +228,15 @@ async function computeWhyShown(params: {
        ci.metadata_json
      from liked_nn lnn
      join content_items ci on ci.id = lnn.content_item_id`,
-    [params.userId, params.topicId, vectorText, params.contentItemId]
+    [params.userId, params.topicId, vectorText, params.contentItemId],
   );
 
   const similarLikes = similar.rows.map((r) => {
     const title = normalizeWhitespace(r.title ?? "(no title)");
-    const link = getPrimaryUrl({ canonicalUrl: r.canonical_url, metadata: asRecord(r.metadata_json) });
+    const link = getPrimaryUrl({
+      canonicalUrl: r.canonical_url,
+      metadata: asRecord(r.metadata_json),
+    });
     return {
       contentItemId: r.content_item_id,
       action: r.action,
@@ -278,7 +281,9 @@ function renderHelp(): void {
   console.log("");
   console.log("Notes:");
   console.log("- Feedback is persisted to `feedback_events` immediately.");
-  console.log("- Personalization/embeddings will use this data later; collecting it now is still valuable.");
+  console.log(
+    "- Personalization/embeddings will use this data later; collecting it now is still valuable.",
+  );
   console.log("");
   console.log("Press any key to return.");
 }
@@ -299,7 +304,7 @@ function renderItem(params: {
   const lastAction = params.lastAction ? `last_action=${params.lastAction}` : "last_action=-";
 
   console.log(
-    `rank=${params.item.rank} score=${params.item.scoreText} aha=${params.item.ahaScore ?? "-"} ${lastAction}${busySuffix}`
+    `rank=${params.item.rank} score=${params.item.scoreText} aha=${params.item.ahaScore ?? "-"} ${lastAction}${busySuffix}`,
   );
   console.log(`source=${params.item.sourceType}`);
   console.log("");
@@ -327,7 +332,7 @@ function renderItem(params: {
   console.log("");
   console.log(
     `keys: ${DEFAULT_KEYMAP.like}=like ${DEFAULT_KEYMAP.dislike}=dislike ${DEFAULT_KEYMAP.save}=save ${DEFAULT_KEYMAP.skip}=skip ` +
-      `${DEFAULT_KEYMAP.next}/${DEFAULT_KEYMAP.prev}=nav ${DEFAULT_KEYMAP.open}=open ${DEFAULT_KEYMAP.why}=details ${DEFAULT_KEYMAP.help}=help ${DEFAULT_KEYMAP.quit}=quit`
+      `${DEFAULT_KEYMAP.next}/${DEFAULT_KEYMAP.prev}=nav ${DEFAULT_KEYMAP.open}=open ${DEFAULT_KEYMAP.why}=details ${DEFAULT_KEYMAP.help}=help ${DEFAULT_KEYMAP.quit}=quit`,
   );
 
   if (params.view === "details") {
@@ -336,7 +341,9 @@ function renderItem(params: {
 
     console.log("personalization:");
     if (!params.item.contentItemIdForFeedback) {
-      console.log("(missing content_item_id for feedback; can't compute embedding-based why-shown)");
+      console.log(
+        "(missing content_item_id for feedback; can't compute embedding-based why-shown)",
+      );
     } else if (!params.whyShown) {
       console.log("(loading…)");
     } else if (params.whyShown.status === "loading") {
@@ -360,14 +367,16 @@ function renderItem(params: {
             : null;
         const prefText = pref !== null && Number.isFinite(pref) ? pref.toFixed(3) : "-";
         console.log(
-          `pref_sim=${prefText} (pos_sim=${posText}, pos_n=${data.profile.positiveCount}; neg_sim=${negText}, neg_n=${data.profile.negativeCount})`
+          `pref_sim=${prefText} (pos_sim=${posText}, pos_n=${data.profile.positiveCount}; neg_sim=${negText}, neg_n=${data.profile.negativeCount})`,
         );
       }
 
       if (data.similarLikes.length > 0) {
         console.log("similar_to_likes:");
         for (const s of data.similarLikes) {
-          const sim = Number.isFinite(s.similarity) ? s.similarity.toFixed(3) : String(s.similarity);
+          const sim = Number.isFinite(s.similarity)
+            ? s.similarity.toFixed(3)
+            : String(s.similarity);
           const suffix = s.link ? ` link=${s.link}` : "";
           console.log(`- sim=${sim} action=${s.action} title=${clip(s.title, 140)}${suffix}`);
         }
@@ -390,7 +399,7 @@ function renderItem(params: {
         const novelty01 = asFiniteNumber(novelty.novelty01);
         console.log(
           `- novelty: novelty01=${novelty01 !== null ? novelty01.toFixed(3) : "-"} ` +
-            `(max_sim=${maxSim !== null ? maxSim.toFixed(3) : "-"}, lookback=${lookbackDays ?? "-"}d)`
+            `(max_sim=${maxSim !== null ? maxSim.toFixed(3) : "-"}, lookback=${lookbackDays ?? "-"}d)`,
         );
       }
 
@@ -402,7 +411,7 @@ function renderItem(params: {
         const effW = asFiniteNumber(srcWeight.effective_weight);
         console.log(
           `- source_weight: effective=${effW !== null ? effW.toFixed(2) : "-"} ` +
-            `(type=${typeW !== null ? typeW.toFixed(2) : "-"}, source=${srcW !== null ? srcW.toFixed(2) : "-"})`
+            `(type=${typeW !== null ? typeW.toFixed(2) : "-"}, source=${srcW !== null ? srcW.toFixed(2) : "-"})`,
         );
       }
 
@@ -412,7 +421,8 @@ function renderItem(params: {
         const matched = signalCorr.matched === true;
         const matchedUrl = asString(signalCorr.matched_url);
         console.log(
-          `- signal_corroboration: matched=${matched}` + (matchedUrl ? ` url=${clip(matchedUrl, 80)}` : "")
+          `- signal_corroboration: matched=${matched}` +
+            (matchedUrl ? ` url=${clip(matchedUrl, 80)}` : ""),
         );
       }
     }
@@ -429,7 +439,7 @@ function renderItem(params: {
     if (!params.item.contentItemIdForFeedback) {
       console.log("");
       console.log(
-        "warning: this digest item has no content_item_id to attach feedback to (likely missing cluster representative)."
+        "warning: this digest item has no content_item_id to attach feedback to (likely missing cluster representative).",
       );
     }
   }
@@ -555,7 +565,9 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
     const topic = await resolveTopicForUser({ db, userId: user.id, topicArg });
     const digest = await db.digests.getLatestByUserAndTopic({ userId: user.id, topicId: topic.id });
     if (!digest) {
-      console.log(`No digests yet for topic "${topic.name}". Run \`admin:run-now\` after creating sources.`);
+      console.log(
+        `No digests yet for topic "${topic.name}". Run \`admin:run-now\` after creating sources.`,
+      );
       return;
     }
 
@@ -615,7 +627,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
        ) fe on true
        where di.digest_id = $1
        order by di.rank asc`,
-      [digest.id, user.id, topic.id, digest.window_start, digest.window_end]
+      [digest.id, user.id, topic.id, digest.window_start, digest.window_end],
     );
 
     const reviewed = itemsRes.rows.filter((r) => r.last_action !== null).length;
@@ -664,7 +676,12 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
       render();
       void (async () => {
         try {
-          const data = await computeWhyShown({ db, userId: user.id, topicId: topic.id, contentItemId });
+          const data = await computeWhyShown({
+            db,
+            userId: user.id,
+            topicId: topic.id,
+            contentItemId,
+          });
           whyByContentItemId.set(contentItemId, { status: "ready", data });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -700,7 +717,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
                from embeddings
                where content_item_id = $1::uuid
                limit 1`,
-              [item.contentItemIdForFeedback]
+              [item.contentItemIdForFeedback],
             );
             const vecText = emb.rows[0]?.vector_text ?? null;
             if (vecText) {

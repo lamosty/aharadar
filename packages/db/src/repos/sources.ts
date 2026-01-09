@@ -17,7 +17,7 @@ export function createSourcesRepo(db: Queryable) {
     async listByUser(userId: string): Promise<SourceRow[]> {
       const res = await db.query<SourceRow>(
         "select id, user_id, topic_id::text as topic_id, type, name, config_json, cursor_json, is_enabled, created_at from sources where user_id = $1 order by created_at asc",
-        [userId]
+        [userId],
       );
       return res.rows;
     },
@@ -25,18 +25,21 @@ export function createSourcesRepo(db: Queryable) {
     async listEnabledByUser(userId: string): Promise<SourceRow[]> {
       const res = await db.query<SourceRow>(
         "select id, user_id, topic_id::text as topic_id, type, name, config_json, cursor_json, is_enabled, created_at from sources where user_id = $1 and is_enabled = true order by created_at asc",
-        [userId]
+        [userId],
       );
       return res.rows;
     },
 
-    async listEnabledByUserAndTopic(params: { userId: string; topicId: string }): Promise<SourceRow[]> {
+    async listEnabledByUserAndTopic(params: {
+      userId: string;
+      topicId: string;
+    }): Promise<SourceRow[]> {
       const res = await db.query<SourceRow>(
         `select id, user_id, topic_id::text as topic_id, type, name, config_json, cursor_json, is_enabled, created_at
          from sources
          where user_id = $1 and topic_id = $2::uuid and is_enabled = true
          order by created_at asc`,
-        [params.userId, params.topicId]
+        [params.userId, params.topicId],
       );
       return res.rows;
     },
@@ -62,7 +65,7 @@ export function createSourcesRepo(db: Queryable) {
           JSON.stringify(params.config ?? {}),
           JSON.stringify(params.cursor ?? {}),
           params.isEnabled ?? true,
-        ]
+        ],
       );
       const row = res.rows[0];
       if (!row) throw new Error("sources.create failed: no row returned");
@@ -86,7 +89,7 @@ export function createSourcesRepo(db: Queryable) {
     async getById(sourceId: string): Promise<SourceRow | null> {
       const res = await db.query<SourceRow>(
         "select id, user_id, topic_id::text as topic_id, type, name, config_json, cursor_json, is_enabled, created_at from sources where id = $1::uuid",
-        [sourceId]
+        [sourceId],
       );
       return res.rows[0] ?? null;
     },
@@ -94,11 +97,14 @@ export function createSourcesRepo(db: Queryable) {
     async updateConfigCadence(params: {
       sourceId: string;
       cadence: { mode: "interval"; everyMinutes: number } | null;
-    }): Promise<{ previous: Record<string, unknown> | null; updated: Record<string, unknown> | null }> {
+    }): Promise<{
+      previous: Record<string, unknown> | null;
+      updated: Record<string, unknown> | null;
+    }> {
       // Get current config first
       const current = await db.query<{ config_json: Record<string, unknown> }>(
         "select config_json from sources where id = $1::uuid",
-        [params.sourceId]
+        [params.sourceId],
       );
       const row = current.rows[0];
       if (!row) throw new Error(`Source not found: ${params.sourceId}`);
@@ -138,7 +144,7 @@ export function createSourcesRepo(db: Queryable) {
       // Get current config first
       const current = await db.query<{ config_json: Record<string, unknown> }>(
         "select config_json from sources where id = $1::uuid",
-        [params.sourceId]
+        [params.sourceId],
       );
       const row = current.rows[0];
       if (!row) throw new Error(`Source not found: ${params.sourceId}`);
@@ -177,7 +183,7 @@ export function createSourcesRepo(db: Queryable) {
     }): Promise<{ previous: boolean; updated: boolean }> {
       const current = await db.query<{ is_enabled: boolean }>(
         "select is_enabled from sources where id = $1::uuid",
-        [params.sourceId]
+        [params.sourceId],
       );
       const row = current.rows[0];
       if (!row) throw new Error(`Source not found: ${params.sourceId}`);
@@ -196,15 +202,19 @@ export function createSourcesRepo(db: Queryable) {
       sourceId: string;
       name: string;
     }): Promise<{ previous: string; updated: string }> {
-      const current = await db.query<{ name: string }>("select name from sources where id = $1::uuid", [
-        params.sourceId,
-      ]);
+      const current = await db.query<{ name: string }>(
+        "select name from sources where id = $1::uuid",
+        [params.sourceId],
+      );
       const row = current.rows[0];
       if (!row) throw new Error(`Source not found: ${params.sourceId}`);
 
       const previous = row.name;
 
-      await db.query("update sources set name = $2 where id = $1::uuid", [params.sourceId, params.name]);
+      await db.query("update sources set name = $2 where id = $1::uuid", [
+        params.sourceId,
+        params.name,
+      ]);
 
       return { previous, updated: params.name };
     },
@@ -215,17 +225,17 @@ export function createSourcesRepo(db: Queryable) {
          from sources
          where user_id = $1 and topic_id = $2::uuid
          order by created_at asc`,
-        [params.userId, params.topicId]
+        [params.userId, params.topicId],
       );
       return res.rows;
     },
 
     async delete(params: { sourceId: string; userId: string }): Promise<boolean> {
       // Only delete if the source belongs to the user (security check)
-      const res = await db.query("delete from sources where id = $1::uuid and user_id = $2 returning id", [
-        params.sourceId,
-        params.userId,
-      ]);
+      const res = await db.query(
+        "delete from sources where id = $1::uuid and user_id = $2 returning id",
+        [params.sourceId, params.userId],
+      );
       return res.rowCount !== null && res.rowCount > 0;
     },
   };

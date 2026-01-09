@@ -1,8 +1,8 @@
 "use client";
 
-import type { HnConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
+import type { HnConfig, SourceConfigFormProps } from "./types";
 
 export function HnConfigForm({ value, onChange }: SourceConfigFormProps<HnConfig>) {
   const handleChange = <K extends keyof HnConfig>(key: K, val: HnConfig[K]) => {
@@ -23,8 +23,8 @@ export function HnConfigForm({ value, onChange }: SourceConfigFormProps<HnConfig
 
       <div className={styles.helpBox}>
         <p>
-          Hacker News is a social news website focusing on computer science and entrepreneurship. Choose to
-          follow either the top stories or newest submissions.
+          Hacker News is a social news website focusing on computer science and entrepreneurship.
+          Choose to follow either the top stories or newest submissions.
         </p>
       </div>
 
@@ -37,17 +37,18 @@ export function HnConfigForm({ value, onChange }: SourceConfigFormProps<HnConfig
               <>
                 <p>Choose which Hacker News feed to follow:</p>
                 <p>
-                  <strong>Top Stories:</strong> The most popular stories on the front page, ranked by a
-                  combination of votes (upvotes) and time since posted. These are the stories the community
-                  finds most interesting.
+                  <strong>Top Stories:</strong> The most popular stories on the front page, ranked
+                  by a combination of votes (upvotes) and time since posted. These are the stories
+                  the community finds most interesting.
                 </p>
                 <p>
-                  <strong>New Stories:</strong> The latest submissions in chronological order, regardless of
-                  votes. Great for catching breaking news and new content before it becomes popular.
+                  <strong>New Stories:</strong> The latest submissions in chronological order,
+                  regardless of votes. Great for catching breaking news and new content before it
+                  becomes popular.
                 </p>
                 <p>
-                  <strong>Recommendation:</strong> Use Top Stories for curated, high-quality content. Use New
-                  Stories if you want to be first to see emerging topics.
+                  <strong>Recommendation:</strong> Use Top Stories for curated, high-quality
+                  content. Use New Stories if you want to be first to see emerging topics.
                 </p>
               </>
             }
@@ -62,7 +63,9 @@ export function HnConfigForm({ value, onChange }: SourceConfigFormProps<HnConfig
           <option value="top">Top Stories</option>
           <option value="new">New Stories</option>
         </select>
-        <p className={styles.hint}>Top stories are ranked by votes and time; New shows latest submissions</p>
+        <p className={styles.hint}>
+          Top stories are ranked by votes and time; New shows latest submissions
+        </p>
       </div>
     </div>
   );

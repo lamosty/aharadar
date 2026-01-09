@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { t } from "@/lib/i18n";
+import { type ReactNode, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { UserMenu } from "@/components/UserMenu";
-import { getNavItemsForRole, getMobileNavItemsForRole, type NavItem } from "./nav-model";
+import { t } from "@/lib/i18n";
 import styles from "./AppShell.module.css";
+import { getMobileNavItemsForRole, getNavItemsForRole, type NavItem } from "./nav-model";
 
 interface AppShellProps {
   /** Main content slot */

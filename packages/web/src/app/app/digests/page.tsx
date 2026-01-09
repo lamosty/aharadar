@@ -1,8 +1,5 @@
 "use client";
 
-import { useTheme } from "@/components/ThemeProvider";
-import { t } from "@/lib/i18n";
-import { useRealDigests } from "@/lib/mock-data";
 import {
   DigestsListCondensed,
   DigestsListCondensedSkeleton,
@@ -11,6 +8,9 @@ import {
   DigestsListTimeline,
   DigestsListTimelineSkeleton,
 } from "@/components/DigestsList";
+import { useTheme } from "@/components/ThemeProvider";
+import { t } from "@/lib/i18n";
+import { useRealDigests } from "@/lib/mock-data";
 import styles from "./page.module.css";
 
 export default function DigestsPage() {
@@ -30,7 +30,11 @@ export default function DigestsPage() {
         <div className={styles.errorState}>
           <ErrorIcon />
           <h2 className={styles.errorTitle}>{t("digests.list.error")}</h2>
-          <button type="button" className={`btn btn-primary ${styles.retryButton}`} onClick={refetch}>
+          <button
+            type="button"
+            className={`btn btn-primary ${styles.retryButton}`}
+            onClick={refetch}
+          >
             {t("digests.list.retry")}
           </button>
         </div>

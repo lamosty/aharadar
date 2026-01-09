@@ -1,2 +1,2 @@
-export { AuthProvider, useAuth, useUser, useIsAuthenticated, useIsAdmin } from "./AuthProvider";
 export type { UserRole } from "./AuthProvider";
+export { AuthProvider, useAuth, useIsAdmin, useIsAuthenticated, useUser } from "./AuthProvider";

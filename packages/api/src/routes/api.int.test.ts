@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { createDb, type Db } from "@aharadar/db";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import Fastify, { type FastifyInstance } from "fastify";
-import { createDb, type Db } from "@aharadar/db";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Integration tests for API routes.
@@ -96,7 +96,7 @@ describe("API Routes Integration Tests", () => {
     // Create user
     const userResult = await db.query<{ id: string }>(
       `INSERT INTO users (email) VALUES ('test@example.com') RETURNING id`,
-      []
+      [],
     );
     userId = userResult.rows[0].id;
 
@@ -104,7 +104,7 @@ describe("API Routes Integration Tests", () => {
     const topicResult = await db.query<{ id: string }>(
       `INSERT INTO topics (user_id, name, description)
        VALUES ($1, 'default', 'Default test topic') RETURNING id`,
-      [userId]
+      [userId],
     );
     topicId = topicResult.rows[0].id;
 
@@ -112,7 +112,7 @@ describe("API Routes Integration Tests", () => {
     const sourceResult = await db.query<{ id: string }>(
       `INSERT INTO sources (user_id, topic_id, type, name, config_json)
        VALUES ($1, $2, 'hn', 'Test Source', '{}') RETURNING id`,
-      [userId, topicId]
+      [userId, topicId],
     );
     sourceId = sourceResult.rows[0].id;
 
@@ -121,34 +121,34 @@ describe("API Routes Integration Tests", () => {
       `INSERT INTO content_items (user_id, source_id, source_type, title, body_text, canonical_url, author, published_at, metadata_json)
        VALUES ($1, $2, 'hn', 'Test HN Post', 'Test content body', 'https://example.com/test', 'testuser', NOW(), '{}')
        RETURNING id`,
-      [userId, sourceId]
+      [userId, sourceId],
     );
     contentItemId = contentResult.rows[0].id;
 
     // Link content item to source (junction table for multi-source support)
-    await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
-      contentItemId,
-      sourceId,
-    ]);
+    await db.query(
+      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+      [contentItemId, sourceId],
+    );
 
     // Create embedding for the content item (needed for preference updates)
     const embeddingVector = Array(1536).fill(0.01); // Fake embedding
     await db.query(
       `INSERT INTO embeddings (content_item_id, model, dims, vector) VALUES ($1, 'text-embedding-3-small', 1536, $2::vector)`,
-      [contentItemId, `[${embeddingVector.join(",")}]`]
+      [contentItemId, `[${embeddingVector.join(",")}]`],
     );
 
     // Create user preferences
     await db.query(
       `INSERT INTO user_preferences (user_id, decay_hours) VALUES ($1, 24) ON CONFLICT DO NOTHING`,
-      [userId]
+      [userId],
     );
 
     // Create a digest with the content item
     const digestResult = await db.query<{ id: string }>(
       `INSERT INTO digests (user_id, topic_id, window_start, window_end, mode)
        VALUES ($1, $2, NOW() - INTERVAL '1 day', NOW(), 'normal') RETURNING id`,
-      [userId, topicId]
+      [userId, topicId],
     );
     const digestId = digestResult.rows[0].id;
 
@@ -156,7 +156,7 @@ describe("API Routes Integration Tests", () => {
     await db.query(
       `INSERT INTO digest_items (digest_id, content_item_id, score, rank, triage_json)
        VALUES ($1, $2, 0.85, 1, '{"aha_score": 85, "reason": "Test item"}')`,
-      [digestId, contentItemId]
+      [digestId, contentItemId],
     );
   }
 
@@ -312,7 +312,7 @@ describe("API Routes Integration Tests", () => {
       // Verify feedback was stored
       const feedbackResult = await db!.query(
         `SELECT action FROM feedback_events WHERE content_item_id = $1 ORDER BY created_at DESC LIMIT 1`,
-        [contentItemId]
+        [contentItemId],
       );
       expect(feedbackResult.rows[0].action).toBe("like");
     });

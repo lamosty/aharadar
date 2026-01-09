@@ -47,6 +47,9 @@ export function parseRedditSourceConfig(config: Record<string, unknown>): Reddit
     listing: asListing(config.listing) ?? "new",
     timeFilter: asTimeFilter(config.time_filter) ?? asTimeFilter(config.timeFilter) ?? "day",
     includeComments: asBool(config.include_comments ?? config.includeComments, false),
-    maxCommentCount: Math.max(0, Math.floor(asNumber(config.max_comment_count ?? config.maxCommentCount, 0))),
+    maxCommentCount: Math.max(
+      0,
+      Math.floor(asNumber(config.max_comment_count ?? config.maxCommentCount, 0)),
+    ),
   };
 }

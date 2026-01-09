@@ -6,9 +6,9 @@
  * Experimental feature - off by default via QA_ENABLED=false.
  */
 
-import type { FastifyInstance } from "fastify";
-import { handleAskQuestion, computeCreditsStatus } from "@aharadar/pipeline";
+import { computeCreditsStatus, handleAskQuestion } from "@aharadar/pipeline";
 import type { AskRequest, AskResponse } from "@aharadar/shared";
+import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 // Rate limiting: track question counts per user
@@ -20,7 +20,9 @@ const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
  * Check and update rate limit for a user.
  * Returns { allowed: true } if request is allowed, { allowed: false, retryAfterMs } if rate limited.
  */
-function checkRateLimit(userId: string): { allowed: true } | { allowed: false; retryAfterMs: number } {
+function checkRateLimit(
+  userId: string,
+): { allowed: true } | { allowed: false; retryAfterMs: number } {
   const now = Date.now();
   const entry = rateLimitMap.get(userId);
 
@@ -128,7 +130,12 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
     // Validate maxClusters if provided
     if (options?.maxClusters !== undefined) {
       const mc = options.maxClusters;
-      if (typeof mc !== "number" || !Number.isFinite(mc) || mc < MIN_MAX_CLUSTERS || mc > MAX_MAX_CLUSTERS) {
+      if (
+        typeof mc !== "number" ||
+        !Number.isFinite(mc) ||
+        mc < MIN_MAX_CLUSTERS ||
+        mc > MAX_MAX_CLUSTERS
+      ) {
         return reply.code(400).send({
           ok: false,
           error: {
@@ -156,7 +163,7 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
     // Verify topic exists and belongs to user, get topic name for debug
     const topicRes = await db.query<{ id: string; name: string }>(
       `select id::text, name from topics where id = $1::uuid and user_id = $2::uuid`,
-      [topicId, ctx.userId]
+      [topicId, ctx.userId],
     );
     if (topicRes.rows.length === 0) {
       return reply.code(404).send({

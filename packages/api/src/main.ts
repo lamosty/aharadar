@@ -1,7 +1,7 @@
-import Fastify from "fastify";
-import cors from "@fastify/cors";
+import { createLogger, loadDotEnvIfPresent } from "@aharadar/shared";
 import cookie from "@fastify/cookie";
-import { loadDotEnvIfPresent, createLogger } from "@aharadar/shared";
+import cors from "@fastify/cors";
+import Fastify from "fastify";
 import { apiKeyAuth } from "./auth/api_key.js";
 import { sessionAuth } from "./auth/session.js";
 import { closePipelineQueue } from "./lib/queue.js";
@@ -55,17 +55,19 @@ async function buildServer() {
   // Register Prometheus metrics hooks
   registerMetricsHooks(fastify);
 
-  fastify.setErrorHandler((error: Error & { statusCode?: number; code?: string }, _request, reply) => {
-    const statusCode = error.statusCode ?? 500;
-    const envelope: ErrorEnvelope = {
-      ok: false,
-      error: {
-        code: error.code ?? "INTERNAL_ERROR",
-        message: error.message,
-      },
-    };
-    reply.code(statusCode).send(envelope);
-  });
+  fastify.setErrorHandler(
+    (error: Error & { statusCode?: number; code?: string }, _request, reply) => {
+      const statusCode = error.statusCode ?? 500;
+      const envelope: ErrorEnvelope = {
+        ok: false,
+        error: {
+          code: error.code ?? "INTERNAL_ERROR",
+          message: error.message,
+        },
+      };
+      reply.code(statusCode).send(envelope);
+    },
+  );
 
   // Public routes (no auth required)
   await fastify.register(healthRoutes, { prefix: "/api" });
@@ -95,7 +97,7 @@ async function buildServer() {
       await api.register(userApiKeysRoutes);
       await api.register(userUsageRoutes);
     },
-    { prefix: "/api" }
+    { prefix: "/api" },
   );
 
   return fastify;

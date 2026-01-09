@@ -30,7 +30,7 @@ export function createLlmSettingsRepo(db: Queryable) {
                 claude_subscription_enabled, claude_triage_thinking,
                 claude_calls_per_hour, updated_at
          FROM llm_settings
-         WHERE id = 1`
+         WHERE id = 1`,
       );
       const row = result.rows[0];
       if (!row) {
@@ -82,7 +82,7 @@ export function createLlmSettingsRepo(db: Queryable) {
          RETURNING id, provider, anthropic_model, openai_model,
                    claude_subscription_enabled, claude_triage_thinking,
                    claude_calls_per_hour, updated_at`,
-        values
+        values,
       );
 
       const row = result.rows[0];

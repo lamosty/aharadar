@@ -16,19 +16,49 @@ export interface ModelPricing {
 export const MODEL_PRICING: ModelPricing[] = [
   // OpenAI
   { provider: "openai", model: "gpt-4o", inputPer1MTokens: 2.5, outputPer1MTokens: 10.0 },
-  { provider: "openai", model: "gpt-4o-2024-11-20", inputPer1MTokens: 2.5, outputPer1MTokens: 10.0 },
+  {
+    provider: "openai",
+    model: "gpt-4o-2024-11-20",
+    inputPer1MTokens: 2.5,
+    outputPer1MTokens: 10.0,
+  },
   { provider: "openai", model: "gpt-4o-mini", inputPer1MTokens: 0.15, outputPer1MTokens: 0.6 },
-  { provider: "openai", model: "gpt-4o-mini-2024-07-18", inputPer1MTokens: 0.15, outputPer1MTokens: 0.6 },
+  {
+    provider: "openai",
+    model: "gpt-4o-mini-2024-07-18",
+    inputPer1MTokens: 0.15,
+    outputPer1MTokens: 0.6,
+  },
   { provider: "openai", model: "gpt-4-turbo", inputPer1MTokens: 10.0, outputPer1MTokens: 30.0 },
-  { provider: "openai", model: "gpt-4-turbo-preview", inputPer1MTokens: 10.0, outputPer1MTokens: 30.0 },
+  {
+    provider: "openai",
+    model: "gpt-4-turbo-preview",
+    inputPer1MTokens: 10.0,
+    outputPer1MTokens: 30.0,
+  },
   { provider: "openai", model: "gpt-3.5-turbo", inputPer1MTokens: 0.5, outputPer1MTokens: 1.5 },
   { provider: "openai", model: "o1", inputPer1MTokens: 15.0, outputPer1MTokens: 60.0 },
   { provider: "openai", model: "o1-mini", inputPer1MTokens: 3.0, outputPer1MTokens: 12.0 },
   { provider: "openai", model: "o1-preview", inputPer1MTokens: 15.0, outputPer1MTokens: 60.0 },
   { provider: "openai", model: "o3-mini", inputPer1MTokens: 1.1, outputPer1MTokens: 4.4 },
-  { provider: "openai", model: "text-embedding-3-small", inputPer1MTokens: 0.02, outputPer1MTokens: 0 },
-  { provider: "openai", model: "text-embedding-3-large", inputPer1MTokens: 0.13, outputPer1MTokens: 0 },
-  { provider: "openai", model: "text-embedding-ada-002", inputPer1MTokens: 0.1, outputPer1MTokens: 0 },
+  {
+    provider: "openai",
+    model: "text-embedding-3-small",
+    inputPer1MTokens: 0.02,
+    outputPer1MTokens: 0,
+  },
+  {
+    provider: "openai",
+    model: "text-embedding-3-large",
+    inputPer1MTokens: 0.13,
+    outputPer1MTokens: 0,
+  },
+  {
+    provider: "openai",
+    model: "text-embedding-ada-002",
+    inputPer1MTokens: 0.1,
+    outputPer1MTokens: 0,
+  },
 
   // Anthropic
   {
@@ -37,7 +67,12 @@ export const MODEL_PRICING: ModelPricing[] = [
     inputPer1MTokens: 3.0,
     outputPer1MTokens: 15.0,
   },
-  { provider: "anthropic", model: "claude-opus-4-20250514", inputPer1MTokens: 15.0, outputPer1MTokens: 75.0 },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-20250514",
+    inputPer1MTokens: 15.0,
+    outputPer1MTokens: 75.0,
+  },
   {
     provider: "anthropic",
     model: "claude-3-5-sonnet-20241022",
@@ -56,8 +91,18 @@ export const MODEL_PRICING: ModelPricing[] = [
     inputPer1MTokens: 0.8,
     outputPer1MTokens: 4.0,
   },
-  { provider: "anthropic", model: "claude-3-5-haiku-latest", inputPer1MTokens: 0.8, outputPer1MTokens: 4.0 },
-  { provider: "anthropic", model: "claude-3-opus-20240229", inputPer1MTokens: 15.0, outputPer1MTokens: 75.0 },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-haiku-latest",
+    inputPer1MTokens: 0.8,
+    outputPer1MTokens: 4.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-opus-20240229",
+    inputPer1MTokens: 15.0,
+    outputPer1MTokens: 75.0,
+  },
   {
     provider: "anthropic",
     model: "claude-3-sonnet-20240229",
@@ -78,8 +123,18 @@ export const MODEL_PRICING: ModelPricing[] = [
 
   // Google (for future use)
   { provider: "google", model: "gemini-1.5-pro", inputPer1MTokens: 1.25, outputPer1MTokens: 5.0 },
-  { provider: "google", model: "gemini-1.5-flash", inputPer1MTokens: 0.075, outputPer1MTokens: 0.3 },
-  { provider: "google", model: "gemini-2.0-flash-exp", inputPer1MTokens: 0.075, outputPer1MTokens: 0.3 },
+  {
+    provider: "google",
+    model: "gemini-1.5-flash",
+    inputPer1MTokens: 0.075,
+    outputPer1MTokens: 0.3,
+  },
+  {
+    provider: "google",
+    model: "gemini-2.0-flash-exp",
+    inputPer1MTokens: 0.075,
+    outputPer1MTokens: 0.3,
+  },
 ];
 
 // Index for fast lookup
@@ -104,7 +159,7 @@ export function calculateCostUsd(
   provider: string,
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
 ): number {
   const pricing = getModelPricing(provider, model);
 

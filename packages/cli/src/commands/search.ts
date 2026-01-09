@@ -6,11 +6,12 @@ import { loadRuntimeEnv } from "@aharadar/shared";
 import { resolveTopicForUser } from "../topics";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
-function asString(value: unknown): string | null {
+function _asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
@@ -198,12 +199,14 @@ export async function searchCommand(args: string[] = []): Promise<void> {
            and e.dims = $5
          order by e.vector <=> $3::vector asc
          limit $6`,
-        [user.id, topic.id, asVectorLiteral(vector), call.model, EXPECTED_DIMS, limit]
+        [user.id, topic.id, asVectorLiteral(vector), call.model, EXPECTED_DIMS, limit],
       );
 
       if (rows.rows.length === 0) {
         console.log(`No semantic results yet for topic "${topic.name}".`);
-        console.log("Tip: run `admin:run-now` to ingest items, and ensure the embed stage has run.");
+        console.log(
+          "Tip: run `admin:run-now` to ingest items, and ensure the embed stage has run.",
+        );
         return;
       }
 

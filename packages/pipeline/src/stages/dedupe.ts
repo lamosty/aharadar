@@ -62,10 +62,14 @@ export async function dedupeTopicContentItems(params: {
   windowEnd: string;
   limits?: Partial<DedupeLimits>;
 }): Promise<DedupeRunResult> {
-  const maxItems = params.limits?.maxItems ?? parseIntEnv(process.env.DEDUPE_MAX_ITEMS_PER_RUN) ?? 500;
-  const lookbackDays = params.limits?.lookbackDays ?? parseIntEnv(process.env.DEDUPE_LOOKBACK_DAYS) ?? 30;
+  const maxItems =
+    params.limits?.maxItems ?? parseIntEnv(process.env.DEDUPE_MAX_ITEMS_PER_RUN) ?? 500;
+  const lookbackDays =
+    params.limits?.lookbackDays ?? parseIntEnv(process.env.DEDUPE_LOOKBACK_DAYS) ?? 30;
   const similarityThreshold =
-    params.limits?.similarityThreshold ?? parseFloatEnv(process.env.DEDUPE_NEAR_DUP_SIM_THRESHOLD) ?? 0.995;
+    params.limits?.similarityThreshold ??
+    parseFloatEnv(process.env.DEDUPE_NEAR_DUP_SIM_THRESHOLD) ??
+    0.995;
 
   const threshold = clamp01(similarityThreshold);
 
@@ -138,7 +142,15 @@ export async function dedupeTopicContentItems(params: {
        (select count(*) from candidates)::int as attempted,
        (select count(*) from matches)::int as matches,
        (select count(*) from updated)::int as deduped`,
-    [params.userId, params.topicId, params.windowStart, params.windowEnd, limit, lookbackStartIso, threshold]
+    [
+      params.userId,
+      params.topicId,
+      params.windowStart,
+      params.windowEnd,
+      limit,
+      lookbackStartIso,
+      threshold,
+    ],
   );
 
   const row = res.rows[0];

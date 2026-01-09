@@ -4,4 +4,8 @@
  * The actual implementation is in x_shared/grok_x_search.ts for reuse
  * by both signal and x_posts connectors (Task 002 refactor).
  */
-export { grokXSearch, type GrokXSearchParams, type GrokXSearchResult } from "../x_shared/grok_x_search";
+export {
+  type GrokXSearchParams,
+  type GrokXSearchResult,
+  grokXSearch,
+} from "../x_shared/grok_x_search";

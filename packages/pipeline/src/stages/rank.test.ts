@@ -1,11 +1,10 @@
-import { describe, it, expect } from "vitest";
 import type { TriageOutput } from "@aharadar/llm";
+import { describe, expect, it } from "vitest";
 import {
-  parseSourceTypeWeights,
   computeEffectiveSourceWeight,
-  rankCandidates,
+  parseSourceTypeWeights,
   type RankCandidateInput,
-  type SourceWeightFeature,
+  rankCandidates,
 } from "./rank";
 
 // Helper to create a valid TriageOutput for testing
@@ -72,7 +71,7 @@ describe("parseSourceTypeWeights", () => {
       new Map([
         ["rss", 1.5],
         ["hn", 0.8],
-      ])
+      ]),
     );
   });
 
@@ -98,7 +97,7 @@ describe("parseSourceTypeWeights", () => {
         ["rss", 1.5],
         ["zero", 0],
         ["negative", -1.5],
-      ])
+      ]),
     );
   });
 });

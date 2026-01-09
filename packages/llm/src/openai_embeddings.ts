@@ -1,5 +1,6 @@
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -104,20 +105,26 @@ export async function callOpenAiEmbeddingsCompat(params: {
   });
 
   const contentType = res.headers.get("content-type") ?? "";
-  const response: unknown = contentType.includes("application/json") ? await res.json() : await res.text();
+  const response: unknown = contentType.includes("application/json")
+    ? await res.json()
+    : await res.text();
 
   if (!res.ok) {
     const detail = extractErrorDetail(response);
     const snippet = responseSnippet(response);
     const suffix = detail ? `: ${truncateString(detail, 300)}` : snippet ? `: ${snippet}` : "";
-    const err: EmbeddingsProviderError = new Error(`Embeddings provider error (${res.status})${suffix}`);
+    const err: EmbeddingsProviderError = new Error(
+      `Embeddings provider error (${res.status})${suffix}`,
+    );
     err.statusCode = res.status;
     err.statusText = res.statusText;
     err.endpoint = params.endpoint;
     err.model = params.model;
     err.responseSnippet = snippet;
     err.requestId =
-      res.headers.get("x-request-id") ?? res.headers.get("xai-request-id") ?? res.headers.get("cf-ray");
+      res.headers.get("x-request-id") ??
+      res.headers.get("xai-request-id") ??
+      res.headers.get("cf-ray");
     throw err;
   }
 

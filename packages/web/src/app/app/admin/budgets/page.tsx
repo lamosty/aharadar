@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { t } from "@/lib/i18n";
 import { useAdminBudgets } from "@/lib/hooks";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 function getProgressColor(used: number, limit: number): string {
@@ -78,7 +78,9 @@ export default function AdminBudgetsPage() {
           <WarningIcon />
           <div className={styles.degradedContent}>
             <h2 className={styles.degradedTitle}>{t("admin.budgets.degradedMode")}</h2>
-            <p className={styles.degradedDescription}>{t("admin.budgets.degradedModeDescription")}</p>
+            <p className={styles.degradedDescription}>
+              {t("admin.budgets.degradedModeDescription")}
+            </p>
           </div>
         </div>
       )}
@@ -172,7 +174,9 @@ export default function AdminBudgetsPage() {
                 </div>
                 <div className={styles.stat}>
                   <span className={styles.statLabel}>{t("admin.budgets.remaining")}</span>
-                  <span className={styles.statValue}>{formatCredits(budgets.dailyRemaining ?? 0)}</span>
+                  <span className={styles.statValue}>
+                    {formatCredits(budgets.dailyRemaining ?? 0)}
+                  </span>
                 </div>
               </div>
             </>

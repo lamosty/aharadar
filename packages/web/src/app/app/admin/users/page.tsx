@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { t } from "@/lib/i18n";
-import { getDevSettings } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { useIsAdmin } from "@/components/AuthProvider";
+import { getDevSettings } from "@/lib/api";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 interface User {
@@ -137,9 +137,7 @@ function AdminUsersContent() {
           <span>{t("common.back")}</span>
         </Link>
         <h1 className={styles.title}>Users</h1>
-        <p className={styles.description}>
-          View all registered users ({users.length} total)
-        </p>
+        <p className={styles.description}>View all registered users ({users.length} total)</p>
       </header>
 
       {users.length === 0 ? (
@@ -161,9 +159,7 @@ function AdminUsersContent() {
               {users.map((user) => (
                 <tr key={user.id} className={styles.tableRow}>
                   <td className={styles.tableCell}>
-                    <span className={styles.email}>
-                      {user.email || "No email"}
-                    </span>
+                    <span className={styles.email}>{user.email || "No email"}</span>
                   </td>
                   <td className={styles.tableCell}>
                     <span

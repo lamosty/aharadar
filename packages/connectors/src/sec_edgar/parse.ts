@@ -14,7 +14,8 @@ function asString(value: unknown): string | null {
 }
 
 function asNumber(value: unknown): number | null {
-  const num = typeof value === "number" ? value : typeof value === "string" ? parseFloat(value) : NaN;
+  const num =
+    typeof value === "number" ? value : typeof value === "string" ? parseFloat(value) : NaN;
   return Number.isFinite(num) ? num : null;
 }
 
@@ -131,7 +132,9 @@ export function parseForm4Xml(xmlText: string): Form4Entry | null {
     attributeNamePrefix: "@_",
     textNodeName: "#text",
     isArray: (name) =>
-      ["nonDerivativeTransaction", "derivativeTransaction", "ownershipNature", "value"].includes(name),
+      ["nonDerivativeTransaction", "derivativeTransaction", "ownershipNature", "value"].includes(
+        name,
+      ),
   });
 
   try {
@@ -140,7 +143,9 @@ export function parseForm4Xml(xmlText: string): Form4Entry | null {
 
     // Extract header info
     const headerInfo = asRecord(form4.formData ?? form4.headerData ?? {});
-    const filingDate = asString(headerInfo.dateOfEvent ?? headerInfo.reportingDate ?? headerInfo.filingDate);
+    const filingDate = asString(
+      headerInfo.dateOfEvent ?? headerInfo.reportingDate ?? headerInfo.filingDate,
+    );
     const accessionNumber = asString(headerInfo.accessionNumber);
 
     // Extract issuer (company) information
@@ -166,10 +171,10 @@ export function parseForm4Xml(xmlText: string): Form4Entry | null {
     // Extract transactions
     const transactions: Form4Transaction[] = [];
     const nonDerivative = asArray<Record<string, unknown>>(
-      asRecord(form4.nonDerivativeTable ?? {}).nonDerivativeTransaction
+      asRecord(form4.nonDerivativeTable ?? {}).nonDerivativeTransaction,
     );
     const derivative = asArray<Record<string, unknown>>(
-      asRecord(form4.derivativeTable ?? {}).derivativeTransaction
+      asRecord(form4.derivativeTable ?? {}).derivativeTransaction,
     );
 
     // Process non-derivative transactions
@@ -290,7 +295,7 @@ export function parse13fXml(xmlText: string): Form13fEntry | null {
   try {
     const doc = parser.parse(xmlText) as Record<string, unknown>;
     // 13F XML can have various root elements (form13finfotable, informationTable, etc.)
-    let root = asRecord(doc.form13finfotable ?? doc.informationTable ?? doc);
+    const root = asRecord(doc.form13finfotable ?? doc.informationTable ?? doc);
 
     // Try to find header/cover info
     let accessionNumber: string | null = null;
@@ -298,7 +303,7 @@ export function parse13fXml(xmlText: string): Form13fEntry | null {
     let reportPeriod: string | null = null;
     let institutionName: string | null = null;
     let cik: string | null = null;
-    let totalValue: number | null = null;
+    const totalValue: number | null = null;
 
     // Search for common 13F header fields
     if (asRecord(root).coverPage) {
@@ -314,7 +319,7 @@ export function parse13fXml(xmlText: string): Form13fEntry | null {
     const holdings: Form13fHolding[] = [];
     const infoTable = asArray<Record<string, unknown>>(
       asRecord(root.infoTable ?? root.informationTable).row ??
-        asRecord(root.infoTable ?? root.informationTable).infoTable
+        asRecord(root.infoTable ?? root.informationTable).infoTable,
     );
 
     for (const row of infoTable) {

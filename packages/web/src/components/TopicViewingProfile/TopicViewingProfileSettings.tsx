@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useUpdateTopicViewingProfile, useTopicMarkChecked } from "@/lib/hooks";
+import type { ProfileOption, Topic, ViewingProfile } from "@/lib/api";
+import { useTopicMarkChecked, useUpdateTopicViewingProfile } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
-import type { ViewingProfile, Topic, ProfileOption } from "@/lib/api";
 import styles from "./TopicViewingProfileSettings.module.css";
 
 const PROFILE_OPTIONS: { value: ViewingProfile; decayHours: number }[] = [
@@ -67,12 +67,16 @@ export function TopicViewingProfileSettings({ topic }: TopicViewingProfileSettin
             disabled={isPending}
           >
             <div className={styles.profileContent}>
-              <span className={styles.profileLabel}>{t(`settings.viewing.profiles.${option.value}`)}</span>
+              <span className={styles.profileLabel}>
+                {t(`settings.viewing.profiles.${option.value}`)}
+              </span>
               <span className={styles.profileDescription}>
                 {t(`settings.viewing.profileDescriptions.${option.value}`)}
               </span>
             </div>
-            {option.value !== "custom" && <span className={styles.profileDecay}>{option.decayHours}h</span>}
+            {option.value !== "custom" && (
+              <span className={styles.profileDecay}>{option.decayHours}h</span>
+            )}
           </button>
         ))}
       </div>
@@ -108,7 +112,9 @@ export function TopicViewingProfileSettings({ topic }: TopicViewingProfileSettin
           onClick={handleMarkCaughtUp}
           disabled={isPending}
         >
-          {markCheckedMutation.isPending ? t("digests.feed.markingCaughtUp") : t("digests.feed.markCaughtUp")}
+          {markCheckedMutation.isPending
+            ? t("digests.feed.markingCaughtUp")
+            : t("digests.feed.markCaughtUp")}
         </button>
       </div>
 

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { useState } from "react";
 import { useToast } from "@/components/Toast";
+import type { LlmProvider, RunMode } from "@/lib/api";
 import { useAdminRun, useTopics } from "@/lib/hooks";
-import type { RunMode, LlmProvider } from "@/lib/api";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 const PROVIDER_OPTIONS: (LlmProvider | "")[] = ["", "openai", "anthropic", "claude-subscription"];
@@ -97,7 +97,9 @@ export default function AdminRunPage() {
             <CheckIcon />
           </div>
           <h2 className={styles.successTitle}>{t("admin.run.success")}</h2>
-          <p className={styles.successJobId}>{t("admin.run.successJobId", { jobId: jobId ?? "" })}</p>
+          <p className={styles.successJobId}>
+            {t("admin.run.successJobId", { jobId: jobId ?? "" })}
+          </p>
           <div className={styles.successActions}>
             <Link href="/app/digests" className={styles.primaryButton}>
               {t("admin.run.viewDigests")}

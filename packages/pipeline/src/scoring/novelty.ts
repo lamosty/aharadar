@@ -54,7 +54,10 @@ export interface NoveltyFeature {
 /**
  * Build a novelty feature object.
  */
-export function buildNoveltyFeature(params: { lookbackDays: number; maxSimilarity: number }): NoveltyFeature {
+export function buildNoveltyFeature(params: {
+  lookbackDays: number;
+  maxSimilarity: number;
+}): NoveltyFeature {
   return {
     lookback_days: params.lookbackDays,
     max_similarity: params.maxSimilarity,

@@ -4,7 +4,8 @@ import { loadRuntimeEnv } from "@aharadar/shared";
 import { resolveTopicForUser } from "../topics";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -146,7 +147,7 @@ function printInboxCards(rows: InboxCard[]): void {
 
     if (row.link) {
       const linkText = formatOsc8Link("link", row.link);
-      console.log(" ".repeat(indent) + `link: ${linkText}`);
+      console.log(`${" ".repeat(indent)}link: ${linkText}`);
     }
 
     console.log("");
@@ -270,7 +271,9 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
     const topic = await resolveTopicForUser({ db, userId: user.id, topicArg: parsed.topic });
     const digest = await db.digests.getLatestByUserAndTopic({ userId: user.id, topicId: topic.id });
     if (!digest) {
-      console.log(`No digests yet for topic "${topic.name}". Run \`admin:run-now\` after creating sources.`);
+      console.log(
+        `No digests yet for topic "${topic.name}". Run \`admin:run-now\` after creating sources.`,
+      );
       return;
     }
 
@@ -326,11 +329,11 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
        join sources s on s.id = tis.source_id
        where di.digest_id = $1
        order by di.rank asc`,
-      [digest.id, user.id, topic.id, digest.window_start, digest.window_end]
+      [digest.id, user.id, topic.id, digest.window_start, digest.window_end],
     );
 
     console.log(
-      `Latest digest (user=${user.id}, topic=${topic.name}, window=${digest.window_start} → ${digest.window_end}, mode=${digest.mode}):`
+      `Latest digest (user=${user.id}, topic=${topic.name}, window=${digest.window_start} → ${digest.window_end}, mode=${digest.mode}):`,
     );
     const rows: InboxCard[] = items.rows.map((item) => {
       const title = normalizeWhitespace(item.title ?? "(no title)");

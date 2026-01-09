@@ -1,24 +1,34 @@
 import type { Db } from "@aharadar/db";
 import {
   createConfiguredLlmRouter,
-  triageCandidate,
   type LlmRuntimeConfig,
   type TriageOutput,
+  triageCandidate,
 } from "@aharadar/llm";
-import { canonicalizeUrl, sha256Hex, createLogger, type BudgetTier, type SourceType } from "@aharadar/shared";
+import {
+  type BudgetTier,
+  canonicalizeUrl,
+  createLogger,
+  type SourceType,
+  sha256Hex,
+} from "@aharadar/shared";
 
 const log = createLogger({ component: "digest" });
 
-import type { IngestSourceFilter } from "./ingest";
 import {
-  rankCandidates,
-  parseSourceTypeWeights,
+  buildNoveltyFeature,
+  getNoveltyLookbackDays,
+  type NoveltyFeature,
+} from "../scoring/novelty";
+import type { IngestSourceFilter } from "./ingest";
+import { enrichTopCandidates } from "./llm_enrich";
+import {
   computeEffectiveSourceWeight,
+  parseSourceTypeWeights,
+  rankCandidates,
   type SignalCorroborationFeature,
   type UserPreferences,
 } from "./rank";
-import { enrichTopCandidates } from "./llm_enrich";
-import { getNoveltyLookbackDays, buildNoveltyFeature, type NoveltyFeature } from "../scoring/novelty";
 
 export type DigestMode = BudgetTier | "catch_up";
 
@@ -66,7 +76,8 @@ function clamp01(x: number): number {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -228,7 +239,7 @@ async function loadSignalCorroborationSet(params: {
        and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
      order by coalesce(ci.published_at, ci.fetched_at) desc
      limit 100`,
-    [params.userId, params.topicId, params.windowStart, params.windowEnd]
+    [params.userId, params.topicId, params.windowStart, params.windowEnd],
   );
 
   const urlHashes = new Set<string>();
@@ -312,7 +323,9 @@ async function computeNoveltyForCandidates(params: {
 
   // Compute lookback window boundary
   const windowStartDate = new Date(params.windowStart);
-  const lookbackStartDate = new Date(windowStartDate.getTime() - params.lookbackDays * 24 * 60 * 60 * 1000);
+  const lookbackStartDate = new Date(
+    windowStartDate.getTime() - params.lookbackDays * 24 * 60 * 60 * 1000,
+  );
   const lookbackStart = lookbackStartDate.toISOString();
 
   // For each candidate, find the max similarity to any historical embedding
@@ -339,7 +352,7 @@ async function computeNoveltyForCandidates(params: {
          from topic_history th
          order by th.vector <=> $5::vector
          limit 1`,
-        [params.userId, params.topicId, lookbackStart, params.windowStart, candidate.vectorText]
+        [params.userId, params.topicId, lookbackStart, params.windowStart, candidate.vectorText],
       );
 
       const maxSimilarity = result.rows[0]?.max_similarity ?? 0;
@@ -348,13 +361,16 @@ async function computeNoveltyForCandidates(params: {
         buildNoveltyFeature({
           lookbackDays: params.lookbackDays,
           maxSimilarity: Math.max(0, Math.min(1, maxSimilarity)),
-        })
+        }),
       );
     } catch (err) {
       // On error, skip novelty for this candidate (don't break the whole run)
       log.warn(
-        { candidateId: candidate.candidateId, err: err instanceof Error ? err.message : String(err) },
-        "Novelty query failed for candidate"
+        {
+          candidateId: candidate.candidateId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "Novelty query failed for candidate",
       );
     }
   }
@@ -368,7 +384,10 @@ function resolveBudgetTier(mode: DigestMode): BudgetTier {
 
 function resolveTriageLimit(params: { maxItems: number; candidateCount: number }): number {
   const envLimit = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_CALLS_PER_RUN);
-  const defaultLimit = Math.min(params.candidateCount, Math.max(params.maxItems, params.maxItems * 5));
+  const defaultLimit = Math.min(
+    params.candidateCount,
+    Math.max(params.maxItems, params.maxItems * 5),
+  );
   if (envLimit !== null) return Math.max(0, Math.min(envLimit, params.candidateCount));
   return defaultLimit;
 }
@@ -524,8 +543,11 @@ async function triageCandidates(params: {
       }
 
       log.warn(
-        { candidateId: candidate.candidateId, err: err instanceof Error ? err.message : String(err) },
-        "Triage failed for candidate"
+        {
+          candidateId: candidate.candidateId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "Triage failed for candidate",
       );
     }
   }
@@ -692,7 +714,7 @@ export async function persistDigestFromContentItems(params: {
      ) u
      order by u.candidate_at desc
      limit $5`,
-    filtered.args
+    filtered.args,
   );
 
   if (candidates.rows.length === 0) return null;

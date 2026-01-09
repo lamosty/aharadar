@@ -1,9 +1,4 @@
 import { loadDotEnvIfPresent } from "@aharadar/shared";
-
-import { askCommand } from "./commands/ask";
-import { inboxCommand } from "./commands/inbox";
-import { reviewCommand } from "./commands/review";
-import { searchCommand } from "./commands/search";
 import {
   adminBudgetsCommand,
   adminDigestNowCommand,
@@ -12,15 +7,19 @@ import {
   adminSignalDebugCommand,
   adminSignalExplodeBundlesCommand,
   adminSignalResetCursorCommand,
+  adminSourcesAddCommand,
+  adminSourcesListCommand,
   adminSourcesSetCadenceCommand,
   adminSourcesSetEnabledCommand,
   adminSourcesSetTopicCommand,
   adminSourcesSetWeightCommand,
-  adminSourcesAddCommand,
-  adminSourcesListCommand,
   adminTopicsAddCommand,
   adminTopicsListCommand,
 } from "./commands/admin";
+import { askCommand } from "./commands/ask";
+import { inboxCommand } from "./commands/inbox";
+import { reviewCommand } from "./commands/review";
+import { searchCommand } from "./commands/search";
 
 type CommandResult = void | Promise<void>;
 
@@ -33,28 +32,28 @@ function printHelp(): void {
   console.log("  review [--topic <id-or-name>]");
   console.log('  search [--topic <id-or-name>] [--limit N] "<query>"');
   console.log(
-    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+    "  admin:run-now [--topic <id-or-name>] [--max-items-per-source N] [--source-type <type>[,<type>...]] [--source-id <uuid>]",
   );
   console.log("  admin:embed-now [--topic <id-or-name>] [--max-items N]");
   console.log(
-    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]"
+    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]",
   );
   console.log("  admin:budgets");
   console.log("  admin:topics-list");
   console.log("  admin:topics-add --name <name> [--description <text>]");
   console.log("  admin:sources-list");
   console.log(
-    "  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]"
+    "  admin:sources-add --type <type> --name <name> [--topic <id-or-name>] [--config <json>] [--cursor <json>]",
   );
   console.log("  admin:sources-set-topic --source-id <uuid> --topic <id-or-name>");
   console.log(
-    "  admin:sources-set-cadence (--source-id <uuid> | --topic <name> --source-type <type>) (--every-minutes <int> | --clear) [--dry-run]"
+    "  admin:sources-set-cadence (--source-id <uuid> | --topic <name> --source-type <type>) (--every-minutes <int> | --clear) [--dry-run]",
   );
   console.log(
-    "  admin:sources-set-weight (--source-id <uuid> | --topic <name> --source-type <type>) --weight <number> [--dry-run]"
+    "  admin:sources-set-weight (--source-id <uuid> | --topic <name> --source-type <type>) --weight <number> [--dry-run]",
   );
   console.log(
-    "  admin:sources-set-enabled (--source-id <uuid> | --topic <name> --source-type <type>) --enabled <true|false> [--dry-run]"
+    "  admin:sources-set-enabled (--source-id <uuid> | --topic <name> --source-type <type>) --enabled <true|false> [--dry-run]",
   );
   console.log("  admin:signal-debug [--kind bundle] [--limit N] [--verbose] [--json] [--raw]");
   console.log("  admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]");

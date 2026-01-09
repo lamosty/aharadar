@@ -1,10 +1,7 @@
 "use client";
 
-import { use } from "react";
 import Link from "next/link";
-import { useTheme } from "@/components/ThemeProvider";
-import { t } from "@/lib/i18n";
-import { useRealDigestDetail, useRealFeedback, type DigestItem } from "@/lib/mock-data";
+import { use } from "react";
 import {
   DigestDetailCondensed,
   DigestDetailCondensedSkeleton,
@@ -13,6 +10,9 @@ import {
   DigestDetailTimeline,
   DigestDetailTimelineSkeleton,
 } from "@/components/DigestDetail";
+import { useTheme } from "@/components/ThemeProvider";
+import { t } from "@/lib/i18n";
+import { type DigestItem, useRealDigestDetail, useRealFeedback } from "@/lib/mock-data";
 import styles from "./page.module.css";
 
 interface DigestDetailPageProps {
@@ -27,7 +27,10 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   // Using real API feedback hook
   const { submitFeedback } = useRealFeedback();
 
-  const handleFeedback = async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
+  const handleFeedback = async (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => {
     await submitFeedback(contentItemId, id, action);
   };
 
@@ -51,7 +54,11 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
         <div className={styles.errorState}>
           <ErrorIcon />
           <h2 className={styles.errorTitle}>{t("digests.detail.error")}</h2>
-          <button type="button" className={`btn btn-primary ${styles.retryButton}`} onClick={refetch}>
+          <button
+            type="button"
+            className={`btn btn-primary ${styles.retryButton}`}
+            onClick={refetch}
+          >
             {t("common.retry")}
           </button>
         </div>
@@ -84,7 +91,9 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
                 {digest.itemCount}{" "}
                 {digest.itemCount === 1 ? t("digests.detail.item") : t("digests.detail.items")}
               </span>
-              <span className={styles.createdAt}>Created {formatRelativeTime(digest.createdAt)}</span>
+              <span className={styles.createdAt}>
+                Created {formatRelativeTime(digest.createdAt)}
+              </span>
             </div>
           </header>
 
@@ -93,7 +102,12 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
               {t("digests.detail.rankedItems")}
             </h2>
 
-            <DigestDetail layout={layout} items={digest.items} digestId={id} onFeedback={handleFeedback} />
+            <DigestDetail
+              layout={layout}
+              items={digest.items}
+              digestId={id}
+              onFeedback={handleFeedback}
+            />
           </section>
         </>
       )}
@@ -105,7 +119,10 @@ interface DigestDetailProps {
   layout: "condensed" | "reader" | "timeline";
   items: DigestItem[];
   digestId: string;
-  onFeedback: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function DigestDetail({ layout, items, digestId, onFeedback }: DigestDetailProps) {

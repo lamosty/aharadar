@@ -1,7 +1,7 @@
 "use client";
 
 import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType } from "@/lib/api";
-import { type Layout } from "@/lib/theme";
+import type { Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
 
 interface FeedFilterBarProps {

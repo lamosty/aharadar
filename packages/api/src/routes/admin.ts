@@ -1,10 +1,10 @@
-import type { FastifyInstance } from "fastify";
-import { RUN_WINDOW_JOB_NAME, type ProviderOverride } from "@aharadar/queues";
+import type { LlmProvider, LlmSettingsUpdate, SourceRow } from "@aharadar/db";
 import { computeCreditsStatus } from "@aharadar/pipeline";
-import type { SourceRow, LlmProvider, LlmSettingsUpdate } from "@aharadar/db";
+import { type ProviderOverride, RUN_WINDOW_JOB_NAME } from "@aharadar/queues";
+import type { FastifyInstance } from "fastify";
+import { getUserId } from "../auth/session.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
 import { getPipelineQueue } from "../lib/queue.js";
-import { getUserId } from "../auth/session.js";
 
 type RunMode = "low" | "normal" | "high" | "catch_up";
 const VALID_MODES: RunMode[] = ["low", "normal", "high", "catch_up"];
@@ -12,7 +12,7 @@ const VALID_MODES: RunMode[] = ["low", "normal", "high", "catch_up"];
 function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const d = new Date(value);
-  return !isNaN(d.getTime());
+  return !Number.isNaN(d.getTime());
 }
 
 function isValidMode(value: unknown): value is RunMode {
@@ -133,7 +133,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Validate config (optional, must be object if provided)
-    if (config !== undefined && (typeof config !== "object" || config === null || Array.isArray(config))) {
+    if (
+      config !== undefined &&
+      (typeof config !== "object" || config === null || Array.isArray(config))
+    ) {
       return reply.code(400).send({
         ok: false,
         error: {
@@ -222,7 +225,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { windowStart, windowEnd, mode, topicId, providerOverride } = body as Record<string, unknown>;
+    const { windowStart, windowEnd, mode, topicId, providerOverride } = body as Record<
+      string,
+      unknown
+    >;
 
     // Validate topicId if provided
     if (topicId !== undefined && !isValidUuid(topicId)) {
@@ -361,7 +367,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         jobId,
         removeOnComplete: 100,
         removeOnFail: 50,
-      }
+      },
     );
 
     return { ok: true, jobId };
@@ -897,7 +903,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       updateParams.claude_subscription_enabled = claudeSubscriptionEnabled as boolean;
     if (claudeTriageThinking !== undefined)
       updateParams.claude_triage_thinking = claudeTriageThinking as boolean;
-    if (claudeCallsPerHour !== undefined) updateParams.claude_calls_per_hour = claudeCallsPerHour as number;
+    if (claudeCallsPerHour !== undefined)
+      updateParams.claude_calls_per_hour = claudeCallsPerHour as number;
 
     const db = getDb();
     const settings = await db.llmSettings.update(updateParams);

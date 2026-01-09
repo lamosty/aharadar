@@ -30,14 +30,18 @@ function parseIntEnv(name: string, value: string | undefined): number {
 
 export function loadRuntimeEnv(env: NodeJS.ProcessEnv = process.env): RuntimeEnv {
   const appEnvRaw = env.APP_ENV ?? "local";
-  const appEnv = appEnvRaw === "prod" || appEnvRaw === "dev" || appEnvRaw === "local" ? appEnvRaw : "local";
+  const appEnv =
+    appEnvRaw === "prod" || appEnvRaw === "dev" || appEnvRaw === "local" ? appEnvRaw : "local";
 
   const tierRaw = (env.DEFAULT_TIER ?? "normal").toLowerCase();
-  const defaultTier = tierRaw === "low" || tierRaw === "high" || tierRaw === "normal" ? tierRaw : "normal";
+  const defaultTier =
+    tierRaw === "low" || tierRaw === "high" || tierRaw === "normal" ? tierRaw : "normal";
 
   const dailyThrottleRaw = env.DAILY_THROTTLE_CREDITS;
   const dailyThrottleCredits =
-    dailyThrottleRaw && dailyThrottleRaw.length > 0 ? Number.parseInt(dailyThrottleRaw, 10) : undefined;
+    dailyThrottleRaw && dailyThrottleRaw.length > 0
+      ? Number.parseInt(dailyThrottleRaw, 10)
+      : undefined;
 
   return {
     appEnv,

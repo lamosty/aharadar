@@ -1,7 +1,8 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -27,7 +28,10 @@ function ensureRedditPermalink(permalink: string | null): string | null {
   return `https://www.reddit.com${permalink}`;
 }
 
-export async function normalizeReddit(raw: unknown, _params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeReddit(
+  raw: unknown,
+  _params: FetchParams,
+): Promise<ContentItemDraft> {
   const post = asRecord(raw);
 
   const title = asString(post.title);

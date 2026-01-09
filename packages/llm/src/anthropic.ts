@@ -18,7 +18,7 @@ type LlmProviderError = Error & {
 export async function callAnthropicApi(
   ref: ModelRef,
   request: LlmRequest,
-  config: AnthropicConfig
+  config: AnthropicConfig,
 ): Promise<LlmCallResult> {
   const client = new Anthropic({ apiKey: config.apiKey });
 
@@ -47,7 +47,9 @@ export async function callAnthropicApi(
   } catch (error) {
     // Re-throw with enriched error info
     if (error instanceof Anthropic.APIError) {
-      const err: LlmProviderError = new Error(`Anthropic API error (${error.status}): ${error.message}`);
+      const err: LlmProviderError = new Error(
+        `Anthropic API error (${error.status}): ${error.message}`,
+      );
       err.statusCode = error.status;
       err.endpoint = "https://api.anthropic.com/v1/messages";
       err.model = ref.model;

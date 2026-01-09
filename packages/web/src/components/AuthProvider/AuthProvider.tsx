@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { getDevSettings } from "@/lib/api";
 
 export type UserRole = "admin" | "user";
@@ -40,10 +40,10 @@ function getBypassAuth(): User | null {
       acc[key] = val;
       return acc;
     },
-    {} as Record<string, string>
+    {} as Record<string, string>,
   );
 
-  const bypass = cookies["BYPASS_AUTH"];
+  const bypass = cookies.BYPASS_AUTH;
   if (bypass === "admin") {
     return {
       id: "test-user-id",

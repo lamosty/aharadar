@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { t } from "@/lib/i18n";
 import { AccountSettings } from "@/components/AccountSettings";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { ApiKeysSettings } from "@/components/ApiKeysSettings";
 import { DevSettingsForm } from "@/components/DevSettings";
 import { ExperimentalFeaturesForm } from "@/components/ExperimentalFeatures";
-import { ApiKeysSettings } from "@/components/ApiKeysSettings";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {

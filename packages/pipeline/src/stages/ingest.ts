@@ -1,13 +1,13 @@
+import { getConnector } from "@aharadar/connectors";
 import type { Db, SourceRow } from "@aharadar/db";
 import {
-  canonicalizeUrl,
-  sha256Hex,
-  createLogger,
   type ContentItemDraft,
+  canonicalizeUrl,
+  createLogger,
   type FetchParams,
   type ProviderCallDraft,
+  sha256Hex,
 } from "@aharadar/shared";
-import { getConnector } from "@aharadar/connectors";
 
 const log = createLogger({ component: "ingest" });
 
@@ -57,13 +57,13 @@ export function parseLastFetchAt(cursor: Record<string, unknown>): Date | null {
   const raw = cursor.last_fetch_at;
   if (typeof raw !== "string") return null;
   const d = new Date(raw);
-  return isNaN(d.getTime()) ? null : d;
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export function isSourceDue(
   cadence: CadenceConfig | null,
   lastFetchAt: Date | null,
-  windowEnd: Date
+  windowEnd: Date,
 ): boolean {
   // No cadence = always due
   if (!cadence) return true;
@@ -89,7 +89,8 @@ export interface IngestRunResult {
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -139,7 +140,7 @@ function buildFetchParams(
   userId: string,
   windowStart: string,
   windowEnd: string,
-  limits: IngestLimits
+  limits: IngestLimits,
 ): FetchParams {
   return {
     userId,
@@ -265,7 +266,7 @@ export async function ingestEnabledSources(params: {
       params.userId,
       params.windowStart,
       params.windowEnd,
-      params.limits
+      params.limits,
     );
     const connector = getConnector(source.type);
 
@@ -352,7 +353,10 @@ export async function ingestEnabledSources(params: {
 
           // Record provenance / topic membership via (content_item, source).
           try {
-            await params.db.contentItemSources.upsert({ contentItemId: upsertRes.id, sourceId: source.id });
+            await params.db.contentItemSources.upsert({
+              contentItemId: upsertRes.id,
+              sourceId: source.id,
+            });
           } catch (err) {
             // This mapping is helpful for topic scoping, but failures should not abort ingest.
             baseResult.errors += 1;
@@ -412,7 +416,6 @@ export async function ingestEnabledSources(params: {
       });
 
       perSource.push(baseResult);
-      continue;
     }
   }
 

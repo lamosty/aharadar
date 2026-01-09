@@ -41,12 +41,18 @@ export async function computeCreditsStatus(params: {
   const windowEndDate = new Date(params.windowEnd);
 
   // Compute UTC month boundaries
-  const monthStart = new Date(Date.UTC(windowEndDate.getUTCFullYear(), windowEndDate.getUTCMonth(), 1));
+  const monthStart = new Date(
+    Date.UTC(windowEndDate.getUTCFullYear(), windowEndDate.getUTCMonth(), 1),
+  );
   const monthStartIso = monthStart.toISOString();
 
   // Compute UTC day boundaries
   const dayStart = new Date(
-    Date.UTC(windowEndDate.getUTCFullYear(), windowEndDate.getUTCMonth(), windowEndDate.getUTCDate())
+    Date.UTC(
+      windowEndDate.getUTCFullYear(),
+      windowEndDate.getUTCMonth(),
+      windowEndDate.getUTCDate(),
+    ),
   );
   const dayStartIso = dayStart.toISOString();
 
@@ -57,7 +63,7 @@ export async function computeCreditsStatus(params: {
      where user_id = $1
        and status = 'ok'
        and started_at >= $2::timestamptz`,
-    [params.userId, monthStartIso]
+    [params.userId, monthStartIso],
   );
   const monthlyUsed = Number.parseFloat(monthlyResult.rows[0]?.total ?? "0") || 0;
 
@@ -68,7 +74,7 @@ export async function computeCreditsStatus(params: {
      where user_id = $1
        and status = 'ok'
        and started_at >= $2::timestamptz`,
-    [params.userId, dayStartIso]
+    [params.userId, dayStartIso],
   );
   const dailyUsed = Number.parseFloat(dailyResult.rows[0]?.total ?? "0") || 0;
 
@@ -130,7 +136,7 @@ export function printCreditsWarning(status: CreditsStatus): boolean {
           dailyLimit: status.dailyLimit,
           dailyPct,
         },
-        "Credits exhausted; paid calls disabled, falling back to heuristic-only digest"
+        "Credits exhausted; paid calls disabled, falling back to heuristic-only digest",
       );
     } else {
       log.warn(
@@ -142,7 +148,7 @@ export function printCreditsWarning(status: CreditsStatus): boolean {
           dailyLimit: status.dailyLimit,
           dailyPct,
         },
-        "Credits critical (>=95%)"
+        "Credits critical (>=95%)",
       );
     }
   } else {
@@ -155,7 +161,7 @@ export function printCreditsWarning(status: CreditsStatus): boolean {
         dailyLimit: status.dailyLimit,
         dailyPct,
       },
-      "Credits approaching limit (>=80%)"
+      "Credits approaching limit (>=80%)",
     );
   }
 

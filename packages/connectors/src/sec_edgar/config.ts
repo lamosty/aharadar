@@ -11,7 +11,7 @@ export interface SecEdgarSourceConfig {
   max_filings_per_fetch?: number;
 }
 
-function asString(value: unknown): string {
+function _asString(value: unknown): string {
   if (typeof value === "string") return value.trim().toUpperCase();
   return "";
 }
@@ -48,11 +48,14 @@ export function parseSecEdgarSourceConfig(config: Record<string, unknown>): SecE
 
   const minValue = Math.max(
     0,
-    Math.floor(asNumber(config.min_transaction_value ?? config.minTransactionValue, 0))
+    Math.floor(asNumber(config.min_transaction_value ?? config.minTransactionValue, 0)),
   );
   const maxFilings = Math.max(
     1,
-    Math.min(100, Math.floor(asNumber(config.max_filings_per_fetch ?? config.maxFilingPerFetch, 50)))
+    Math.min(
+      100,
+      Math.floor(asNumber(config.max_filings_per_fetch ?? config.maxFilingPerFetch, 50)),
+    ),
   );
 
   return {

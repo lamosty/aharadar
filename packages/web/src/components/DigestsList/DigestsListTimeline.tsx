@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type DigestSummary } from "@/lib/mock-data";
 import { t } from "@/lib/i18n";
+import type { DigestSummary } from "@/lib/mock-data";
 import styles from "./DigestsListTimeline.module.css";
 
 interface DigestsListTimelineProps {
@@ -74,7 +74,7 @@ export function DigestsListTimeline({ digests }: DigestsListTimelineProps) {
             <div className={styles.dateLine} aria-hidden="true" />
           </header>
 
-          <ol className={styles.timeline} role="list">
+          <ol className={styles.timeline}>
             {dateDigests.map((digest, index) => (
               <li key={digest.id} className={styles.timelineItem}>
                 <div className={styles.timelineDot} aria-hidden="true">
@@ -135,7 +135,7 @@ export function DigestsListTimelineSkeleton() {
           <div className={styles.dateLine} aria-hidden="true" />
         </header>
 
-        <ol className={styles.timeline} role="list" aria-busy="true">
+        <ol className={styles.timeline} aria-busy="true">
           {Array.from({ length: 3 }).map((_, i) => (
             <li key={i} className={styles.timelineItem}>
               <div className={styles.timelineDot} aria-hidden="true">

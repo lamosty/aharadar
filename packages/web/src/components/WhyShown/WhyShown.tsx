@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useId } from "react";
-import { type TriageFeatures } from "@/lib/mock-data";
-import { type ClusterItem } from "@/lib/api";
-import { t, type MessageKey } from "@/lib/i18n";
+import { useId, useState } from "react";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import type { ClusterItem } from "@/lib/api";
+import { type MessageKey, t } from "@/lib/i18n";
+import type { TriageFeatures } from "@/lib/mock-data";
 import styles from "./WhyShown.module.css";
 
 interface WhyShownProps {
@@ -41,7 +41,10 @@ export function WhyShown({
   // Show unavailable message when no features (triage not run due to budget or config)
   if (!hasFeatures) {
     return (
-      <div className={`${styles.container} ${compact ? styles.compact : ""}`} data-testid="why-shown">
+      <div
+        className={`${styles.container} ${compact ? styles.compact : ""}`}
+        data-testid="why-shown"
+      >
         <div className={styles.unavailable}>
           <span className={styles.unavailableTitle}>{t("digests.whyShown.unavailable")}</span>
           <p className={styles.unavailableText}>{t("digests.whyShown.unavailableReason")}</p>
@@ -129,7 +132,9 @@ function WhyShownContent({
           <div className={styles.clusterList}>
             {clusterItems.map((item) => (
               <div key={item.id} className={styles.clusterItem}>
-                <span className={styles.clusterSourceBadge}>{formatSourceType(item.sourceType)}</span>
+                <span className={styles.clusterSourceBadge}>
+                  {formatSourceType(item.sourceType)}
+                </span>
                 <div className={styles.clusterItemContent}>
                   {item.url ? (
                     <a
@@ -145,10 +150,14 @@ function WhyShownContent({
                       {item.title || t("digests.whyShown.untitled")}
                     </span>
                   )}
-                  {item.author && <span className={styles.clusterItemAuthor}>by {item.author}</span>}
+                  {item.author && (
+                    <span className={styles.clusterItemAuthor}>by {item.author}</span>
+                  )}
                 </div>
                 {typeof item.similarity === "number" && (
-                  <span className={styles.clusterSimilarity}>{Math.round(item.similarity * 100)}%</span>
+                  <span className={styles.clusterSimilarity}>
+                    {Math.round(item.similarity * 100)}%
+                  </span>
                 )}
               </div>
             ))}
@@ -211,7 +220,10 @@ function WhyShownContent({
       )}
 
       {features.system_features?.source_weight_v1 && (
-        <FeatureSection title={t("digests.whyShown.sourceWeight")} tooltipKey="tooltips.sourceWeight">
+        <FeatureSection
+          title={t("digests.whyShown.sourceWeight")}
+          tooltipKey="tooltips.sourceWeight"
+        >
           <div className={styles.metaGrid}>
             {features.system_features.source_weight_v1.source_name && (
               <div className={styles.metaItem}>
@@ -261,7 +273,10 @@ function WhyShownContent({
       )}
 
       {features.system_features?.user_preference_v1 && (
-        <FeatureSection title={t("digests.whyShown.userPreference")} tooltipKey="tooltips.userPreferences">
+        <FeatureSection
+          title={t("digests.whyShown.userPreference")}
+          tooltipKey="tooltips.userPreferences"
+        >
           <div className={styles.metaGrid}>
             {features.system_features.user_preference_v1.source_type && (
               <div className={styles.metaItem}>
@@ -274,7 +289,9 @@ function WhyShownContent({
             {typeof features.system_features.user_preference_v1.source_type_weight === "number" &&
               features.system_features.user_preference_v1.source_type_weight !== 1.0 && (
                 <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{t("digests.whyShown.userPrefSourceTypeWeight")}</span>
+                  <span className={styles.metaLabel}>
+                    {t("digests.whyShown.userPrefSourceTypeWeight")}
+                  </span>
                   <span className={styles.metaValue}>
                     {features.system_features.user_preference_v1.source_type_weight.toFixed(1)}x
                   </span>
@@ -283,13 +300,17 @@ function WhyShownContent({
             {features.system_features.user_preference_v1.author && (
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>{t("digests.whyShown.userPrefAuthor")}</span>
-                <span className={styles.metaValue}>{features.system_features.user_preference_v1.author}</span>
+                <span className={styles.metaValue}>
+                  {features.system_features.user_preference_v1.author}
+                </span>
               </div>
             )}
             {typeof features.system_features.user_preference_v1.author_weight === "number" &&
               features.system_features.user_preference_v1.author_weight !== 1.0 && (
                 <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{t("digests.whyShown.userPrefAuthorWeight")}</span>
+                  <span className={styles.metaLabel}>
+                    {t("digests.whyShown.userPrefAuthorWeight")}
+                  </span>
                   <span className={styles.metaValue}>
                     {features.system_features.user_preference_v1.author_weight.toFixed(1)}x
                   </span>
@@ -298,7 +319,9 @@ function WhyShownContent({
             {typeof features.system_features.user_preference_v1.effective_weight === "number" &&
               features.system_features.user_preference_v1.effective_weight !== 1.0 && (
                 <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{t("digests.whyShown.userPrefEffectiveWeight")}</span>
+                  <span className={styles.metaLabel}>
+                    {t("digests.whyShown.userPrefEffectiveWeight")}
+                  </span>
                   <span className={styles.metaValue}>
                     {features.system_features.user_preference_v1.effective_weight.toFixed(1)}x
                   </span>
@@ -326,7 +349,7 @@ function WhyShownContent({
 
 function truncateUrl(url: string, maxLength = 50): string {
   if (url.length <= maxLength) return url;
-  return url.substring(0, maxLength - 3) + "...";
+  return `${url.substring(0, maxLength - 3)}...`;
 }
 
 function ChevronIcon() {

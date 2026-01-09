@@ -1,8 +1,8 @@
 "use client";
 
-import type { RssConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
+import type { RssConfig, SourceConfigFormProps } from "./types";
 
 export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps<RssConfig>) {
   const handleChange = <K extends keyof RssConfig>(key: K, val: RssConfig[K]) => {
@@ -23,8 +23,8 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
 
       <div className={styles.helpBox}>
         <p>
-          Enter the URL of an RSS or Atom feed. Most blogs and news sites provide RSS feeds - look for the RSS
-          icon or check <code>/feed</code> or <code>/rss</code> paths.
+          Enter the URL of an RSS or Atom feed. Most blogs and news sites provide RSS feeds - look
+          for the RSS icon or check <code>/feed</code> or <code>/rss</code> paths.
         </p>
       </div>
 
@@ -94,7 +94,10 @@ export function RssConfigForm({ value, onChange, errors }: SourceConfigFormProps
                 max={200}
                 value={value.maxItemCount ?? ""}
                 onChange={(e) =>
-                  handleChange("maxItemCount", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "maxItemCount",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
                 }
                 placeholder="50"
                 className={styles.numberInput}

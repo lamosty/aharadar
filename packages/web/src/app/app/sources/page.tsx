@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { t } from "@/lib/i18n";
-import { useAdminSources } from "@/lib/hooks";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { useAdminSources } from "@/lib/hooks";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 export default function SourcesPage() {
@@ -92,7 +92,9 @@ export default function SourcesPage() {
                           Weight
                           <HelpTooltip content={t("tooltips.sourcesWeight")} />
                         </span>
-                        <span className={styles.statValue}>{source.config.weight?.toFixed(1) ?? "1.0"}</span>
+                        <span className={styles.statValue}>
+                          {source.config.weight?.toFixed(1) ?? "1.0"}
+                        </span>
                       </div>
                     </div>
                   </div>

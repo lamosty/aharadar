@@ -57,7 +57,9 @@ interface MarketSentimentCursorJson {
 function parseCursor(cursor: Record<string, unknown>): MarketSentimentCursorJson {
   const lastFetchAt = typeof cursor.last_fetch_at === "string" ? cursor.last_fetch_at : undefined;
   const tickerScores =
-    cursor.ticker_scores && typeof cursor.ticker_scores === "object" && !Array.isArray(cursor.ticker_scores)
+    cursor.ticker_scores &&
+    typeof cursor.ticker_scores === "object" &&
+    !Array.isArray(cursor.ticker_scores)
       ? (cursor.ticker_scores as MarketSentimentCursorJson["ticker_scores"])
       : undefined;
 
@@ -79,7 +81,7 @@ function delay(ms: number): Promise<void> {
  */
 async function fetchTickerSentiment(
   apiKey: string,
-  ticker: string
+  ticker: string,
 ): Promise<FinnhubSentimentResponse | null> {
   const url = `https://finnhub.io/api/v1/stock/social-sentiment?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`;
 
@@ -112,7 +114,7 @@ async function fetchTickerSentiment(
     // Retry on rate limit or server errors
     if (res.status === 429 || res.status >= 500) {
       if (retries < maxRetries) {
-        const delayMs = baseDelayMs * Math.pow(2, retries);
+        const delayMs = baseDelayMs * 2 ** retries;
         await delay(delayMs);
         retries++;
         continue;
@@ -157,7 +159,7 @@ export function isExtremeSentiment(score: number, threshold: number): boolean {
 export function processSentimentData(
   response: FinnhubSentimentResponse,
   extremeThreshold: number,
-  previousScore: number | null
+  previousScore: number | null,
 ): AggregatedSentiment | null {
   const data = response.data;
   if (!data || data.length === 0) {
@@ -244,7 +246,9 @@ export async function fetchMarketSentiment(params: FetchParams): Promise<FetchRe
 
   const previousScores = cursorIn.ticker_scores ?? {};
   const rawItems: AggregatedSentiment[] = [];
-  const newTickerScores: NonNullable<MarketSentimentCursorJson["ticker_scores"]> = { ...previousScores };
+  const newTickerScores: NonNullable<MarketSentimentCursorJson["ticker_scores"]> = {
+    ...previousScores,
+  };
 
   // Limit tickers to respect rate limits
   const tickersToProcess = config.tickers.slice(0, config.max_tickers_per_fetch ?? 10);
@@ -262,7 +266,11 @@ export async function fetchMarketSentiment(params: FetchParams): Promise<FetchRe
       const previousData = previousScores[ticker];
       const previousScore = previousData?.score ?? null;
 
-      const sentiment = processSentimentData(response, config.extreme_threshold ?? 0.8, previousScore);
+      const sentiment = processSentimentData(
+        response,
+        config.extreme_threshold ?? 0.8,
+        previousScore,
+      );
 
       if (!sentiment) {
         continue;

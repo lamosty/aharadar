@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { CongressTradingConfig, SourceConfigFormProps } from "./types";
+import { ApiKeyBanner, ApiKeyGuidance } from "@/components/ApiKeyGuidance";
 import { HelpTooltip } from "@/components/HelpTooltip";
-import { ApiKeyGuidance, ApiKeyBanner } from "@/components/ApiKeyGuidance";
 import styles from "./SourceConfigForms.module.css";
+import type { CongressTradingConfig, SourceConfigFormProps } from "./types";
 
 export function CongressTradingConfigForm({
   value,
@@ -12,7 +12,10 @@ export function CongressTradingConfigForm({
   errors,
 }: SourceConfigFormProps<CongressTradingConfig>) {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const handleChange = <K extends keyof CongressTradingConfig>(key: K, val: CongressTradingConfig[K]) => {
+  const handleChange = <K extends keyof CongressTradingConfig>(
+    key: K,
+    val: CongressTradingConfig[K],
+  ) => {
     onChange({ ...value, [key]: val });
   };
 
@@ -23,7 +26,7 @@ export function CongressTradingConfigForm({
     } else {
       handleChange(
         "chambers",
-        current.filter((c) => c !== chamber)
+        current.filter((c) => c !== chamber),
       );
     }
   };
@@ -35,7 +38,7 @@ export function CongressTradingConfigForm({
     } else {
       handleChange(
         "transaction_types",
-        current.filter((t) => t !== type)
+        current.filter((t) => t !== type),
       );
     }
   };
@@ -70,12 +73,16 @@ export function CongressTradingConfigForm({
 
       <ApiKeyBanner provider="quiver" onSetupClick={() => setShowApiKeyModal(true)} />
 
-      <ApiKeyGuidance provider="quiver" isOpen={showApiKeyModal} onClose={() => setShowApiKeyModal(false)} />
+      <ApiKeyGuidance
+        provider="quiver"
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+      />
 
       <div className={styles.helpBox}>
         <p>
-          Track stock trades disclosed by members of the U.S. Congress. Congress members must disclose trades
-          within 45 days. Data provided by Quiver Quantitative API.
+          Track stock trades disclosed by members of the U.S. Congress. Congress members must
+          disclose trades within 45 days. Data provided by Quiver Quantitative API.
         </p>
       </div>
 
@@ -89,8 +96,8 @@ export function CongressTradingConfigForm({
               title="Filter by Chamber"
               content={
                 <p>
-                  Filter trades by House of Representatives, Senate, or both. Leave unchecked for all
-                  chambers.
+                  Filter trades by House of Representatives, Senate, or both. Leave unchecked for
+                  all chambers.
                 </p>
               }
             />
@@ -128,7 +135,11 @@ export function CongressTradingConfigForm({
             Transaction Type
             <HelpTooltip
               title="Filter by Transaction Type"
-              content={<p>Filter by purchases, sales, or both. Leave unchecked for all transaction types.</p>}
+              content={
+                <p>
+                  Filter by purchases, sales, or both. Leave unchecked for all transaction types.
+                </p>
+              }
             />
           </label>
           <div className={styles.checkboxGroup}>
@@ -166,8 +177,8 @@ export function CongressTradingConfigForm({
               title="Filter by Politician"
               content={
                 <p>
-                  Comma-separated list of politician names to filter (e.g., Nancy Pelosi, Dan Crenshaw).
-                  Partial matching is supported. Leave empty for all politicians.
+                  Comma-separated list of politician names to filter (e.g., Nancy Pelosi, Dan
+                  Crenshaw). Partial matching is supported. Leave empty for all politicians.
                 </p>
               }
             />
@@ -189,8 +200,8 @@ export function CongressTradingConfigForm({
               title="Filter by Stock Tickers"
               content={
                 <p>
-                  Comma-separated list of stock tickers to filter (e.g., AAPL, NVDA, GOOGL). Leave empty for
-                  all tickers.
+                  Comma-separated list of stock tickers to filter (e.g., AAPL, NVDA, GOOGL). Leave
+                  empty for all tickers.
                 </p>
               }
             />
@@ -216,8 +227,8 @@ export function CongressTradingConfigForm({
                     <>
                       <p>Filter trades by minimum transaction amount in USD.</p>
                       <p>
-                        Congress disclosures use ranges (e.g., $15,001 - $50,000). This filters by the lower
-                        bound.
+                        Congress disclosures use ranges (e.g., $15,001 - $50,000). This filters by
+                        the lower bound.
                       </p>
                       <p>Set to 15000 to exclude small trades.</p>
                     </>
@@ -230,7 +241,10 @@ export function CongressTradingConfigForm({
                 min={0}
                 value={value.min_amount ?? ""}
                 onChange={(e) =>
-                  handleChange("min_amount", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "min_amount",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
                 }
                 placeholder="0"
                 className={styles.numberInput}
@@ -260,7 +274,7 @@ export function CongressTradingConfigForm({
                 onChange={(e) =>
                   handleChange(
                     "max_trades_per_fetch",
-                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
                   )
                 }
                 placeholder="50"

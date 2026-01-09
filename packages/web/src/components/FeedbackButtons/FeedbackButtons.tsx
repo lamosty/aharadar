@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { t, type MessageKey } from "@/lib/i18n";
+import { useCallback, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
+import { type MessageKey, t } from "@/lib/i18n";
 import styles from "./FeedbackButtons.module.css";
 
 type FeedbackAction = "like" | "dislike" | "save" | "skip";
@@ -25,7 +25,7 @@ export function FeedbackButtons({
 }: FeedbackButtonsProps) {
   const { addToast } = useToast();
   const [optimisticFeedback, setOptimisticFeedback] = useState<FeedbackAction | null | undefined>(
-    currentFeedback
+    currentFeedback,
   );
   const [isPending, setIsPending] = useState(false);
 
@@ -53,7 +53,7 @@ export function FeedbackButtons({
         setIsPending(false);
       }
     },
-    [isPending, optimisticFeedback, onFeedback, addToast]
+    [isPending, optimisticFeedback, onFeedback, addToast],
   );
 
   const isCompact = variant === "compact";
@@ -142,7 +142,9 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
         data-testid={`feedback-${action}`}
       >
         <Icon filled={isActive} />
-        {!compact && <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>}
+        {!compact && (
+          <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>
+        )}
       </button>
     </Tooltip>
   );

@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
 import {
-  getExperimentalFeatures,
-  toggleExperimentalFeature,
-  resetExperimentalFeatures,
   EXPERIMENTAL_FEATURES,
   type ExperimentalFeatures,
+  getExperimentalFeatures,
+  resetExperimentalFeatures,
+  toggleExperimentalFeature,
 } from "@/lib/experimental";
-import { useToast } from "@/components/Toast";
 import { t } from "@/lib/i18n";
 import styles from "./ExperimentalFeatures.module.css";
 
@@ -34,7 +34,7 @@ export function ExperimentalFeaturesForm() {
       const status = updated[key] ? "enabled" : "disabled";
       addToast(`${label} ${status}`, updated[key] ? "success" : "info");
     },
-    [features, addToast]
+    [features, addToast],
   );
 
   const handleResetAll = useCallback(() => {
@@ -59,7 +59,9 @@ export function ExperimentalFeaturesForm() {
           <div key={feature.key} className={styles.featureCard}>
             <div className={styles.featureHeader}>
               <div className={styles.featureInfo}>
-                <span className={styles.featureName}>{t(feature.labelKey as Parameters<typeof t>[0])}</span>
+                <span className={styles.featureName}>
+                  {t(feature.labelKey as Parameters<typeof t>[0])}
+                </span>
                 {feature.href && (
                   <Link href={feature.href} className={styles.featureLink}>
                     Open →

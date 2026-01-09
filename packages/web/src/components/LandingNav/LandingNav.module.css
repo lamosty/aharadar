@@ -1,0 +1,138 @@
+/* Landing navigation container */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Loading state container */
+.loadingState {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ctaSkeleton {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .ctaSkeleton {
+    display: block;
+  }
+}
+
+/* Login link (unauthenticated state) */
+.loginLink {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.loginLink:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-hover, var(--color-surface));
+}
+
+.loginLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* User avatar */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Quick links container - hidden on mobile */
+.quickLinks {
+  display: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@media (min-width: 640px) {
+  .quickLinks {
+    display: flex;
+  }
+}
+
+/* Individual quick link */
+.quickLink {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.quickLink:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-hover, var(--color-surface));
+}
+
+.quickLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Primary CTA button */
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-on-primary);
+  background-color: var(--color-primary);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.ctaButton:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.ctaButton:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.ctaButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ctaButton:hover {
+    transform: none;
+  }
+}

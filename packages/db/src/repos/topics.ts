@@ -47,7 +47,7 @@ export function createTopicsRepo(db: Queryable) {
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC`,
-        [userId]
+        [userId],
       );
       return res.rows;
     },
@@ -60,7 +60,7 @@ export function createTopicsRepo(db: Queryable) {
          FROM topics
          WHERE id = $1
          LIMIT 1`,
-        [topicId]
+        [topicId],
       );
       return res.rows[0] ?? null;
     },
@@ -73,7 +73,7 @@ export function createTopicsRepo(db: Queryable) {
          FROM topics
          WHERE user_id = $1 AND name = $2
          LIMIT 1`,
-        [params.userId, params.name]
+        [params.userId, params.name],
       );
       return res.rows[0] ?? null;
     },
@@ -87,7 +87,11 @@ export function createTopicsRepo(db: Queryable) {
     }): Promise<Topic> {
       // If viewingProfile is set but decayHours is not, derive from profile
       let effectiveDecayHours = params.decayHours;
-      if (params.viewingProfile && params.viewingProfile !== "custom" && effectiveDecayHours === undefined) {
+      if (
+        params.viewingProfile &&
+        params.viewingProfile !== "custom" &&
+        effectiveDecayHours === undefined
+      ) {
         effectiveDecayHours = PROFILE_DECAY_HOURS[params.viewingProfile];
       }
 
@@ -103,7 +107,7 @@ export function createTopicsRepo(db: Queryable) {
           params.description ?? null,
           params.viewingProfile ?? null,
           effectiveDecayHours ?? null,
-        ]
+        ],
       );
       const row = res.rows[0];
       if (!row) throw new Error("topics.create failed: no row returned");
@@ -117,7 +121,7 @@ export function createTopicsRepo(db: Queryable) {
          on conflict (user_id, name)
          do update set name = excluded.name
          returning id, (xmax = 0) as inserted`,
-        [userId]
+        [userId],
       );
       const row = res.rows[0];
       if (!row) throw new Error("topics.getOrCreateDefaultForUser failed: no row returned");
@@ -137,7 +141,7 @@ export function createTopicsRepo(db: Queryable) {
          WHERE user_id = $1
          ORDER BY created_at ASC
          LIMIT 1`,
-        [userId]
+        [userId],
       );
       const row = res.rows[0];
       return row ? rowToTopic(row) : null;
@@ -148,7 +152,7 @@ export function createTopicsRepo(db: Queryable) {
      */
     async updateViewingProfile(
       id: string,
-      updates: { viewingProfile?: ViewingProfile; decayHours?: number }
+      updates: { viewingProfile?: ViewingProfile; decayHours?: number },
     ): Promise<Topic> {
       const { viewingProfile, decayHours } = updates;
 
@@ -192,7 +196,7 @@ export function createTopicsRepo(db: Queryable) {
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at`,
-        values
+        values,
       );
 
       const row = res.rows[0];
@@ -211,7 +215,7 @@ export function createTopicsRepo(db: Queryable) {
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at`,
-        [id]
+        [id],
       );
 
       const row = res.rows[0];
@@ -222,7 +226,10 @@ export function createTopicsRepo(db: Queryable) {
     /**
      * Update topic name and/or description.
      */
-    async update(id: string, updates: { name?: string; description?: string | null }): Promise<Topic> {
+    async update(
+      id: string,
+      updates: { name?: string; description?: string | null },
+    ): Promise<Topic> {
       const { name, description } = updates;
 
       const setClauses: string[] = [];
@@ -256,7 +263,7 @@ export function createTopicsRepo(db: Queryable) {
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at`,
-        values
+        values,
       );
 
       const row = res.rows[0];

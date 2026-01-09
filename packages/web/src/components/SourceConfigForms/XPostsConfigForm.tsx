@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { XPostsConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
+import type { SourceConfigFormProps, XPostsConfig } from "./types";
 
 export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormProps<XPostsConfig>) {
   const [accountInput, setAccountInput] = useState("");
@@ -26,7 +26,7 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
   const removeAccount = (acc: string) => {
     handleChange(
       "accounts",
-      (value.accounts ?? []).filter((a) => a !== acc)
+      (value.accounts ?? []).filter((a) => a !== acc),
     );
   };
 
@@ -42,7 +42,7 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
   const removeKeyword = (kw: string) => {
     handleChange(
       "keywords",
-      (value.keywords ?? []).filter((k) => k !== kw)
+      (value.keywords ?? []).filter((k) => k !== kw),
     );
   };
 
@@ -58,7 +58,7 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
   const removeQuery = (q: string) => {
     handleChange(
       "queries",
-      (value.queries ?? []).filter((x) => x !== q)
+      (value.queries ?? []).filter((x) => x !== q),
     );
   };
 
@@ -83,8 +83,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
 
       <div className={styles.helpBox}>
         <p>
-          Monitor X/Twitter for content. You can follow specific accounts, track keywords, or use custom
-          search queries. At least one of accounts, keywords, or queries should be specified.
+          Monitor X/Twitter for content. You can follow specific accounts, track keywords, or use
+          custom search queries. At least one of accounts, keywords, or queries should be specified.
         </p>
       </div>
 
@@ -97,7 +97,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
               <>
                 <p>The service used to fetch X/Twitter data.</p>
                 <p>
-                  <strong>Grok (xAI):</strong> Uses xAI&apos;s Grok API which has access to real-time X data.
+                  <strong>Grok (xAI):</strong> Uses xAI&apos;s Grok API which has access to
+                  real-time X data.
                 </p>
               </>
             }
@@ -129,8 +130,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     <code>from:username</code>).
                   </p>
                   <p>
-                    <strong>Example:</strong> Adding &quot;openai&quot; and &quot;anthropic&quot; will fetch
-                    posts from both accounts.
+                    <strong>Example:</strong> Adding &quot;openai&quot; and &quot;anthropic&quot;
+                    will fetch posts from both accounts.
                   </p>
                   <p>Enter usernames without the @ symbol.</p>
                 </>
@@ -263,7 +264,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     </li>
                   </ul>
                   <p>
-                    Use this for complex searches that can&apos;t be expressed with accounts/keywords alone.
+                    Use this for complex searches that can&apos;t be expressed with
+                    accounts/keywords alone.
                   </p>
                 </>
               }
@@ -321,8 +323,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
               content={
                 <>
                   <p>
-                    <strong>What this means:</strong> How many posts to fetch for each account or search
-                    query.
+                    <strong>What this means:</strong> How many posts to fetch for each account or
+                    search query.
                   </p>
                   <p>
                     <strong>Example with 10 accounts and limit of 20:</strong>
@@ -354,7 +356,10 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
             max={100}
             value={value.maxResultsPerQuery ?? ""}
             onChange={(e) =>
-              handleChange("maxResultsPerQuery", e.target.value ? parseInt(e.target.value, 10) : undefined)
+              handleChange(
+                "maxResultsPerQuery",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
             }
             placeholder="20"
             className={styles.numberInput}
@@ -408,7 +413,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     <strong>Enabled:</strong> Only fetch original content from the account
                   </p>
                   <p>
-                    <strong>Disabled:</strong> Include retweets, which shows what accounts are sharing
+                    <strong>Disabled:</strong> Include retweets, which shows what accounts are
+                    sharing
                   </p>
                   <p>Enable if you only want original posts from followed accounts.</p>
                 </>

@@ -4,7 +4,7 @@
  * Provides mock API responses and utility functions for test setup.
  */
 
-import { type Page, type Route } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 
 // ============================================================================
 // Mock Data - Digests
@@ -136,7 +136,7 @@ export async function setupApiMocks(
     digestDetailResponse?: object;
     feedbackResponse?: object;
     feedbackShouldFail?: boolean;
-  } = {}
+  } = {},
 ) {
   const {
     digestsResponse = createDigestsListResponse(),

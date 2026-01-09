@@ -1,6 +1,6 @@
-import type { FastifyInstance } from "fastify";
 import { createDb } from "@aharadar/db";
 import { createLogger } from "@aharadar/shared";
+import type { FastifyInstance } from "fastify";
 
 const log = createLogger({ component: "storage-metrics" });
 
@@ -29,7 +29,7 @@ export async function storageRoutes(fastify: FastifyInstance): Promise<void> {
     try {
       // Get total database size
       const dbSizeResult = await db.query<DbSizeResult>(
-        "SELECT pg_database_size(current_database()) as size"
+        "SELECT pg_database_size(current_database()) as size",
       );
       const dbSize = dbSizeResult.rows[0]?.size ?? "0";
 

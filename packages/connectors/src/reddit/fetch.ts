@@ -15,7 +15,8 @@ type RedditListingResponse = {
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -61,13 +62,17 @@ async function fetchJson(url: string): Promise<unknown> {
   const contentType = res.headers.get("content-type") ?? "";
   const body = contentType.includes("application/json") ? await res.json() : await res.text();
   if (!res.ok) {
-    const detail = typeof body === "string" ? body.slice(0, 500) : JSON.stringify(body).slice(0, 500);
+    const detail =
+      typeof body === "string" ? body.slice(0, 500) : JSON.stringify(body).slice(0, 500);
     throw new Error(`Reddit fetch failed (${res.status} ${res.statusText}): ${detail}`);
   }
   return body;
 }
 
-async function fetchTopComments(params: { permalink: string; maxCommentCount: number }): Promise<string[]> {
+async function fetchTopComments(params: {
+  permalink: string;
+  maxCommentCount: number;
+}): Promise<string[]> {
   const base = `https://www.reddit.com${params.permalink}.json`;
   const url = new URL(base);
   url.searchParams.set("raw_json", "1");
@@ -160,7 +165,10 @@ export async function fetchReddit(params: FetchParams): Promise<FetchResult> {
       const post = item as Record<string, unknown>;
       const permalink = asString(post.permalink);
       if (!permalink) continue;
-      const comments = await fetchTopComments({ permalink, maxCommentCount: config.maxCommentCount });
+      const comments = await fetchTopComments({
+        permalink,
+        maxCommentCount: config.maxCommentCount,
+      });
       httpRequests += 1;
       post._top_comments = comments;
     }

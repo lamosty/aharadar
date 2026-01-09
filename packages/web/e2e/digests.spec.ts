@@ -9,8 +9,8 @@
  * - Feedback optimistic updates
  */
 
-import { test, expect } from "@playwright/test";
-import { setupApiMocks, waitForPageLoad, mockDigests, mockDigestItems } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import { mockDigests, setupApiMocks, waitForPageLoad } from "./fixtures";
 
 test.describe("Digests List", () => {
   test.beforeEach(async ({ page }) => {

@@ -1,10 +1,14 @@
 "use client";
 
-import type { YoutubeConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
+import type { SourceConfigFormProps, YoutubeConfig } from "./types";
 
-export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormProps<YoutubeConfig>) {
+export function YoutubeConfigForm({
+  value,
+  onChange,
+  errors,
+}: SourceConfigFormProps<YoutubeConfig>) {
   const handleChange = <K extends keyof YoutubeConfig>(key: K, val: YoutubeConfig[K]) => {
     onChange({ ...value, [key]: val });
   };
@@ -23,9 +27,9 @@ export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormP
 
       <div className={styles.helpBox}>
         <p>
-          Enter a YouTube channel ID to monitor for new videos. You can find the channel ID in the URL when
-          viewing a channel (e.g., <code>UCddiUEpYJcSLRk_j2L5vrZA</code>). It usually starts with
-          &quot;UC&quot;.
+          Enter a YouTube channel ID to monitor for new videos. You can find the channel ID in the
+          URL when viewing a channel (e.g., <code>UCddiUEpYJcSLRk_j2L5vrZA</code>). It usually
+          starts with &quot;UC&quot;.
         </p>
       </div>
 
@@ -43,7 +47,8 @@ export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormP
                 <ul>
                   <li>Go to the YouTube channel page</li>
                   <li>
-                    Look at the URL - it will be something like <code>youtube.com/channel/UCxxxxxx</code>
+                    Look at the URL - it will be something like{" "}
+                    <code>youtube.com/channel/UCxxxxxx</code>
                   </li>
                   <li>
                     The ID is the part starting with &quot;UC&quot; (e.g.,{" "}
@@ -53,8 +58,8 @@ export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormP
                 <p>
                   <strong>Note:</strong> Some channels use custom URLs like{" "}
                   <code>youtube.com/@channelname</code>. For these, click on &quot;About&quot; or
-                  &quot;More&quot; to find the channel ID, or use a tool to convert the handle to a channel
-                  ID.
+                  &quot;More&quot; to find the channel ID, or use a tool to convert the handle to a
+                  channel ID.
                 </p>
                 <p>Channel IDs always start with &quot;UC&quot; and are 24 characters long.</p>
               </>
@@ -90,8 +95,8 @@ export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormP
                   <ul>
                     <li>Videos are fetched from newest to oldest</li>
                     <li>
-                      If a channel has 100 videos but you set max to 10, only the 10 most recent will be
-                      fetched
+                      If a channel has 100 videos but you set max to 10, only the 10 most recent
+                      will be fetched
                     </li>
                     <li>Already-seen videos are skipped, so you&apos;ll only get new content</li>
                   </ul>
@@ -117,7 +122,10 @@ export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormP
             max={50}
             value={value.maxVideoCount ?? ""}
             onChange={(e) =>
-              handleChange("maxVideoCount", e.target.value ? parseInt(e.target.value, 10) : undefined)
+              handleChange(
+                "maxVideoCount",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
             }
             placeholder="30"
             className={styles.numberInput}
@@ -158,8 +166,8 @@ export function YoutubeConfigForm({ value, onChange, errors }: SourceConfigFormP
                     <li>Increases data storage slightly</li>
                   </ul>
                   <p>
-                    <strong>Recommended:</strong> Enable for content-heavy channels where you want to search
-                    or analyze what&apos;s being said.
+                    <strong>Recommended:</strong> Enable for content-heavy channels where you want
+                    to search or analyze what&apos;s being said.
                   </p>
                 </>
               }

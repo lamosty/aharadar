@@ -51,16 +51,27 @@ function asSentimentFilter(value: unknown): "bullish" | "bearish" | null {
   return null;
 }
 
-export function parseOptionsFlowSourceConfig(config: Record<string, unknown>): OptionsFlowSourceConfig {
+export function parseOptionsFlowSourceConfig(
+  config: Record<string, unknown>,
+): OptionsFlowSourceConfig {
   const symbols = asUpperStringArray(config.symbols);
-  const minPremium = Math.max(0, Math.floor(asNumber(config.min_premium ?? config.minPremium, 50000)));
+  const minPremium = Math.max(
+    0,
+    Math.floor(asNumber(config.min_premium ?? config.minPremium, 50000)),
+  );
   const flowTypes = asFlowTypes(config.flow_types ?? config.flowTypes);
   const sentimentFilter = asSentimentFilter(config.sentiment_filter ?? config.sentimentFilter);
   const includeEtfs = asBoolean(config.include_etfs ?? config.includeEtfs, true);
-  const expiryMaxDays = Math.max(1, Math.floor(asNumber(config.expiry_max_days ?? config.expiryMaxDays, 90)));
+  const expiryMaxDays = Math.max(
+    1,
+    Math.floor(asNumber(config.expiry_max_days ?? config.expiryMaxDays, 90)),
+  );
   const maxAlerts = Math.max(
     1,
-    Math.min(100, Math.floor(asNumber(config.max_alerts_per_fetch ?? config.maxAlertsPerFetch, 50)))
+    Math.min(
+      100,
+      Math.floor(asNumber(config.max_alerts_per_fetch ?? config.maxAlertsPerFetch, 50)),
+    ),
   );
 
   return {

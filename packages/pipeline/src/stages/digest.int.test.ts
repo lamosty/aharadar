@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { createDb, type Db } from "@aharadar/db";
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { createDb, type Db } from "@aharadar/db";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { persistDigestFromContentItems } from "./digest";
 
 /**
@@ -77,14 +77,14 @@ describe("persistDigestFromContentItems integration", () => {
     // Create user
     const userResult = await db.query<{ id: string }>(
       `INSERT INTO users (email) VALUES ('test@example.com') RETURNING id`,
-      []
+      [],
     );
     userId = userResult.rows[0].id;
 
     // Create topic
     const topicResult = await db.query<{ id: string }>(
       `INSERT INTO topics (user_id, name) VALUES ($1, 'test-topic') RETURNING id`,
-      [userId]
+      [userId],
     );
     topicId = topicResult.rows[0].id;
 
@@ -92,7 +92,7 @@ describe("persistDigestFromContentItems integration", () => {
     const sourceResult = await db.query<{ id: string }>(
       `INSERT INTO sources (user_id, topic_id, type, name, is_enabled)
        VALUES ($1, $2, 'rss', 'Test Source', false) RETURNING id`,
-      [userId, topicId]
+      [userId, topicId],
     );
     sourceId = sourceResult.rows[0].id;
 
@@ -128,15 +128,23 @@ describe("persistDigestFromContentItems integration", () => {
            (user_id, source_id, source_type, external_id, canonical_url, title, body_text, published_at, fetched_at)
          VALUES ($1, $2, 'rss', $3, $4, $5, $6, $7::timestamptz, $7::timestamptz)
          RETURNING id`,
-        [userId, sourceId, item.externalId, item.canonicalUrl, item.title, item.bodyText, item.publishedAt]
+        [
+          userId,
+          sourceId,
+          item.externalId,
+          item.canonicalUrl,
+          item.title,
+          item.bodyText,
+          item.publishedAt,
+        ],
       );
       contentItemIds.push(result.rows[0].id);
 
       // Link content item to source
-      await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
-        result.rows[0].id,
-        sourceId,
-      ]);
+      await db.query(
+        `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+        [result.rows[0].id, sourceId],
+      );
     }
   }
 
@@ -163,7 +171,7 @@ describe("persistDigestFromContentItems integration", () => {
     // Verify digest row exists in DB
     const digestResult = await db.query<{ id: string; mode: string }>(
       `SELECT id, mode FROM digests WHERE id = $1`,
-      [result!.digestId]
+      [result!.digestId],
     );
     expect(digestResult.rows).toHaveLength(1);
     expect(digestResult.rows[0].mode).toBe("low");
@@ -171,7 +179,7 @@ describe("persistDigestFromContentItems integration", () => {
     // Verify digest_items exist
     const digestItemsResult = await db.query<{ digest_id: string; rank: number }>(
       `SELECT digest_id, rank FROM digest_items WHERE digest_id = $1 ORDER BY rank`,
-      [result!.digestId]
+      [result!.digestId],
     );
     expect(digestItemsResult.rows.length).toBeGreaterThanOrEqual(1);
     expect(digestItemsResult.rows[0].rank).toBe(1);
@@ -190,12 +198,12 @@ describe("persistDigestFromContentItems integration", () => {
          (user_id, source_id, source_type, external_id, canonical_url, title, body_text, published_at, fetched_at)
        VALUES ($1, $2, 'rss', 'ext-4', 'https://example.com/article-4', 'Fourth Article', 'Body text', '2026-01-06T12:00:00.000Z'::timestamptz, '2026-01-06T12:00:00.000Z'::timestamptz)
        RETURNING id`,
-      [userId, sourceId]
+      [userId, sourceId],
     );
-    await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
-      newItemResult.rows[0].id,
-      sourceId,
-    ]);
+    await db.query(
+      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+      [newItemResult.rows[0].id, sourceId],
+    );
 
     const result = await persistDigestFromContentItems({
       db,
@@ -212,7 +220,7 @@ describe("persistDigestFromContentItems integration", () => {
     // Verify no provider_calls were made (LLM was skipped)
     const providerCallsResult = await db.query<{ id: string }>(
       `SELECT id FROM provider_calls WHERE user_id = $1`,
-      [userId]
+      [userId],
     );
     expect(providerCallsResult.rows).toHaveLength(0);
   });
@@ -226,7 +234,7 @@ describe("persistDigestFromContentItems integration", () => {
        WHERE digest_id IN (SELECT id FROM digests WHERE user_id = $1)
        ORDER BY score DESC
        LIMIT 5`,
-      [userId]
+      [userId],
     );
 
     expect(digestItemsResult.rows.length).toBeGreaterThanOrEqual(1);

@@ -12,7 +12,8 @@ function asRecord(value: unknown): Record<string, unknown> {
  * Generate title for sentiment data
  */
 function generateTitle(sentiment: AggregatedSentiment): string {
-  const label = sentiment.sentimentLabel.charAt(0).toUpperCase() + sentiment.sentimentLabel.slice(1);
+  const label =
+    sentiment.sentimentLabel.charAt(0).toUpperCase() + sentiment.sentimentLabel.slice(1);
   const scoreStr = sentiment.compositeScore.toFixed(2);
 
   if (sentiment.scoreChange !== null && Math.abs(sentiment.scoreChange) >= 5) {
@@ -80,7 +81,7 @@ function buildCanonicalUrl(ticker: string): string {
  */
 export async function normalizeMarketSentiment(
   raw: unknown,
-  _params: FetchParams
+  _params: FetchParams,
 ): Promise<ContentItemDraft> {
   const sentiment = asRecord(raw) as unknown as AggregatedSentiment;
 

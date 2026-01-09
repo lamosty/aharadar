@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Db } from "@aharadar/db";
-import { computeCreditsStatus, printCreditsWarning, type CreditsStatus } from "./credits";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type CreditsStatus, computeCreditsStatus, printCreditsWarning } from "./credits";
 
 // -----------------------------------------------------------------------------
 // computeCreditsStatus
@@ -300,7 +300,9 @@ describe("printCreditsWarning", () => {
     const result = printCreditsWarning(status);
 
     expect(result).toBe(true);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Credits approaching limit (>=80%)"));
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Credits approaching limit (>=80%)"),
+    );
     expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("850/1000 (85%)"));
   });
 
@@ -319,7 +321,9 @@ describe("printCreditsWarning", () => {
     const result = printCreditsWarning(status);
 
     expect(result).toBe(true);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Credits critical (>=95%)"));
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Credits critical (>=95%)"),
+    );
   });
 
   it("prints 'Paid calls disabled' when paidCallsAllowed is false", () => {

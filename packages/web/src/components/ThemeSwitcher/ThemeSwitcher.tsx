@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/components/ThemeProvider";
 import { t } from "@/lib/i18n";
-import { THEMES, COLOR_MODES, LAYOUTS, type Theme, type ColorMode, type Layout } from "@/lib/theme";
+import { COLOR_MODES, type ColorMode, LAYOUTS, type Layout, THEMES, type Theme } from "@/lib/theme";
 import styles from "./ThemeSwitcher.module.css";
 
 interface ThemeSwitcherProps {
@@ -57,7 +57,11 @@ export function ThemeSwitcher({ showLayout = true }: ThemeSwitcherProps) {
           {t("settings.appearance.colorMode")}
         </label>
         <p className={styles.description}>{t("settings.appearance.colorModeDescription")}</p>
-        <div className={styles.buttonGroup} role="radiogroup" aria-label={t("settings.appearance.colorMode")}>
+        <div
+          className={styles.buttonGroup}
+          role="radiogroup"
+          aria-label={t("settings.appearance.colorMode")}
+        >
           {COLOR_MODES.map((mode) => (
             <button
               key={mode}

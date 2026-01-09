@@ -8,7 +8,8 @@ import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
 import { sha256Hex } from "@aharadar/shared";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -59,7 +60,10 @@ function clampText(text: string, maxChars: number): string {
   return text.slice(0, maxChars);
 }
 
-export async function normalizeXPosts(raw: unknown, params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeXPosts(
+  raw: unknown,
+  params: FetchParams,
+): Promise<ContentItemDraft> {
   const rec = asRecord(raw);
   const query = asString(rec.query) ?? "x_posts";
   const vendor = asString(rec.vendor) ?? "grok";
@@ -73,7 +77,8 @@ export async function normalizeXPosts(raw: unknown, params: FetchParams): Promis
 
   const parsed = canonicalUrl ? parseXStatusUrl(canonicalUrl) : { handle: null, statusId: null };
   const fallbackKey = canonicalUrl ?? bodyText ?? "";
-  const externalId = parsed.statusId ?? sha256Hex([vendor, query, dayBucket, fallbackKey].join("|"));
+  const externalId =
+    parsed.statusId ?? sha256Hex([vendor, query, dayBucket, fallbackKey].join("|"));
 
   const extractedUrls =
     bodyText && bodyText.length > 0

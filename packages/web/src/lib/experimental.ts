@@ -58,7 +58,7 @@ export function setExperimentalFeatures(features: ExperimentalFeatures): void {
  */
 export function toggleExperimentalFeature(
   feature: keyof ExperimentalFeatures,
-  enabled: boolean
+  enabled: boolean,
 ): ExperimentalFeatures {
   const current = getExperimentalFeatures();
   const updated = { ...current, [feature]: enabled };

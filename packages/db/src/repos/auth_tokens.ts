@@ -25,7 +25,12 @@ export function createAuthTokensRepo(db: Queryable) {
          VALUES ($1, $2, $3, $4)
          RETURNING id, user_id, token_hash, purpose,
                    expires_at::text, used_at::text, created_at::text`,
-        [params.userId, params.tokenHash, params.purpose ?? "magic_link", params.expiresAt.toISOString()]
+        [
+          params.userId,
+          params.tokenHash,
+          params.purpose ?? "magic_link",
+          params.expiresAt.toISOString(),
+        ],
       );
       const row = result.rows[0];
       if (!row) throw new Error("Failed to create auth token");
@@ -38,7 +43,7 @@ export function createAuthTokensRepo(db: Queryable) {
                 expires_at::text, used_at::text, created_at::text
          FROM auth_tokens
          WHERE token_hash = $1`,
-        [tokenHash]
+        [tokenHash],
       );
       return result.rows[0] ?? null;
     },
@@ -51,7 +56,7 @@ export function createAuthTokensRepo(db: Queryable) {
          WHERE token_hash = $1
            AND used_at IS NULL
            AND expires_at > now()`,
-        [tokenHash]
+        [tokenHash],
       );
       return result.rows[0] ?? null;
     },

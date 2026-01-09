@@ -94,18 +94,21 @@ export async function clusterTopicContentItems(params: {
   windowEnd: string;
   limits?: Partial<ClusterLimits>;
 }): Promise<ClusterRunResult> {
-  const maxItems = params.limits?.maxItems ?? parseIntEnv(process.env.CLUSTER_MAX_ITEMS_PER_RUN) ?? 500;
+  const maxItems =
+    params.limits?.maxItems ?? parseIntEnv(process.env.CLUSTER_MAX_ITEMS_PER_RUN) ?? 500;
   const clusterLookbackDays =
     params.limits?.clusterLookbackDays ?? parseIntEnv(process.env.CLUSTER_LOOKBACK_DAYS) ?? 7;
   const similarityThreshold =
     params.limits?.similarityThreshold ?? parseFloatEnv(process.env.CLUSTER_SIM_THRESHOLD) ?? 0.86;
-  const updateCentroid = params.limits?.updateCentroid ?? process.env.CLUSTER_UPDATE_CENTROID !== "false";
+  const updateCentroid =
+    params.limits?.updateCentroid ?? process.env.CLUSTER_UPDATE_CENTROID !== "false";
 
   const limit = Math.max(0, Math.min(5_000, Math.floor(maxItems)));
-  if (limit === 0) return { attempted: 0, attachedToExisting: 0, created: 0, skipped: 0, errors: 0 };
+  if (limit === 0)
+    return { attempted: 0, attachedToExisting: 0, created: 0, skipped: 0, errors: 0 };
 
   const lookbackStartIso = new Date(
-    parseIsoMs(params.windowEnd) - Math.max(0, clusterLookbackDays) * 24 * 60 * 60 * 1000
+    parseIsoMs(params.windowEnd) - Math.max(0, clusterLookbackDays) * 24 * 60 * 60 * 1000,
   ).toISOString();
 
   const threshold = clamp01(similarityThreshold);
@@ -140,7 +143,7 @@ export async function clusterTopicContentItems(params: {
        )
      order by coalesce(ci.published_at, ci.fetched_at) desc
      limit $5`,
-    [params.userId, params.topicId, params.windowStart, params.windowEnd, limit]
+    [params.userId, params.topicId, params.windowStart, params.windowEnd, limit],
   );
 
   const candidates = candidatesRes.rows;
@@ -176,11 +179,15 @@ export async function clusterTopicContentItems(params: {
              and c.updated_at >= $3::timestamptz
            order by c.centroid_vector <=> $2::vector asc
            limit 1`,
-          [params.userId, vectorText, lookbackStartIso]
+          [params.userId, vectorText, lookbackStartIso],
         );
 
         const best = nearest.rows[0] ?? null;
-        const bestSim = best ? (Number.isFinite(best.similarity) ? (best.similarity as number) : 0) : 0;
+        const bestSim = best
+          ? Number.isFinite(best.similarity)
+            ? (best.similarity as number)
+            : 0
+          : 0;
 
         if (!best || bestSim < threshold) {
           // Create a new cluster anchored by this item.
@@ -188,7 +195,7 @@ export async function clusterTopicContentItems(params: {
             `insert into clusters (user_id, representative_content_item_id, centroid_vector, top_terms_json)
              values ($1::uuid, $2::uuid, $3::vector, '{}'::jsonb)
              returning id::text as id`,
-            [params.userId, row.content_item_id, vectorText]
+            [params.userId, row.content_item_id, vectorText],
           );
           const newId = inserted.rows[0]?.id;
           if (!newId) throw new Error("clusters insert failed: no id returned");
@@ -196,7 +203,7 @@ export async function clusterTopicContentItems(params: {
           await tx.query(
             `insert into cluster_items (cluster_id, content_item_id, similarity)
              values ($1::uuid, $2::uuid, $3)`,
-            [newId, row.content_item_id, 1.0]
+            [newId, row.content_item_id, 1.0],
           );
           created += 1;
           continue;
@@ -209,7 +216,7 @@ export async function clusterTopicContentItems(params: {
            on conflict (cluster_id, content_item_id)
            do update set similarity = excluded.similarity
            returning (xmax = 0) as inserted`,
-          [best.cluster_id, row.content_item_id, bestSim]
+          [best.cluster_id, row.content_item_id, bestSim],
         );
         const inserted = attachRes.rows[0]?.inserted ?? false;
         if (!inserted) {
@@ -220,13 +227,15 @@ export async function clusterTopicContentItems(params: {
         attachedToExisting += 1;
 
         // Keep the cluster "hot".
-        await tx.query(`update clusters set updated_at = now() where id = $1::uuid`, [best.cluster_id]);
+        await tx.query(`update clusters set updated_at = now() where id = $1::uuid`, [
+          best.cluster_id,
+        ]);
 
         // Fill representative if missing (should be rare).
         if (!best.representative_content_item_id) {
           await tx.query(
             `update clusters set representative_content_item_id = $2::uuid where id = $1::uuid and representative_content_item_id is null`,
-            [best.cluster_id, row.content_item_id]
+            [best.cluster_id, row.content_item_id],
           );
         }
 
@@ -234,7 +243,12 @@ export async function clusterTopicContentItems(params: {
           const centroidText = best.centroid_text;
           const centroidVec = centroidText ? parseVectorText(centroidText) : null;
           const itemVec = parseVectorText(vectorText);
-          if (!centroidVec || !itemVec || centroidVec.length !== itemVec.length || centroidVec.length === 0) {
+          if (
+            !centroidVec ||
+            !itemVec ||
+            centroidVec.length !== itemVec.length ||
+            centroidVec.length === 0
+          ) {
             continue;
           }
 
@@ -250,12 +264,15 @@ export async function clusterTopicContentItems(params: {
              set centroid_vector = $2::vector,
                  updated_at = now()
              where id = $1::uuid`,
-            [best.cluster_id, asVectorLiteral(next)]
+            [best.cluster_id, asVectorLiteral(next)],
           );
         }
       } catch (err) {
         errors += 1;
-        log.warn({ contentItemId: row.content_item_id, err }, "Cluster stage failed for content item");
+        log.warn(
+          { contentItemId: row.content_item_id, err },
+          "Cluster stage failed for content item",
+        );
       }
     }
   });

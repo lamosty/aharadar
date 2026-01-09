@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { AuthProvider } from "@/components/AuthProvider";
+import { QueryProvider } from "@/components/QueryProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
-import { QueryProvider } from "@/components/QueryProvider";
-import { AuthProvider } from "@/components/AuthProvider";
 import { TopicProvider } from "@/components/TopicProvider";
 import { t } from "@/lib/i18n";
 import { themeInitScript } from "@/lib/theme";
@@ -15,7 +15,14 @@ export const metadata: Metadata = {
   },
   description:
     "Personalized content aggregation that monitors your chosen sources and delivers curated digests of only the most relevant content.",
-  keywords: ["content aggregation", "personalization", "news radar", "digest", "RSS", "content curation"],
+  keywords: [
+    "content aggregation",
+    "personalization",
+    "news radar",
+    "digest",
+    "RSS",
+    "content curation",
+  ],
   authors: [{ name: "Aha Radar" }],
   robots: {
     index: true,

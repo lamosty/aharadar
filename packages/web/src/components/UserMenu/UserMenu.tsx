@@ -8,7 +8,7 @@ import styles from "./UserMenu.module.css";
  */
 function truncateEmail(email: string, maxLength: number = 20): string {
   if (email.length <= maxLength) return email;
-  return email.slice(0, maxLength - 1) + "...";
+  return `${email.slice(0, maxLength - 1)}...`;
 }
 
 function LogOutIcon() {

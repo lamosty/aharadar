@@ -1,15 +1,17 @@
 "use client";
 
-import { type DigestItem } from "@/lib/mock-data";
-import { t } from "@/lib/i18n";
-import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { WhyShown } from "@/components/WhyShown";
+import type { DigestItem } from "@/lib/mock-data";
 import styles from "./DigestDetailReader.module.css";
 
 interface DigestDetailReaderProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -36,7 +38,7 @@ function formatSourceType(type: string): string {
 export function DigestDetailReader({ items, digestId, onFeedback }: DigestDetailReaderProps) {
   return (
     <div className={styles.container} data-testid="digest-detail">
-      <ol className={styles.list} role="list">
+      <ol className={styles.list}>
         {items.map((item) => (
           <li key={item.id}>
             <DigestItemCard item={item} digestId={digestId} onFeedback={onFeedback} />
@@ -50,7 +52,10 @@ export function DigestDetailReader({ items, digestId, onFeedback }: DigestDetail
 interface DigestItemCardProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
 }
 
 function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
@@ -71,7 +76,9 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
               <span className={styles.metaSeparator} aria-hidden="true">
                 -
               </span>
-              <time dateTime={item.contentItem.publishedAt}>{formatDate(item.contentItem.publishedAt)}</time>
+              <time dateTime={item.contentItem.publishedAt}>
+                {formatDate(item.contentItem.publishedAt)}
+              </time>
             </>
           )}
         </div>
@@ -95,7 +102,9 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
 
         {item.contentItem.author && <p className={styles.author}>by {item.contentItem.author}</p>}
 
-        {item.contentItem.triageSummary && <p className={styles.summary}>{item.contentItem.triageSummary}</p>}
+        {item.contentItem.triageSummary && (
+          <p className={styles.summary}>{item.contentItem.triageSummary}</p>
+        )}
       </div>
 
       <footer className={styles.cardFooter}>
@@ -121,7 +130,7 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
 export function DigestDetailReaderSkeleton() {
   return (
     <div className={styles.container}>
-      <ol className={styles.list} role="list" aria-busy="true">
+      <ol className={styles.list} aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
           <li key={i}>
             <article className={styles.card} aria-hidden="true">

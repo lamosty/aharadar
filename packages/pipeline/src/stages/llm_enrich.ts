@@ -1,12 +1,12 @@
 import type { Db } from "@aharadar/db";
 import {
   createConfiguredLlmRouter,
-  deepSummarizeCandidate,
   type DeepSummaryOutput,
+  deepSummarizeCandidate,
   type LlmRuntimeConfig,
   type TriageOutput,
 } from "@aharadar/llm";
-import { createLogger, type BudgetTier, type ProviderCallDraft } from "@aharadar/shared";
+import { type BudgetTier, createLogger, type ProviderCallDraft } from "@aharadar/shared";
 
 const log = createLogger({ component: "llm_enrich" });
 
@@ -83,7 +83,14 @@ export async function enrichTopCandidates(params: {
   if (params.tier === "low" || limit <= 0 || params.candidates.length === 0) {
     return {
       summaries: new Map(),
-      result: { attempted: 0, enriched: 0, skipped: 0, errors: 0, providerCallsOk: 0, providerCallsError: 0 },
+      result: {
+        attempted: 0,
+        enriched: 0,
+        skipped: 0,
+        errors: 0,
+        providerCallsOk: 0,
+        providerCallsError: 0,
+      },
     };
   }
 
@@ -95,13 +102,27 @@ export async function enrichTopCandidates(params: {
     log.warn({ err: message }, "LLM deep summary disabled");
     return {
       summaries: new Map(),
-      result: { attempted: 0, enriched: 0, skipped: 0, errors: 0, providerCallsOk: 0, providerCallsError: 0 },
+      result: {
+        attempted: 0,
+        enriched: 0,
+        skipped: 0,
+        errors: 0,
+        providerCallsOk: 0,
+        providerCallsError: 0,
+      },
     };
   }
   if (!router) {
     return {
       summaries: new Map(),
-      result: { attempted: 0, enriched: 0, skipped: 0, errors: 0, providerCallsOk: 0, providerCallsError: 0 },
+      result: {
+        attempted: 0,
+        enriched: 0,
+        skipped: 0,
+        errors: 0,
+        providerCallsOk: 0,
+        providerCallsError: 0,
+      },
     };
   }
 
@@ -136,7 +157,10 @@ export async function enrichTopCandidates(params: {
           bodyText: candidate.bodyText,
           sourceType: candidate.sourceType,
           sourceName: candidate.sourceName,
-          primaryUrl: getPrimaryUrl({ canonicalUrl: candidate.canonicalUrl, metadata: candidate.metadata }),
+          primaryUrl: getPrimaryUrl({
+            canonicalUrl: candidate.canonicalUrl,
+            metadata: candidate.metadata,
+          }),
           author: candidate.author,
           publishedAt: candidate.publishedAt,
           windowStart: params.windowStart,
@@ -219,8 +243,11 @@ export async function enrichTopCandidates(params: {
         log.warn({ err }, "provider_calls insert failed (deep_summary error)");
       }
       log.warn(
-        { candidateId: candidate.candidateId, err: err instanceof Error ? err.message : String(err) },
-        "Deep summary failed for candidate"
+        {
+          candidateId: candidate.candidateId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "Deep summary failed for candidate",
       );
     }
   }

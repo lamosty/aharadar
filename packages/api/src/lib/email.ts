@@ -1,5 +1,5 @@
-import { Resend } from "resend";
 import { createLogger } from "@aharadar/shared";
+import { Resend } from "resend";
 
 const log = createLogger({ component: "email" });
 

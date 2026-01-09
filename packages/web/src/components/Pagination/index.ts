@@ -1,1 +1,1 @@
-export { Pagination, PAGE_SIZE_OPTIONS, type PageSize } from "./Pagination";
+export { PAGE_SIZE_OPTIONS, type PageSize, Pagination } from "./Pagination";

@@ -44,5 +44,7 @@ export async function resolveTopicForUser(params: {
 
 export function formatTopicList(topics: TopicRow[]): string {
   if (topics.length === 0) return "(no topics)";
-  return topics.map((t) => `- ${t.id} ${t.name}${t.description ? ` — ${t.description}` : ""}`).join("\n");
+  return topics
+    .map((t) => `- ${t.id} ${t.name}${t.description ? ` — ${t.description}` : ""}`)
+    .join("\n");
 }

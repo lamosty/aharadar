@@ -153,7 +153,7 @@ export async function askCommand(args: string[] = []): Promise<void> {
 
     const totalTokens = response.usage.tokensUsed.input + response.usage.tokensUsed.output;
     console.log(
-      `\n📊 Stats: ${response.usage.clustersRetrieved} clusters, ${totalTokens} tokens, ${elapsed}ms`
+      `\n📊 Stats: ${response.usage.clustersRetrieved} clusters, ${totalTokens} tokens, ${elapsed}ms`,
     );
   } finally {
     await db.close();

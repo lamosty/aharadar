@@ -1,18 +1,17 @@
 import type { Db } from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
-
+import { type CreditsStatus, computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
+import { type ClusterRunResult, clusterTopicContentItems } from "../stages/cluster";
+import { type DedupeRunResult, dedupeTopicContentItems } from "../stages/dedupe";
+import { type DigestRunResult, persistDigestFromContentItems } from "../stages/digest";
+import { type EmbedRunResult, embedTopicContentItems } from "../stages/embed";
 import {
-  ingestEnabledSources,
   type IngestLimits,
   type IngestRunResult,
   type IngestSourceFilter,
+  ingestEnabledSources,
 } from "../stages/ingest";
-import { embedTopicContentItems, type EmbedRunResult } from "../stages/embed";
-import { dedupeTopicContentItems, type DedupeRunResult } from "../stages/dedupe";
-import { clusterTopicContentItems, type ClusterRunResult } from "../stages/cluster";
-import { persistDigestFromContentItems, type DigestRunResult } from "../stages/digest";
-import { computeCreditsStatus, printCreditsWarning, type CreditsStatus } from "../budgets/credits";
 
 export interface PipelineRunParams {
   userId: string;
@@ -45,14 +44,20 @@ export interface PipelineRunResult {
   creditsStatus?: CreditsStatus;
 }
 
-function resolveTier(mode: BudgetTier | "catch_up" | undefined, paidCallsAllowed: boolean): BudgetTier {
+function resolveTier(
+  mode: BudgetTier | "catch_up" | undefined,
+  paidCallsAllowed: boolean,
+): BudgetTier {
   // When credits exhausted, force tier to low
   if (!paidCallsAllowed) return "low";
   if (!mode || mode === "catch_up") return "high";
   return mode;
 }
 
-export async function runPipelineOnce(db: Db, params: PipelineRunParams): Promise<PipelineRunResult> {
+export async function runPipelineOnce(
+  db: Db,
+  params: PipelineRunParams,
+): Promise<PipelineRunResult> {
   // Check credits status if budget config is provided
   let creditsStatus: CreditsStatus | undefined;
   let paidCallsAllowed = true;

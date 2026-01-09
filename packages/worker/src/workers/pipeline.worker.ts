@@ -1,16 +1,20 @@
-import { Worker, type Job } from "bullmq";
 import { createDb, type Db } from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
-import { runPipelineOnce, type PipelineRunResult } from "@aharadar/pipeline";
-import { loadRuntimeEnv, createJobLogger, type Logger } from "@aharadar/shared";
+import { type PipelineRunResult, runPipelineOnce } from "@aharadar/pipeline";
+import { createJobLogger, type Logger, loadRuntimeEnv } from "@aharadar/shared";
+import { type Job, Worker } from "bullmq";
 
-import { recordPipelineStage, recordIngestItems } from "../metrics";
+import { recordIngestItems, recordPipelineStage } from "../metrics";
 import { PIPELINE_QUEUE_NAME, parseRedisConnection, type RunWindowJobData } from "../queues";
 
 /**
  * Log a concise summary and record metrics for the pipeline run result.
  */
-function logSummaryAndRecordMetrics(log: Logger, result: PipelineRunResult, durationSec: number): void {
+function logSummaryAndRecordMetrics(
+  log: Logger,
+  result: PipelineRunResult,
+  durationSec: number,
+): void {
   const ingestTotal = result.ingest.totals.upserted;
   const embedCount = result.embed.embedded;
   const clusterCount = result.cluster.attachedToExisting + result.cluster.created;
@@ -26,7 +30,7 @@ function logSummaryAndRecordMetrics(log: Logger, result: PipelineRunResult, dura
       digest: digestItems,
       durationSec,
     },
-    "Pipeline run completed"
+    "Pipeline run completed",
   );
 
   // Record pipeline metrics
@@ -34,7 +38,8 @@ function logSummaryAndRecordMetrics(log: Logger, result: PipelineRunResult, dura
 
   // Record ingest metrics per source type
   for (const source of result.ingest.perSource) {
-    const status = source.status === "ok" ? "success" : source.status === "skipped" ? "skipped" : "error";
+    const status =
+      source.status === "ok" ? "success" : source.status === "skipped" ? "skipped" : "error";
     recordIngestItems({
       sourceType: source.sourceType,
       status,
@@ -46,7 +51,10 @@ function logSummaryAndRecordMetrics(log: Logger, result: PipelineRunResult, dura
 /**
  * Create the pipeline worker that processes run_window jobs.
  */
-export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWindowJobData>; db: Db } {
+export function createPipelineWorker(redisUrl: string): {
+  worker: Worker<RunWindowJobData>;
+  db: Db;
+} {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
 
@@ -89,8 +97,11 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
         }
 
         jobLog.info(
-          { provider: llmConfig.provider, model: llmConfig.anthropicModel || llmConfig.openaiModel },
-          "Using LLM config"
+          {
+            provider: llmConfig.provider,
+            model: llmConfig.anthropicModel || llmConfig.openaiModel,
+          },
+          "Using LLM config",
         );
 
         const result = await runPipelineOnce(db, {
@@ -119,7 +130,7 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
     {
       connection: parseRedisConnection(redisUrl),
       concurrency: 1, // Process one pipeline at a time for MVP
-    }
+    },
   );
 
   worker.on("failed", (job, err) => {

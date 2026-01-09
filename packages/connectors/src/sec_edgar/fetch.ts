@@ -1,6 +1,12 @@
 import type { FetchParams, FetchResult } from "@aharadar/shared";
 import { parseSecEdgarSourceConfig } from "./config";
-import { parseRssAtom, parseForm4Xml, parse13fXml, type Form4Entry, type Form13fEntry } from "./parse";
+import {
+  type Form4Entry,
+  type Form13fEntry,
+  parse13fXml,
+  parseForm4Xml,
+  parseRssAtom,
+} from "./parse";
 
 type SecEdgarCursorJson = {
   form4?: {
@@ -36,13 +42,16 @@ function parseCursor(cursor: Record<string, unknown>): SecEdgarCursorJson {
   };
 }
 
-async function fetchWithDelay(url: string, delayMs: number = MIN_REQUEST_DELAY_MS): Promise<string> {
+async function fetchWithDelay(
+  url: string,
+  delayMs: number = MIN_REQUEST_DELAY_MS,
+): Promise<string> {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 
   const userAgent = process.env.SEC_EDGAR_USER_AGENT || "AhaRadar/1.0 (mvp; connectors/sec_edgar)";
   let retries = 0;
   const maxRetries = 3;
-  let baseDelayMs = 500; // Start with 500ms backoff for 429/503
+  const baseDelayMs = 500; // Start with 500ms backoff for 429/503
 
   while (retries <= maxRetries) {
     try {
@@ -61,7 +70,7 @@ async function fetchWithDelay(url: string, delayMs: number = MIN_REQUEST_DELAY_M
       // Handle rate limiting (429) and service unavailable (503)
       if (res.status === 429 || res.status === 503) {
         if (retries < maxRetries) {
-          const delayMs = baseDelayMs * Math.pow(2, retries);
+          const delayMs = baseDelayMs * 2 ** retries;
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           retries++;
           continue;
@@ -72,14 +81,16 @@ async function fetchWithDelay(url: string, delayMs: number = MIN_REQUEST_DELAY_M
 
       // Other errors
       const body = await res.text().catch(() => "");
-      throw new Error(`SEC EDGAR fetch failed (${res.status} ${res.statusText}): ${body.slice(0, 500)}`);
+      throw new Error(
+        `SEC EDGAR fetch failed (${res.status} ${res.statusText}): ${body.slice(0, 500)}`,
+      );
     } catch (error) {
       if (
         retries < maxRetries &&
         error instanceof Error &&
         (error.message.includes("429") || error.message.includes("503"))
       ) {
-        const delayMs = baseDelayMs * Math.pow(2, retries);
+        const delayMs = baseDelayMs * 2 ** retries;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         retries++;
         continue;
@@ -110,7 +121,7 @@ export async function fetchSecEdgar(params: FetchParams): Promise<FetchResult> {
   const maxItems = Math.max(0, Math.floor(params.limits.maxItems));
 
   let httpRequests = 0;
-  let newestAccession: Record<string, string | null> = {
+  const newestAccession: Record<string, string | null> = {
     form4: cursorIn.form4?.last_accession ?? null,
     "13f": cursorIn["13f"]?.last_accession ?? null,
   };
@@ -142,7 +153,10 @@ export async function fetchSecEdgar(params: FetchParams): Promise<FetchResult> {
         }
 
         // Update newest seen accession
-        if (!newestAccession[filingType] || entry.accessionNumber > (newestAccession[filingType] || "")) {
+        if (
+          !newestAccession[filingType] ||
+          entry.accessionNumber > (newestAccession[filingType] || "")
+        ) {
           newestAccession[filingType] = entry.accessionNumber;
         }
 
@@ -177,10 +191,7 @@ export async function fetchSecEdgar(params: FetchParams): Promise<FetchResult> {
 
               rawItems.push(item);
             }
-          } catch {
-            // If we can't fetch XML details, skip this entry
-            continue;
-          }
+          } catch {}
         } else if (filingType === "13f" && entry.link) {
           // For 13F, try to fetch details
           try {
@@ -194,10 +205,7 @@ export async function fetchSecEdgar(params: FetchParams): Promise<FetchResult> {
               item.cik = form13f.cik;
               rawItems.push(item);
             }
-          } catch {
-            // If we can't fetch XML details, skip this entry
-            continue;
-          }
+          } catch {}
         }
       }
     } catch (error) {

@@ -147,7 +147,10 @@ function asStringArray(value: unknown, maxLen: number): string[] | null {
   return out;
 }
 
-function normalizeDeepSummaryOutput(value: Record<string, unknown>, ref: ModelRef): DeepSummaryOutput | null {
+function normalizeDeepSummaryOutput(
+  value: Record<string, unknown>,
+  ref: ModelRef,
+): DeepSummaryOutput | null {
   const schemaVersion = asString(value.schema_version) ?? SCHEMA_VERSION;
   const promptId = asString(value.prompt_id) ?? PROMPT_ID;
   if (schemaVersion !== SCHEMA_VERSION || promptId !== PROMPT_ID) return null;
@@ -193,7 +196,12 @@ async function runDeepSummaryOnce(params: {
   tier: BudgetTier;
   candidate: DeepSummaryCandidateInput;
   isRetry: boolean;
-}): Promise<{ output: DeepSummaryOutput; inputTokens: number; outputTokens: number; endpoint: string }> {
+}): Promise<{
+  output: DeepSummaryOutput;
+  inputTokens: number;
+  outputTokens: number;
+  endpoint: string;
+}> {
   const ref = params.router.chooseModel("deep_summary", params.tier);
   const reasoningEffort = parseReasoningEffort(process.env.OPENAI_DEEP_SUMMARY_REASONING_EFFORT);
   const maxOutputTokens = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_OUTPUT_TOKENS) ?? 700;

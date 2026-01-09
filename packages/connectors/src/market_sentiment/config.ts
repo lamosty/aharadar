@@ -29,22 +29,28 @@ function asBoolean(value: unknown, defaultValue: boolean): boolean {
 }
 
 export function parseMarketSentimentSourceConfig(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
 ): MarketSentimentSourceConfig {
   const tickers = asUpperStringArray(config.tickers);
   const sentimentChangeThreshold = Math.max(
     0,
-    asNumber(config.sentiment_change_threshold ?? config.sentimentChangeThreshold, 0)
+    asNumber(config.sentiment_change_threshold ?? config.sentimentChangeThreshold, 0),
   );
-  const minMentions = Math.max(0, Math.floor(asNumber(config.min_mentions ?? config.minMentions, 0)));
+  const minMentions = Math.max(
+    0,
+    Math.floor(asNumber(config.min_mentions ?? config.minMentions, 0)),
+  );
   const alertOnExtreme = asBoolean(config.alert_on_extreme ?? config.alertOnExtreme, false);
   const extremeThreshold = Math.max(
     0.5,
-    Math.min(1, asNumber(config.extreme_threshold ?? config.extremeThreshold, 0.8))
+    Math.min(1, asNumber(config.extreme_threshold ?? config.extremeThreshold, 0.8)),
   );
   const maxTickersPerFetch = Math.max(
     1,
-    Math.min(30, Math.floor(asNumber(config.max_tickers_per_fetch ?? config.maxTickersPerFetch, 10)))
+    Math.min(
+      30,
+      Math.floor(asNumber(config.max_tickers_per_fetch ?? config.maxTickersPerFetch, 10)),
+    ),
   );
 
   return {

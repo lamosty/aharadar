@@ -86,7 +86,7 @@
 /* Responsive - hide labels on smaller screens */
 @media (max-width: 768px) {
   .buttonLabel {
-    display: none !important;
+    display: none;
   }
 }
 

@@ -48,7 +48,9 @@ function parseCursor(cursor: Record<string, unknown>): PolymarketCursorJson {
     ? cursor.seen_condition_ids.filter((id) => typeof id === "string")
     : undefined;
   const lastPrices =
-    cursor.last_prices && typeof cursor.last_prices === "object" && !Array.isArray(cursor.last_prices)
+    cursor.last_prices &&
+    typeof cursor.last_prices === "object" &&
+    !Array.isArray(cursor.last_prices)
       ? (cursor.last_prices as Record<string, number>)
       : undefined;
 
@@ -59,7 +61,10 @@ function parseCursor(cursor: Record<string, unknown>): PolymarketCursorJson {
   };
 }
 
-async function fetchGammaApi(limit: number, includeClosed: boolean): Promise<PolymarketRawMarket[]> {
+async function fetchGammaApi(
+  limit: number,
+  includeClosed: boolean,
+): Promise<PolymarketRawMarket[]> {
   const params = new URLSearchParams({
     limit: String(limit),
     active: "true",
@@ -94,7 +99,7 @@ async function fetchGammaApi(limit: number, includeClosed: boolean): Promise<Pol
     // Retry on rate limit or server errors
     if (res.status === 429 || res.status >= 500) {
       if (retries < maxRetries) {
-        const delayMs = baseDelayMs * Math.pow(2, retries);
+        const delayMs = baseDelayMs * 2 ** retries;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         retries++;
         continue;
@@ -113,7 +118,7 @@ async function fetchGammaApi(limit: number, includeClosed: boolean): Promise<Pol
  */
 export function parseVolume(volumeStr: string): number {
   const parsed = parseFloat(volumeStr);
-  return isNaN(parsed) ? 0 : parsed / 100; // Convert cents to dollars
+  return Number.isNaN(parsed) ? 0 : parsed / 100; // Convert cents to dollars
 }
 
 /**
@@ -121,7 +126,7 @@ export function parseVolume(volumeStr: string): number {
  */
 export function parseProbability(priceStr: string): number {
   const parsed = parseFloat(priceStr);
-  return isNaN(parsed) ? 0 : parsed;
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 /**
@@ -130,7 +135,7 @@ export function parseProbability(priceStr: string): number {
 export function calculateProbabilityChange(
   conditionId: string,
   currentProb: number,
-  lastPrices: Record<string, number> | undefined
+  lastPrices: Record<string, number> | undefined,
 ): number | null {
   if (!lastPrices || !(conditionId in lastPrices)) {
     return null;
@@ -162,7 +167,10 @@ export async function fetchPolymarket(params: FetchParams): Promise<FetchResult>
 
   try {
     // Fetch more than we need to allow for filtering
-    const markets = await fetchGammaApi(Math.min(maxItems * 3, 200), config.include_resolved ?? false);
+    const markets = await fetchGammaApi(
+      Math.min(maxItems * 3, 200),
+      config.include_resolved ?? false,
+    );
 
     for (const market of markets) {
       if (rawItems.length >= maxItems) break;
@@ -173,7 +181,8 @@ export async function fetchPolymarket(params: FetchParams): Promise<FetchResult>
       // Parse key metrics
       const volume = parseVolume(market.volume);
       const liquidity = parseVolume(market.liquidity);
-      const probability = market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
+      const probability =
+        market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
 
       // Apply filters
       // Volume filter
@@ -187,7 +196,11 @@ export async function fetchPolymarket(params: FetchParams): Promise<FetchResult>
       }
 
       // Calculate and check probability change
-      const probChange = calculateProbabilityChange(market.conditionId, probability, cursorIn.last_prices);
+      const probChange = calculateProbabilityChange(
+        market.conditionId,
+        probability,
+        cursorIn.last_prices,
+      );
 
       // Probability change threshold filter
       if (config.probability_change_threshold && config.probability_change_threshold > 0) {

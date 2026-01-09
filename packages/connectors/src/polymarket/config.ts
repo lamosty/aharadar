@@ -28,18 +28,26 @@ function asBoolean(value: unknown, defaultValue: boolean): boolean {
   return typeof value === "boolean" ? value : defaultValue;
 }
 
-export function parsePolymarketSourceConfig(config: Record<string, unknown>): PolymarketSourceConfig {
+export function parsePolymarketSourceConfig(
+  config: Record<string, unknown>,
+): PolymarketSourceConfig {
   const categories = asStringArray(config.categories);
   const minVolume = Math.max(0, Math.floor(asNumber(config.min_volume ?? config.minVolume, 0)));
-  const minLiquidity = Math.max(0, Math.floor(asNumber(config.min_liquidity ?? config.minLiquidity, 0)));
+  const minLiquidity = Math.max(
+    0,
+    Math.floor(asNumber(config.min_liquidity ?? config.minLiquidity, 0)),
+  );
   const probabilityChangeThreshold = Math.max(
     0,
-    asNumber(config.probability_change_threshold ?? config.probabilityChangeThreshold, 0)
+    asNumber(config.probability_change_threshold ?? config.probabilityChangeThreshold, 0),
   );
   const includeResolved = asBoolean(config.include_resolved ?? config.includeResolved, false);
   const maxMarkets = Math.max(
     1,
-    Math.min(200, Math.floor(asNumber(config.max_markets_per_fetch ?? config.maxMarketsPerFetch, 50)))
+    Math.min(
+      200,
+      Math.floor(asNumber(config.max_markets_per_fetch ?? config.maxMarketsPerFetch, 50)),
+    ),
   );
 
   return {

@@ -72,7 +72,7 @@ export function createProviderCallsRepo(db: Queryable) {
           draft.endedAt ?? null,
           draft.status,
           draft.error ? JSON.stringify(draft.error) : null,
-        ]
+        ],
       );
       const row = res.rows[0];
       if (!row) throw new Error("Failed to insert provider_call");
@@ -82,7 +82,7 @@ export function createProviderCallsRepo(db: Queryable) {
     async getUsageByPeriod(
       userId: string,
       startDate: Date,
-      endDate: Date
+      endDate: Date,
     ): Promise<{
       summary: UsageSummary;
       byProvider: UsageByProvider[];
@@ -102,7 +102,7 @@ export function createProviderCallsRepo(db: Queryable) {
            COUNT(*) as "callCount"
          FROM provider_calls
          WHERE user_id = $1 AND started_at >= $2 AND started_at < $3`,
-        [userId, startDate.toISOString(), endDate.toISOString()]
+        [userId, startDate.toISOString(), endDate.toISOString()],
       );
 
       // By provider
@@ -119,7 +119,7 @@ export function createProviderCallsRepo(db: Queryable) {
          WHERE user_id = $1 AND started_at >= $2 AND started_at < $3
          GROUP BY provider
          ORDER BY "totalUsd" DESC`,
-        [userId, startDate.toISOString(), endDate.toISOString()]
+        [userId, startDate.toISOString(), endDate.toISOString()],
       );
 
       // By model
@@ -142,7 +142,7 @@ export function createProviderCallsRepo(db: Queryable) {
          WHERE user_id = $1 AND started_at >= $2 AND started_at < $3
          GROUP BY provider, model
          ORDER BY "totalUsd" DESC`,
-        [userId, startDate.toISOString(), endDate.toISOString()]
+        [userId, startDate.toISOString(), endDate.toISOString()],
       );
 
       const summaryRow = summaryResult.rows[0];
@@ -196,7 +196,7 @@ export function createProviderCallsRepo(db: Queryable) {
          WHERE user_id = $1 AND started_at >= $2 AND started_at < $3
          GROUP BY DATE(started_at)
          ORDER BY date`,
-        [userId, startDate.toISOString(), endDate.toISOString()]
+        [userId, startDate.toISOString(), endDate.toISOString()],
       );
 
       return result.rows.map((r) => ({

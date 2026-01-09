@@ -403,7 +403,7 @@ export class ApiError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly status?: number
+    public readonly status?: number,
   ) {
     super(message);
     this.name = "ApiError";
@@ -467,7 +467,9 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
 
     // Network or fetch errors
     if (error instanceof TypeError || error instanceof DOMException) {
-      throw new NetworkError(error.name === "AbortError" ? "Request aborted" : "Network request failed");
+      throw new NetworkError(
+        error.name === "AbortError" ? "Request aborted" : "Network request failed",
+      );
     }
 
     // Unknown errors
@@ -491,7 +493,7 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
  */
 export async function getDigests(
   params?: { from?: string; to?: string },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<DigestsListResponse> {
   const searchParams = new URLSearchParams();
   if (params?.from) searchParams.set("from", params.from);
@@ -520,7 +522,10 @@ export async function getItem(id: string, signal?: AbortSignal): Promise<ItemDet
 /**
  * List items with filters (unified feed).
  */
-export async function getItems(params?: ItemsListParams, signal?: AbortSignal): Promise<ItemsListResponse> {
+export async function getItems(
+  params?: ItemsListParams,
+  signal?: AbortSignal,
+): Promise<ItemsListResponse> {
   const searchParams = new URLSearchParams();
 
   if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
@@ -544,7 +549,7 @@ export async function getItems(params?: ItemsListParams, signal?: AbortSignal): 
  */
 export async function postFeedback(
   feedback: FeedbackRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<FeedbackResponse> {
   return apiFetch<FeedbackResponse>("/feedback", {
     method: "POST",
@@ -558,7 +563,7 @@ export async function postFeedback(
  */
 export async function postAdminRun(
   request: AdminRunRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<AdminRunResponse> {
   return apiFetch<AdminRunResponse>("/admin/run", {
     method: "POST",
@@ -580,7 +585,7 @@ export async function getAdminSources(signal?: AbortSignal): Promise<SourcesList
 export async function patchAdminSource(
   id: string,
   patch: SourcePatchRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<SourcePatchResponse> {
   return apiFetch<SourcePatchResponse>(`/admin/sources/${id}`, {
     method: "PATCH",
@@ -594,7 +599,7 @@ export async function patchAdminSource(
  */
 export async function postAdminSource(
   request: SourceCreateRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<SourceCreateResponse> {
   return apiFetch<SourceCreateResponse>("/admin/sources", {
     method: "POST",
@@ -619,7 +624,10 @@ export interface SourceDeleteResponse {
 /**
  * Delete a source.
  */
-export async function deleteAdminSource(id: string, signal?: AbortSignal): Promise<SourceDeleteResponse> {
+export async function deleteAdminSource(
+  id: string,
+  signal?: AbortSignal,
+): Promise<SourceDeleteResponse> {
   return apiFetch<SourceDeleteResponse>(`/admin/sources/${id}`, {
     method: "DELETE",
     signal,
@@ -669,7 +677,7 @@ export async function getAdminLlmSettings(signal?: AbortSignal): Promise<LlmSett
  */
 export async function patchAdminLlmSettings(
   data: LlmSettingsUpdateRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<LlmSettingsResponse> {
   return apiFetch<LlmSettingsResponse>("/admin/llm-settings", {
     method: "PATCH",
@@ -738,7 +746,7 @@ export async function patchPreferences(
     decayHours?: number;
     customSettings?: Record<string, unknown>;
   },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<PreferencesUpdateResponse> {
   return apiFetch<PreferencesUpdateResponse>("/preferences", {
     method: "PATCH",
@@ -750,7 +758,9 @@ export async function patchPreferences(
 /**
  * Mark feed as "caught up".
  */
-export async function postMarkChecked(signal?: AbortSignal): Promise<PreferencesMarkCheckedResponse> {
+export async function postMarkChecked(
+  signal?: AbortSignal,
+): Promise<PreferencesMarkCheckedResponse> {
   return apiFetch<PreferencesMarkCheckedResponse>("/preferences/mark-checked", {
     method: "POST",
     signal,
@@ -826,7 +836,7 @@ export async function getTopic(id: string, signal?: AbortSignal): Promise<TopicD
 export async function patchTopicViewingProfile(
   id: string,
   data: TopicViewingProfileUpdateRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<TopicViewingProfileUpdateResponse> {
   return apiFetch<TopicViewingProfileUpdateResponse>(`/topics/${id}/viewing-profile`, {
     method: "PATCH",
@@ -840,7 +850,7 @@ export async function patchTopicViewingProfile(
  */
 export async function postTopicMarkChecked(
   id: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<TopicMarkCheckedResponse> {
   return apiFetch<TopicMarkCheckedResponse>(`/topics/${id}/mark-checked`, {
     method: "POST",
@@ -885,7 +895,7 @@ export interface DeleteTopicResponse {
  */
 export async function createTopic(
   data: CreateTopicRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<CreateTopicResponse> {
   return apiFetch<CreateTopicResponse>("/topics", {
     method: "POST",
@@ -900,7 +910,7 @@ export async function createTopic(
 export async function updateTopic(
   id: string,
   data: UpdateTopicRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<UpdateTopicResponse> {
   return apiFetch<UpdateTopicResponse>(`/topics/${id}`, {
     method: "PATCH",
@@ -978,7 +988,7 @@ export async function getUserApiKeys(signal?: AbortSignal): Promise<ApiKeysListR
 export async function addUserApiKey(
   provider: string,
   apiKey: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ApiKeyAddResponse> {
   return apiFetch<ApiKeyAddResponse>("/user/api-keys", {
     method: "POST",
@@ -990,7 +1000,10 @@ export async function addUserApiKey(
 /**
  * Delete an API key.
  */
-export async function deleteUserApiKey(id: string, signal?: AbortSignal): Promise<ApiKeyDeleteResponse> {
+export async function deleteUserApiKey(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ApiKeyDeleteResponse> {
   return apiFetch<ApiKeyDeleteResponse>(`/user/api-keys/${id}`, {
     method: "DELETE",
     signal,
@@ -1068,7 +1081,10 @@ export async function getMonthlyUsage(signal?: AbortSignal): Promise<MonthlyUsag
 /**
  * Get daily usage for charts.
  */
-export async function getDailyUsage(days?: number, signal?: AbortSignal): Promise<DailyUsageResponse> {
+export async function getDailyUsage(
+  days?: number,
+  signal?: AbortSignal,
+): Promise<DailyUsageResponse> {
   const query = days ? `?days=${days}` : "";
   return apiFetch<DailyUsageResponse>(`/user/usage/daily${query}`, { signal });
 }

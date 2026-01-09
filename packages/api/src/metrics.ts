@@ -1,6 +1,6 @@
-import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { MetricLabels, MetricNames, HTTP_DURATION_BUCKETS } from "@aharadar/shared";
+import { HTTP_DURATION_BUCKETS, MetricLabels, MetricNames } from "@aharadar/shared";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
 
 /** Global registry for API metrics */
 export const registry = new Registry();
@@ -56,7 +56,8 @@ export function registerMetricsHooks(fastify: FastifyInstance): void {
   // Track request start time
   fastify.addHook("onRequest", async (request: FastifyRequest) => {
     httpActiveConnections.inc();
-    (request as FastifyRequest & { metricsStartTime: bigint }).metricsStartTime = process.hrtime.bigint();
+    (request as FastifyRequest & { metricsStartTime: bigint }).metricsStartTime =
+      process.hrtime.bigint();
   });
 
   // Record metrics on response

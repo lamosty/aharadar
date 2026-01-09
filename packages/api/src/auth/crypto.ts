@@ -1,4 +1,4 @@
-import { randomBytes, createHash, createCipheriv, createDecipheriv } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 
 /**
  * Generate a cryptographically secure random token
@@ -45,7 +45,11 @@ export function encryptApiKey(plainKey: string, masterKey: Buffer): EncryptedDat
     authTagLength: AUTH_TAG_LENGTH,
   });
 
-  const encrypted = Buffer.concat([cipher.update(plainKey, "utf8"), cipher.final(), cipher.getAuthTag()]);
+  const encrypted = Buffer.concat([
+    cipher.update(plainKey, "utf8"),
+    cipher.final(),
+    cipher.getAuthTag(),
+  ]);
 
   return { encrypted, iv };
 }

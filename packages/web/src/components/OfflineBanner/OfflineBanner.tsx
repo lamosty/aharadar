@@ -1,7 +1,7 @@
 "use client";
 
-import { useIsOnline } from "@/lib/use-network-status";
 import { t } from "@/lib/i18n";
+import { useIsOnline } from "@/lib/use-network-status";
 import styles from "./OfflineBanner.module.css";
 
 interface OfflineBannerProps {
@@ -35,7 +35,9 @@ export function OfflineBanner({ showStaleIndicator = false, lastUpdated }: Offli
     >
       <div className={styles.content}>
         <span className={styles.icon}>{isOnline ? <StaleIcon /> : <OfflineIcon />}</span>
-        <span className={styles.message}>{isOnline ? t("network.staleData") : t("network.offline")}</span>
+        <span className={styles.message}>
+          {isOnline ? t("network.staleData") : t("network.offline")}
+        </span>
         {formattedTime && (
           <span className={styles.time}>{t("network.lastUpdated", { time: formattedTime })}</span>
         )}

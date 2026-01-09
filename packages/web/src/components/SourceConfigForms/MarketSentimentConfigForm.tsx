@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { MarketSentimentConfig, SourceConfigFormProps } from "./types";
+import { ApiKeyBanner, ApiKeyGuidance } from "@/components/ApiKeyGuidance";
 import { HelpTooltip } from "@/components/HelpTooltip";
-import { ApiKeyGuidance, ApiKeyBanner } from "@/components/ApiKeyGuidance";
 import styles from "./SourceConfigForms.module.css";
+import type { MarketSentimentConfig, SourceConfigFormProps } from "./types";
 
 export function MarketSentimentConfigForm({
   value,
@@ -13,7 +13,10 @@ export function MarketSentimentConfigForm({
 }: SourceConfigFormProps<MarketSentimentConfig>) {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
-  const handleChange = <K extends keyof MarketSentimentConfig>(key: K, val: MarketSentimentConfig[K]) => {
+  const handleChange = <K extends keyof MarketSentimentConfig>(
+    key: K,
+    val: MarketSentimentConfig[K],
+  ) => {
     onChange({ ...value, [key]: val });
   };
 
@@ -39,16 +42,20 @@ export function MarketSentimentConfigForm({
 
       <ApiKeyBanner provider="finnhub" onSetupClick={() => setShowApiKeyModal(true)} />
 
-      <ApiKeyGuidance provider="finnhub" isOpen={showApiKeyModal} onClose={() => setShowApiKeyModal(false)} />
+      <ApiKeyGuidance
+        provider="finnhub"
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+      />
 
       <div className={styles.helpBox}>
         <p>
-          Track social media sentiment for stocks aggregated from Reddit, Twitter, and StockTwits via Finnhub.
-          Useful for gauging retail investor sentiment and momentum.
+          Track social media sentiment for stocks aggregated from Reddit, Twitter, and StockTwits
+          via Finnhub. Useful for gauging retail investor sentiment and momentum.
         </p>
         <p style={{ marginTop: "var(--space-2)", color: "var(--color-text-muted)" }}>
-          <strong>Note:</strong> Social sentiment is inherently noisy and should be used as a supplementary
-          signal.
+          <strong>Note:</strong> Social sentiment is inherently noisy and should be used as a
+          supplementary signal.
         </p>
       </div>
 
@@ -65,7 +72,8 @@ export function MarketSentimentConfigForm({
                   <p>Comma-separated list of stock tickers to track sentiment for.</p>
                   <p>Example: SPY, QQQ, AAPL, TSLA, NVDA</p>
                   <p>
-                    <strong>Tip:</strong> Start with popular tickers that have high social media activity.
+                    <strong>Tip:</strong> Start with popular tickers that have high social media
+                    activity.
                   </p>
                 </>
               }
@@ -110,7 +118,7 @@ export function MarketSentimentConfigForm({
             onChange={(e) =>
               handleChange(
                 "sentiment_change_threshold",
-                e.target.value ? parseInt(e.target.value, 10) : undefined
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
               )
             }
             placeholder="0"
@@ -139,7 +147,10 @@ export function MarketSentimentConfigForm({
             min={0}
             value={value.min_mentions ?? ""}
             onChange={(e) =>
-              handleChange("min_mentions", e.target.value ? parseInt(e.target.value, 10) : undefined)
+              handleChange(
+                "min_mentions",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
             }
             placeholder="0"
             className={styles.numberInput}
@@ -191,7 +202,10 @@ export function MarketSentimentConfigForm({
               step={0.05}
               value={value.extreme_threshold ?? ""}
               onChange={(e) =>
-                handleChange("extreme_threshold", e.target.value ? parseFloat(e.target.value) : undefined)
+                handleChange(
+                  "extreme_threshold",
+                  e.target.value ? parseFloat(e.target.value) : undefined,
+                )
               }
               placeholder="0.8"
               className={styles.numberInput}
@@ -220,7 +234,10 @@ export function MarketSentimentConfigForm({
             max={30}
             value={value.max_tickers_per_fetch ?? ""}
             onChange={(e) =>
-              handleChange("max_tickers_per_fetch", e.target.value ? parseInt(e.target.value, 10) : undefined)
+              handleChange(
+                "max_tickers_per_fetch",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
             }
             placeholder="10"
             className={styles.numberInput}

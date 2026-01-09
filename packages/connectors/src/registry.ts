@@ -1,4 +1,3 @@
-import type { Connector } from "./types";
 import { congressTradingConnector } from "./congress_trading";
 import { hnConnector } from "./hn";
 import { marketSentimentConnector } from "./market_sentiment";
@@ -8,6 +7,7 @@ import { redditConnector } from "./reddit";
 import { rssConnector } from "./rss";
 import { secEdgarConnector } from "./sec_edgar";
 import { signalConnector } from "./signal";
+import type { Connector } from "./types";
 import { xPostsConnector } from "./x_posts";
 import { youtubeConnector } from "./youtube";
 

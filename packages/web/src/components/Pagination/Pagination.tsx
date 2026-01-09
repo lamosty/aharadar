@@ -1,6 +1,5 @@
 "use client";
 
-import { t } from "@/lib/i18n";
 import styles from "./Pagination.module.css";
 
 export const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
@@ -145,7 +144,7 @@ export function Pagination({
                 >
                   {pageNum}
                 </button>
-              )
+              ),
             )}
           </div>
         )}

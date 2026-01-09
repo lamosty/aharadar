@@ -1,7 +1,7 @@
 "use client";
 
-import { useTopics } from "@/lib/hooks";
 import { useTopic } from "@/components/TopicProvider";
+import { useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./TopicSwitcher.module.css";
 
@@ -51,7 +51,9 @@ export function TopicSwitcher({ className }: TopicSwitcherProps) {
           </option>
         ))}
       </select>
-      {currentTopic?.description && <span className={styles.description}>{currentTopic.description}</span>}
+      {currentTopic?.description && (
+        <span className={styles.description}>{currentTopic.description}</span>
+      )}
     </div>
   );
 }

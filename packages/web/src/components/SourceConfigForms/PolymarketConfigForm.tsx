@@ -1,8 +1,8 @@
 "use client";
 
-import type { PolymarketConfig, SourceConfigFormProps } from "./types";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
+import type { PolymarketConfig, SourceConfigFormProps } from "./types";
 
 export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<PolymarketConfig>) {
   const handleChange = <K extends keyof PolymarketConfig>(key: K, val: PolymarketConfig[K]) => {
@@ -23,8 +23,9 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
 
       <div className={styles.helpBox}>
         <p>
-          Track prediction market data from Polymarket including market questions, current probabilities,
-          volume, and price movements. Useful for gauging crowd-sourced forecasts on events.
+          Track prediction market data from Polymarket including market questions, current
+          probabilities, volume, and price movements. Useful for gauging crowd-sourced forecasts on
+          events.
         </p>
         <p style={{ marginTop: "var(--space-2)" }}>
           <strong>No API key required</strong> - uses free public API.
@@ -56,7 +57,10 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
                 min={0}
                 value={value.min_volume ?? ""}
                 onChange={(e) =>
-                  handleChange("min_volume", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "min_volume",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
                 }
                 placeholder="0"
                 className={styles.numberInput}
@@ -83,7 +87,10 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
                 min={0}
                 value={value.min_liquidity ?? ""}
                 onChange={(e) =>
-                  handleChange("min_liquidity", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "min_liquidity",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
                 }
                 placeholder="0"
                 className={styles.numberInput}
@@ -100,12 +107,13 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
               content={
                 <>
                   <p>
-                    Only include markets where probability has moved by at least this many percentage points.
+                    Only include markets where probability has moved by at least this many
+                    percentage points.
                   </p>
                   <p>Set to 5 to only see markets with significant movements (5%+ change).</p>
                   <p>
-                    Leave at 0 to see all markets. This is useful for creating a "prediction market movers"
-                    alert feed.
+                    Leave at 0 to see all markets. This is useful for creating a "prediction market
+                    movers" alert feed.
                   </p>
                 </>
               }
@@ -120,7 +128,7 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
             onChange={(e) =>
               handleChange(
                 "probability_change_threshold",
-                e.target.value ? parseInt(e.target.value, 10) : undefined
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
               )
             }
             placeholder="0"
@@ -155,7 +163,7 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
                 onChange={(e) =>
                   handleChange(
                     "max_markets_per_fetch",
-                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
                   )
                 }
                 placeholder="50"
@@ -178,7 +186,10 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
             <HelpTooltip
               title="Resolved Markets"
               content={
-                <p>Include markets that have already resolved. By default, only active markets are shown.</p>
+                <p>
+                  Include markets that have already resolved. By default, only active markets are
+                  shown.
+                </p>
               }
             />
           </label>

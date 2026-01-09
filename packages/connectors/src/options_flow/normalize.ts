@@ -1,5 +1,10 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
-import { type OptionsFlowRaw, generateFlowId, calculateDaysToExpiry, classifySentiment } from "./fetch";
+import {
+  calculateDaysToExpiry,
+  classifySentiment,
+  generateFlowId,
+  type OptionsFlowRaw,
+} from "./fetch";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -23,7 +28,7 @@ function formatPremium(premium: number): string {
 function formatExpiry(expiry: string): string {
   try {
     const date = new Date(expiry);
-    if (isNaN(date.getTime())) return expiry;
+    if (Number.isNaN(date.getTime())) return expiry;
     return `${date.getMonth() + 1}/${date.getDate()}`;
   } catch {
     return expiry;
@@ -49,8 +54,10 @@ function generateTitle(flow: OptionsFlowRaw): string {
  */
 function generateBodyText(flow: OptionsFlowRaw): string {
   const daysToExpiry = calculateDaysToExpiry(flow.expiry);
-  const volumeOiRatio = flow.open_interest > 0 ? (flow.volume / flow.open_interest).toFixed(2) : "N/A";
-  const isOTM = flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
+  const volumeOiRatio =
+    flow.open_interest > 0 ? (flow.volume / flow.open_interest).toFixed(2) : "N/A";
+  const isOTM =
+    flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
   const moneyness = isOTM ? "OTM" : flow.strike === flow.spot_price ? "ATM" : "ITM";
 
   let body = `${flow.flow_type.toUpperCase()} order on $${flow.symbol}`;
@@ -85,12 +92,17 @@ function buildCanonicalUrl(flow: OptionsFlowRaw): string {
 /**
  * Normalize options flow to ContentItemDraft
  */
-export async function normalizeOptionsFlow(raw: unknown, _params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeOptionsFlow(
+  raw: unknown,
+  _params: FetchParams,
+): Promise<ContentItemDraft> {
   const flow = asRecord(raw) as unknown as OptionsFlowRaw;
 
   // Validate required fields
   if (!flow.symbol || !flow.strike || !flow.contract_type) {
-    throw new Error("Malformed options flow: missing required fields (symbol, strike, contract_type)");
+    throw new Error(
+      "Malformed options flow: missing required fields (symbol, strike, contract_type)",
+    );
   }
 
   // Ensure sentiment is classified
@@ -104,7 +116,8 @@ export async function normalizeOptionsFlow(raw: unknown, _params: FetchParams): 
   const daysToExpiry = calculateDaysToExpiry(flow.expiry);
 
   // Determine if OTM
-  const isOTM = flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
+  const isOTM =
+    flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
 
   // Determine if weekly (typically < 7 days to expiry on Friday)
   const isWeekly = daysToExpiry <= 7;
@@ -114,7 +127,7 @@ export async function normalizeOptionsFlow(raw: unknown, _params: FetchParams): 
   if (flow.timestamp) {
     try {
       const date = new Date(flow.timestamp);
-      if (!isNaN(date.getTime())) {
+      if (!Number.isNaN(date.getTime())) {
         publishedAt = date.toISOString();
       }
     } catch {

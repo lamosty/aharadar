@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { getDevSettings, setDevSettings, clearDevSettings, type DevSettings } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
+import { clearDevSettings, type DevSettings, getDevSettings, setDevSettings } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import styles from "./DevSettings.module.css";
 

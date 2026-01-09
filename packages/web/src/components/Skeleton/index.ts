@@ -1,13 +1,13 @@
 export {
   Skeleton,
-  SkeletonText,
   SkeletonAvatar,
+  SkeletonBudgetCard,
   SkeletonButton,
   SkeletonCard,
   SkeletonDigestItem,
+  SkeletonList,
+  SkeletonPage,
   SkeletonRankedItem,
   SkeletonSourceItem,
-  SkeletonBudgetCard,
-  SkeletonPage,
-  SkeletonList,
+  SkeletonText,
 } from "./Skeleton";

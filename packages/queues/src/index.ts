@@ -1,6 +1,6 @@
-import { Queue } from "bullmq";
-import type { ConnectionOptions } from "bullmq";
 import type { BudgetTier } from "@aharadar/shared";
+import type { ConnectionOptions } from "bullmq";
+import { Queue } from "bullmq";
 
 /**
  * Queue name for pipeline jobs.

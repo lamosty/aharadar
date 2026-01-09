@@ -1,6 +1,6 @@
 import { createDb } from "@aharadar/db";
-import { parseSchedulerConfig, generateDueWindows, getSchedulableTopics } from "@aharadar/pipeline";
-import { loadDotEnvIfPresent, loadRuntimeEnv, createLogger } from "@aharadar/shared";
+import { generateDueWindows, getSchedulableTopics, parseSchedulerConfig } from "@aharadar/pipeline";
+import { createLogger, loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
 
 import { startMetricsServer, updateQueueDepth } from "./metrics";
 import { createPipelineQueue } from "./queues";
@@ -32,7 +32,7 @@ function getSchedulerIntervalMs(): number {
 async function runSchedulerTick(
   db: ReturnType<typeof createDb>,
   queue: ReturnType<typeof createPipelineQueue>,
-  config: ReturnType<typeof parseSchedulerConfig>
+  config: ReturnType<typeof parseSchedulerConfig>,
 ): Promise<void> {
   const topics = await getSchedulableTopics(db);
 
@@ -62,7 +62,10 @@ async function runSchedulerTick(
         removeOnFail: 50, // Keep last 50 failed jobs
       });
 
-      schedulerLog.info({ jobId: jobId.slice(0, 60), topicId: topicId.slice(0, 8) }, "Enqueued job");
+      schedulerLog.info(
+        { jobId: jobId.slice(0, 60), topicId: topicId.slice(0, 8) },
+        "Enqueued job",
+      );
     }
   }
 }
@@ -76,7 +79,7 @@ async function main(): Promise<void> {
 
   log.info(
     { windowMode: schedulerConfig.windowMode, tickMinutes: tickIntervalMs / 60000 },
-    "Scheduler configured"
+    "Scheduler configured",
   );
 
   // Create DB connection for scheduler

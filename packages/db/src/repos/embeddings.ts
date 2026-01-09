@@ -55,7 +55,7 @@ function parseVectorText(text: string): number[] | null {
 export function createEmbeddingsRepo(db: Queryable) {
   return {
     async getByContentItemId(
-      contentItemId: string
+      contentItemId: string,
     ): Promise<{ model: string; dims: number; vector: number[] } | null> {
       const res = await db.query<EmbeddingRow>(
         `select
@@ -65,7 +65,7 @@ export function createEmbeddingsRepo(db: Queryable) {
            vector::text as vector_text
          from embeddings
          where content_item_id = $1::uuid`,
-        [contentItemId]
+        [contentItemId],
       );
       const row = res.rows[0];
       if (!row) return null;
@@ -85,7 +85,7 @@ export function createEmbeddingsRepo(db: Queryable) {
            vector = excluded.vector,
            created_at = now()
          returning (xmax = 0) as inserted`,
-        [params.contentItemId, params.model, params.dims, asVectorLiteral(params.vector)]
+        [params.contentItemId, params.model, params.dims, asVectorLiteral(params.vector)],
       );
       const row = res.rows[0];
       if (!row) throw new Error("embeddings.upsert failed: no row returned");
@@ -155,7 +155,7 @@ export function createEmbeddingsRepo(db: Queryable) {
            ${windowWhere}
          order by coalesce(ci.published_at, ci.fetched_at) desc
          limit $${args.length}`,
-        args
+        args,
       );
 
       return res.rows;

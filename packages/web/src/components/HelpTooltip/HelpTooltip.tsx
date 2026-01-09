@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./HelpTooltip.module.css";
 
 interface HelpTooltipProps {
@@ -108,7 +108,14 @@ interface LabelWithHelpProps {
   className?: string;
 }
 
-export function LabelWithHelp({ label, help, helpTitle, required, htmlFor, className }: LabelWithHelpProps) {
+export function LabelWithHelp({
+  label,
+  help,
+  helpTitle,
+  required,
+  htmlFor,
+  className,
+}: LabelWithHelpProps) {
   return (
     <label htmlFor={htmlFor} className={className}>
       {label}

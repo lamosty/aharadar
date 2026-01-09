@@ -18,7 +18,7 @@ export function buildQAPrompt(question: string, context: RetrievedContext): stri
       const itemsText = cluster.items
         .map(
           (item) =>
-            `- **${item.title}** (${item.sourceType}, ${item.publishedAt || "unknown date"})\n  URL: ${item.url || "N/A"}\n  ${item.bodyText}`
+            `- **${item.title}** (${item.sourceType}, ${item.publishedAt || "unknown date"})\n  URL: ${item.url || "N/A"}\n  ${item.bodyText}`,
         )
         .join("\n\n");
 

@@ -44,11 +44,11 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
-function parseIsoDate(value: unknown): string | null {
+function _parseIsoDate(value: unknown): string | null {
   const s = asString(value);
   if (!s) return null;
   const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d.toISOString();
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function parseCursor(cursor: Record<string, unknown>): RssCursorJson {

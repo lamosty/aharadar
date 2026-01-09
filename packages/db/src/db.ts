@@ -1,6 +1,6 @@
-import { Pool } from "pg";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
-
+import { Pool } from "pg";
+import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
 import { createDigestItemsRepo } from "./repos/digest_items";
@@ -8,18 +8,20 @@ import { createDigestsRepo } from "./repos/digests";
 import { createEmbeddingsRepo } from "./repos/embeddings";
 import { createFeedbackEventsRepo } from "./repos/feedback_events";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
+import { createLlmSettingsRepo } from "./repos/llm_settings";
 import { createProviderCallsRepo } from "./repos/provider_calls";
+import { createSessionsRepo } from "./repos/sessions";
 import { createSourcesRepo } from "./repos/sources";
 import { createTopicPreferenceProfilesRepo } from "./repos/topic_preference_profiles";
 import { createTopicsRepo } from "./repos/topics";
-import { createUsersRepo } from "./repos/users";
-import { createAuthTokensRepo } from "./repos/auth_tokens";
-import { createSessionsRepo } from "./repos/sessions";
 import { createUserApiKeysRepo } from "./repos/user_api_keys";
-import { createLlmSettingsRepo } from "./repos/llm_settings";
+import { createUsersRepo } from "./repos/users";
 
 export interface Queryable {
-  query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<QueryResult<T>>;
+  query<T extends QueryResultRow = QueryResultRow>(
+    text: string,
+    params?: unknown[],
+  ): Promise<QueryResult<T>>;
 }
 
 export type DbContext = Queryable & {

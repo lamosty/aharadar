@@ -1,7 +1,8 @@
 import type { LlmCallResult, LlmRequest } from "./types";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -46,7 +47,11 @@ function extractAssistantContent(response: unknown): string | null {
     for (const item of output) {
       const it = asRecord(item);
       const directText =
-        typeof it.text === "string" ? it.text : typeof it.output_text === "string" ? it.output_text : null;
+        typeof it.text === "string"
+          ? it.text
+          : typeof it.output_text === "string"
+            ? it.output_text
+            : null;
       if (directText && directText.length > 0) return directText;
       if (it.type === "message" && it.role === "assistant") {
         const content = it.content;
@@ -54,13 +59,21 @@ function extractAssistantContent(response: unknown): string | null {
           for (const part of content) {
             const p = asRecord(part);
             const text =
-              typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
+              typeof p.text === "string"
+                ? p.text
+                : typeof p.output_text === "string"
+                  ? p.output_text
+                  : null;
             if (text && text.length > 0) return text;
           }
         } else if (content && typeof content === "object" && !Array.isArray(content)) {
           const c = content as Record<string, unknown>;
           const text =
-            typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
+            typeof c.text === "string"
+              ? c.text
+              : typeof c.output_text === "string"
+                ? c.output_text
+                : null;
           if (text && text.length > 0) return text;
         } else if (typeof content === "string" && content.length > 0) {
           return content;
@@ -68,7 +81,11 @@ function extractAssistantContent(response: unknown): string | null {
       } else if (it.content && typeof it.content === "object" && !Array.isArray(it.content)) {
         const c = it.content as Record<string, unknown>;
         const text =
-          typeof c.text === "string" ? c.text : typeof c.output_text === "string" ? c.output_text : null;
+          typeof c.text === "string"
+            ? c.text
+            : typeof c.output_text === "string"
+              ? c.output_text
+              : null;
         if (text && text.length > 0) return text;
       } else if (typeof it.content === "string" && it.content.length > 0) {
         return it.content;
@@ -86,7 +103,11 @@ function extractAssistantContent(response: unknown): string | null {
       for (const part of content) {
         const p = asRecord(part);
         const text =
-          typeof p.text === "string" ? p.text : typeof p.output_text === "string" ? p.output_text : null;
+          typeof p.text === "string"
+            ? p.text
+            : typeof p.output_text === "string"
+              ? p.output_text
+              : null;
         if (text && text.length > 0) return text;
       }
     }
@@ -99,7 +120,9 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function extractUsageTokens(response: unknown): { inputTokens: number; outputTokens: number } | null {
+function extractUsageTokens(
+  response: unknown,
+): { inputTokens: number; outputTokens: number } | null {
   const obj = asRecord(response);
   const usage = obj.usage;
   if (!usage || typeof usage !== "object" || Array.isArray(usage)) return null;
@@ -133,9 +156,15 @@ export async function callOpenAiCompat(params: {
       { role: "user", content: params.request.user },
     ],
     stream: false,
-    ...(params.request.temperature !== undefined ? { temperature: params.request.temperature } : {}),
-    ...(params.request.maxOutputTokens ? { max_output_tokens: params.request.maxOutputTokens } : {}),
-    ...(params.request.reasoningEffort ? { reasoning: { effort: params.request.reasoningEffort } } : {}),
+    ...(params.request.temperature !== undefined
+      ? { temperature: params.request.temperature }
+      : {}),
+    ...(params.request.maxOutputTokens
+      ? { max_output_tokens: params.request.maxOutputTokens }
+      : {}),
+    ...(params.request.reasoningEffort
+      ? { reasoning: { effort: params.request.reasoningEffort } }
+      : {}),
   };
 
   const res = await fetch(params.endpoint, {
@@ -148,7 +177,9 @@ export async function callOpenAiCompat(params: {
   });
 
   const contentType = res.headers.get("content-type") ?? "";
-  const response: unknown = contentType.includes("application/json") ? await res.json() : await res.text();
+  const response: unknown = contentType.includes("application/json")
+    ? await res.json()
+    : await res.text();
 
   if (!res.ok) {
     const detail = extractErrorDetail(response);
@@ -161,7 +192,9 @@ export async function callOpenAiCompat(params: {
     err.model = params.model;
     err.responseSnippet = snippet;
     err.requestId =
-      res.headers.get("x-request-id") ?? res.headers.get("xai-request-id") ?? res.headers.get("cf-ray");
+      res.headers.get("x-request-id") ??
+      res.headers.get("xai-request-id") ??
+      res.headers.get("cf-ray");
     throw err;
   }
 

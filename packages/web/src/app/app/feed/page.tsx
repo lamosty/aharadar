@@ -1,22 +1,22 @@
 "use client";
 
-import { Suspense, useState, useCallback, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { FeedFilterBar, FeedItem, FeedItemSkeleton } from "@/components/Feed";
+import { LayoutToggle } from "@/components/LayoutToggle";
+import { type PageSize, Pagination } from "@/components/Pagination";
+import { useToast } from "@/components/Toast";
+import { useTopic } from "@/components/TopicProvider";
+import { TopicSwitcher } from "@/components/TopicSwitcher";
 import {
-  usePagedItems,
   useFeedback,
+  useLocalStorage,
+  usePagedItems,
+  usePageLayout,
   useTopicMarkChecked,
   useTopics,
-  usePageLayout,
-  useLocalStorage,
 } from "@/lib/hooks";
-import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
-import { Pagination, type PageSize, PAGE_SIZE_OPTIONS } from "@/components/Pagination";
-import { TopicSwitcher } from "@/components/TopicSwitcher";
-import { LayoutToggle } from "@/components/LayoutToggle";
-import { useTopic } from "@/components/TopicProvider";
-import Link from "next/link";
-import { useToast } from "@/components/Toast";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -65,7 +65,7 @@ function FeedPageContent() {
   const pageParam = searchParams.get("page");
 
   const [selectedSources, setSelectedSources] = useState<string[]>(
-    sourcesParam ? sourcesParam.split(",").filter(Boolean) : []
+    sourcesParam ? sourcesParam.split(",").filter(Boolean) : [],
   );
   const [sort, setSort] = useState<SortOption>(sortParam || "score_desc");
 
@@ -76,7 +76,7 @@ function FeedPageContent() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSources, sort, currentTopicId]);
+  }, []);
 
   // Update URL when filters/page change
   const updateUrl = useCallback(
@@ -88,7 +88,7 @@ function FeedPageContent() {
       const query = params.toString();
       router.replace(query ? `/app/feed?${query}` : "/app/feed", { scroll: false });
     },
-    [router]
+    [router],
   );
 
   const handleSourcesChange = useCallback(
@@ -96,7 +96,7 @@ function FeedPageContent() {
       setSelectedSources(sources);
       updateUrl(sources, sort, 1);
     },
-    [sort, updateUrl]
+    [sort, updateUrl],
   );
 
   const handleSortChange = useCallback(
@@ -104,7 +104,7 @@ function FeedPageContent() {
       setSort(newSort);
       updateUrl(selectedSources, newSort, 1);
     },
-    [selectedSources, updateUrl]
+    [selectedSources, updateUrl],
   );
 
   const handlePageChange = useCallback(
@@ -114,7 +114,7 @@ function FeedPageContent() {
       // Scroll to top of feed
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [selectedSources, sort, updateUrl]
+    [selectedSources, sort, updateUrl],
   );
 
   const handlePageSizeChange = useCallback(
@@ -123,7 +123,7 @@ function FeedPageContent() {
       setCurrentPage(1);
       updateUrl(selectedSources, sort, 1);
     },
-    [selectedSources, sort, updateUrl, setPageSize]
+    [selectedSources, sort, updateUrl, setPageSize],
   );
 
   // Fetch items using paged query
@@ -166,7 +166,7 @@ function FeedPageContent() {
         action,
       });
     },
-    [data, feedbackMutation]
+    [data, feedbackMutation],
   );
 
   const items = data?.items ?? [];
@@ -289,7 +289,9 @@ function FeedPageContent() {
       {!isLoading && !isError && items.length === 0 && (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No items yet</p>
-          <p className={styles.emptyMessage}>Run the pipeline to fetch and rank items from your sources.</p>
+          <p className={styles.emptyMessage}>
+            Run the pipeline to fetch and rank items from your sources.
+          </p>
         </div>
       )}
 

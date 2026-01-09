@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { getDevSettings } from "@/lib/api";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 function LoginContent() {
@@ -91,7 +91,6 @@ function LoginContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
-                    autoFocus
                     disabled={isLoading}
                   />
                 </div>
@@ -111,7 +110,9 @@ function LoginContent() {
                 <CheckIcon />
               </div>
               <h2 className={styles.successTitle}>{t("login.checkEmail")}</h2>
-              <p className={styles.successDescription}>{t("login.checkEmailDescription", { email })}</p>
+              <p className={styles.successDescription}>
+                {t("login.checkEmailDescription", { email })}
+              </p>
               <button
                 type="button"
                 className={`btn btn-secondary ${styles.backButton}`}

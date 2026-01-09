@@ -7,8 +7,8 @@
  */
 
 import type { Db } from "@aharadar/db";
-import type { BudgetTier } from "@aharadar/shared";
 import { createEnvEmbeddingsClient } from "@aharadar/llm";
+import type { BudgetTier } from "@aharadar/shared";
 
 export interface RetrievedItem {
   id: string;
@@ -70,7 +70,7 @@ function asVectorLiteral(vector: number[]): string {
 
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + "...";
+  return `${text.slice(0, maxChars)}...`;
 }
 
 const MIN_SIMILARITY_THRESHOLD = 0.3;
@@ -102,7 +102,12 @@ export async function retrieveContext(params: {
 
   // Build time window filter if provided
   let timeFilter = "";
-  const queryArgs: unknown[] = [params.userId, params.topicId, asVectorLiteral(embedding), maxClusters];
+  const queryArgs: unknown[] = [
+    params.userId,
+    params.topicId,
+    asVectorLiteral(embedding),
+    maxClusters,
+  ];
 
   if (params.options?.timeWindow?.from) {
     queryArgs.push(params.options.timeWindow.from);
@@ -133,7 +138,7 @@ export async function retrieveContext(params: {
        )
      order by c.centroid_vector <=> $3::vector asc
      limit $4`,
-    queryArgs
+    queryArgs,
   );
 
   const clustersSearched = clustersRes.rows.length;
@@ -159,7 +164,7 @@ export async function retrieveContext(params: {
          and ci.deleted_at is null
        order by cli.similarity desc
        limit 3`,
-      [cluster.cluster_id]
+      [cluster.cluster_id],
     );
 
     const items: RetrievedItem[] = itemsRes.rows.map((item) => ({

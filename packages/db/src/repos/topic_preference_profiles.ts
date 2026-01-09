@@ -32,7 +32,7 @@ function asVectorLiteral(vector: number[]): string {
 function meanUpdate(
   existing: number[] | null,
   count: number,
-  next: number[]
+  next: number[],
 ): { vector: number[]; count: number } {
   const n = Math.max(0, Math.floor(count));
   if (!existing || existing.length === 0 || n === 0) {
@@ -67,7 +67,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
            updated_at::text as updated_at
          from topic_preference_profiles
          where user_id = $1::uuid and topic_id = $2::uuid`,
-        [params.userId, params.topicId]
+        [params.userId, params.topicId],
       );
       return res.rows[0] ?? null;
     },
@@ -77,7 +77,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
         `insert into topic_preference_profiles (user_id, topic_id)
          values ($1::uuid, $2::uuid)
          on conflict (user_id, topic_id) do nothing`,
-        [params.userId, params.topicId]
+        [params.userId, params.topicId],
       );
     },
 
@@ -89,11 +89,18 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
     }): Promise<{ positiveCount: number; negativeCount: number }> {
       // We do a read-modify-write so we don't rely on pgvector arithmetic operators.
       await this.getOrCreate({ userId: params.userId, topicId: params.topicId });
-      const current = await this.getByUserAndTopic({ userId: params.userId, topicId: params.topicId });
+      const current = await this.getByUserAndTopic({
+        userId: params.userId,
+        topicId: params.topicId,
+      });
       if (!current) throw new Error("topic_preference_profiles missing after getOrCreate");
 
-      const posVec = current.positive_vector_text ? parseVectorText(current.positive_vector_text) : null;
-      const negVec = current.negative_vector_text ? parseVectorText(current.negative_vector_text) : null;
+      const posVec = current.positive_vector_text
+        ? parseVectorText(current.positive_vector_text)
+        : null;
+      const negVec = current.negative_vector_text
+        ? parseVectorText(current.negative_vector_text)
+        : null;
 
       let nextPos = posVec;
       let nextNeg = negVec;
@@ -126,7 +133,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
           negCount,
           nextPos ? asVectorLiteral(nextPos) : null,
           nextNeg ? asVectorLiteral(nextNeg) : null,
-        ]
+        ],
       );
 
       return { positiveCount: posCount, negativeCount: negCount };

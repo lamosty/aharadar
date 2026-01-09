@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
-import { useAdminLlmSettings, useAdminLlmSettingsUpdate } from "@/lib/hooks";
 import type { LlmProvider } from "@/lib/api";
+import { useAdminLlmSettings, useAdminLlmSettingsUpdate } from "@/lib/hooks";
+import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 const PROVIDERS: LlmProvider[] = ["openai", "anthropic", "claude-subscription"];
@@ -102,7 +102,7 @@ export default function AdminLlmPage() {
   }
 
   // Determine active model based on provider
-  const activeModel = provider === "openai" ? openaiModel : anthropicModel;
+  const _activeModel = provider === "openai" ? openaiModel : anthropicModel;
 
   return (
     <div className={styles.page}>
@@ -212,9 +212,13 @@ export default function AdminLlmPage() {
                   disabled={isSaving}
                 />
                 <span className={styles.toggleSwitch} />
-                <span className={styles.toggleText}>{t("admin.llm.claudeSubscriptionEnabled")}</span>
+                <span className={styles.toggleText}>
+                  {t("admin.llm.claudeSubscriptionEnabled")}
+                </span>
               </label>
-              <p className={styles.toggleDescription}>{t("admin.llm.claudeSubscriptionDescription")}</p>
+              <p className={styles.toggleDescription}>
+                {t("admin.llm.claudeSubscriptionDescription")}
+              </p>
             </div>
 
             <div className={styles.toggle}>
@@ -229,7 +233,9 @@ export default function AdminLlmPage() {
                 <span className={styles.toggleSwitch} />
                 <span className={styles.toggleText}>{t("admin.llm.claudeTriageThinking")}</span>
               </label>
-              <p className={styles.toggleDescription}>{t("admin.llm.claudeTriageThinkingDescription")}</p>
+              <p className={styles.toggleDescription}>
+                {t("admin.llm.claudeTriageThinkingDescription")}
+              </p>
             </div>
 
             <div className={styles.formGroup}>

@@ -115,7 +115,7 @@ async function fetchUnusualWhalesApi(apiKey: string): Promise<OptionsFlowRaw[]> 
     // Retry on rate limit or server errors
     if (res.status === 429 || res.status >= 500) {
       if (retries < maxRetries) {
-        const delayMs = baseDelayMs * Math.pow(2, retries);
+        const delayMs = baseDelayMs * 2 ** retries;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         retries++;
         continue;
@@ -144,7 +144,9 @@ function normalizeApiResponse(raw: unknown): OptionsFlowRaw {
 
   // Normalize contract type
   let contractType: "call" | "put" = "call";
-  const type = ((r.contract_type || r.type || r.put_call || r.option_type) as string)?.toLowerCase();
+  const type = (
+    (r.contract_type || r.type || r.put_call || r.option_type) as string
+  )?.toLowerCase();
   if (type === "put" || type === "p") {
     contractType = "put";
   }
@@ -210,7 +212,7 @@ export function classifySentiment(flow: OptionsFlowRaw): "bullish" | "bearish" |
 export function calculateDaysToExpiry(expiryDate: string): number {
   try {
     const expiry = new Date(expiryDate);
-    if (isNaN(expiry.getTime())) return 0;
+    if (Number.isNaN(expiry.getTime())) return 0;
     const now = new Date();
     const diffMs = expiry.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));

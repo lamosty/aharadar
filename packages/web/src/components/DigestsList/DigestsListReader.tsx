@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type DigestSummary } from "@/lib/mock-data";
 import { t } from "@/lib/i18n";
+import type { DigestSummary } from "@/lib/mock-data";
 import styles from "./DigestsListReader.module.css";
 
 interface DigestsListReaderProps {
@@ -57,7 +57,7 @@ function getModeDescription(mode: DigestSummary["mode"]): string {
 export function DigestsListReader({ digests }: DigestsListReaderProps) {
   return (
     <div className={styles.container} data-testid="digests-list">
-      <ul className={styles.list} role="list">
+      <ul className={styles.list}>
         {digests.map((digest) => (
           <li key={digest.id}>
             <Link
@@ -95,7 +95,9 @@ export function DigestsListReader({ digests }: DigestsListReaderProps) {
                     </span>
                   </div>
                   <div className={styles.modeInfo}>
-                    <span className={styles.modeDescription}>{getModeDescription(digest.mode)}</span>
+                    <span className={styles.modeDescription}>
+                      {getModeDescription(digest.mode)}
+                    </span>
                   </div>
                 </footer>
               </article>
@@ -113,7 +115,7 @@ export function DigestsListReader({ digests }: DigestsListReaderProps) {
 export function DigestsListReaderSkeleton() {
   return (
     <div className={styles.container}>
-      <ul className={styles.list} role="list" aria-busy="true">
+      <ul className={styles.list} aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
           <li key={i}>
             <div className={styles.card} aria-hidden="true">

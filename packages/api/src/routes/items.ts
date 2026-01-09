@@ -1,6 +1,6 @@
-import type { FastifyInstance } from "fastify";
-import type { FeedbackAction } from "@aharadar/shared";
 import { createUserPreferencesRepo } from "@aharadar/db";
+import type { FeedbackAction } from "@aharadar/shared";
+import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 // Note: Decay is now computed in SQL for correct pagination ordering
@@ -70,7 +70,7 @@ interface ItemsListQuerystring {
 function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const d = new Date(value);
-  return !isNaN(d.getTime());
+  return !Number.isNaN(d.getTime());
 }
 
 function parseArrayParam(value: string | undefined): string[] {
@@ -200,7 +200,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       filterParamIdx++;
     }
 
-    if (minScore !== undefined && !isNaN(minScore)) {
+    if (minScore !== undefined && !Number.isNaN(minScore)) {
       filterConditions.push(`li.score >= $${filterParamIdx}`);
       filterParams.push(minScore);
       filterParamIdx++;
@@ -362,7 +362,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     // Map items - decay is already computed in SQL, no re-sorting needed
     const items = itemsResult.rows.map((row, idx) => {
       // Check if item is "new" (published after last checked)
-      const itemDate = row.published_at ? new Date(row.published_at) : new Date(row.digest_created_at);
+      const itemDate = row.published_at
+        ? new Date(row.published_at)
+        : new Date(row.digest_created_at);
       const isNew = lastCheckedAt ? itemDate > lastCheckedAt : false;
 
       // Parse cluster items JSON
@@ -461,7 +463,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
          metadata_json
        FROM content_items
        WHERE id = $1 AND deleted_at IS NULL`,
-      [id]
+      [id],
     );
 
     const item = result.rows[0];

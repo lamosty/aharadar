@@ -32,7 +32,8 @@ export function BudgetWidget() {
   const budgets = data?.budgets;
   if (!budgets) return null;
 
-  const monthlyPercent = budgets.monthlyLimit > 0 ? (budgets.monthlyUsed / budgets.monthlyLimit) * 100 : 0;
+  const monthlyPercent =
+    budgets.monthlyLimit > 0 ? (budgets.monthlyUsed / budgets.monthlyLimit) * 100 : 0;
   const dailyLimit = budgets.dailyLimit ?? 0;
   const dailyUsed = budgets.dailyUsed ?? 0;
   const dailyPercent = dailyLimit > 0 ? (dailyUsed / dailyLimit) * 100 : 0;

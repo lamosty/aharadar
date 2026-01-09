@@ -1,5 +1,5 @@
+import { PROFILE_DECAY_HOURS, type Topic, type ViewingProfile } from "@aharadar/db";
 import type { FastifyInstance } from "fastify";
-import { type ViewingProfile, PROFILE_DECAY_HOURS, type Topic } from "@aharadar/db";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -305,7 +305,7 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
         ok: true,
         topic: formatTopic(updated),
       };
-    }
+    },
   );
 
   // POST /topics/:id/mark-checked - Mark topic as "caught up"
@@ -470,114 +470,121 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   // PATCH /topics/:id - Update topic name/description
-  fastify.patch<{ Params: { id: string }; Body: UpdateTopicBody }>("/topics/:id", async (request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
-      return reply.code(503).send({
-        ok: false,
-        error: {
-          code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
-        },
-      });
-    }
+  fastify.patch<{ Params: { id: string }; Body: UpdateTopicBody }>(
+    "/topics/:id",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
 
-    const { id } = request.params;
+      const { id } = request.params;
 
-    if (!isValidUuid(id)) {
-      return reply.code(400).send({
-        ok: false,
-        error: {
-          code: "INVALID_PARAM",
-          message: "id must be a valid UUID",
-        },
-      });
-    }
-
-    const body = request.body as unknown;
-    if (!body || typeof body !== "object") {
-      return reply.code(400).send({
-        ok: false,
-        error: {
-          code: "INVALID_BODY",
-          message: "Request body must be a JSON object",
-        },
-      });
-    }
-
-    const { name, description } = body as Record<string, unknown>;
-
-    // Validate name if provided
-    if (name !== undefined) {
-      if (typeof name !== "string" || name.trim().length === 0) {
+      if (!isValidUuid(id)) {
         return reply.code(400).send({
           ok: false,
           error: {
             code: "INVALID_PARAM",
-            message: "name must be a non-empty string",
+            message: "id must be a valid UUID",
           },
         });
       }
-      if (name.trim().length > 100) {
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
         return reply.code(400).send({
           ok: false,
           error: {
-            code: "INVALID_PARAM",
-            message: "name must be 100 characters or less",
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
           },
         });
       }
-    }
 
-    // Verify topic exists and belongs to user
-    const db = getDb();
-    const existing = await db.topics.getById(id);
+      const { name, description } = body as Record<string, unknown>;
 
-    if (!existing) {
-      return reply.code(404).send({
-        ok: false,
-        error: {
-          code: "NOT_FOUND",
-          message: `Topic not found: ${id}`,
-        },
-      });
-    }
+      // Validate name if provided
+      if (name !== undefined) {
+        if (typeof name !== "string" || name.trim().length === 0) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: "name must be a non-empty string",
+            },
+          });
+        }
+        if (name.trim().length > 100) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: "name must be 100 characters or less",
+            },
+          });
+        }
+      }
 
-    if (existing.user_id !== ctx.userId) {
-      return reply.code(403).send({
-        ok: false,
-        error: {
-          code: "FORBIDDEN",
-          message: "Topic does not belong to current user",
-        },
-      });
-    }
+      // Verify topic exists and belongs to user
+      const db = getDb();
+      const existing = await db.topics.getById(id);
 
-    // Check for duplicate name if renaming
-    if (name !== undefined && name.trim() !== existing.name) {
-      const duplicate = await db.topics.getByName({ userId: ctx.userId, name: name.trim() });
-      if (duplicate) {
-        return reply.code(409).send({
+      if (!existing) {
+        return reply.code(404).send({
           ok: false,
           error: {
-            code: "DUPLICATE",
-            message: `A topic named "${name.trim()}" already exists`,
+            code: "NOT_FOUND",
+            message: `Topic not found: ${id}`,
           },
         });
       }
-    }
 
-    const updated = await db.topics.update(id, {
-      name: typeof name === "string" ? name.trim() : undefined,
-      description:
-        description === null ? null : typeof description === "string" ? description.trim() : undefined,
-    });
+      if (existing.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
 
-    return {
-      ok: true,
-      topic: formatTopic(updated),
-    };
-  });
+      // Check for duplicate name if renaming
+      if (name !== undefined && name.trim() !== existing.name) {
+        const duplicate = await db.topics.getByName({ userId: ctx.userId, name: name.trim() });
+        if (duplicate) {
+          return reply.code(409).send({
+            ok: false,
+            error: {
+              code: "DUPLICATE",
+              message: `A topic named "${name.trim()}" already exists`,
+            },
+          });
+        }
+      }
+
+      const updated = await db.topics.update(id, {
+        name: typeof name === "string" ? name.trim() : undefined,
+        description:
+          description === null
+            ? null
+            : typeof description === "string"
+              ? description.trim()
+              : undefined,
+      });
+
+      return {
+        ok: true,
+        topic: formatTopic(updated),
+      };
+    },
+  );
 
   // DELETE /topics/:id - Delete a topic
   fastify.delete<{ Params: { id: string } }>("/topics/:id", async (request, reply) => {

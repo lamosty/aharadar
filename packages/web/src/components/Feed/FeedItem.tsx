@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { type FeedItem as FeedItemType } from "@/lib/api";
-import { type Layout } from "@/lib/theme";
-import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { Tooltip } from "@/components/Tooltip";
-import { type TriageFeatures } from "@/lib/mock-data";
-import { t, type MessageKey } from "@/lib/i18n";
+import { WhyShown } from "@/components/WhyShown";
+import type { FeedItem as FeedItemType } from "@/lib/api";
+import { type MessageKey, t } from "@/lib/i18n";
+import type { TriageFeatures } from "@/lib/mock-data";
+import type { Layout } from "@/lib/theme";
 import styles from "./FeedItem.module.css";
 
 interface FeedItemProps {
   item: FeedItemType;
-  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  onFeedback?: (
+    contentItemId: string,
+    action: "like" | "dislike" | "save" | "skip",
+  ) => Promise<void>;
   /** Layout mode - affects rendering style */
   layout?: Layout;
 }
@@ -107,7 +110,7 @@ function getSourceTooltip(type: string, subreddit?: string): string {
 
 function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength).trim() + "…";
+  return `${text.slice(0, maxLength).trim()}…`;
 }
 
 function getDisplayTitle(item: FeedItemType): string {
@@ -137,7 +140,8 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
   // Get preview text - only show if it adds new information
   // When there's no title, getDisplayTitle falls back to bodyText, so don't duplicate
   const hasRealTitle = Boolean(item.item.title);
-  const previewText = hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 100) : null;
+  const previewText =
+    hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 100) : null;
 
   // For condensed layout, render a two-line row with expandable WhyShown
   if (layout === "condensed") {
@@ -149,7 +153,9 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
             <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
               <span
                 className={styles.condensedSource}
-                style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
+                style={
+                  { "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties
+                }
               >
                 {formatSourceType(item.item.sourceType)}
               </span>
@@ -250,7 +256,9 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
             <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
               <span
                 className={styles.sourceTag}
-                style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
+                style={
+                  { "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties
+                }
               >
                 {formatSourceType(item.item.sourceType)}
               </span>
@@ -316,7 +324,12 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
 
       <h3 className={styles.title}>
         {item.item.url ? (
-          <a href={item.item.url} target="_blank" rel="noopener noreferrer" className={styles.titleLink}>
+          <a
+            href={item.item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.titleLink}
+          >
             {getDisplayTitle(item)}
           </a>
         ) : (
@@ -324,7 +337,10 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
         )}
       </h3>
 
-      <WhyShown features={item.triageJson as TriageFeatures | undefined} clusterItems={item.clusterItems} />
+      <WhyShown
+        features={item.triageJson as TriageFeatures | undefined}
+        clusterItems={item.clusterItems}
+      />
     </article>
   );
 }

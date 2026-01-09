@@ -35,7 +35,7 @@
 
 .thItems {
   width: 80px;
-  text-align: right !important;
+  text-align: right;
 }
 
 .thCreated {

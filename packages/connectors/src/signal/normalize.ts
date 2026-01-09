@@ -2,7 +2,8 @@ import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
 import { sha256Hex } from "@aharadar/shared";
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value))
+    return value as Record<string, unknown>;
   return {};
 }
 
@@ -94,7 +95,7 @@ function looksLikeUrl(s: string): boolean {
 }
 
 function extractSignalResults(
-  resultsObj: Record<string, unknown>
+  resultsObj: Record<string, unknown>,
 ): Array<{ date: string | null; url: string | null; text: string | null }> {
   const results = resultsObj.results;
   if (!Array.isArray(results)) return [];
@@ -133,7 +134,10 @@ function clampText(text: string, maxChars: number): string {
   return text.slice(0, maxChars);
 }
 
-export async function normalizeSignal(raw: unknown, params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeSignal(
+  raw: unknown,
+  params: FetchParams,
+): Promise<ContentItemDraft> {
   // Signal connector is now bundle-only (see docs/connectors.md).
   // All signal items are normalized as signal_bundle_v1; we no longer emit signal_post_v1.
   // For canonical X/Twitter post ingestion, use the x_posts connector.
@@ -146,7 +150,9 @@ export async function normalizeSignal(raw: unknown, params: FetchParams): Promis
 
   const response = rec.response;
   const assistantJson = asRecord(rec.assistantJson);
-  const resultsObj = Array.isArray(assistantJson.results) ? assistantJson : extractResultsObject(response);
+  const resultsObj = Array.isArray(assistantJson.results)
+    ? assistantJson
+    : extractResultsObject(response);
   const snippets = resultsObj ? extractSnippets(resultsObj) : [];
   const signalResults = resultsObj ? extractSignalResults(resultsObj) : [];
 

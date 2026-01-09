@@ -147,7 +147,8 @@ const mockDigestItems: DigestItem[] = [
       author: "Jane Smith",
       publishedAt: "2025-01-06T10:30:00Z",
       sourceType: "hn",
-      triageSummary: "Major advancement in AI-assisted coding with measurable productivity improvements.",
+      triageSummary:
+        "Major advancement in AI-assisted coding with measurable productivity improvements.",
     },
     triageJson: {
       aha_score: 95,
@@ -185,7 +186,8 @@ const mockDigestItems: DigestItem[] = [
       author: "Database Team",
       publishedAt: "2025-01-06T09:00:00Z",
       sourceType: "reddit",
-      triageSummary: "PostgreSQL 17 released with significant query optimization and storage improvements.",
+      triageSummary:
+        "PostgreSQL 17 released with significant query optimization and storage improvements.",
     },
     triageJson: {
       aha_score: 88,
@@ -339,7 +341,7 @@ export interface UseFeedbackResult {
   submitFeedback: (
     contentItemId: string,
     digestId: string,
-    action: "like" | "dislike" | "save" | "skip"
+    action: "like" | "dislike" | "save" | "skip",
   ) => Promise<void>;
   isPending: boolean;
 }
@@ -398,8 +400,8 @@ export function useMockFeedback(): UseFeedbackResult {
 // These use the real API but transform responses to match component interfaces
 // ============================================================================
 
-import { useDigests, useDigest, useFeedback } from "./hooks";
-import type { DigestListItem, DigestDetailResponse, DigestItem as ApiDigestItem } from "./api";
+import type { DigestItem as ApiDigestItem, DigestDetailResponse, DigestListItem } from "./api";
+import { useDigest, useDigests, useFeedback } from "./hooks";
 
 /**
  * Adapt API DigestListItem to component DigestSummary.
@@ -501,7 +503,7 @@ export function useRealFeedback(): UseFeedbackResult {
     submitFeedback: async (
       contentItemId: string,
       digestId: string,
-      action: "like" | "dislike" | "save" | "skip"
+      action: "like" | "dislike" | "save" | "skip",
     ) => {
       await mutation.mutateAsync({
         contentItemId,
