@@ -6,8 +6,9 @@ import { getUserId } from "../auth/session.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
 import { getPipelineQueue } from "../lib/queue.js";
 
-type RunMode = "low" | "normal" | "high" | "catch_up";
-const VALID_MODES: RunMode[] = ["low", "normal", "high", "catch_up"];
+// catch_up mode removed per task-121/122; modes are now only low/normal/high
+type RunMode = "low" | "normal" | "high";
+const VALID_MODES: RunMode[] = ["low", "normal", "high"];
 
 function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== "string") return false;

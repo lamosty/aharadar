@@ -1,4 +1,9 @@
-import { PROFILE_DECAY_HOURS, type Topic, type ViewingProfile } from "@aharadar/db";
+import {
+  type DigestMode,
+  PROFILE_DECAY_HOURS,
+  type Topic,
+  type ViewingProfile,
+} from "@aharadar/db";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -19,6 +24,12 @@ function formatTopic(topic: Topic) {
     decayHours: topic.decayHours,
     lastCheckedAt: topic.lastCheckedAt?.toISOString() ?? null,
     createdAt: topic.createdAt.toISOString(),
+    // Digest schedule fields
+    digestScheduleEnabled: topic.digestScheduleEnabled,
+    digestIntervalMinutes: topic.digestIntervalMinutes,
+    digestMode: topic.digestMode,
+    digestDepth: topic.digestDepth,
+    digestCursorEnd: topic.digestCursorEnd?.toISOString() ?? null,
   };
 }
 
@@ -66,6 +77,12 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       decayHours: row.decay_hours,
       lastCheckedAt: row.last_checked_at ? new Date(row.last_checked_at) : null,
       createdAt: new Date(row.created_at),
+      // Digest schedule fields
+      digestScheduleEnabled: row.digest_schedule_enabled,
+      digestIntervalMinutes: row.digest_interval_minutes,
+      digestMode: row.digest_mode,
+      digestDepth: row.digest_depth,
+      digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
     }));
 
     return {
@@ -164,6 +181,12 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       decayHours: row.decay_hours,
       lastCheckedAt: row.last_checked_at ? new Date(row.last_checked_at) : null,
       createdAt: new Date(row.created_at),
+      // Digest schedule fields
+      digestScheduleEnabled: row.digest_schedule_enabled,
+      digestIntervalMinutes: row.digest_interval_minutes,
+      digestMode: row.digest_mode,
+      digestDepth: row.digest_depth,
+      digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
     };
 
     return {
@@ -365,6 +388,147 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       message: "Topic marked as caught up",
     };
   });
+
+  // PATCH /topics/:id/digest-settings - Update topic digest schedule settings
+  fastify.patch<{ Params: { id: string } }>(
+    "/topics/:id/digest-settings",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
+          },
+        });
+      }
+
+      const { digestScheduleEnabled, digestIntervalMinutes, digestMode, digestDepth } =
+        body as Record<string, unknown>;
+
+      // Validate digestScheduleEnabled if provided
+      if (digestScheduleEnabled !== undefined && typeof digestScheduleEnabled !== "boolean") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "digestScheduleEnabled must be a boolean",
+          },
+        });
+      }
+
+      // Validate digestIntervalMinutes if provided
+      if (digestIntervalMinutes !== undefined) {
+        if (
+          typeof digestIntervalMinutes !== "number" ||
+          !Number.isInteger(digestIntervalMinutes) ||
+          digestIntervalMinutes < 15 ||
+          digestIntervalMinutes > 43200
+        ) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: "digestIntervalMinutes must be an integer between 15 and 43200",
+            },
+          });
+        }
+      }
+
+      // Validate digestMode if provided
+      if (digestMode !== undefined) {
+        const validModes: DigestMode[] = ["low", "normal", "high"];
+        if (!validModes.includes(digestMode as DigestMode)) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: `digestMode must be one of: ${validModes.join(", ")}`,
+            },
+          });
+        }
+      }
+
+      // Validate digestDepth if provided
+      if (digestDepth !== undefined) {
+        if (
+          typeof digestDepth !== "number" ||
+          !Number.isInteger(digestDepth) ||
+          digestDepth < 0 ||
+          digestDepth > 100
+        ) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: "digestDepth must be an integer between 0 and 100",
+            },
+          });
+        }
+      }
+
+      // Verify topic exists and belongs to user
+      const db = getDb();
+      const existing = await db.topics.getById(id);
+
+      if (!existing) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Topic not found: ${id}`,
+          },
+        });
+      }
+
+      if (existing.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+
+      // Apply updates
+      const updated = await db.topics.updateDigestSettings(id, {
+        digestScheduleEnabled: digestScheduleEnabled as boolean | undefined,
+        digestIntervalMinutes: digestIntervalMinutes as number | undefined,
+        digestMode: digestMode as DigestMode | undefined,
+        digestDepth: digestDepth as number | undefined,
+      });
+
+      return {
+        ok: true,
+        topic: formatTopic(updated),
+      };
+    },
+  );
 
   // POST /topics - Create a new topic
   fastify.post<{ Body: CreateTopicBody }>("/topics", async (request, reply) => {

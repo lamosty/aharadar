@@ -218,8 +218,11 @@ export interface FeedbackResponse {
   ok: true;
 }
 
-/** Run mode types */
-export type RunMode = "low" | "normal" | "high" | "catch_up";
+/** Run mode types (catch_up removed per task-121/122) */
+export type RunMode = "low" | "normal" | "high";
+
+/** Digest mode types (same as RunMode) */
+export type DigestMode = "low" | "normal" | "high";
 
 /** LLM provider types */
 export type LlmProvider = "openai" | "anthropic" | "claude-subscription";
@@ -818,7 +821,7 @@ export async function postMarkChecked(
 // Topics API
 // ============================================================================
 
-/** Topic with viewing profile settings */
+/** Topic with viewing profile and digest settings */
 export interface Topic {
   id: string;
   name: string;
@@ -827,7 +830,13 @@ export interface Topic {
   decayHours: number;
   lastCheckedAt: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string; // Optional for backwards compatibility
+  // Digest schedule fields
+  digestScheduleEnabled: boolean;
+  digestIntervalMinutes: number;
+  digestMode: DigestMode;
+  digestDepth: number;
+  digestCursorEnd: string | null;
 }
 
 /** Topics list response */
@@ -901,6 +910,35 @@ export async function postTopicMarkChecked(
 ): Promise<TopicMarkCheckedResponse> {
   return apiFetch<TopicMarkCheckedResponse>(`/topics/${id}/mark-checked`, {
     method: "POST",
+    signal,
+  });
+}
+
+/** Topic digest settings update request */
+export interface TopicDigestSettingsUpdateRequest {
+  digestScheduleEnabled?: boolean;
+  digestIntervalMinutes?: number;
+  digestMode?: DigestMode;
+  digestDepth?: number;
+}
+
+/** Topic digest settings update response */
+export interface TopicDigestSettingsUpdateResponse {
+  ok: true;
+  topic: Topic;
+}
+
+/**
+ * Update a topic's digest settings.
+ */
+export async function patchTopicDigestSettings(
+  id: string,
+  data: TopicDigestSettingsUpdateRequest,
+  signal?: AbortSignal,
+): Promise<TopicDigestSettingsUpdateResponse> {
+  return apiFetch<TopicDigestSettingsUpdateResponse>(`/topics/${id}/digest-settings`, {
+    method: "PATCH",
+    body: data,
     signal,
   });
 }

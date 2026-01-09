@@ -30,7 +30,8 @@ import {
   type UserPreferences,
 } from "./rank";
 
-export type DigestMode = BudgetTier | "catch_up";
+// catch_up mode removed per task-121; now uses only BudgetTier values
+export type DigestMode = BudgetTier;
 
 export interface DigestLimits {
   maxItems: number;
@@ -378,8 +379,9 @@ async function computeNoveltyForCandidates(params: {
   return noveltyMap;
 }
 
+// DigestMode is now identical to BudgetTier (catch_up removed)
 function resolveBudgetTier(mode: DigestMode): BudgetTier {
-  return mode === "catch_up" ? "high" : mode;
+  return mode;
 }
 
 function resolveTriageLimit(params: { maxItems: number; candidateCount: number }): number {

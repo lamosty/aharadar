@@ -28,7 +28,8 @@ export interface RunWindowJobData {
   topicId: string;
   windowStart: string;
   windowEnd: string;
-  mode?: BudgetTier | "catch_up";
+  // catch_up mode removed per task-121; now uses only BudgetTier values
+  mode?: BudgetTier;
   /** Optional per-run provider override (for manual runs) */
   providerOverride?: ProviderOverride;
 }

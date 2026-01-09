@@ -170,7 +170,7 @@ export default function AdminRunPage() {
           <fieldset className={styles.fieldset} disabled={isLoading}>
             <legend className={styles.legend}>{t("admin.run.mode")}</legend>
             <div className={styles.modeGrid}>
-              {(["low", "normal", "high", "catch_up"] as const).map((m) => (
+              {(["low", "normal", "high"] as const).map((m) => (
                 <label
                   key={m}
                   className={`${styles.modeOption} ${mode === m ? styles.modeOptionSelected : ""}`}

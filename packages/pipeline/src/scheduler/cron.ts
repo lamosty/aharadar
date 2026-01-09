@@ -113,7 +113,6 @@ export async function generateDueWindows(params: {
   const scheduledMode = "normal";
 
   // Check if digest already exists for this exact window + mode
-  // This allows catch_up runs to coexist with scheduled runs
   const existingDigest = await db.query<{ id: string }>(
     `SELECT id FROM digests
      WHERE user_id = $1

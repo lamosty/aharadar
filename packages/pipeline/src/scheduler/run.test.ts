@@ -93,13 +93,7 @@ describe("runPipelineOnce", () => {
       );
     });
 
-    it("resolves tier to high for catch_up mode", async () => {
-      await runPipelineOnce(mockDb, { ...baseParams, mode: "catch_up" });
-
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "high" }),
-      );
-    });
+    // catch_up mode tests removed per task-121
   });
 
   describe("with budget config - paidCallsAllowed=true", () => {
@@ -309,16 +303,6 @@ describe("runPipelineOnce", () => {
       );
     });
 
-    it("uses high tier when mode is catch_up", async () => {
-      await runPipelineOnce(mockDb, {
-        ...baseParams,
-        mode: "catch_up",
-        budget: { monthlyCredits: 1000 },
-      });
-
-      expect(embedTopicContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ tier: "high" }),
-      );
-    });
+    // catch_up mode tests removed per task-121
   });
 });

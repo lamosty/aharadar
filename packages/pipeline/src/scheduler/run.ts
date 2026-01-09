@@ -20,7 +20,8 @@ export interface PipelineRunParams {
   windowEnd: string;
   ingest?: Partial<IngestLimits>;
   ingestFilter?: IngestSourceFilter;
-  mode?: BudgetTier | "catch_up";
+  // catch_up mode removed per task-121; now uses only BudgetTier values
+  mode?: BudgetTier;
   digest?: { maxItems?: number };
   /** Budget config (optional; if not provided, paid calls are always allowed) */
   budget?: {
@@ -44,14 +45,11 @@ export interface PipelineRunResult {
   creditsStatus?: CreditsStatus;
 }
 
-function resolveTier(
-  mode: BudgetTier | "catch_up" | undefined,
-  paidCallsAllowed: boolean,
-): BudgetTier {
+function resolveTier(mode: BudgetTier | undefined, paidCallsAllowed: boolean): BudgetTier {
   // When credits exhausted, force tier to low
   if (!paidCallsAllowed) return "low";
-  if (!mode || mode === "catch_up") return "high";
-  return mode;
+  // Default to "normal" if mode not specified (catch_up removed per task-121)
+  return mode ?? "normal";
 }
 
 export async function runPipelineOnce(

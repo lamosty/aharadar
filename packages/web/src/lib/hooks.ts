@@ -61,6 +61,7 @@ import {
   patchAdminLlmSettings,
   patchAdminSource,
   patchPreferences,
+  patchTopicDigestSettings,
   patchTopicViewingProfile,
   postAdminRun,
   postAdminSource,
@@ -75,6 +76,8 @@ import {
   type SourcePatchResponse,
   type SourcesListResponse,
   type TopicDetailResponse,
+  type TopicDigestSettingsUpdateRequest,
+  type TopicDigestSettingsUpdateResponse,
   type TopicMarkCheckedResponse,
   type TopicsListResponse,
   type TopicViewingProfileUpdateRequest,
@@ -757,6 +760,32 @@ export function useTopicMarkChecked(
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
       // Invalidate items to update isNew flags
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update a topic's digest settings.
+ */
+export function useUpdateTopicDigestSettings(
+  topicId: string,
+  options?: Omit<
+    UseMutationOptions<
+      TopicDigestSettingsUpdateResponse,
+      ApiError | NetworkError,
+      TopicDigestSettingsUpdateRequest
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => patchTopicDigestSettings(topicId, data),
+    onSuccess: () => {
+      // Invalidate topic queries to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
     },
     ...options,
   });
