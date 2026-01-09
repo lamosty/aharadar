@@ -1,0 +1,97 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.loading {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.roleAdmin {
+  background-color: var(--color-warning-subtle, rgba(234, 179, 8, 0.15));
+  color: var(--color-warning, #ca8a04);
+}
+
+.roleUser {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.actions {
+  padding-top: var(--space-2);
+}
+
+.logoutButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-error, #dc2626);
+  background-color: var(--color-error-subtle, rgba(220, 38, 38, 0.1));
+  border: 1px solid var(--color-error-border, rgba(220, 38, 38, 0.25));
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.logoutButton:hover {
+  background-color: var(--color-error-subtle-hover, rgba(220, 38, 38, 0.15));
+  border-color: var(--color-error, #dc2626);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.logoutButton:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.logoutButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
