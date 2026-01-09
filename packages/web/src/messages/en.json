@@ -322,12 +322,20 @@
         "rss": "Fetch articles from RSS/Atom feeds",
         "signal": "X/Twitter signal search via Grok",
         "x_posts": "Fetch posts from X/Twitter accounts",
-        "youtube": "Fetch videos from YouTube channels (coming soon)",
+        "youtube": "Fetch videos from YouTube channels",
         "sec_edgar": "SEC EDGAR filings (Form 4, 13F)",
         "congress_trading": "Congressional trading disclosures",
         "polymarket": "Prediction market probabilities",
         "options_flow": "Unusual options activity & sweeps",
-        "market_sentiment": "Social sentiment from Finnhub"
+        "market_sentiment": "Social sentiment from Finnhub",
+        "podcast": "Subscribe to podcast RSS feeds",
+        "substack": "Subscribe to Substack newsletters",
+        "medium": "Follow Medium publications and authors",
+        "arxiv": "Track arXiv research papers by category",
+        "lobsters": "Lobste.rs computing community stories",
+        "producthunt": "New products from Product Hunt",
+        "github_releases": "Track GitHub repository releases",
+        "telegram": "Fetch from Telegram public channels"
       }
     },
     "budgets": {

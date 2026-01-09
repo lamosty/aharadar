@@ -295,6 +295,16 @@ export const SUPPORTED_SOURCE_TYPES = [
   "polymarket",
   "options_flow",
   "market_sentiment",
+  // RSS-based specialized types
+  "podcast",
+  "substack",
+  "medium",
+  "arxiv",
+  "lobsters",
+  "producthunt",
+  "github_releases",
+  // Other
+  "telegram",
 ] as const;
 
 export type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];

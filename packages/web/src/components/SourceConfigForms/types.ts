@@ -106,6 +106,59 @@ export interface MarketSentimentConfig {
   max_tickers_per_fetch?: number;
 }
 
+// Podcast Source Config
+export interface PodcastConfig {
+  feedUrl: string;
+  maxItemCount?: number;
+}
+
+// Substack Source Config
+export interface SubstackConfig {
+  publication?: string;
+  feedUrl?: string;
+  maxItemCount?: number;
+}
+
+// Medium Source Config
+export interface MediumConfig {
+  username?: string;
+  publication?: string;
+  feedUrl?: string;
+  maxItemCount?: number;
+}
+
+// arXiv Source Config
+export interface ArxivConfig {
+  category: string;
+  maxItemCount?: number;
+}
+
+// Lobsters Source Config
+export interface LobstersConfig {
+  tag?: string;
+  maxItemCount?: number;
+}
+
+// Product Hunt Source Config
+export interface ProductHuntConfig {
+  maxItemCount?: number;
+}
+
+// GitHub Releases Source Config
+export interface GithubReleasesConfig {
+  owner: string;
+  repo: string;
+  maxItemCount?: number;
+}
+
+// Telegram Source Config
+export interface TelegramConfig {
+  channels: string[];
+  maxMessagesPerChannel?: number;
+  includeMediaCaptions?: boolean;
+  includeForwards?: boolean;
+}
+
 // Union type for all configs
 export type SourceTypeConfig =
   | RssConfig
@@ -118,7 +171,15 @@ export type SourceTypeConfig =
   | CongressTradingConfig
   | PolymarketConfig
   | OptionsFlowConfig
-  | MarketSentimentConfig;
+  | MarketSentimentConfig
+  | PodcastConfig
+  | SubstackConfig
+  | MediumConfig
+  | ArxivConfig
+  | LobstersConfig
+  | ProductHuntConfig
+  | GithubReleasesConfig
+  | TelegramConfig;
 
 // Form props interface
 export interface SourceConfigFormProps<T> {

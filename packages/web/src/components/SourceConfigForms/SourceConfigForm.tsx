@@ -131,6 +131,130 @@ export function SourceConfigForm({ sourceType, config, onChange, errors }: Sourc
         />
       );
 
+    // RSS-based types that use feedUrl
+    case "podcast":
+    case "medium":
+      return (
+        <RssConfigForm value={config as Partial<RssConfig>} onChange={onChange} errors={errors} />
+      );
+
+    // Substack uses publication name
+    case "substack":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Publication Name</label>
+            <input
+              type="text"
+              value={(config as { publication?: string }).publication ?? ""}
+              onChange={(e) => onChange({ ...config, publication: e.target.value })}
+              placeholder="e.g., astralcodexten"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">The subdomain from {"{name}"}.substack.com</p>
+          </div>
+        </div>
+      );
+
+    // arXiv uses category
+    case "arxiv":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Category</label>
+            <input
+              type="text"
+              value={(config as { category?: string }).category ?? ""}
+              onChange={(e) => onChange({ ...config, category: e.target.value })}
+              placeholder="e.g., cs.AI, cs.LG, math.CO"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">arXiv category code</p>
+          </div>
+        </div>
+      );
+
+    // Lobsters has optional tag filter
+    case "lobsters":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Tag (optional)</label>
+            <input
+              type="text"
+              value={(config as { tag?: string }).tag ?? ""}
+              onChange={(e) => onChange({ ...config, tag: e.target.value })}
+              placeholder="e.g., programming, security"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">Leave empty for all stories</p>
+          </div>
+        </div>
+      );
+
+    // Product Hunt uses default feed
+    case "producthunt":
+      return (
+        <div className="text-sm text-gray-500">
+          <p>No configuration needed. Fetches from the Product Hunt feed.</p>
+        </div>
+      );
+
+    // GitHub releases needs owner/repo
+    case "github_releases":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Repository Owner</label>
+            <input
+              type="text"
+              value={(config as { owner?: string }).owner ?? ""}
+              onChange={(e) => onChange({ ...config, owner: e.target.value })}
+              placeholder="e.g., facebook"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Repository Name</label>
+            <input
+              type="text"
+              value={(config as { repo?: string }).repo ?? ""}
+              onChange={(e) => onChange({ ...config, repo: e.target.value })}
+              placeholder="e.g., react"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
+        </div>
+      );
+
+    // Telegram needs channels
+    case "telegram":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Channel Usernames</label>
+            <input
+              type="text"
+              value={((config as { channels?: string[] }).channels ?? []).join(", ")}
+              onChange={(e) =>
+                onChange({
+                  ...config,
+                  channels: e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+              placeholder="e.g., @channel1, @channel2"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Comma-separated list. Bot must be admin in each channel.
+            </p>
+          </div>
+        </div>
+      );
+
     default:
       return (
         <div>
@@ -239,6 +363,56 @@ export function validateSourceConfig(
       }
       break;
     }
+
+    // RSS-based types
+    case "podcast":
+    case "medium": {
+      const rssConfig = config as Partial<RssConfig>;
+      if (!rssConfig.feedUrl?.trim()) {
+        errors.feedUrl = "Feed URL is required";
+      }
+      break;
+    }
+
+    case "substack": {
+      const subConfig = config as { publication?: string; feedUrl?: string };
+      if (!subConfig.publication?.trim() && !subConfig.feedUrl?.trim()) {
+        errors.publication = "Publication name or feed URL is required";
+      }
+      break;
+    }
+
+    case "arxiv": {
+      const arxivConfig = config as { category?: string };
+      if (!arxivConfig.category?.trim()) {
+        errors.category = "Category is required (e.g., cs.AI)";
+      }
+      break;
+    }
+
+    case "lobsters":
+    case "producthunt":
+      // No required fields
+      break;
+
+    case "github_releases": {
+      const ghConfig = config as { owner?: string; repo?: string };
+      if (!ghConfig.owner?.trim()) {
+        errors.owner = "Repository owner is required";
+      }
+      if (!ghConfig.repo?.trim()) {
+        errors.repo = "Repository name is required";
+      }
+      break;
+    }
+
+    case "telegram": {
+      const tgConfig = config as { channels?: string[] };
+      if (!tgConfig.channels || tgConfig.channels.length === 0) {
+        errors.channels = "At least one channel is required";
+      }
+      break;
+    }
   }
 
   return errors;
@@ -331,6 +505,57 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
         min_mentions: 100,
         max_tickers_per_fetch: 10,
       } as Partial<MarketSentimentConfig>;
+
+    // RSS-based types
+    case "podcast":
+      return {
+        feedUrl: "",
+        maxItemCount: 50,
+      };
+
+    case "substack":
+      return {
+        publication: "",
+        maxItemCount: 50,
+      };
+
+    case "medium":
+      return {
+        feedUrl: "",
+        maxItemCount: 50,
+      };
+
+    case "arxiv":
+      return {
+        category: "",
+        maxItemCount: 50,
+      };
+
+    case "lobsters":
+      return {
+        tag: "",
+        maxItemCount: 50,
+      };
+
+    case "producthunt":
+      return {
+        maxItemCount: 50,
+      };
+
+    case "github_releases":
+      return {
+        owner: "",
+        repo: "",
+        maxItemCount: 30,
+      };
+
+    case "telegram":
+      return {
+        channels: [],
+        maxMessagesPerChannel: 50,
+        includeMediaCaptions: true,
+        includeForwards: true,
+      };
 
     default:
       return {};

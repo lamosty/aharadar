@@ -25,6 +25,15 @@ const SOURCE_LABELS: Record<SupportedSourceType, string> = {
   polymarket: "Polymarket",
   options_flow: "Options",
   market_sentiment: "Sentiment",
+  // RSS-based types
+  podcast: "Podcast",
+  substack: "Substack",
+  medium: "Medium",
+  arxiv: "arXiv",
+  lobsters: "Lobsters",
+  producthunt: "PH",
+  github_releases: "GitHub",
+  telegram: "Telegram",
 };
 
 const SORT_OPTIONS = [
