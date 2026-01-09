@@ -78,17 +78,6 @@ export default function SourcesPage() {
                     <div className={styles.sourceStats}>
                       <div className={styles.stat}>
                         <span className={styles.statLabel}>
-                          Interval
-                          <HelpTooltip content={t("tooltips.sourcesInterval")} />
-                        </span>
-                        <span className={styles.statValue}>
-                          {source.config.cadence?.every_minutes
-                            ? `${source.config.cadence.every_minutes} min`
-                            : "Not set"}
-                        </span>
-                      </div>
-                      <div className={styles.stat}>
-                        <span className={styles.statLabel}>
                           Weight
                           <HelpTooltip content={t("tooltips.sourcesWeight")} />
                         </span>

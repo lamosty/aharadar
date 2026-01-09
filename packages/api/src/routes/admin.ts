@@ -558,27 +558,6 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
       const patch = configPatch as Record<string, unknown>;
 
-      // Validate cadence if provided
-      if ("cadence" in patch && patch.cadence !== null) {
-        const cadence = patch.cadence as Record<string, unknown>;
-        if (
-          typeof cadence !== "object" ||
-          cadence.mode !== "interval" ||
-          typeof cadence.every_minutes !== "number" ||
-          !Number.isFinite(cadence.every_minutes) ||
-          cadence.every_minutes <= 0
-        ) {
-          return reply.code(400).send({
-            ok: false,
-            error: {
-              code: "INVALID_PARAM",
-              message:
-                "configPatch.cadence must be { mode: 'interval', every_minutes: <positive number> } or null",
-            },
-          });
-        }
-      }
-
       // Validate weight if provided
       if ("weight" in patch && patch.weight !== null) {
         if (typeof patch.weight !== "number" || !Number.isFinite(patch.weight)) {
@@ -609,19 +588,6 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
     if (configPatch !== undefined && typeof configPatch === "object" && configPatch !== null) {
       const patch = configPatch as Record<string, unknown>;
-
-      // Apply cadence update
-      if ("cadence" in patch) {
-        if (patch.cadence === null) {
-          await db.sources.updateConfigCadence({ sourceId: id, cadence: null });
-        } else {
-          const cadence = patch.cadence as { mode: "interval"; every_minutes: number };
-          await db.sources.updateConfigCadence({
-            sourceId: id,
-            cadence: { mode: "interval", everyMinutes: cadence.every_minutes },
-          });
-        }
-      }
 
       // Apply weight update
       if ("weight" in patch) {

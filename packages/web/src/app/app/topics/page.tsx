@@ -62,7 +62,6 @@ export default function TopicsPage() {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [newSourceType, setNewSourceType] = useState<SupportedSourceType>("rss");
   const [newSourceName, setNewSourceName] = useState("");
-  const [newSourceCadence, setNewSourceCadence] = useState(60);
   const [newSourceWeight, setNewSourceWeight] = useState(1.0);
   const [newSourceConfig, setNewSourceConfig] = useState<Partial<SourceTypeConfig>>(() =>
     getDefaultConfig("rss"),
@@ -71,7 +70,6 @@ export default function TopicsPage() {
 
   // State for editing source
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
-  const [editSourceCadence, setEditSourceCadence] = useState(60);
   const [editSourceWeight, setEditSourceWeight] = useState(1.0);
 
   // State for deleting source
@@ -143,7 +141,6 @@ export default function TopicsPage() {
     setAddingSourceToTopicId(topicId);
     setNewSourceType("rss");
     setNewSourceName("");
-    setNewSourceCadence(60);
     setNewSourceWeight(1.0);
     setNewSourceConfig(getDefaultConfig("rss"));
     setNewSourceErrors({});
@@ -154,7 +151,6 @@ export default function TopicsPage() {
     setShowTypePicker(false);
     setNewSourceType("rss");
     setNewSourceName("");
-    setNewSourceCadence(60);
     setNewSourceWeight(1.0);
     setNewSourceConfig(getDefaultConfig("rss"));
     setNewSourceErrors({});
@@ -178,10 +174,9 @@ export default function TopicsPage() {
     }
 
     try {
-      // Merge cadence and weight into the config
+      // Merge weight into the config
       const fullConfig = {
         ...newSourceConfig,
-        cadence: { mode: "interval" as const, every_minutes: newSourceCadence },
         weight: newSourceWeight,
       };
       await createSourceMutation.mutateAsync({
@@ -199,7 +194,6 @@ export default function TopicsPage() {
 
   const handleStartEditSource = (source: Source) => {
     setEditingSourceId(source.id);
-    setEditSourceCadence(source.config.cadence?.every_minutes ?? 60);
     setEditSourceWeight(source.config.weight ?? 1.0);
   };
 
@@ -209,7 +203,6 @@ export default function TopicsPage() {
         id: source.id,
         patch: {
           configPatch: {
-            cadence: { mode: "interval", every_minutes: editSourceCadence },
             weight: editSourceWeight,
           },
         },
@@ -590,38 +583,19 @@ export default function TopicsPage() {
                               errors={newSourceErrors}
                             />
                           </div>
-                          <div className={styles.formRowInline}>
-                            <div className={styles.formRowHalf}>
-                              <label className={styles.formLabel}>
-                                {t("admin.sources.cadenceMinutes")}
-                              </label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={1440}
-                                value={newSourceCadence}
-                                onChange={(e) =>
-                                  setNewSourceCadence(parseInt(e.target.value, 10) || 60)
-                                }
-                                className={styles.numberInput}
-                              />
-                            </div>
-                            <div className={styles.formRowHalf}>
-                              <label className={styles.formLabel}>
-                                {t("admin.sources.weight")}
-                              </label>
-                              <input
-                                type="number"
-                                min={0}
-                                max={10}
-                                step={0.1}
-                                value={newSourceWeight}
-                                onChange={(e) =>
-                                  setNewSourceWeight(parseFloat(e.target.value) || 1.0)
-                                }
-                                className={styles.numberInput}
-                              />
-                            </div>
+                          <div className={styles.formRow}>
+                            <label className={styles.formLabel}>{t("admin.sources.weight")}</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.1}
+                              value={newSourceWeight}
+                              onChange={(e) =>
+                                setNewSourceWeight(parseFloat(e.target.value) || 1.0)
+                              }
+                              className={styles.numberInput}
+                            />
                           </div>
                           <div className={styles.formActions}>
                             <button
@@ -667,21 +641,6 @@ export default function TopicsPage() {
                               >
                                 {isEditingSource ? (
                                   <div className={styles.editSourceForm}>
-                                    <div className={styles.editSourceRow}>
-                                      <label className={styles.formLabel}>
-                                        {t("admin.sources.cadenceMinutes")}
-                                      </label>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        max={1440}
-                                        value={editSourceCadence}
-                                        onChange={(e) =>
-                                          setEditSourceCadence(parseInt(e.target.value, 10) || 60)
-                                        }
-                                        className={styles.numberInput}
-                                      />
-                                    </div>
                                     <div className={styles.editSourceRow}>
                                       <label className={styles.formLabel}>
                                         {t("admin.sources.weight")}
@@ -755,12 +714,6 @@ export default function TopicsPage() {
                                       </span>
                                       <span className={styles.sourceName}>{source.name}</span>
                                       <span className={styles.sourceMeta}>
-                                        {source.config.cadence?.every_minutes
-                                          ? t("topics.sourceInterval", {
-                                              minutes: source.config.cadence.every_minutes,
-                                            })
-                                          : "—"}
-                                        {" | "}
                                         {t("topics.sourceWeight", {
                                           weight: (source.config.weight ?? 1.0).toFixed(1),
                                         })}

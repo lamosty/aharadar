@@ -37,7 +37,6 @@ export default function AdminSourcesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{
-    cadenceMinutes: number;
     weight: number;
     topicId: string;
   } | null>(null);
@@ -94,7 +93,6 @@ export default function AdminSourcesPage() {
   const handleStartEdit = (source: Source) => {
     setEditingSource(source.id);
     setEditValues({
-      cadenceMinutes: source.config.cadence?.every_minutes ?? 60,
       weight: source.config.weight ?? 1.0,
       topicId: source.topicId,
     });
@@ -116,7 +114,6 @@ export default function AdminSourcesPage() {
           // Include topicId only if it changed
           ...(editValues.topicId !== source.topicId && { topicId: editValues.topicId }),
           configPatch: {
-            cadence: { mode: "interval", every_minutes: editValues.cadenceMinutes },
             weight: editValues.weight,
           },
         },
@@ -363,25 +360,6 @@ export default function AdminSourcesPage() {
               {editingSource === source.id && editValues ? (
                 <div className={styles.editForm}>
                   <div className={styles.editField}>
-                    <label htmlFor={`cadence-${source.id}`} className={styles.editLabel}>
-                      {t("admin.sources.cadenceMinutes")}
-                    </label>
-                    <input
-                      type="number"
-                      id={`cadence-${source.id}`}
-                      min={1}
-                      max={1440}
-                      value={editValues.cadenceMinutes}
-                      onChange={(e) =>
-                        setEditValues({
-                          ...editValues,
-                          cadenceMinutes: parseInt(e.target.value, 10) || 60,
-                        })
-                      }
-                      className={styles.editInput}
-                    />
-                  </div>
-                  <div className={styles.editField}>
                     <label htmlFor={`weight-${source.id}`} className={styles.editLabel}>
                       {t("admin.sources.weight")}
                     </label>
@@ -454,12 +432,6 @@ export default function AdminSourcesPage() {
                 </div>
               ) : (
                 <div className={styles.sourceDetails}>
-                  <div className={styles.detailItem}>
-                    <span className={styles.detailLabel}>{t("admin.sources.cadence")}</span>
-                    <span className={styles.detailValue}>
-                      {source.config.cadence?.every_minutes ?? "-"} min
-                    </span>
-                  </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>{t("admin.sources.weight")}</span>
                     <span className={styles.detailValue}>

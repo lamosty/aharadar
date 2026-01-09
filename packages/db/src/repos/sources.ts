@@ -94,49 +94,6 @@ export function createSourcesRepo(db: Queryable) {
       return res.rows[0] ?? null;
     },
 
-    async updateConfigCadence(params: {
-      sourceId: string;
-      cadence: { mode: "interval"; everyMinutes: number } | null;
-    }): Promise<{
-      previous: Record<string, unknown> | null;
-      updated: Record<string, unknown> | null;
-    }> {
-      // Get current config first
-      const current = await db.query<{ config_json: Record<string, unknown> }>(
-        "select config_json from sources where id = $1::uuid",
-        [params.sourceId],
-      );
-      const row = current.rows[0];
-      if (!row) throw new Error(`Source not found: ${params.sourceId}`);
-
-      const configJson = row.config_json ?? {};
-      const previousCadence =
-        configJson.cadence && typeof configJson.cadence === "object"
-          ? (configJson.cadence as Record<string, unknown>)
-          : null;
-
-      let newConfigJson: Record<string, unknown>;
-      let newCadence: Record<string, unknown> | null;
-
-      if (params.cadence === null) {
-        // Clear cadence
-        const { cadence: _removed, ...rest } = configJson;
-        newConfigJson = rest;
-        newCadence = null;
-      } else {
-        // Set cadence
-        newCadence = { mode: params.cadence.mode, every_minutes: params.cadence.everyMinutes };
-        newConfigJson = { ...configJson, cadence: newCadence };
-      }
-
-      await db.query("update sources set config_json = $2::jsonb where id = $1::uuid", [
-        params.sourceId,
-        JSON.stringify(newConfigJson),
-      ]);
-
-      return { previous: previousCadence, updated: newCadence };
-    },
-
     async updateConfigWeight(params: {
       sourceId: string;
       weight: number | null;

@@ -1,7 +1,11 @@
 # ADR 0009: Per-source cadence (how often each source is fetched)
 
-- **Status**: Accepted
+- **Status**: Superseded
 - **Date**: 2026-01-05
+
+> **Note**: Source-level cadence was removed in favor of topic-level digest scheduling.
+> The topic's `digest_interval_minutes` is now the single scheduling mechanism.
+> When a digest window runs, ALL sources in that topic are fetched.
 
 ## Context
 

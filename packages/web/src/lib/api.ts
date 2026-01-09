@@ -250,10 +250,6 @@ export interface AdminRunResponse {
 
 /** Source config */
 export interface SourceConfig {
-  cadence?: {
-    mode: "interval";
-    every_minutes: number;
-  } | null;
   weight?: number | null;
   [key: string]: unknown;
 }
@@ -281,7 +277,6 @@ export interface SourcePatchRequest {
   isEnabled?: boolean;
   topicId?: string;
   configPatch?: {
-    cadence?: { mode: "interval"; every_minutes: number } | null;
     weight?: number | null;
   };
 }
