@@ -69,12 +69,14 @@ export interface DigestItem {
   score: number;
   contentItem: {
     id: string;
-    title: string;
+    title: string | null;
     url: string;
     author: string | null;
     publishedAt: string | null;
     sourceType: string;
     triageSummary?: string;
+    bodyText?: string | null;
+    metadata?: Record<string, unknown> | null;
   };
   triageJson?: TriageFeatures;
   feedback?: "like" | "dislike" | "save" | "skip" | null;
@@ -436,12 +438,14 @@ function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
     score: apiItem.score,
     contentItem: {
       id: apiItem.contentItemId ?? `item-${index}`,
-      title: apiItem.item?.title ?? "(No title)",
+      title: apiItem.item?.title ?? null,
       url: apiItem.item?.url ?? "",
       author: apiItem.item?.author ?? null,
       publishedAt: apiItem.item?.publishedAt ?? null,
       sourceType: apiItem.item?.sourceType ?? "unknown",
       triageSummary,
+      bodyText: apiItem.item?.bodyText ?? null,
+      metadata: apiItem.item?.metadata ?? null,
     },
     triageJson: apiItem.triageJson ? (apiItem.triageJson as unknown as TriageFeatures) : undefined,
     feedback: null, // API doesn't return feedback state per item currently

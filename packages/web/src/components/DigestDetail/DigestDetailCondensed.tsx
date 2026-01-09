@@ -14,13 +14,42 @@ interface DigestDetailCondensedProps {
   ) => Promise<void>;
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "-";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}…`;
+}
+
+function getDisplayTitle(item: DigestItem): string {
+  // Prefer title, fall back to truncated body text (shorter for table view)
+  if (item.contentItem.title) return item.contentItem.title;
+  if (item.contentItem.bodyText) return truncateText(item.contentItem.bodyText, 100);
+  return "(Untitled)";
+}
+
+function getDisplayAuthor(item: DigestItem): string | null {
+  // For X posts, show "DisplayName (@handle)" if available
+  if (item.contentItem.sourceType === "x_posts") {
+    const displayName = item.contentItem.metadata?.user_display_name as string | undefined;
+    if (displayName && item.contentItem.author) {
+      return `${displayName} (${item.contentItem.author})`;
+    }
+  }
+  return item.contentItem.author;
+}
+
+function getDisplayDate(item: DigestItem): string {
+  // Prefer publishedAt, fall back to metadata.post_date for X posts
+  if (item.contentItem.publishedAt) {
+    const date = new Date(item.contentItem.publishedAt);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  // Fall back to metadata.post_date (YYYY-MM-DD) for X posts
+  const postDate = item.contentItem.metadata?.post_date as string | undefined;
+  if (postDate) {
+    const date = new Date(postDate);
+    return `~${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  }
+  return "-";
 }
 
 function formatSourceType(type: string): string {
@@ -86,6 +115,10 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
     }
   };
 
+  const displayTitle = getDisplayTitle(item);
+  const displayAuthor = getDisplayAuthor(item);
+  const displayDate = getDisplayDate(item);
+
   return (
     <>
       <tr className={styles.row} data-testid={`digest-item-${item.id}`}>
@@ -99,20 +132,18 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
                 rel="noopener noreferrer"
                 className={styles.titleLink}
               >
-                {item.contentItem.title || "(Untitled)"}
+                {displayTitle}
               </a>
             ) : (
-              <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
+              <span className={styles.titleText}>{displayTitle}</span>
             )}
-            {item.contentItem.author && (
-              <span className={styles.author}>by {item.contentItem.author}</span>
-            )}
+            {displayAuthor && <span className={styles.author}>by {displayAuthor}</span>}
           </div>
         </td>
         <td className={styles.tdSource}>
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
         </td>
-        <td className={styles.tdDate}>{formatDate(item.contentItem.publishedAt)}</td>
+        <td className={styles.tdDate}>{displayDate}</td>
         <td className={styles.tdScore}>
           <span className={styles.score}>{(item.score * 100).toFixed(0)}</span>
         </td>

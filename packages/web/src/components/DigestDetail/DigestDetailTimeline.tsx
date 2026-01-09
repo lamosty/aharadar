@@ -14,6 +14,29 @@ interface DigestDetailTimelineProps {
   ) => Promise<void>;
 }
 
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}…`;
+}
+
+function getDisplayTitle(item: DigestItem): string {
+  // Prefer title, fall back to truncated body text
+  if (item.contentItem.title) return item.contentItem.title;
+  if (item.contentItem.bodyText) return truncateText(item.contentItem.bodyText, 200);
+  return "(Untitled)";
+}
+
+function getDisplayAuthor(item: DigestItem): string | null {
+  // For X posts, show "DisplayName (@handle)" if available
+  if (item.contentItem.sourceType === "x_posts") {
+    const displayName = item.contentItem.metadata?.user_display_name as string | undefined;
+    if (displayName && item.contentItem.author) {
+      return `${displayName} (${item.contentItem.author})`;
+    }
+  }
+  return item.contentItem.author;
+}
+
 function formatTime(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
@@ -24,7 +47,7 @@ function formatTime(dateStr: string | null): string {
   });
 }
 
-function formatRelativeTime(dateStr: string | null): string {
+function formatRelativeTime(dateStr: string | null, isApproximate: boolean = false): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   const now = new Date();
@@ -32,10 +55,33 @@ function formatRelativeTime(dateStr: string | null): string {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffHours / 24);
 
+  // For approximate dates (day-only), don't show hour precision
+  if (isApproximate) {
+    if (diffDays < 1) return "today";
+    if (diffDays === 1) return "yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
   if (diffHours < 1) return "Just now";
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return "Yesterday";
   return `${diffDays}d ago`;
+}
+
+function getDisplayDateInfo(item: DigestItem): { dateStr: string; isApproximate: boolean } | null {
+  if (item.contentItem.publishedAt) {
+    return {
+      dateStr: item.contentItem.publishedAt,
+      isApproximate: item.contentItem.sourceType === "x_posts",
+    };
+  }
+  // Fall back to metadata.post_date for X posts
+  const postDate = item.contentItem.metadata?.post_date as string | undefined;
+  if (postDate) {
+    return { dateStr: postDate, isApproximate: true };
+  }
+  return null;
 }
 
 function formatSourceType(type: string): string {
@@ -90,6 +136,10 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
     }
   };
 
+  const displayTitle = getDisplayTitle(item);
+  const displayAuthor = getDisplayAuthor(item);
+  const dateInfo = getDisplayDateInfo(item);
+
   return (
     <article className={styles.post} data-testid={`digest-item-${item.id}`}>
       <header className={styles.postHeader}>
@@ -98,13 +148,13 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
           <span className={styles.score}>{(item.score * 100).toFixed(0)}%</span>
         </div>
-        {item.contentItem.publishedAt && (
+        {dateInfo && (
           <time
-            dateTime={item.contentItem.publishedAt}
+            dateTime={dateInfo.dateStr}
             className={styles.timestamp}
-            title={formatTime(item.contentItem.publishedAt)}
+            title={dateInfo.isApproximate ? "Approximate date" : formatTime(dateInfo.dateStr)}
           >
-            {formatRelativeTime(item.contentItem.publishedAt)}
+            {formatRelativeTime(dateInfo.dateStr, dateInfo.isApproximate)}
           </time>
         )}
       </header>
@@ -118,17 +168,17 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
               rel="noopener noreferrer"
               className={styles.titleLink}
             >
-              {item.contentItem.title || "(Untitled)"}
+              {displayTitle}
             </a>
           ) : (
-            <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
+            <span className={styles.titleText}>{displayTitle}</span>
           )}
         </h3>
 
-        {item.contentItem.author && (
+        {displayAuthor && (
           <p className={styles.author}>
             <AuthorIcon />
-            {item.contentItem.author}
+            {displayAuthor}
           </p>
         )}
 

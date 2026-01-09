@@ -14,14 +14,48 @@ interface DigestDetailReaderProps {
   ) => Promise<void>;
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}…`;
+}
+
+function getDisplayTitle(item: DigestItem): string {
+  // Prefer title, fall back to truncated body text
+  if (item.contentItem.title) return item.contentItem.title;
+  if (item.contentItem.bodyText) return truncateText(item.contentItem.bodyText, 200);
+  return "(Untitled)";
+}
+
+function getDisplayAuthor(item: DigestItem): string | null {
+  // For X posts, show "DisplayName (@handle)" if available
+  if (item.contentItem.sourceType === "x_posts") {
+    const displayName = item.contentItem.metadata?.user_display_name as string | undefined;
+    if (displayName && item.contentItem.author) {
+      return `${displayName} (${item.contentItem.author})`;
+    }
+  }
+  return item.contentItem.author;
+}
+
+function getDisplayDate(item: DigestItem): { dateStr: string; isApproximate: boolean } | null {
+  // Prefer publishedAt
+  if (item.contentItem.publishedAt) {
+    const date = new Date(item.contentItem.publishedAt);
+    return {
+      dateStr: date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      isApproximate: item.contentItem.sourceType === "x_posts",
+    };
+  }
+  // Fall back to metadata.post_date for X posts
+  const postDate = item.contentItem.metadata?.post_date as string | undefined;
+  if (postDate) {
+    const date = new Date(postDate);
+    return {
+      dateStr: date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      isApproximate: true,
+    };
+  }
+  return null;
 }
 
 function formatSourceType(type: string): string {
@@ -65,19 +99,26 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
     }
   };
 
+  const displayTitle = getDisplayTitle(item);
+  const displayAuthor = getDisplayAuthor(item);
+  const displayDate = getDisplayDate(item);
+
   return (
     <article className={styles.card} data-testid={`digest-item-${item.id}`}>
       <header className={styles.cardHeader}>
         <div className={styles.rankBadge}>#{item.rank}</div>
         <div className={styles.meta}>
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
-          {item.contentItem.publishedAt && (
+          {displayDate && (
             <>
               <span className={styles.metaSeparator} aria-hidden="true">
                 -
               </span>
-              <time dateTime={item.contentItem.publishedAt}>
-                {formatDate(item.contentItem.publishedAt)}
+              <time
+                dateTime={item.contentItem.publishedAt ?? undefined}
+                title={displayDate.isApproximate ? "Approximate date" : undefined}
+              >
+                {displayDate.isApproximate ? `~${displayDate.dateStr}` : displayDate.dateStr}
               </time>
             </>
           )}
@@ -93,14 +134,14 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
               rel="noopener noreferrer"
               className={styles.titleLink}
             >
-              {item.contentItem.title || "(Untitled)"}
+              {displayTitle}
             </a>
           ) : (
-            <span className={styles.titleText}>{item.contentItem.title || "(Untitled)"}</span>
+            <span className={styles.titleText}>{displayTitle}</span>
           )}
         </h3>
 
-        {item.contentItem.author && <p className={styles.author}>by {item.contentItem.author}</p>}
+        {displayAuthor && <p className={styles.author}>by {displayAuthor}</p>}
 
         {item.contentItem.triageSummary && (
           <p className={styles.summary}>{item.contentItem.triageSummary}</p>
