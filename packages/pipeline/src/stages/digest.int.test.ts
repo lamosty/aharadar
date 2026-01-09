@@ -9,8 +9,11 @@ import { persistDigestFromContentItems } from "./digest";
  * Integration test for persistDigestFromContentItems.
  *
  * Uses Testcontainers to spin up a Postgres instance with pgvector,
- * applies migrations, seeds minimal data, and verifies digest creation
- * without requiring LLM keys (paidCallsAllowed=false).
+ * applies migrations, seeds minimal data, and verifies digest behavior.
+ *
+ * Note: Tests with paidCallsAllowed=true require LLM keys to be configured
+ * or will be skipped. Tests with paidCallsAllowed=false verify the policy=STOP
+ * behavior (returns null without creating a digest).
  *
  * Run with: pnpm test:integration
  */
@@ -21,7 +24,8 @@ describe("persistDigestFromContentItems integration", () => {
   // Test data IDs (set during seeding)
   let userId: string;
   let topicId: string;
-  let sourceId: string;
+  let sourceId1: string;
+  let sourceId2: string;
   let contentItemIds: string[];
 
   const windowStart = "2026-01-05T00:00:00.000Z";
@@ -58,7 +62,7 @@ describe("persistDigestFromContentItems integration", () => {
       await db.query(sql, []);
     }
 
-    // Seed test data
+    // Seed test data with multiple sources for fairness testing
     await seedTestData();
   }, 120000); // 2 minute timeout for container startup
 
@@ -88,54 +92,97 @@ describe("persistDigestFromContentItems integration", () => {
     );
     topicId = topicResult.rows[0].id;
 
-    // Create source (disabled to avoid network fetches)
-    const sourceResult = await db.query<{ id: string }>(
+    // Create two sources with different types for fairness testing
+    const sourceResult1 = await db.query<{ id: string }>(
       `INSERT INTO sources (user_id, topic_id, type, name, is_enabled)
-       VALUES ($1, $2, 'rss', 'Test Source', false) RETURNING id`,
+       VALUES ($1, $2, 'rss', 'RSS Source', false) RETURNING id`,
       [userId, topicId],
     );
-    sourceId = sourceResult.rows[0].id;
+    sourceId1 = sourceResult1.rows[0].id;
 
-    // Create content items within the window
+    const sourceResult2 = await db.query<{ id: string }>(
+      `INSERT INTO sources (user_id, topic_id, type, name, is_enabled)
+       VALUES ($1, $2, 'reddit', 'Reddit Source', false) RETURNING id`,
+      [userId, topicId],
+    );
+    sourceId2 = sourceResult2.rows[0].id;
+
+    // Create content items from both sources
     contentItemIds = [];
-    const items = [
+
+    // RSS items (3)
+    const rssItems = [
       {
-        title: "First Test Article",
-        bodyText: "This is the body of the first test article.",
-        canonicalUrl: "https://example.com/article-1",
-        externalId: "ext-1",
+        title: "RSS Article 1",
+        bodyText: "This is the body of the first RSS article.",
+        canonicalUrl: "https://example.com/rss-1",
+        externalId: "rss-ext-1",
         publishedAt: "2026-01-05T10:00:00.000Z",
+        sourceId: sourceId1,
+        sourceType: "rss",
       },
       {
-        title: "Second Test Article",
-        bodyText: "This is the body of the second test article with more content.",
-        canonicalUrl: "https://example.com/article-2",
-        externalId: "ext-2",
+        title: "RSS Article 2",
+        bodyText: "This is the body of the second RSS article.",
+        canonicalUrl: "https://example.com/rss-2",
+        externalId: "rss-ext-2",
         publishedAt: "2026-01-05T14:00:00.000Z",
+        sourceId: sourceId1,
+        sourceType: "rss",
       },
       {
-        title: "Third Test Article",
-        bodyText: "This is the body of the third test article.",
-        canonicalUrl: "https://example.com/article-3",
-        externalId: "ext-3",
+        title: "RSS Article 3",
+        bodyText: "This is the body of the third RSS article.",
+        canonicalUrl: "https://example.com/rss-3",
+        externalId: "rss-ext-3",
         publishedAt: "2026-01-05T18:00:00.000Z",
+        sourceId: sourceId1,
+        sourceType: "rss",
       },
     ];
 
-    for (const item of items) {
+    // Reddit items (2) with engagement metadata
+    const redditItems = [
+      {
+        title: "Reddit Post 1",
+        bodyText: "This is the body of the first Reddit post with high engagement.",
+        canonicalUrl: "https://reddit.com/r/test/1",
+        externalId: "reddit-ext-1",
+        publishedAt: "2026-01-05T12:00:00.000Z",
+        sourceId: sourceId2,
+        sourceType: "reddit",
+        metadata: { score: 500, num_comments: 100 },
+      },
+      {
+        title: "Reddit Post 2",
+        bodyText: "This is the body of the second Reddit post.",
+        canonicalUrl: "https://reddit.com/r/test/2",
+        externalId: "reddit-ext-2",
+        publishedAt: "2026-01-05T16:00:00.000Z",
+        sourceId: sourceId2,
+        sourceType: "reddit",
+        metadata: { score: 50, num_comments: 10 },
+      },
+    ];
+
+    const allItems = [...rssItems, ...redditItems];
+
+    for (const item of allItems) {
       const result = await db.query<{ id: string }>(
         `INSERT INTO content_items
-           (user_id, source_id, source_type, external_id, canonical_url, title, body_text, published_at, fetched_at)
-         VALUES ($1, $2, 'rss', $3, $4, $5, $6, $7::timestamptz, $7::timestamptz)
+           (user_id, source_id, source_type, external_id, canonical_url, title, body_text, published_at, fetched_at, metadata_json)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $8::timestamptz, $9)
          RETURNING id`,
         [
           userId,
-          sourceId,
+          item.sourceId,
+          item.sourceType,
           item.externalId,
           item.canonicalUrl,
           item.title,
           item.bodyText,
           item.publishedAt,
+          JSON.stringify((item as { metadata?: object }).metadata ?? {}),
         ],
       );
       contentItemIds.push(result.rows[0].id);
@@ -143,14 +190,16 @@ describe("persistDigestFromContentItems integration", () => {
       // Link content item to source
       await db.query(
         `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
-        [result.rows[0].id, sourceId],
+        [result.rows[0].id, item.sourceId],
       );
     }
   }
 
-  it("creates digest and digest_items with paidCallsAllowed=false", async () => {
+  it("returns null when paidCallsAllowed=false (policy=STOP)", async () => {
     if (!db) throw new Error("DB not initialized");
 
+    // With the new fair sampling implementation, paidCallsAllowed=false
+    // returns null without creating a digest (policy=STOP)
     const result = await persistDigestFromContentItems({
       db,
       userId,
@@ -161,34 +210,45 @@ describe("persistDigestFromContentItems integration", () => {
       paidCallsAllowed: false,
     });
 
-    // Assert result is non-null
-    expect(result).not.toBeNull();
-    expect(result!.digestId).toBeDefined();
-    expect(result!.digestId.length).toBeGreaterThan(0);
-    expect(result!.mode).toBe("low");
-    expect(result!.items).toBeGreaterThanOrEqual(1);
+    // Result should be null
+    expect(result).toBeNull();
 
-    // Verify digest row exists in DB
-    const digestResult = await db.query<{ id: string; mode: string }>(
-      `SELECT id, mode FROM digests WHERE id = $1`,
-      [result!.digestId],
+    // Verify no digest was created
+    const digestResult = await db.query<{ id: string }>(
+      `SELECT id FROM digests WHERE user_id = $1 AND topic_id = $2
+       AND window_start = $3::timestamptz AND window_end = $4::timestamptz`,
+      [userId, topicId, windowStart, windowEnd],
     );
-    expect(digestResult.rows).toHaveLength(1);
-    expect(digestResult.rows[0].mode).toBe("low");
-
-    // Verify digest_items exist
-    const digestItemsResult = await db.query<{ digest_id: string; rank: number }>(
-      `SELECT digest_id, rank FROM digest_items WHERE digest_id = $1 ORDER BY rank`,
-      [result!.digestId],
-    );
-    expect(digestItemsResult.rows.length).toBeGreaterThanOrEqual(1);
-    expect(digestItemsResult.rows[0].rank).toBe(1);
+    expect(digestResult.rows).toHaveLength(0);
   });
 
-  it("skips LLM triage when paidCallsAllowed=false", async () => {
+  it("returns null when no candidates exist", async () => {
     if (!db) throw new Error("DB not initialized");
 
-    // Create a new window to avoid conflicts
+    // Use a window with no content items
+    const emptyWindowStart = "2020-01-01T00:00:00.000Z";
+    const emptyWindowEnd = "2020-01-02T00:00:00.000Z";
+
+    const result = await persistDigestFromContentItems({
+      db,
+      userId,
+      topicId,
+      windowStart: emptyWindowStart,
+      windowEnd: emptyWindowEnd,
+      mode: "low",
+      paidCallsAllowed: true, // Even with paid calls, no candidates = null
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("does not make provider_calls when paidCallsAllowed=false", async () => {
+    if (!db) throw new Error("DB not initialized");
+
+    // Clear any existing provider_calls
+    await db.query(`DELETE FROM provider_calls WHERE user_id = $1`, [userId]);
+
+    // Try to create a digest with paidCallsAllowed=false
     const newWindowStart = "2026-01-06T00:00:00.000Z";
     const newWindowEnd = "2026-01-07T00:00:00.000Z";
 
@@ -196,16 +256,16 @@ describe("persistDigestFromContentItems integration", () => {
     const newItemResult = await db.query<{ id: string }>(
       `INSERT INTO content_items
          (user_id, source_id, source_type, external_id, canonical_url, title, body_text, published_at, fetched_at)
-       VALUES ($1, $2, 'rss', 'ext-4', 'https://example.com/article-4', 'Fourth Article', 'Body text', '2026-01-06T12:00:00.000Z'::timestamptz, '2026-01-06T12:00:00.000Z'::timestamptz)
+       VALUES ($1, $2, 'rss', 'ext-new', 'https://example.com/new', 'New Article', 'Body text', $3::timestamptz, $3::timestamptz)
        RETURNING id`,
-      [userId, sourceId],
+      [userId, sourceId1, "2026-01-06T12:00:00.000Z"],
     );
     await db.query(
       `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
-      [newItemResult.rows[0].id, sourceId],
+      [newItemResult.rows[0].id, sourceId1],
     );
 
-    const result = await persistDigestFromContentItems({
+    await persistDigestFromContentItems({
       db,
       userId,
       topicId,
@@ -215,33 +275,185 @@ describe("persistDigestFromContentItems integration", () => {
       paidCallsAllowed: false,
     });
 
-    expect(result).not.toBeNull();
-
-    // Verify no provider_calls were made (LLM was skipped)
+    // Verify no provider_calls were made
     const providerCallsResult = await db.query<{ id: string }>(
       `SELECT id FROM provider_calls WHERE user_id = $1`,
       [userId],
     );
     expect(providerCallsResult.rows).toHaveLength(0);
   });
+});
 
-  it("uses heuristic scoring when paidCallsAllowed=false", async () => {
-    if (!db) throw new Error("DB not initialized");
+/**
+ * Unit tests for fair sampling helpers
+ */
+describe("fair sampling helpers", () => {
+  // Import helpers for unit testing
+  const { stratifiedSample } = require("../lib/fair_sampling");
+  const { allocateTriageCalls } = require("../lib/triage_allocation");
+  const { selectWithDiversity } = require("../lib/diversity_selection");
 
-    // Check the digest items have scores (from heuristic scoring)
-    const digestItemsResult = await db.query<{ score: number; triage_json: unknown }>(
-      `SELECT score, triage_json FROM digest_items
-       WHERE digest_id IN (SELECT id FROM digests WHERE user_id = $1)
-       ORDER BY score DESC
-       LIMIT 5`,
-      [userId],
-    );
+  describe("stratifiedSample", () => {
+    it("returns all candidates when below maxPoolSize", () => {
+      const candidates = [
+        {
+          candidateId: "1",
+          sourceType: "rss",
+          sourceId: "s1",
+          candidateAtMs: 1000,
+          heuristicScore: 0.8,
+        },
+        {
+          candidateId: "2",
+          sourceType: "rss",
+          sourceId: "s1",
+          candidateAtMs: 2000,
+          heuristicScore: 0.6,
+        },
+      ];
 
-    expect(digestItemsResult.rows.length).toBeGreaterThanOrEqual(1);
-    // Scores should be positive numbers from heuristic scoring
-    for (const row of digestItemsResult.rows) {
-      expect(typeof row.score).toBe("number");
-      expect(row.score).toBeGreaterThanOrEqual(0);
-    }
+      const result = stratifiedSample({
+        candidates,
+        windowStartMs: 0,
+        windowEndMs: 3000,
+        maxPoolSize: 10,
+      });
+
+      expect(result.sampledIds.size).toBe(2);
+      expect(result.sampledIds.has("1")).toBe(true);
+      expect(result.sampledIds.has("2")).toBe(true);
+    });
+
+    it("samples fairly across sources when pool is limited", () => {
+      // Create 10 candidates from source A and 2 from source B
+      const candidates = [
+        ...Array.from({ length: 10 }, (_, i) => ({
+          candidateId: `a${i}`,
+          sourceType: "rss",
+          sourceId: "sourceA",
+          candidateAtMs: i * 100,
+          heuristicScore: 0.5 + i * 0.01,
+        })),
+        {
+          candidateId: "b1",
+          sourceType: "reddit",
+          sourceId: "sourceB",
+          candidateAtMs: 500,
+          heuristicScore: 0.9,
+        },
+        {
+          candidateId: "b2",
+          sourceType: "reddit",
+          sourceId: "sourceB",
+          candidateAtMs: 600,
+          heuristicScore: 0.85,
+        },
+      ];
+
+      const result = stratifiedSample({
+        candidates,
+        windowStartMs: 0,
+        windowEndMs: 1000,
+        maxPoolSize: 6,
+      });
+
+      // Both sources should be represented in the sample
+      const sampleArray = Array.from(result.sampledIds) as string[];
+      const hasSourceA = sampleArray.some((id: string) => id.startsWith("a"));
+      const hasSourceB = sampleArray.some((id: string) => id.startsWith("b"));
+
+      expect(hasSourceA).toBe(true);
+      expect(hasSourceB).toBe(true);
+      expect(result.sampledIds.size).toBeLessThanOrEqual(6);
+    });
+  });
+
+  describe("allocateTriageCalls", () => {
+    it("allocates exploration slots to each source type", () => {
+      const candidates = [
+        { candidateId: "1", sourceType: "rss", sourceId: "s1", heuristicScore: 0.8 },
+        { candidateId: "2", sourceType: "rss", sourceId: "s1", heuristicScore: 0.7 },
+        { candidateId: "3", sourceType: "reddit", sourceId: "s2", heuristicScore: 0.9 },
+        { candidateId: "4", sourceType: "reddit", sourceId: "s2", heuristicScore: 0.6 },
+      ];
+
+      const result = allocateTriageCalls({
+        candidates,
+        maxTriageCalls: 4,
+      });
+
+      // Both types should get exploration slots
+      const byType = result.stats.explorationByType;
+      expect(byType.length).toBe(2);
+      expect(byType.some((t: { type: string }) => t.type === "rss")).toBe(true);
+      expect(byType.some((t: { type: string }) => t.type === "reddit")).toBe(true);
+    });
+
+    it("returns all candidates when maxTriageCalls >= candidateCount", () => {
+      const candidates = [
+        { candidateId: "1", sourceType: "rss", sourceId: "s1", heuristicScore: 0.8 },
+        { candidateId: "2", sourceType: "reddit", sourceId: "s2", heuristicScore: 0.9 },
+      ];
+
+      const result = allocateTriageCalls({
+        candidates,
+        maxTriageCalls: 10,
+      });
+
+      expect(result.triageOrder.length).toBe(2);
+    });
+  });
+
+  describe("selectWithDiversity", () => {
+    it("applies diversity penalty to avoid source domination", () => {
+      // Source A has higher scores but we should see some diversity
+      const candidates = [
+        { candidateId: "a1", score: 0.95, sourceType: "rss", sourceId: "sA", hasTriageData: true },
+        { candidateId: "a2", score: 0.9, sourceType: "rss", sourceId: "sA", hasTriageData: true },
+        { candidateId: "a3", score: 0.85, sourceType: "rss", sourceId: "sA", hasTriageData: true },
+        {
+          candidateId: "b1",
+          score: 0.8,
+          sourceType: "reddit",
+          sourceId: "sB",
+          hasTriageData: true,
+        },
+      ];
+
+      const result = selectWithDiversity({
+        candidates,
+        maxItems: 3,
+        requireTriageData: true,
+      });
+
+      // Source B should be included despite lower score due to diversity penalty
+      expect(result.selectedIds).toContain("b1");
+      expect(result.selectedIds.length).toBe(3);
+    });
+
+    it("only selects triaged candidates when requireTriageData=true", () => {
+      const candidates = [
+        { candidateId: "1", score: 0.95, sourceType: "rss", sourceId: "s1", hasTriageData: false },
+        { candidateId: "2", score: 0.9, sourceType: "rss", sourceId: "s1", hasTriageData: true },
+        {
+          candidateId: "3",
+          score: 0.85,
+          sourceType: "reddit",
+          sourceId: "s2",
+          hasTriageData: true,
+        },
+      ];
+
+      const result = selectWithDiversity({
+        candidates,
+        maxItems: 3,
+        requireTriageData: true,
+      });
+
+      // Only triaged candidates should be selected
+      expect(result.selectedIds).not.toContain("1");
+      expect(result.selectedIds.length).toBe(2);
+      expect(result.stats.limitedByTriageData).toBe(true);
+    });
   });
 });

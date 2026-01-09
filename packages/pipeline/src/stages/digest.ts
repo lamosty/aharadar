@@ -15,6 +15,9 @@ import {
 
 const log = createLogger({ component: "digest" });
 
+import { type DiversityCandidate, selectWithDiversity } from "../lib/diversity_selection";
+import { type SamplingCandidate, stratifiedSample } from "../lib/fair_sampling";
+import { allocateTriageCalls, type TriageCandidate } from "../lib/triage_allocation";
 import {
   buildNoveltyFeature,
   getNoveltyLookbackDays,
@@ -738,7 +741,17 @@ export async function persistDigestFromContentItems(params: {
        union all
        select * from item_rows
      ) u
-     order by u.candidate_at desc
+     -- Fair sampling: order by engagement + title presence, NOT purely by recency
+     -- This ensures high-volume sources don't starve quieter sources
+     order by
+       (case when u.title is not null and length(coalesce(u.title, '')) > 5 then 0 else 1 end) asc,
+       greatest(
+         coalesce((u.metadata_json->>'score')::numeric, 0),
+         coalesce((u.metadata_json->>'likes')::numeric, 0),
+         coalesce((u.metadata_json->>'ups')::numeric, 0),
+         0
+       ) desc,
+       u.candidate_at desc
      limit $5`,
     filtered.args,
   );
@@ -796,27 +809,105 @@ export async function persistDigestFromContentItems(params: {
 
   scored.sort((a, b) => b.heuristicScore - a.heuristicScore || b.candidateAtMs - a.candidateAtMs);
 
-  // Skip LLM triage when credits exhausted (heuristic-only scoring)
-  let triageMap: Map<string, TriageOutput>;
-  if (paidCallsAllowed) {
-    const triageLimit = resolveTriageLimit({
-      maxItems,
-      candidateCount: scored.length,
-      triageMaxCalls,
-    });
-    triageMap = await triageCandidates({
-      db: params.db,
-      userId: params.userId,
-      candidates: scored,
-      windowStart: params.windowStart,
-      windowEnd: params.windowEnd,
-      mode: params.mode,
-      maxCalls: triageLimit,
-      llmConfig: params.llmConfig,
-    });
-  } else {
-    triageMap = new Map();
+  // Policy=STOP: when paid calls are not allowed, skip digest creation entirely
+  // This ensures we don't create low-quality digests without triage
+  if (!paidCallsAllowed) {
+    log.info(
+      {
+        topicId: params.topicId.slice(0, 8),
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+        candidateCount: scored.length,
+      },
+      "Skipping digest creation: paidCallsAllowed=false (policy=stop)",
+    );
+    return null;
   }
+
+  // =========================================================================
+  // Step 1: Stratified sampling for fair coverage across sources and time
+  // =========================================================================
+  const samplingCandidates: SamplingCandidate[] = scored.map((c) => ({
+    candidateId: c.candidateId,
+    sourceType: c.sourceType,
+    sourceId: c.sourceId,
+    candidateAtMs: c.candidateAtMs,
+    heuristicScore: c.heuristicScore,
+  }));
+
+  const samplingResult = stratifiedSample({
+    candidates: samplingCandidates,
+    windowStartMs,
+    windowEndMs,
+    maxPoolSize: candidatePoolSize,
+  });
+
+  // Filter to only sampled candidates
+  const sampledScored = scored.filter((c) => samplingResult.sampledIds.has(c.candidateId));
+
+  log.info(
+    {
+      input: samplingResult.stats.inputCount,
+      output: samplingResult.stats.outputCount,
+      buckets: samplingResult.stats.bucketCount,
+      sourceTypes: samplingResult.stats.sourceTypeCount,
+      sources: samplingResult.stats.sourceCount,
+      topTypes: samplingResult.stats.topSourceTypes.slice(0, 3),
+    },
+    "Stratified sampling completed",
+  );
+
+  // =========================================================================
+  // Step 2: Triage allocation with exploration + exploitation phases
+  // =========================================================================
+  const triageLimit = resolveTriageLimit({
+    maxItems,
+    candidateCount: sampledScored.length,
+    triageMaxCalls,
+  });
+
+  // Build triage candidates for allocation
+  const triageCandidatesForAlloc: TriageCandidate[] = sampledScored.map((c) => ({
+    candidateId: c.candidateId,
+    sourceType: c.sourceType,
+    sourceId: c.sourceId,
+    heuristicScore: c.heuristicScore,
+  }));
+
+  const triageAllocation = allocateTriageCalls({
+    candidates: triageCandidatesForAlloc,
+    maxTriageCalls: triageLimit,
+  });
+
+  log.info(
+    {
+      exploration: triageAllocation.stats.explorationSlots,
+      exploitation: triageAllocation.stats.exploitationSlots,
+      explorationSources: triageAllocation.stats.explorationSourceCount,
+      byType: triageAllocation.stats.explorationByType.slice(0, 3),
+    },
+    "Triage allocation completed",
+  );
+
+  // Build lookup for quick access
+  const sampledScoredMap = new Map(sampledScored.map((c) => [c.candidateId, c]));
+
+  // Reorder candidates for triage according to allocation order
+  const orderedForTriage = triageAllocation.triageOrder
+    .map((id) => sampledScoredMap.get(id))
+    .filter((c): c is NonNullable<typeof c> => c !== undefined);
+
+  // Perform triage on ordered candidates
+  const triageMap = await triageCandidates({
+    db: params.db,
+    userId: params.userId,
+    candidates: orderedForTriage,
+    windowStart: params.windowStart,
+    windowEnd: params.windowEnd,
+    mode: params.mode,
+    maxCalls: triageLimit,
+    llmConfig: params.llmConfig,
+  });
 
   // Load signal corroboration URL set from recent signal bundles
   // Disabled by default (ENABLE_SIGNAL_CORROBORATION=1 to enable)
@@ -898,9 +989,61 @@ export async function persistDigestFromContentItems(params: {
     }),
   });
 
-  const selected = ranked.slice(0, maxItems);
+  // =========================================================================
+  // Step 4: Diversity selection with soft penalties
+  // Only selects from triaged candidates when paidCallsAllowed=true (checked above)
+  // =========================================================================
+  const diversityCandidates: DiversityCandidate[] = ranked.map((r) => {
+    const baseCandidate = sampledScoredMap.get(r.candidateId);
+    return {
+      candidateId: r.candidateId,
+      score: r.score,
+      sourceType: baseCandidate?.sourceType ?? "unknown",
+      sourceId: baseCandidate?.sourceId ?? "unknown",
+      // For clusters, member sources would be added here in a future enhancement
+      // memberSources: undefined, // TODO: load cluster member sources for better diversity
+      hasTriageData: r.triageJson !== null,
+    };
+  });
 
-  const byCandidateId = new Map(scored.map((c) => [c.candidateId, c]));
+  const diversityResult = selectWithDiversity({
+    candidates: diversityCandidates,
+    maxItems,
+    requireTriageData: true, // Always require triage data (paidCallsAllowed is already checked)
+  });
+
+  // Map selected IDs back to ranked candidates
+  const selectedIdSet = new Set(diversityResult.selectedIds);
+  const selected = ranked.filter((r) => selectedIdSet.has(r.candidateId));
+
+  // Log diversity selection stats
+  if (diversityResult.stats.limitedByTriageData) {
+    log.warn(
+      {
+        requested: maxItems,
+        selected: selected.length,
+        triagedAvailable: diversityResult.stats.triagedInputCount,
+      },
+      "Digest shrunk due to limited triage data",
+    );
+  }
+
+  log.info(
+    {
+      input: diversityResult.stats.inputCount,
+      output: diversityResult.stats.outputCount,
+      triaged: diversityResult.stats.triagedInputCount,
+      byType: diversityResult.stats.outputByType.slice(0, 3),
+      topSources: diversityResult.stats.outputBySource.slice(0, 3).map((s) => ({
+        id: s.sourceId.slice(0, 8),
+        type: s.sourceType,
+        count: s.count,
+      })),
+    },
+    "Diversity selection completed",
+  );
+
+  const byCandidateId = new Map(sampledScored.map((c) => [c.candidateId, c]));
   const tier = resolveBudgetTier(params.mode);
   const enrichCandidates = selected.flatMap((s) => {
     const base = byCandidateId.get(s.candidateId);
@@ -968,14 +1111,19 @@ export async function persistDigestFromContentItems(params: {
 
   const triagedCount = items.filter((i) => i.triageJson !== null).length;
 
-  // Log triage status for visibility
-  if (!paidCallsAllowed) {
-    log.warn({ itemCount: items.length }, "Triage skipped (budget exhausted), all heuristic-only");
-  } else if (triagedCount < items.length) {
-    log.info({ triaged: triagedCount, total: items.length }, "Partial triage completed");
-  } else {
-    log.info({ triaged: triagedCount, total: items.length }, "Full triage completed");
-  }
+  // Final summary log (all items should be triaged since paidCallsAllowed is checked earlier)
+  log.info(
+    {
+      digestId: digest.id.slice(0, 8),
+      topicId: params.topicId.slice(0, 8),
+      candidatePool: samplingResult.stats.inputCount,
+      sampled: samplingResult.stats.outputCount,
+      triaged: triagedCount,
+      digestItems: items.length,
+      byType: diversityResult.stats.outputByType.slice(0, 3),
+    },
+    "Digest run completed",
+  );
 
   return {
     digestId: digest.id,

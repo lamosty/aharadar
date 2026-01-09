@@ -36,7 +36,24 @@ import { ingestEnabledSources } from "../stages/ingest";
 import { runPipelineOnce } from "./run";
 
 describe("runPipelineOnce", () => {
-  const mockDb = {} as Db;
+  // Mock db with required methods
+  const mockDb = {
+    topics: {
+      getById: vi.fn().mockResolvedValue({
+        id: "topic-1",
+        user_id: "user-1",
+        name: "Test Topic",
+        digest_mode: "normal",
+        digest_depth: 50,
+        decay_hours: null,
+      }),
+    },
+    sources: {
+      listEnabledByUserAndTopic: vi
+        .fn()
+        .mockResolvedValue([{ id: "source-1", type: "rss", name: "Test Source" }]),
+    },
+  } as unknown as Db;
 
   const baseParams = {
     userId: "user-1",
@@ -212,15 +229,16 @@ describe("runPipelineOnce", () => {
       );
     });
 
-    it("passes paidCallsAllowed=false to digest", async () => {
-      await runPipelineOnce(mockDb, {
+    it("skips digest creation when credits exhausted (policy=STOP)", async () => {
+      const result = await runPipelineOnce(mockDb, {
         ...baseParams,
         budget: { monthlyCredits: 1000 },
       });
 
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ paidCallsAllowed: false }),
-      );
+      // Digest should NOT be called when credits exhausted and budget is configured
+      expect(persistDigestFromContentItems).not.toHaveBeenCalled();
+      expect(result.digest).toBeNull();
+      expect(result.digestSkippedDueToCredits).toBe(true);
     });
 
     it("forces tier to low for embed when credits exhausted", async () => {
@@ -231,18 +249,6 @@ describe("runPipelineOnce", () => {
       });
 
       expect(embedTopicContentItems).toHaveBeenCalledWith(expect.objectContaining({ tier: "low" }));
-    });
-
-    it("forces mode to low for digest when credits exhausted", async () => {
-      await runPipelineOnce(mockDb, {
-        ...baseParams,
-        mode: "high", // Even if user requests high, should be forced to low
-        budget: { monthlyCredits: 1000 },
-      });
-
-      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: "low" }),
-      );
     });
 
     it("calls printCreditsWarning", async () => {

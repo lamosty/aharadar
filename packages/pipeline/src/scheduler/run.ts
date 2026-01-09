@@ -96,7 +96,8 @@ export async function runPipelineOnce(
   const enabledSourceCount = enabledSources.length;
 
   // Compile digest plan from topic settings
-  const digestMode = (topic.digest_mode as BudgetTier) ?? "normal";
+  // Use params.mode if provided (for manual/admin overrides), else fall back to topic settings
+  const digestMode = params.mode ?? (topic.digest_mode as BudgetTier) ?? "normal";
   const digestDepth = topic.digest_depth ?? 50;
 
   const digestPlan = compileDigestPlan({
