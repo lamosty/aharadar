@@ -81,3 +81,8 @@ Task files (in recommended order):
 57. `task-109-web-digest-detail-x-posts-display.md` - Web: render x_posts text + display name in digest detail
 58. `task-110-x-posts-published-at-timestamp.md` - Fix x_posts published_at handling + decide timestamp strategy
 59. `task-111-deprioritize-signal.md` - De-prioritize/disable signal features by default (since unused)
+60. `task-112-x-posts-prompt-profile-per-source.md` - Per-source x_posts promptProfile (light/heavy) for cost vs detail
+61. `task-113-all-topics-feed.md` - Make "All topics" real in feed + URL sync + topic badges
+62. `task-114-feedback-undo-saved.md` - Undo feedback + meaningful skip/save + saved view
+63. `task-115-whyshown-source-weight.md` - Show full source-weight breakdown in WhyShown
+64. `task-116-api-keys-load-loop.md` - Fix API Keys settings re-fetch loop
