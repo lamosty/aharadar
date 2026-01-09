@@ -2,9 +2,10 @@
 
 import { Suspense, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useItems, useFeedback, useTopicMarkChecked, useTopics } from "@/lib/hooks";
+import { useItems, useFeedback, useTopicMarkChecked, useTopics, usePageLayout } from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
+import { LayoutToggle } from "@/components/LayoutToggle";
 import { useTopic } from "@/components/TopicProvider";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
@@ -43,6 +44,7 @@ function FeedPageContent() {
   const { addToast } = useToast();
   const { currentTopicId, isReady: topicReady } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
+  const { layout, setLayout, hasOverride, resetToGlobal } = usePageLayout("feed");
 
   const hasTopics = topicsData?.topics && topicsData.topics.length > 0;
 
@@ -195,6 +197,13 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
+            <LayoutToggle
+              layout={layout}
+              onLayoutChange={setLayout}
+              hasOverride={hasOverride}
+              onResetToGlobal={resetToGlobal}
+              size="sm"
+            />
             <TopicSwitcher />
             <button
               className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
@@ -244,9 +253,9 @@ function FeedPageContent() {
 
       {!isLoading && !isError && allItems.length > 0 && (
         <>
-          <div className={styles.feedList}>
+          <div className={styles.feedList} data-layout={layout}>
             {allItems.map((item) => (
-              <FeedItem key={item.id} item={item} onFeedback={handleFeedback} />
+              <FeedItem key={item.id} item={item} onFeedback={handleFeedback} layout={layout} />
             ))}
           </div>
 

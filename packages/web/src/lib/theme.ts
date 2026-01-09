@@ -135,6 +135,57 @@ export function applyLayout(layout: Layout): void {
   document.documentElement.setAttribute("data-layout", layout);
 }
 
+// ==========================================
+// Page-specific layout overrides (Reddit-style)
+// ==========================================
+
+/** Page identifiers for layout overrides */
+export type LayoutPage = "feed" | "digests" | "digest";
+
+/**
+ * Get storage key for page-specific layout.
+ */
+function getPageLayoutKey(page: LayoutPage): string {
+  return `aharadar-layout-${page}`;
+}
+
+/**
+ * Get page-specific layout override.
+ * Returns null if no override is set (falls back to global).
+ */
+export function getPageLayout(page: LayoutPage): Layout | null {
+  if (!isBrowser()) return null;
+  const stored = localStorage.getItem(getPageLayoutKey(page));
+  if (stored && LAYOUTS.includes(stored as Layout)) {
+    return stored as Layout;
+  }
+  return null;
+}
+
+/**
+ * Set page-specific layout override.
+ */
+export function setPageLayout(page: LayoutPage, layout: Layout): void {
+  if (!isBrowser()) return;
+  localStorage.setItem(getPageLayoutKey(page), layout);
+}
+
+/**
+ * Clear page-specific layout override (revert to global default).
+ */
+export function clearPageLayout(page: LayoutPage): void {
+  if (!isBrowser()) return;
+  localStorage.removeItem(getPageLayoutKey(page));
+}
+
+/**
+ * Get effective layout for a page (page override > global default).
+ */
+export function getEffectiveLayout(page: LayoutPage): Layout {
+  const pageLayout = getPageLayout(page);
+  return pageLayout ?? getStoredLayout();
+}
+
 /**
  * Script to prevent flash of unstyled content (FOUC).
  * This runs before React hydrates and sets the theme from localStorage.

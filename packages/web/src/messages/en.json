@@ -483,6 +483,7 @@
   },
   "feed": {
     "topic": "Topic",
+    "allTopics": "All Topics",
     "title": "Feed",
     "subtitle": "All your ranked items in one place",
     "empty": "No items yet",
@@ -490,6 +491,13 @@
     "hnComments": "Comments",
     "source": "source",
     "sources": "sources",
+    "approximateDate": "Approximate date (day-level precision)",
+    "layout": {
+      "condensed": "Condensed",
+      "reader": "Reader",
+      "timeline": "Timeline",
+      "toggle": "Change layout"
+    },
     "onboarding": {
       "subtitle": "Get started with personalized content",
       "title": "Welcome to your feed",

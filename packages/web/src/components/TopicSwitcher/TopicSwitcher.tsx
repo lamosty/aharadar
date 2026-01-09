@@ -41,9 +41,10 @@ export function TopicSwitcher({ className }: TopicSwitcherProps) {
       <select
         id="topic-switcher"
         className={styles.select}
-        value={currentTopicId || ""}
-        onChange={(e) => setCurrentTopicId(e.target.value)}
+        value={currentTopicId || "all"}
+        onChange={(e) => setCurrentTopicId(e.target.value === "all" ? null : e.target.value)}
       >
+        <option value="all">{t("feed.allTopics")}</option>
         {topics.map((topic) => (
           <option key={topic.id} value={topic.id}>
             {topic.name}

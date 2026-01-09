@@ -1,0 +1,108 @@
+.container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.button:hover {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+.button.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.buttonLabel {
+  display: none;
+}
+
+/* Size variants */
+.sm .button {
+  padding: var(--space-1) var(--space-2);
+}
+
+.sm .button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.md .buttonLabel {
+  display: inline;
+}
+
+/* Reset button (override indicator) */
+.resetButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  margin-left: var(--space-1);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--color-border-subtle);
+  padding-left: var(--space-2);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.resetButton:hover {
+  color: var(--color-text-secondary);
+}
+
+.resetButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Responsive - hide labels on smaller screens */
+@media (max-width: 768px) {
+  .buttonLabel {
+    display: none !important;
+  }
+}
+
+/* Mobile: more compact toggle */
+@media (max-width: 640px) {
+  .container {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .button {
+    padding: var(--space-1);
+  }
+
+  .button svg {
+    width: 14px;
+    height: 14px;
+  }
+}

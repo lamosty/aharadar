@@ -1,6 +1,7 @@
 "use client";
 
 import { type FeedItem as FeedItemType } from "@/lib/api";
+import { type Layout } from "@/lib/theme";
 import { WhyShown } from "@/components/WhyShown";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { Tooltip } from "@/components/Tooltip";
@@ -11,16 +12,49 @@ import styles from "./FeedItem.module.css";
 interface FeedItemProps {
   item: FeedItemType;
   onFeedback?: (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => Promise<void>;
+  /** Layout mode - affects rendering style */
+  layout?: Layout;
 }
 
-function formatRelativeTime(dateStr: string | null): string {
-  if (!dateStr) return "";
+interface DisplayDate {
+  dateStr: string;
+  isApproximate: boolean;
+}
+
+/**
+ * Get the best available date for display with fallback chain:
+ * 1. publishedAt - original publication date (may be approximate for X posts)
+ * 2. digestCreatedAt - when item was processed (always available)
+ *
+ * X posts have day-level dates (noon UTC approximation), marked as approximate.
+ */
+function getDisplayDate(item: FeedItemType): DisplayDate {
+  // Primary: publishedAt (full timestamp from source)
+  if (item.item.publishedAt) {
+    // X posts only have day-level precision, mark as approximate
+    const isXPost = item.item.sourceType === "x_posts";
+    return { dateStr: item.item.publishedAt, isApproximate: isXPost };
+  }
+
+  // Ultimate fallback: digestCreatedAt (when processed)
+  return { dateStr: item.digestCreatedAt, isApproximate: true };
+}
+
+function formatRelativeTime(dateStr: string, isApproximate: boolean = false): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // For approximate dates (day-only or digest date), don't show precise times
+  if (isApproximate) {
+    if (diffDays < 1) return "today";
+    if (diffDays === 1) return "yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
 
   if (diffMins < 1) return "just now";
   if (diffMins < 60) return `${diffMins}m ago`;
@@ -82,7 +116,7 @@ function getDisplayTitle(item: FeedItemType): string {
   return "(Untitled)";
 }
 
-export function FeedItem({ item, onFeedback }: FeedItemProps) {
+export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps) {
   const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
     if (onFeedback) {
       await onFeedback(item.id, action);
@@ -90,67 +124,118 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
   };
 
   const scorePercent = Math.round(item.score * 100);
-
   const subreddit = item.item.metadata?.subreddit as string | undefined;
+  const displayDate = getDisplayDate(item);
+  const author = item.item.sourceType === "x_posts" && item.item.metadata?.user_display_name
+    ? `${item.item.metadata.user_display_name} (${item.item.author})`
+    : item.item.author;
 
-  return (
-    <article className={styles.card} data-testid={`feed-item-${item.id}`}>
-      <div className={styles.header}>
-        {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
+  // For condensed layout, render a simpler row-based view
+  if (layout === "condensed") {
+    return (
+      <article className={styles.condensedRow} data-testid={`feed-item-${item.id}`}>
         <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
           <span
-            className={styles.sourceTag}
+            className={styles.condensedSource}
             style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
           >
             {formatSourceType(item.item.sourceType)}
           </span>
         </Tooltip>
-        {item.item.sourceType === "reddit" && subreddit && (
-          <span className={styles.subreddit}>r/{subreddit}</span>
-        )}
-        {item.clusterMemberCount && item.clusterMemberCount > 1 && (
-          <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
-            <span className={styles.clusterBadge}>
-              +{item.clusterMemberCount - 1} {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
-            </span>
-          </Tooltip>
-        )}
-        {item.item.sourceType === "hn" && item.item.externalId && (
-          <a
-            href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.commentsLink}
-            title={t("feed.hnComments")}
-          >
-            <CommentIcon />
-            <span>{t("feed.hnComments")}</span>
-          </a>
-        )}
-        <span className={styles.meta}>
-          {item.item.author && (
-            <span className={styles.author}>
-              {item.item.sourceType === "x_posts" && item.item.metadata?.user_display_name
-                ? `${item.item.metadata.user_display_name} (${item.item.author})`
-                : item.item.author}
-            </span>
-          )}
-          {item.item.author && item.item.publishedAt && <span className={styles.separator}>·</span>}
-          {item.item.publishedAt && (
-            <time className={styles.time} dateTime={item.item.publishedAt}>
-              {formatRelativeTime(item.item.publishedAt)}
-            </time>
+        <span className={styles.condensedTitle}>
+          {item.item.url ? (
+            <a href={item.item.url} target="_blank" rel="noopener noreferrer" className={styles.condensedTitleLink}>
+              {getDisplayTitle(item)}
+            </a>
+          ) : (
+            getDisplayTitle(item)
           )}
         </span>
-        <div className={styles.headerActions}>
-          <FeedbackButtons
-            contentItemId={item.id}
-            digestId={item.digestId}
-            currentFeedback={item.feedback}
-            onFeedback={handleFeedback}
-            variant="compact"
-          />
+        {author && <span className={styles.condensedAuthor}>{author}</span>}
+        <time className={styles.condensedTime}>
+          {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
+        </time>
+        <FeedbackButtons
+          contentItemId={item.id}
+          digestId={item.digestId}
+          currentFeedback={item.feedback}
+          onFeedback={handleFeedback}
+          variant="compact"
+        />
+        <Tooltip content={t("tooltips.ahaScore")}>
+          <span className={styles.condensedScore}>{scorePercent}</span>
+        </Tooltip>
+      </article>
+    );
+  }
+
+  // Default: reader/timeline layout (card-based)
+  return (
+    <article className={styles.card} data-testid={`feed-item-${item.id}`}>
+      <div className={styles.header}>
+        {/* Left section: badges + meta + actions */}
+        <div className={styles.headerLeft}>
+          {/* Badge group: source badges, clusters, comments link */}
+          <div className={styles.badgeGroup}>
+            {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
+            <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
+              <span
+                className={styles.sourceTag}
+                style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
+              >
+                {formatSourceType(item.item.sourceType)}
+              </span>
+            </Tooltip>
+            {item.item.sourceType === "reddit" && subreddit && (
+              <span className={styles.subreddit}>r/{subreddit}</span>
+            )}
+            {item.clusterMemberCount && item.clusterMemberCount > 1 && (
+              <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
+                <span className={styles.clusterBadge}>
+                  +{item.clusterMemberCount - 1} {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
+                </span>
+              </Tooltip>
+            )}
+            {item.item.sourceType === "hn" && item.item.externalId && (
+              <a
+                href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.commentsLink}
+                title={t("feed.hnComments")}
+              >
+                <CommentIcon />
+                <span>{t("feed.hnComments")}</span>
+              </a>
+            )}
+          </div>
+
+          {/* Meta: author, date */}
+          <span className={styles.meta}>
+            {author && <span className={styles.author}>{author}</span>}
+            {author && <span className={styles.separator}>·</span>}
+            <time
+              className={`${styles.time} ${displayDate.isApproximate ? styles.timeApprox : ""}`}
+              dateTime={displayDate.dateStr}
+              title={displayDate.isApproximate ? t("feed.approximateDate") : undefined}
+            >
+              {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
+            </time>
+          </span>
+
+          {/* Actions */}
+          <div className={styles.headerActions}>
+            <FeedbackButtons
+              contentItemId={item.id}
+              digestId={item.digestId}
+              currentFeedback={item.feedback}
+              onFeedback={handleFeedback}
+              variant="compact"
+            />
+          </div>
         </div>
+
+        {/* Right section: score (always on right) */}
         <Tooltip content={t("tooltips.ahaScore")}>
           <div className={styles.score}>
             <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />

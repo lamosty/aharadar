@@ -654,3 +654,83 @@ export function useDeleteTopic(
     ...options,
   });
 }
+
+// ============================================================================
+// Layout Hooks (Reddit-style per-page overrides)
+// ============================================================================
+
+import { useState, useEffect, useCallback } from "react";
+import {
+  type Layout,
+  type LayoutPage,
+  LAYOUTS,
+  getPageLayout,
+  setPageLayout as storePageLayout,
+  clearPageLayout as clearStoredPageLayout,
+} from "@/lib/theme";
+import { useTheme } from "@/components/ThemeProvider";
+
+interface UsePageLayoutResult {
+  /** Current effective layout for this page */
+  layout: Layout;
+  /** Whether this page has an override (vs using global) */
+  hasOverride: boolean;
+  /** Set layout for this page (creates override) */
+  setLayout: (layout: Layout) => void;
+  /** Clear override (revert to global) */
+  resetToGlobal: () => void;
+  /** Cycle to next layout (for quick toggle) */
+  cycleLayout: () => void;
+  /** All available layouts for iteration */
+  layouts: readonly Layout[];
+}
+
+/**
+ * Hook for per-page layout management with global fallback.
+ * Implements Reddit-style layout preferences:
+ * - Global default set in Settings
+ * - Per-page override that persists
+ * - Quick toggle without going to Settings
+ */
+export function usePageLayout(page: LayoutPage): UsePageLayoutResult {
+  const { layout: globalLayout } = useTheme();
+  const [pageOverride, setPageOverride] = useState<Layout | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    setPageOverride(getPageLayout(page));
+    setMounted(true);
+  }, [page]);
+
+  // Effective layout: page override > global
+  const layout = mounted && pageOverride ? pageOverride : globalLayout;
+
+  const setLayout = useCallback(
+    (newLayout: Layout) => {
+      storePageLayout(page, newLayout);
+      setPageOverride(newLayout);
+    },
+    [page]
+  );
+
+  const resetToGlobal = useCallback(() => {
+    clearStoredPageLayout(page);
+    setPageOverride(null);
+  }, [page]);
+
+  const cycleLayout = useCallback(() => {
+    const currentIndex = LAYOUTS.indexOf(layout);
+    const nextIndex = (currentIndex + 1) % LAYOUTS.length;
+    setLayout(LAYOUTS[nextIndex]);
+  }, [layout, setLayout]);
+
+  return {
+    layout,
+    hasOverride: pageOverride !== null,
+    setLayout,
+    resetToGlobal,
+    cycleLayout,
+    layouts: LAYOUTS,
+  };
+}

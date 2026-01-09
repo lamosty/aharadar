@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { t, type MessageKey } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
+import { Tooltip } from "@/components/Tooltip";
 import styles from "./FeedbackButtons.module.css";
 
 type FeedbackAction = "like" | "dislike" | "save" | "skip";
@@ -130,19 +131,20 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
   const tooltip = t(tooltipKeys[action]);
 
   return (
-    <button
-      type="button"
-      className={`${styles.button} ${styles[action]} ${isActive ? styles.active : ""}`}
-      onClick={onClick}
-      disabled={isPending}
-      aria-pressed={isActive}
-      aria-label={isActive ? activeLabels[action] : labels[action]}
-      title={tooltip}
-      data-testid={`feedback-${action}`}
-    >
-      <Icon filled={isActive} />
-      {!compact && <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>}
-    </button>
+    <Tooltip content={tooltip}>
+      <button
+        type="button"
+        className={`${styles.button} ${styles[action]} ${isActive ? styles.active : ""}`}
+        onClick={onClick}
+        disabled={isPending}
+        aria-pressed={isActive}
+        aria-label={isActive ? activeLabels[action] : labels[action]}
+        data-testid={`feedback-${action}`}
+      >
+        <Icon filled={isActive} />
+        {!compact && <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>}
+      </button>
+    </Tooltip>
   );
 }
 

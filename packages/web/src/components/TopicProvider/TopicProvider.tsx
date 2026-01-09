@@ -6,13 +6,13 @@ import { useTopics } from "@/lib/hooks";
 const STORAGE_KEY = "aharadar_current_topic";
 
 interface TopicContextValue {
-  /** Currently selected topic ID */
+  /** Currently selected topic ID (null = all topics) */
   currentTopicId: string | null;
-  /** Set the current topic ID */
-  setCurrentTopicId: (topicId: string) => void;
+  /** Set the current topic ID (null = all topics) */
+  setCurrentTopicId: (topicId: string | null) => void;
   /** Whether topics are still loading */
   isLoading: boolean;
-  /** Whether the context is ready (topics loaded and default set) */
+  /** Whether the context is ready (topics loaded) */
   isReady: boolean;
 }
 
@@ -36,11 +36,16 @@ function getStoredTopicId(): string | null {
 
 /**
  * Store topic ID in localStorage.
+ * Null means "all topics" - we remove the stored value.
  */
-function setStoredTopicId(topicId: string): void {
+function setStoredTopicId(topicId: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, topicId);
+    if (topicId === null) {
+      localStorage.removeItem(STORAGE_KEY);
+    } else {
+      localStorage.setItem(STORAGE_KEY, topicId);
+    }
   } catch {
     // Ignore storage errors
   }
@@ -81,12 +86,13 @@ export function TopicProvider({ children }: TopicProviderProps) {
     }
   }, [mounted, topicsLoading, topicsData]);
 
-  const setCurrentTopicId = useCallback((topicId: string) => {
+  const setCurrentTopicId = useCallback((topicId: string | null) => {
     setCurrentTopicIdState(topicId);
     setStoredTopicId(topicId);
   }, []);
 
-  const isReady = mounted && !topicsLoading && currentTopicId !== null;
+  // Ready when mounted and topics loaded (currentTopicId can be null for "all topics")
+  const isReady = mounted && !topicsLoading;
 
   const value: TopicContextValue = {
     currentTopicId,

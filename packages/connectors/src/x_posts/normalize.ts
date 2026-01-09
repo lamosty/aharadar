@@ -84,15 +84,18 @@ export async function normalizeXPosts(raw: unknown, params: FetchParams): Promis
   // User display name from Grok response (e.g., "Elon Musk")
   const userDisplayName = asString(rec.user_display_name);
 
+  // Convert day bucket to approximate timestamp (noon UTC)
+  // This is an approximation since Grok only provides day-level dates.
+  // UI should treat as approximate (show "2d ago" not "48h ago").
+  const publishedAt = dateDay ? `${dateDay}T12:00:00Z` : null;
+
   return {
     title: null,
     bodyText,
     canonicalUrl,
     sourceType: "x_posts",
     externalId,
-    // Providers often only return a day bucket, not a full timestamp.
-    // Avoid fabricating a timestamptz; store day bucket in metadata instead.
-    publishedAt: null,
+    publishedAt,
     author: parsed.handle ? `@${parsed.handle}` : null,
     metadata: {
       vendor,
