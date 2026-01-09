@@ -44,6 +44,7 @@ import {
   getHealth,
   getItem,
   getItems,
+  getOpsStatus,
   getPreferences,
   getQueueStatus,
   getTopic,
@@ -55,6 +56,7 @@ import {
   type LlmSettingsResponse,
   type LlmSettingsUpdateRequest,
   type NetworkError,
+  type OpsStatusResponse,
   type PreferencesGetResponse,
   type PreferencesMarkCheckedResponse,
   type PreferencesUpdateResponse,
@@ -109,6 +111,7 @@ export const queryKeys = {
     budgets: ["admin", "budgets"] as const,
     llmSettings: ["admin", "llm-settings"] as const,
     queueStatus: ["admin", "queue-status"] as const,
+    opsStatus: ["admin", "ops-status"] as const,
   },
   preferences: ["preferences"] as const,
   topics: {
@@ -560,6 +563,25 @@ export function useQueueStatus(
     // Poll frequently when there are active jobs
     refetchInterval: 5000,
     staleTime: 2000,
+    ...options,
+  });
+}
+
+/**
+ * Query for ops status (worker health, queue counts, links).
+ * Polls to show live worker/queue state.
+ */
+export function useOpsStatus(
+  options?: Omit<
+    UseQueryOptions<OpsStatusResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.opsStatus,
+    queryFn: ({ signal }) => getOpsStatus(signal),
+    refetchInterval: 10000, // Poll every 10s
+    staleTime: 5000,
     ...options,
   });
 }

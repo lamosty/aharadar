@@ -44,14 +44,31 @@ export interface HealthResponse {
   ok: true;
 }
 
+/** Source result from digest run */
+export interface DigestSourceResult {
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  status: "ok" | "partial" | "error" | "skipped";
+  skipReason?: string;
+  itemsFetched: number;
+}
+
 /** Digest list item */
 export interface DigestListItem {
   id: string;
   mode: string;
+  status: "complete" | "failed";
+  creditsUsed: number;
   windowStart: string;
   windowEnd: string;
   createdAt: string;
   itemCount: number;
+  sourceCount: {
+    total: number;
+    succeeded: number;
+    skipped: number;
+  };
 }
 
 /** Digests list response */
@@ -90,6 +107,10 @@ export interface DigestDetailResponse {
   digest: {
     id: string;
     mode: string;
+    status: "complete" | "failed";
+    creditsUsed: number;
+    sourceResults: DigestSourceResult[];
+    errorMessage: string | null;
     windowStart: string;
     windowEnd: string;
     createdAt: string;
@@ -1207,4 +1228,38 @@ export interface QueueStatusResponse {
  */
 export async function getQueueStatus(signal?: AbortSignal): Promise<QueueStatusResponse> {
   return apiFetch<QueueStatusResponse>("/admin/queue-status", { signal });
+}
+
+// ============================================================================
+// Ops Status
+// ============================================================================
+
+/** Ops links configuration */
+export interface OpsLinks {
+  grafana?: string;
+  prometheus?: string;
+  queue?: string;
+  logs?: string;
+}
+
+/** Ops status response */
+export interface OpsStatusResponse {
+  ok: true;
+  worker: {
+    ok: boolean;
+    startedAt?: string;
+    lastSchedulerTickAt?: string | null;
+  };
+  queue: {
+    active: number;
+    waiting: number;
+  };
+  links: OpsLinks;
+}
+
+/**
+ * Get ops status (worker health, queue counts, and links).
+ */
+export async function getOpsStatus(signal?: AbortSignal): Promise<OpsStatusResponse> {
+  return apiFetch<OpsStatusResponse>("/admin/ops-status", { signal });
 }

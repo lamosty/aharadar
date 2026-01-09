@@ -256,6 +256,10 @@
       "llm": {
         "title": "LLM Settings",
         "description": "Configure AI provider and model"
+      },
+      "ops": {
+        "title": "Operations",
+        "description": "Worker status and ops tools"
       }
     },
     "run": {
@@ -385,6 +389,31 @@
       "currentConfig": "Current Configuration",
       "activeProvider": "Active Provider",
       "activeModel": "Active Model"
+    },
+    "ops": {
+      "title": "Operations",
+      "description": "Monitor worker health and access ops tools",
+      "worker": {
+        "title": "Worker Status",
+        "up": "Running",
+        "down": "Offline",
+        "lastTick": "Last scheduler tick",
+        "startedAt": "Started at",
+        "unknown": "Unknown"
+      },
+      "queue": {
+        "title": "Queue",
+        "active": "Active jobs",
+        "waiting": "Waiting jobs"
+      },
+      "links": {
+        "title": "Tools",
+        "grafana": "Grafana",
+        "prometheus": "Prometheus",
+        "queue": "Queue Dashboard",
+        "logs": "Logs",
+        "notConfigured": "Not configured"
+      }
     }
   },
   "accessibility": {
@@ -413,10 +442,12 @@
   "digests": {
     "title": "Digests",
     "list": {
+      "status": "Status",
       "window": "Window",
       "mode": "Mode",
       "items": "items",
       "item": "item",
+      "sources": "Sources",
       "created": "Created",
       "empty": "No digests yet",
       "emptyDescription": "Digests will appear here after your first pipeline run.",
@@ -528,7 +559,7 @@
       "schedule": {
         "title": "Schedule",
         "enableToggle": "Enable scheduled digests",
-        "cadence": "Cadence",
+        "frequency": "Frequency",
         "customInterval": "Custom interval",
         "presets": {
           "daily": "Daily",

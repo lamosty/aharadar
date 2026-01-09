@@ -39,6 +39,14 @@ export default function AdminPage() {
           <h2 className={styles.cardTitle}>{t("admin.cards.llm.title")}</h2>
           <p className={styles.cardDescription}>{t("admin.cards.llm.description")}</p>
         </Link>
+
+        <Link href="/app/admin/ops" className={styles.card}>
+          <div className={styles.cardIcon}>
+            <OpsIcon />
+          </div>
+          <h2 className={styles.cardTitle}>{t("admin.cards.ops.title")}</h2>
+          <p className={styles.cardDescription}>{t("admin.cards.ops.description")}</p>
+        </Link>
       </div>
     </div>
   );
@@ -97,6 +105,29 @@ function LlmIcon() {
       <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z" />
       <path d="M7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" />
       <path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" />
+    </svg>
+  );
+}
+
+function OpsIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+      <path d="M6 8h.01" />
+      <path d="M10 8h.01" />
+      <path d="M14 8h.01" />
     </svg>
   );
 }
