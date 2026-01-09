@@ -142,6 +142,15 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
             </time>
           )}
         </span>
+        <div className={styles.headerActions}>
+          <FeedbackButtons
+            contentItemId={item.id}
+            digestId={item.digestId}
+            currentFeedback={item.feedback}
+            onFeedback={handleFeedback}
+            variant="compact"
+          />
+        </div>
         <Tooltip content={t("tooltips.ahaScore")}>
           <div className={styles.score}>
             <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
@@ -160,16 +169,6 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
         )}
       </h3>
 
-      <div className={styles.footer}>
-        <FeedbackButtons
-          contentItemId={item.id}
-          digestId={item.digestId}
-          currentFeedback={item.feedback}
-          onFeedback={handleFeedback}
-          variant="compact"
-        />
-      </div>
-
       <WhyShown
         features={item.triageJson as TriageFeatures | undefined}
         clusterItems={item.clusterItems}
@@ -184,12 +183,10 @@ export function FeedItemSkeleton() {
       <div className={styles.header}>
         <span className={`${styles.skeleton} ${styles.skeletonTag}`} />
         <span className={`${styles.skeleton} ${styles.skeletonMeta}`} />
+        <span className={`${styles.skeleton} ${styles.skeletonActions}`} />
         <span className={`${styles.skeleton} ${styles.skeletonScore}`} />
       </div>
       <div className={`${styles.skeleton} ${styles.skeletonTitle}`} />
-      <div className={styles.footer}>
-        <span className={`${styles.skeleton} ${styles.skeletonActions}`} />
-      </div>
     </article>
   );
 }
