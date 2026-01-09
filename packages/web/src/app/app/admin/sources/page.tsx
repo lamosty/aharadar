@@ -8,13 +8,9 @@ import {
   type SourceTypeConfig,
   validateSourceConfig,
 } from "@/components/SourceConfigForms";
+import { SOURCE_CATALOG, SourceTypePickerModal } from "@/components/SourcePicker";
 import { useToast } from "@/components/Toast";
-import {
-  type Source,
-  type SourceConfig,
-  SUPPORTED_SOURCE_TYPES,
-  type SupportedSourceType,
-} from "@/lib/api";
+import type { Source, SourceConfig, SupportedSourceType } from "@/lib/api";
 import {
   useAdminSourceCreate,
   useAdminSourceDelete,
@@ -48,6 +44,7 @@ export default function AdminSourcesPage() {
 
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showTypePicker, setShowTypePicker] = useState(false);
   const [createType, setCreateType] = useState<SupportedSourceType>("rss");
   const [createName, setCreateName] = useState("");
   const [createTopicId, setCreateTopicId] = useState<string>("");
@@ -145,11 +142,17 @@ export default function AdminSourcesPage() {
 
   const handleCancelCreate = () => {
     setShowCreateForm(false);
+    setShowTypePicker(false);
     setCreateType("rss");
     setCreateName("");
     setCreateTopicId(topics[0]?.id ?? "");
     setCreateConfig(getDefaultConfig("rss"));
     setCreateErrors({});
+  };
+
+  const handleTypeSelect = (type: SupportedSourceType) => {
+    setCreateType(type);
+    setShowTypePicker(false);
   };
 
   const handleCreateSource = async () => {
@@ -193,20 +196,7 @@ export default function AdminSourcesPage() {
   };
 
   const getSourceTypeDisplayName = (type: SupportedSourceType): string => {
-    const names: Record<SupportedSourceType, string> = {
-      rss: "RSS Feed",
-      reddit: "Reddit",
-      hn: "Hacker News",
-      youtube: "YouTube",
-      x_posts: "X (Twitter) Posts",
-      signal: "Signal Search",
-      sec_edgar: "SEC EDGAR Filings",
-      congress_trading: "Congress Trading",
-      polymarket: "Polymarket",
-      options_flow: "Options Flow",
-      market_sentiment: "Market Sentiment",
-    };
-    return names[type] ?? type;
+    return SOURCE_CATALOG[type]?.name ?? type;
   };
 
   if (isLoading) {
@@ -247,22 +237,22 @@ export default function AdminSourcesPage() {
           <h2 className={styles.createFormTitle}>{t("admin.sources.addSource")}</h2>
 
           <div className={styles.editField}>
-            <label htmlFor="create-type" className={styles.editLabel}>
-              {t("admin.sources.type")}
-            </label>
-            <select
-              id="create-type"
-              value={createType}
-              onChange={(e) => setCreateType(e.target.value as SupportedSourceType)}
-              className={styles.selectInput}
+            <label className={styles.editLabel}>{t("admin.sources.type")}</label>
+            <button
+              type="button"
+              onClick={() => setShowTypePicker(true)}
+              className={styles.typePickerButton}
             >
-              {SUPPORTED_SOURCE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {getSourceTypeDisplayName(type)}
-                </option>
-              ))}
-            </select>
+              <span>{getSourceTypeDisplayName(createType)}</span>
+              <ChevronDownIcon />
+            </button>
           </div>
+
+          <SourceTypePickerModal
+            isOpen={showTypePicker}
+            onClose={() => setShowTypePicker(false)}
+            onSelect={handleTypeSelect}
+          />
 
           <div className={styles.editField}>
             <label htmlFor="create-name" className={styles.editLabel}>
@@ -640,6 +630,24 @@ function TrashIcon() {
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
       <line x1="10" y1="11" x2="10" y2="17" />
       <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
     </svg>
   );
 }

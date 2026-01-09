@@ -8,15 +8,10 @@ import {
   type SourceTypeConfig,
   validateSourceConfig,
 } from "@/components/SourceConfigForms";
+import { SOURCE_CATALOG, SourceTypePickerModal } from "@/components/SourcePicker";
 import { useToast } from "@/components/Toast";
 import { TopicViewingProfileSettings } from "@/components/TopicViewingProfile/TopicViewingProfileSettings";
-import {
-  type Source,
-  type SourceConfig,
-  SUPPORTED_SOURCE_TYPES,
-  type SupportedSourceType,
-  type Topic,
-} from "@/lib/api";
+import type { Source, SourceConfig, SupportedSourceType, Topic } from "@/lib/api";
 import {
   useAdminSourceCreate,
   useAdminSourceDelete,
@@ -63,6 +58,7 @@ export default function TopicsPage() {
 
   // State for adding source to a topic
   const [addingSourceToTopicId, setAddingSourceToTopicId] = useState<string | null>(null);
+  const [showTypePicker, setShowTypePicker] = useState(false);
   const [newSourceType, setNewSourceType] = useState<SupportedSourceType>("rss");
   const [newSourceName, setNewSourceName] = useState("");
   const [newSourceCadence, setNewSourceCadence] = useState(60);
@@ -154,12 +150,18 @@ export default function TopicsPage() {
 
   const handleCancelAddSource = () => {
     setAddingSourceToTopicId(null);
+    setShowTypePicker(false);
     setNewSourceType("rss");
     setNewSourceName("");
     setNewSourceCadence(60);
     setNewSourceWeight(1.0);
     setNewSourceConfig(getDefaultConfig("rss"));
     setNewSourceErrors({});
+  };
+
+  const handleTypeSelect = (type: SupportedSourceType) => {
+    setNewSourceType(type);
+    setShowTypePicker(false);
   };
 
   const handleCreateSource = async (topicId: string) => {
@@ -249,20 +251,17 @@ export default function TopicsPage() {
   };
 
   const getSourceTypeDisplayName = (type: SupportedSourceType): string => {
-    const names: Record<SupportedSourceType, string> = {
+    // Short names for the compact source list display
+    const shortNames: Partial<Record<SupportedSourceType, string>> = {
       rss: "RSS",
-      reddit: "Reddit",
       hn: "HN",
-      youtube: "YouTube",
-      x_posts: "X",
-      signal: "Signal",
       sec_edgar: "SEC",
       congress_trading: "Congress",
-      polymarket: "Polymarket",
       options_flow: "Options",
       market_sentiment: "Sentiment",
+      x_posts: "X",
     };
-    return names[type] ?? type;
+    return shortNames[type] ?? SOURCE_CATALOG[type]?.name ?? type;
   };
 
   const isLoading = topicsLoading || sourcesLoading;
@@ -554,20 +553,21 @@ export default function TopicsPage() {
                         <div className={styles.addSourceForm}>
                           <div className={styles.formRow}>
                             <label className={styles.formLabel}>{t("admin.sources.type")}</label>
-                            <select
-                              value={newSourceType}
-                              onChange={(e) =>
-                                setNewSourceType(e.target.value as SupportedSourceType)
-                              }
-                              className={styles.selectInput}
+                            <button
+                              type="button"
+                              onClick={() => setShowTypePicker(true)}
+                              className={styles.typePickerButton}
                             >
-                              {SUPPORTED_SOURCE_TYPES.map((type) => (
-                                <option key={type} value={type}>
-                                  {getSourceTypeDisplayName(type)}
-                                </option>
-                              ))}
-                            </select>
+                              <span>{SOURCE_CATALOG[newSourceType]?.name ?? newSourceType}</span>
+                              <ChevronDownIcon />
+                            </button>
                           </div>
+
+                          <SourceTypePickerModal
+                            isOpen={showTypePicker}
+                            onClose={() => setShowTypePicker(false)}
+                            onSelect={handleTypeSelect}
+                          />
                           <div className={styles.formRow}>
                             <label className={styles.formLabel}>{t("admin.sources.name")}</label>
                             <input
@@ -927,6 +927,24 @@ function TipIcon() {
       aria-hidden="true"
     >
       <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
     </svg>
   );
 }

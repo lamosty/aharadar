@@ -570,5 +570,18 @@
     "running": "Processing {count} job(s)",
     "waiting": "{count} job(s) queued",
     "queued": "queued"
+  },
+  "sourcePicker": {
+    "title": "Choose Source Type",
+    "subtitle": "Select a source type to add to your topic",
+    "searchPlaceholder": "Search sources...",
+    "allCategories": "All",
+    "showPaidSources": "Show paid sources",
+    "noResults": "No sources match your search",
+    "hiddenPaidHint": "{count} paid source(s) hidden",
+    "badgePaid": "Paid",
+    "badgeBudget": "Credits",
+    "badgeExperimental": "Beta",
+    "chooseType": "Choose type..."
   }
 }
