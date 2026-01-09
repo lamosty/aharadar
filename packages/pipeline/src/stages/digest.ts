@@ -35,6 +35,10 @@ export type DigestMode = BudgetTier;
 
 export interface DigestLimits {
   maxItems: number;
+  /** Max triage LLM calls (optional, defaults based on maxItems) */
+  triageMaxCalls?: number;
+  /** Max candidate pool size (optional, defaults based on maxItems) */
+  candidatePoolMax?: number;
 }
 
 export interface DigestRunResult {
@@ -384,13 +388,29 @@ function resolveBudgetTier(mode: DigestMode): BudgetTier {
   return mode;
 }
 
-function resolveTriageLimit(params: { maxItems: number; candidateCount: number }): number {
+function resolveTriageLimit(params: {
+  maxItems: number;
+  candidateCount: number;
+  triageMaxCalls?: number;
+}): number {
+  // Priority: explicit plan limit > env limit > computed default
   const envLimit = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_CALLS_PER_RUN);
+
+  // If plan provides a limit, use it (capped by candidate count)
+  if (params.triageMaxCalls !== undefined) {
+    return Math.min(params.triageMaxCalls, params.candidateCount);
+  }
+
+  // If env provides a limit, use it (capped by candidate count)
+  if (envLimit !== null) {
+    return Math.max(0, Math.min(envLimit, params.candidateCount));
+  }
+
+  // Default: 5x maxItems, capped by candidate count
   const defaultLimit = Math.min(
     params.candidateCount,
     Math.max(params.maxItems, params.maxItems * 5),
   );
-  if (envLimit !== null) return Math.max(0, Math.min(envLimit, params.candidateCount));
   return defaultLimit;
 }
 
@@ -573,7 +593,11 @@ export async function persistDigestFromContentItems(params: {
 }): Promise<DigestRunResult | null> {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? 20;
-  const candidatePoolSize = Math.min(500, Math.max(maxItems, maxItems * 10));
+  const triageMaxCalls = params.limits?.triageMaxCalls;
+
+  // Use plan's candidatePoolMax if provided, otherwise compute default
+  const candidatePoolSize =
+    params.limits?.candidatePoolMax ?? Math.min(500, Math.max(maxItems, maxItems * 10));
 
   const baseArgs: unknown[] = [
     params.userId,
@@ -775,7 +799,11 @@ export async function persistDigestFromContentItems(params: {
   // Skip LLM triage when credits exhausted (heuristic-only scoring)
   let triageMap: Map<string, TriageOutput>;
   if (paidCallsAllowed) {
-    const triageLimit = resolveTriageLimit({ maxItems, candidateCount: scored.length });
+    const triageLimit = resolveTriageLimit({
+      maxItems,
+      candidateCount: scored.length,
+      triageMaxCalls,
+    });
     triageMap = await triageCandidates({
       db: params.db,
       userId: params.userId,
