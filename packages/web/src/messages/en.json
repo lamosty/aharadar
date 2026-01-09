@@ -210,13 +210,34 @@
     "runFailed": "Failed to start pipeline run",
     "feedbackError": "Failed to save feedback. Please try again."
   },
+  "account": {
+    "title": "Account",
+    "email": "Email",
+    "role": "Role",
+    "memberSince": "Member since",
+    "logout": "Sign out",
+    "confirmLogout": "Are you sure you want to sign out?",
+    "admin": "Admin",
+    "user": "User"
+  },
   "admin": {
     "title": "Admin",
     "description": "Manage your pipeline, sources, and budgets",
     "nav": {
       "run": "Run Now",
       "sources": "Sources",
-      "budgets": "Budgets"
+      "budgets": "Budgets",
+      "users": "Users"
+    },
+    "users": {
+      "title": "Users",
+      "description": "View all registered users",
+      "email": "Email",
+      "role": "Role",
+      "createdAt": "Joined",
+      "noUsers": "No users found",
+      "accessDenied": "Admin access required",
+      "accessDeniedDescription": "You need admin privileges to view this page."
     },
     "cards": {
       "run": {
