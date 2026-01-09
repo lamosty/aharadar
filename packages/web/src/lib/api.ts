@@ -191,7 +191,7 @@ export interface ItemsListParams {
   minScore?: number;
   since?: string;
   until?: string;
-  sort?: "score_desc" | "date_desc" | "date_asc";
+  sort?: "best" | "latest" | "trending";
   topicId?: string;
   view?: FeedView;
 }

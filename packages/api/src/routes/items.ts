@@ -107,7 +107,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       minScore: minScoreStr,
       since,
       until,
-      sort = "score_desc",
+      sort = "best",
       topicId: topicIdParam,
       view = "all",
     } = request.query;
@@ -174,7 +174,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Validate sort
-    const validSorts = ["score_desc", "date_desc", "date_asc"];
+    // "best" = raw score (no decay), "latest" = by publication date, "trending" = decayed score
+    const validSorts = ["best", "latest", "trending"];
     if (!validSorts.includes(sort)) {
       return reply.code(400).send({
         ok: false,
@@ -240,18 +241,21 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     const filterClause = filterConditions.length > 0 ? filterConditions.join(" AND ") : "true";
 
     // Determine ORDER BY
-    // For score_desc, we order by decay-adjusted score computed in SQL
+    // - "best": raw score (no decay) - default, shows highest quality items first
+    // - "latest": by publication date - shows newest items first
+    // - "trending": decayed score - balances quality with recency
     let orderBy: string;
     switch (sort) {
-      case "date_desc":
+      case "latest":
         orderBy = "ci.published_at DESC NULLS LAST";
         break;
-      case "date_asc":
-        orderBy = "ci.published_at ASC NULLS LAST";
-        break;
-      default:
+      case "trending":
         // Order by decayed score (computed in SELECT)
         orderBy = "decayed_score DESC";
+        break;
+      default: // "best"
+        // Order by raw score (no decay) - best quality items first
+        orderBy = "li.score DESC";
     }
 
     // Query: Get latest score for each content item

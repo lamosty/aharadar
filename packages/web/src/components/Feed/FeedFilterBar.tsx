@@ -4,11 +4,13 @@ import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType } from "@/lib/api";
 import type { Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
 
+export type SortOption = "best" | "latest" | "trending";
+
 interface FeedFilterBarProps {
   selectedSources: string[];
   onSourcesChange: (sources: string[]) => void;
-  sort: "score_desc" | "date_desc" | "date_asc";
-  onSortChange: (sort: "score_desc" | "date_desc" | "date_asc") => void;
+  sort: SortOption;
+  onSortChange: (sort: SortOption) => void;
   /** Layout mode - condensed uses simpler styling */
   layout?: Layout;
 }
@@ -36,11 +38,11 @@ const SOURCE_LABELS: Record<SupportedSourceType, string> = {
   telegram: "Telegram",
 };
 
-const SORT_OPTIONS = [
-  { value: "score_desc", label: "Top Scored" },
-  { value: "date_desc", label: "Newest" },
-  { value: "date_asc", label: "Oldest" },
-] as const;
+const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
+  { value: "best", label: "Best" },
+  { value: "latest", label: "Latest" },
+  { value: "trending", label: "Trending" },
+];
 
 export function FeedFilterBar({
   selectedSources,
@@ -89,7 +91,7 @@ export function FeedFilterBar({
         <select
           className={styles.sortSelect}
           value={sort}
-          onChange={(e) => onSortChange(e.target.value as "score_desc" | "date_desc" | "date_asc")}
+          onChange={(e) => onSortChange(e.target.value as SortOption)}
           aria-label="Sort by"
         >
           {SORT_OPTIONS.map((opt) => (

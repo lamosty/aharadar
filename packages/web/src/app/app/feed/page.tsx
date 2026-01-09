@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { FeedFilterBar, FeedItem, FeedItemSkeleton } from "@/components/Feed";
+import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
@@ -22,8 +22,6 @@ import {
 } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
-
-type SortOption = "score_desc" | "date_desc" | "date_asc";
 
 // Default page size based on layout
 const DEFAULT_PAGE_SIZE: PageSize = 50;
@@ -72,7 +70,7 @@ function FeedPageContent() {
   const [selectedSources, setSelectedSources] = useState<string[]>(
     sourcesParam ? sourcesParam.split(",").filter(Boolean) : [],
   );
-  const [sort, setSort] = useState<SortOption>(sortParam || "score_desc");
+  const [sort, setSort] = useState<SortOption>(sortParam || "best");
   const [view, setView] = useState<FeedView>(viewParam || "inbox");
 
   // Pagination state - page size persisted in localStorage
@@ -123,7 +121,7 @@ function FeedPageContent() {
       }
       if (newView !== "inbox") params.set("view", newView);
       if (sources.length > 0) params.set("sources", sources.join(","));
-      if (newSort !== "score_desc") params.set("sort", newSort);
+      if (newSort !== "best") params.set("sort", newSort);
       if (page > 1) params.set("page", String(page));
       const query = params.toString();
       router.replace(query ? `/app/feed?${query}` : "/app/feed", { scroll: false });
