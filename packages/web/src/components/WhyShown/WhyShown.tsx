@@ -2,16 +2,30 @@
 
 import { useState, useId } from "react";
 import { type TriageFeatures } from "@/lib/mock-data";
+import { type ClusterItem } from "@/lib/api";
 import { t, type MessageKey } from "@/lib/i18n";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./WhyShown.module.css";
 
 interface WhyShownProps {
   features?: TriageFeatures;
+  clusterItems?: ClusterItem[];
   defaultExpanded?: boolean;
 }
 
-export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
+function formatSourceType(type: string): string {
+  const labels: Record<string, string> = {
+    hn: "HN",
+    reddit: "Reddit",
+    rss: "RSS",
+    youtube: "YouTube",
+    x_posts: "X",
+    signal: "Signal",
+  };
+  return labels[type] || type.toUpperCase();
+}
+
+export function WhyShown({ features, clusterItems, defaultExpanded = false }: WhyShownProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const panelId = useId();
 
@@ -54,6 +68,41 @@ export function WhyShown({ features, defaultExpanded = false }: WhyShownProps) {
           data-testid="why-shown-panel"
         >
           <dl className={styles.featureList}>
+              {/* Related Sources - Cluster items */}
+              {clusterItems && clusterItems.length > 0 && (
+                <FeatureSection title={t("digests.whyShown.relatedSources", { count: clusterItems.length + 1 })} tooltipKey="tooltips.relatedSources">
+                  <div className={styles.clusterList}>
+                    {clusterItems.map((item) => (
+                      <div key={item.id} className={styles.clusterItem}>
+                        <span className={styles.clusterSourceBadge}>{formatSourceType(item.sourceType)}</span>
+                        <div className={styles.clusterItemContent}>
+                          {item.url ? (
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={styles.clusterItemLink}
+                            >
+                              {item.title || t("digests.whyShown.untitled")}
+                            </a>
+                          ) : (
+                            <span className={styles.clusterItemTitle}>
+                              {item.title || t("digests.whyShown.untitled")}
+                            </span>
+                          )}
+                          {item.author && (
+                            <span className={styles.clusterItemAuthor}>by {item.author}</span>
+                          )}
+                        </div>
+                        {typeof item.similarity === "number" && (
+                          <span className={styles.clusterSimilarity}>{Math.round(item.similarity * 100)}%</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </FeatureSection>
+              )}
+
               {/* AI Score - LLM triage score */}
               {typeof features.aha_score === "number" && (
                 <FeatureSection title={t("digests.whyShown.ahaScore")} tooltipKey="tooltips.aiScore">

@@ -431,6 +431,8 @@
       "noFeatures": "No ranking features available",
       "unavailable": "Ranking details unavailable",
       "unavailableReason": "Triage was not run for this item",
+      "relatedSources": "Related Sources ({count} total)",
+      "untitled": "(Untitled)",
       "recencyDecay": "Freshness",
       "freshness": "Fresh score",
       "age": "Age",
@@ -486,6 +488,8 @@
     "empty": "No items yet",
     "emptyDescription": "Items will appear here after running the pipeline.",
     "hnComments": "Comments",
+    "source": "source",
+    "sources": "sources",
     "onboarding": {
       "subtitle": "Get started with personalized content",
       "title": "Welcome to your feed",
@@ -515,6 +519,8 @@
     "sourceX": "Post from X (formerly Twitter).",
     "sourceSignal": "X/Twitter search signal via Grok AI.",
     "sourcesInterval": "How often this source is checked for new content.",
-    "sourcesWeight": "Priority multiplier for items from this source (1.0 = normal)."
+    "sourcesWeight": "Priority multiplier for items from this source (1.0 = normal).",
+    "clusterSources": "This topic has coverage from {count} sources. Expand 'Why shown' below to see all related sources.",
+    "relatedSources": "Multiple sources covered this topic. Similarity % shows how related each source is to the main item."
   }
 }

@@ -127,6 +127,16 @@ export interface ItemMetadata {
   [key: string]: unknown;
 }
 
+/** Cluster item for related sources display */
+export interface ClusterItem {
+  id: string;
+  title: string | null;
+  url: string | null;
+  sourceType: string;
+  author: string | null;
+  similarity: number;
+}
+
 /** Unified feed item (from GET /items endpoint) */
 export interface FeedItem {
   id: string;
@@ -149,6 +159,10 @@ export interface FeedItem {
   };
   triageJson: Record<string, unknown> | null;
   feedback: FeedbackAction | null;
+  // Cluster information for related sources
+  clusterId?: string | null;
+  clusterMemberCount?: number;
+  clusterItems?: ClusterItem[];
 }
 
 /** Pagination info */

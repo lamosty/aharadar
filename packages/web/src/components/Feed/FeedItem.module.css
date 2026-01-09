@@ -88,6 +88,23 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+.clusterBadge {
+  font-size: 0.7rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-info);
+  background: color-mix(in srgb, var(--color-info) 12%, transparent);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--color-info) 25%, transparent);
+  cursor: help;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.clusterBadge:hover {
+  background: color-mix(in srgb, var(--color-info) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-info) 40%, transparent);
+}
+
 .commentsLink {
   display: inline-flex;
   align-items: center;

@@ -21,6 +21,15 @@ interface ContentItemRow {
   metadata_json: Record<string, unknown>;
 }
 
+interface ClusterItemRow {
+  id: string;
+  title: string | null;
+  url: string | null;
+  source_type: string;
+  author: string | null;
+  similarity: number;
+}
+
 interface UnifiedItemRow {
   content_item_id: string;
   score: number;
@@ -40,6 +49,10 @@ interface UnifiedItemRow {
   source_id: string;
   metadata_json: Record<string, unknown> | null;
   feedback_action: FeedbackAction | null;
+  // Cluster fields
+  cluster_id: string | null;
+  cluster_member_count: number | null;
+  cluster_items_json: ClusterItemRow[] | null;
 }
 
 interface ItemsListQuerystring {
@@ -233,6 +246,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       WITH latest_items AS (
         SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
           COALESCE(di.content_item_id, c.representative_content_item_id) as content_item_id,
+          di.cluster_id,
           di.score,
           di.digest_id,
           di.triage_json,
@@ -250,6 +264,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       )
       SELECT
         li.content_item_id,
+        li.cluster_id::text,
         li.score,
         -- Compute decay-adjusted score in SQL for correct ordering
         -- Formula: score * EXP(-age_hours / decay_hours)
@@ -272,7 +287,11 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ci.source_type,
         ci.source_id::text,
         ci.metadata_json,
-        fe.action as feedback_action
+        fe.action as feedback_action,
+        -- Cluster member count (excluding representative)
+        cluster_count.member_count as cluster_member_count,
+        -- Cluster items (excluding representative, ordered by similarity)
+        cluster_members.items_json as cluster_items_json
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
       LEFT JOIN LATERAL (
@@ -281,6 +300,30 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int as member_count
+        FROM cluster_items cli
+        WHERE cli.cluster_id = li.cluster_id
+      ) cluster_count ON li.cluster_id IS NOT NULL
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(
+          json_agg(
+            json_build_object(
+              'id', ci_member.id,
+              'title', ci_member.title,
+              'url', ci_member.canonical_url,
+              'source_type', ci_member.source_type,
+              'author', ci_member.author,
+              'similarity', ROUND(cli.similarity::numeric, 2)
+            ) ORDER BY cli.similarity DESC NULLS LAST
+          ) FILTER (WHERE ci_member.id IS NOT NULL AND ci_member.id != li.content_item_id),
+          '[]'::json
+        ) as items_json
+        FROM cluster_items cli
+        JOIN content_items ci_member ON ci_member.id = cli.content_item_id
+        WHERE cli.cluster_id = li.cluster_id
+          AND ci_member.deleted_at IS NULL
+      ) cluster_members ON li.cluster_id IS NOT NULL
       WHERE ${filterClause}
       ORDER BY ${orderBy}
       LIMIT $${filterParamIdx}
@@ -322,6 +365,25 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       const itemDate = row.published_at ? new Date(row.published_at) : new Date(row.digest_created_at);
       const isNew = lastCheckedAt ? itemDate > lastCheckedAt : false;
 
+      // Parse cluster items JSON
+      const clusterItems = row.cluster_items_json
+        ? (row.cluster_items_json as Array<{
+            id: string;
+            title: string | null;
+            url: string | null;
+            source_type: string;
+            author: string | null;
+            similarity: number;
+          }>).map((item) => ({
+            id: item.id,
+            title: item.title,
+            url: item.url,
+            sourceType: item.source_type,
+            author: item.author,
+            similarity: item.similarity,
+          }))
+        : undefined;
+
       return {
         id: row.content_item_id,
         score: row.decayed_score, // Decay computed in SQL
@@ -343,6 +405,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         },
         triageJson: row.triage_json,
         feedback: row.feedback_action,
+        // Cluster data
+        clusterId: row.cluster_id,
+        clusterMemberCount: row.cluster_member_count ?? undefined,
+        clusterItems: clusterItems?.length ? clusterItems : undefined,
       };
     });
 

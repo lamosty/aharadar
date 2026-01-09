@@ -108,6 +108,13 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
         {item.item.sourceType === "reddit" && subreddit && (
           <span className={styles.subreddit}>r/{subreddit}</span>
         )}
+        {item.clusterMemberCount && item.clusterMemberCount > 1 && (
+          <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
+            <span className={styles.clusterBadge}>
+              +{item.clusterMemberCount - 1} {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
+            </span>
+          </Tooltip>
+        )}
         {item.item.sourceType === "hn" && item.item.externalId && (
           <a
             href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
@@ -163,7 +170,10 @@ export function FeedItem({ item, onFeedback }: FeedItemProps) {
         />
       </div>
 
-      <WhyShown features={item.triageJson as TriageFeatures | undefined} />
+      <WhyShown
+        features={item.triageJson as TriageFeatures | undefined}
+        clusterItems={item.clusterItems}
+      />
     </article>
   );
 }
