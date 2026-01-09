@@ -308,6 +308,7 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
 
     case "congress_trading":
       return {
+        vendor: "stock_watcher",
         max_trades_per_fetch: 50,
       } as Partial<CongressTradingConfig>;
 

@@ -27,7 +27,7 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
     website: "quiverquant.com",
     signupUrl: "https://www.quiverquant.com/",
     docsUrl: "https://www.quiverquant.com/api/",
-    freeLimit: "~100 requests/day",
+    freeLimit: "Paid plan required for API access",
     steps: [
       {
         title: "Create Account",
@@ -45,18 +45,16 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
         ),
       },
       {
-        title: "Get API Key",
+        title: "Subscribe & get API key",
         content: (
           <>
             <p>After signing in:</p>
             <ol>
+              <li>Upgrade to a plan that includes API access</li>
               <li>Go to your account dashboard</li>
-              <li>Navigate to API section</li>
-              <li>Copy your API key</li>
+              <li>Navigate to the API section and copy your key</li>
             </ol>
-            <p>
-              The free tier allows approximately <strong>100 requests per day</strong>.
-            </p>
+            <p>Note: Quiver’s free account is typically dashboard-only (no API key).</p>
           </>
         ),
       },
@@ -81,7 +79,7 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
     website: "unusualwhales.com",
     signupUrl: "https://unusualwhales.com/",
     docsUrl: "https://unusualwhales.com/public-api",
-    freeLimit: "Limited free tier",
+    freeLimit: "Paid plan required for API access",
     steps: [
       {
         title: "Create Account",
@@ -94,7 +92,7 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
               </a>{" "}
               and create an account.
             </p>
-            <p>You may need a subscription for full API access.</p>
+            <p>API access typically requires a paid subscription.</p>
           </>
         ),
       },

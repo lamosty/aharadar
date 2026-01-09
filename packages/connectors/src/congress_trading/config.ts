@@ -1,4 +1,13 @@
+export type CongressTradingVendor = "stock_watcher" | "quiver";
+
 export interface CongressTradingSourceConfig {
+  /**
+   * Data vendor for Congress trading disclosures.
+   *
+   * - `stock_watcher` (default): Free, no-auth JSON feeds derived from public disclosures.
+   * - `quiver`: Quiver Quantitative API (requires a paid subscription + `QUIVER_API_KEY`).
+   */
+  vendor?: CongressTradingVendor;
   /** Filter by specific politicians (case-insensitive partial match) */
   politicians?: string[];
   /** Filter by chamber: "senate", "house", or both (default: both) */
@@ -60,9 +69,24 @@ function asTransactionTypes(value: unknown): ("purchase" | "sale")[] {
   return [...new Set(types)];
 }
 
+function asVendor(value: unknown): CongressTradingVendor {
+  if (typeof value !== "string") return "stock_watcher";
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "quiver") return "quiver";
+  if (
+    normalized === "stock_watcher" ||
+    normalized === "stock-watcher" ||
+    normalized === "stockwatcher"
+  ) {
+    return "stock_watcher";
+  }
+  return "stock_watcher";
+}
+
 export function parseCongressTradingSourceConfig(
   config: Record<string, unknown>,
 ): CongressTradingSourceConfig {
+  const vendor = asVendor(config.vendor);
   const politicians = asStringArray(config.politicians);
   const chambers = asChambers(config.chambers);
   const transactionTypes = asTransactionTypes(config.transaction_types ?? config.transactionTypes);
@@ -77,6 +101,7 @@ export function parseCongressTradingSourceConfig(
   );
 
   return {
+    vendor,
     politicians: politicians.length > 0 ? politicians : undefined,
     chambers: chambers.length > 0 ? chambers : undefined,
     min_amount: minAmount,

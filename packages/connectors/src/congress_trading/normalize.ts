@@ -1,5 +1,5 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
-import { generateTradeId, getChamber, parseAmountRange, type QuiverCongressTrade } from "./fetch";
+import { type CongressTrade, generateTradeId, getChamber, parseAmountRange } from "./fetch";
 
 function _asString(value: unknown): string | null {
   const s = String(value ?? "").trim();
@@ -31,7 +31,7 @@ function calculateDaysToDisclose(transactionDate: string, reportDate: string): n
 /**
  * Generate a descriptive title for the trade
  */
-function generateTitle(trade: QuiverCongressTrade): string {
+function generateTitle(trade: CongressTrade): string {
   const chamber = getChamber(trade.District);
   const chamberLabel = chamber === "senate" ? "Senate" : "House";
 
@@ -51,7 +51,7 @@ function generateTitle(trade: QuiverCongressTrade): string {
 /**
  * Generate body text with full trade details
  */
-function generateBodyText(trade: QuiverCongressTrade): string {
+function generateBodyText(trade: CongressTrade): string {
   const chamber = getChamber(trade.District);
   const chamberLabel = chamber === "senate" ? "Senate" : "House";
   const { min, max } = parseAmountRange(trade.Range);
@@ -91,7 +91,7 @@ export async function normalizeCongressTrading(
   raw: unknown,
   _params: FetchParams,
 ): Promise<ContentItemDraft> {
-  const trade = asRecord(raw) as unknown as QuiverCongressTrade;
+  const trade = asRecord(raw) as unknown as CongressTrade;
 
   // Validate required fields
   if (!trade.Representative || !trade.Ticker || !trade.Transaction) {

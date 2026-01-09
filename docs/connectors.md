@@ -319,12 +319,16 @@ Per SEC guidelines, all requests must include a valid User-Agent header with con
 ### Congress Trading (`type = "congress_trading"`)
 
 **Purpose**
-Ingest stock trades disclosed by U.S. Congress members using the Quiver Quantitative API.
+Ingest stock trades disclosed by U.S. Congress members, using either:
+
+- **Public disclosures (default, no auth)**: House/Senate Stock Watcher JSON feeds derived from official disclosure filings.
+- **Quiver Quantitative (optional)**: requires a paid subscription + `QUIVER_API_KEY`.
 
 **config_json**
 
 ```json
 {
+  "vendor": "stock_watcher",
   "politicians": ["Nancy Pelosi", "Dan Crenshaw"],
   "chambers": ["senate", "house"],
   "min_amount": 15000,
@@ -336,6 +340,7 @@ Ingest stock trades disclosed by U.S. Congress members using the Quiver Quantita
 
 **Fields:**
 
+- `vendor` (optional, default: `"stock_watcher"`): `"stock_watcher"` | `"quiver"`
 - `politicians` (optional): Filter by specific politicians (case-insensitive partial match)
 - `chambers` (optional, default: both): `"senate"` and/or `"house"`
 - `min_amount` (default: 0): Minimum transaction amount (lower bound of range)
@@ -355,16 +360,23 @@ Ingest stock trades disclosed by U.S. Congress members using the Quiver Quantita
 
 **Fetch**
 
-- Calls Quiver Quantitative `/beta/live/congresstrading` endpoint
-- Requires `QUIVER_API_KEY` environment variable
+- If `vendor = "stock_watcher"` (default):
+  - Fetches the free public JSON feeds:
+    - `https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json`
+    - `https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json`
+  - Applies local filters (politician, chamber, amount, tickers, transaction type)
+  - Uses `cursor_json.last_report_date` + `seen_trade_ids` to avoid reprocessing older disclosures
+- If `vendor = "quiver"`:
+  - Calls Quiver Quantitative `/beta/live/congresstrading` endpoint
+  - Requires `QUIVER_API_KEY` environment variable (paid plan required)
 - Applies local filters (politician, chamber, amount, tickers, transaction type)
 - Tracks seen trades by composite ID to avoid duplicates
-- Gracefully skips if no API key configured
+- Gracefully skips if `vendor = "quiver"` and no API key is configured
 
 **Normalize**
 
 - `external_id`: `ct_{bioguide_id}_{ticker}_{date}_{transaction_type}` (composite key)
-- `canonical_url`: Disclosure link or Quiver page
+- `canonical_url`: Disclosure link when available; otherwise a vendor landing page
 - `title`: `[{Chamber}] {Politician} ({Party}) {BUY/SELL} {Ticker}`
 - `body_text`: Full trade details including asset description, amount range, dates
 - `published_at`: Report date (filing date, when information became public)
@@ -390,7 +402,7 @@ Ingest stock trades disclosed by U.S. Congress members using the Quiver Quantita
 QUIVER_API_KEY=your_quiver_api_key_here
 ```
 
-Sign up for free at https://www.quiverquant.com/ to get an API key. Free tier allows ~100 requests/day.
+Required only when `vendor = "quiver"`. Quiver API access typically requires a paid subscription.
 
 ### Polymarket (`type = "polymarket"`)
 
@@ -491,7 +503,9 @@ Note: `last_prices` tracks previous probabilities to calculate change since last
 ### Options Flow (`type = "options_flow"`)
 
 **Purpose**
-Ingest unusual options activity including sweeps, blocks, and unusual volume using the Unusual Whales API.
+Ingest unusual options activity including sweeps, blocks, and unusual volume using an options flow provider.
+
+Current implementation uses **Unusual Whales** (typically requires a paid subscription + `UNUSUAL_WHALES_API_KEY`).
 
 **config_json**
 
@@ -529,8 +543,8 @@ Ingest unusual options activity including sweeps, blocks, and unusual volume usi
 
 **Fetch**
 
-- Calls Unusual Whales public API (`https://api.unusualwhales.com/api/flow`)
-- Requires `UNUSUAL_WHALES_API_KEY` environment variable
+- Calls Unusual Whales API (`https://api.unusualwhales.com/api/flow`)
+- Requires `UNUSUAL_WHALES_API_KEY` environment variable (paid plan typically required)
 - Applies local filters (symbols, premium, flow type, sentiment, expiry)
 - Tracks seen flow IDs to avoid duplicates
 - Gracefully skips if no API key configured
@@ -574,7 +588,7 @@ If the API doesn't provide sentiment, it's classified locally:
 UNUSUAL_WHALES_API_KEY=your_api_key_here
 ```
 
-Sign up at https://unusualwhales.com/ for API access.
+API access typically requires a paid subscription at `https://unusualwhales.com/`.
 
 **Use Cases**
 

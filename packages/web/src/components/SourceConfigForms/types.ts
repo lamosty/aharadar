@@ -66,6 +66,7 @@ export interface SecEdgarConfig {
 
 // Congress Trading Source Config
 export interface CongressTradingConfig {
+  vendor?: "stock_watcher" | "quiver" | string;
   politicians?: string[];
   chambers?: ("senate" | "house")[];
   min_amount?: number;

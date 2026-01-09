@@ -59,6 +59,8 @@ export function CongressTradingConfigForm({
     handleChange("tickers", tickers.length > 0 ? tickers : undefined);
   };
 
+  const vendor = value.vendor ?? "stock_watcher";
+
   return (
     <div>
       <div className={styles.sourceTypeHeader}>
@@ -71,19 +73,68 @@ export function CongressTradingConfigForm({
         </div>
       </div>
 
-      <ApiKeyBanner provider="quiver" onSetupClick={() => setShowApiKeyModal(true)} />
-
-      <ApiKeyGuidance
-        provider="quiver"
-        isOpen={showApiKeyModal}
-        onClose={() => setShowApiKeyModal(false)}
-      />
-
       <div className={styles.helpBox}>
-        <p>
-          Track stock trades disclosed by members of the U.S. Congress. Congress members must
-          disclose trades within 45 days. Data provided by Quiver Quantitative API.
-        </p>
+        {vendor === "quiver" ? (
+          <p>
+            Track stock trades disclosed by members of the U.S. Congress. Congress members must
+            disclose trades within 45 days. Data provided by the Quiver Quantitative API (paid
+            subscription required).
+          </p>
+        ) : (
+          <p>
+            Track stock trades disclosed by members of the U.S. Congress. Default data source uses
+            free, no-auth feeds derived from public disclosures (House/Senate Stock Watcher). No API
+            key required.
+          </p>
+        )}
+      </div>
+
+      <div className={styles.formSection}>
+        <h5 className={styles.sectionTitle}>Data Source</h5>
+
+        <div className={styles.field}>
+          <label htmlFor="ct-vendor" className={styles.label}>
+            Vendor
+            <HelpTooltip
+              title="Data vendor"
+              content={
+                <>
+                  <p>Choose where Congress trade disclosures come from.</p>
+                  <p>
+                    <strong>Public disclosures (free):</strong> Uses free JSON feeds derived from
+                    official House/Senate disclosure filings.
+                  </p>
+                  <p>
+                    <strong>Quiver (paid):</strong> Requires a Quiver subscription and{" "}
+                    <code>QUIVER_API_KEY</code>.
+                  </p>
+                </>
+              }
+            />
+          </label>
+          <select
+            id="ct-vendor"
+            value={vendor}
+            onChange={(e) =>
+              handleChange("vendor", e.target.value as CongressTradingConfig["vendor"])
+            }
+            className={styles.selectInput}
+          >
+            <option value="stock_watcher">Public disclosures (free)</option>
+            <option value="quiver">Quiver Quantitative (paid)</option>
+          </select>
+        </div>
+
+        {vendor === "quiver" && (
+          <>
+            <ApiKeyBanner provider="quiver" onSetupClick={() => setShowApiKeyModal(true)} />
+            <ApiKeyGuidance
+              provider="quiver"
+              isOpen={showApiKeyModal}
+              onClose={() => setShowApiKeyModal(false)}
+            />
+          </>
+        )}
       </div>
 
       <div className={styles.formSection}>
