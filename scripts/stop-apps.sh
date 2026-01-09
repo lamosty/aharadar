@@ -22,6 +22,8 @@ kill_port() {
 # Kill by port
 kill_port 3000 "web"
 kill_port 3001 "api"
+kill_port 3101 "queue-ui"
+kill_port 9091 "worker"
 
 # Kill any stale Next.js processes for this project
 next_pids=$(pgrep -f "next.*aharadar" 2>/dev/null || true)

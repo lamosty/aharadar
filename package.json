@@ -17,7 +17,7 @@
     "dev:queue-ui": "pnpm --filter @aharadar/queue-ui build && pnpm --filter @aharadar/queue-ui dev",
     "dev:services": "./scripts/dev.sh",
     "dev:services:stop": "./scripts/stop-services.sh",
-    "dev:stack": "concurrently -n api,web -c blue,green \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev:stack": "concurrently -n api,web,worker,queue-ui -c blue,green,yellow,magenta \"pnpm dev:api\" \"pnpm dev:web\" \"pnpm dev:worker\" \"pnpm dev:queue-ui\"",
     "dev:stack:stop": "./scripts/stop-apps.sh",
     "dev:stack:restart": "./scripts/stop-apps.sh && pnpm dev:stack",
     "start": "pnpm dev:services && pnpm dev:stack",
