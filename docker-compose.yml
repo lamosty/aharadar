@@ -73,6 +73,21 @@ services:
       - SCHEDULER_TICK_MINUTES=5
     restart: unless-stopped
 
+  queue-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: queue-ui
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_UI_PORT=3101
+    ports:
+      - "3101:3101"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:

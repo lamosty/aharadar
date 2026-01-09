@@ -12,6 +12,7 @@ COPY packages/connectors/package.json ./packages/connectors/
 COPY packages/llm/package.json ./packages/llm/
 COPY packages/pipeline/package.json ./packages/pipeline/
 COPY packages/queues/package.json ./packages/queues/
+COPY packages/queue-ui/package.json ./packages/queue-ui/
 COPY packages/worker/package.json ./packages/worker/
 COPY packages/api/package.json ./packages/api/
 COPY packages/cli/package.json ./packages/cli/
@@ -31,3 +32,10 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 CMD ["pnpm", "--filter", "@aharadar/worker", "start"]
+
+# Queue UI target
+FROM base AS queue-ui
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+CMD ["pnpm", "--filter", "@aharadar/queue-ui", "start"]

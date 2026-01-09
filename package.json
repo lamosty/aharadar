@@ -14,6 +14,7 @@
     "dev:cli": "pnpm build:cli && node packages/cli/dist/main.js",
     "dev:web": "pnpm --filter @aharadar/web dev",
     "dev:worker": "pnpm --filter @aharadar/worker... build && pnpm --filter @aharadar/worker dev",
+    "dev:queue-ui": "pnpm --filter @aharadar/queue-ui build && pnpm --filter @aharadar/queue-ui dev",
     "dev:services": "./scripts/dev.sh",
     "dev:services:stop": "./scripts/stop-services.sh",
     "dev:stack": "concurrently -n api,web -c blue,green \"pnpm dev:api\" \"pnpm dev:web\"",
