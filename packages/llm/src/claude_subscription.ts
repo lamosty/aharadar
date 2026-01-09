@@ -6,8 +6,6 @@
  * See docs/claude-integration.md for ToS considerations.
  */
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
-
 import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 import { recordUsage } from "./usage_tracker";
 
@@ -46,6 +44,9 @@ export async function callClaudeSubscription(
   let resultText = "";
 
   try {
+    // Dynamic import to handle ESM-only module in CommonJS context
+    const { query } = await import("@anthropic-ai/claude-agent-sdk");
+
     const response = query({
       prompt: request.user,
       options: {
