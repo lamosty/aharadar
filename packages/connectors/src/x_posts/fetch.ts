@@ -122,6 +122,8 @@ function extractPostRawItems(params: {
   const out: unknown[] = [];
   for (const entry of results) {
     const r = asRecord(entry);
+    // Extract metrics if present (optional field from new prompt)
+    const metrics = r.metrics && typeof r.metrics === "object" ? r.metrics : undefined;
     out.push({
       kind: "x_post_v1",
       vendor: params.vendor,
@@ -129,10 +131,14 @@ function extractPostRawItems(params: {
       day_bucket: params.dayBucket,
       windowStart: params.windowStart,
       windowEnd: params.windowEnd,
+      // New fields from updated prompt
+      id: asString(r.id),
       date: asString(r.date),
       url: asString(r.url),
       text: asString(r.text),
+      user_handle: asString(r.user_handle),
       user_display_name: asString(r.user_display_name),
+      ...(metrics ? { metrics } : {}),
     });
     if (out.length >= 200) break;
   }

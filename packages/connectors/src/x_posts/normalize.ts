@@ -17,6 +17,16 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function asIsoDate(value: unknown): string | null {
+  const s = asString(value);
+  if (!s) return null;
+  // Day buckets (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // ISO timestamps - truncate to date prefix
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
+  return null;
+}
+
 export function parseXStatusUrl(url: string): { handle: string | null; statusId: string | null } {
   // Examples:
   // - https://x.com/<handle>/status/<id>
@@ -26,14 +36,56 @@ export function parseXStatusUrl(url: string): { handle: string | null; statusId:
   return { handle: m[1] ?? null, statusId: m[2] ?? null };
 }
 
-function asIsoDate(value: unknown): string | null {
+/**
+ * Parse date/timestamp from Grok response.
+ * Returns { full, dayOnly } where:
+ * - full: ISO timestamp if provided (e.g., "2026-01-08T05:23:00Z")
+ * - dayOnly: YYYY-MM-DD if only day-level available
+ */
+function parseGrokDate(value: unknown): { full: string | null; dayOnly: string | null } {
   const s = asString(value);
-  if (!s) return null;
-  // Accept YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Accept ISO timestamps by truncating
-  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
-  return null;
+  if (!s) return { full: null, dayOnly: null };
+
+  // Full ISO timestamp (e.g., "2026-01-08T05:23:00Z")
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
+    return { full: s, dayOnly: s.slice(0, 10) };
+  }
+
+  // Day-only (e.g., "2026-01-08")
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return { full: null, dayOnly: s };
+  }
+
+  return { full: null, dayOnly: null };
+}
+
+/**
+ * Twitter/X snowflake ID decoder.
+ * X status IDs encode creation time as (timestamp_ms - epoch) << 22.
+ * The Twitter epoch is 1288834974657 (Nov 4, 2010, 01:42:54.657 UTC).
+ */
+const TWITTER_EPOCH = 1288834974657n;
+
+function snowflakeToTimestamp(statusId: string): string | null {
+  // Status IDs are large numbers (typically 18-19 digits)
+  if (!/^\d{15,20}$/.test(statusId)) return null;
+
+  try {
+    const id = BigInt(statusId);
+    // Extract timestamp: upper 42 bits (>> 22)
+    const timestampMs = Number((id >> 22n) + TWITTER_EPOCH);
+
+    // Plausibility check: must be between Twitter epoch and now + 1 day
+    // (allow some future tolerance for clock skew)
+    const now = Date.now();
+    if (timestampMs < Number(TWITTER_EPOCH) || timestampMs > now + 24 * 60 * 60 * 1000) {
+      return null;
+    }
+
+    return new Date(timestampMs).toISOString();
+  } catch {
+    return null;
+  }
 }
 
 function looksLikeUrl(s: string): boolean {
@@ -73,12 +125,22 @@ export async function normalizeXPosts(
   const canonicalUrl = url && looksLikeUrl(url) ? url : null;
   const textRaw = asString(rec.text);
   const bodyText = textRaw ? clampText(textRaw.replaceAll("\n", " ").trim(), 10_000) : null;
-  const dateDay = asIsoDate(rec.date);
 
+  // Parse date - may be full timestamp or day-only
+  const dateInfo = parseGrokDate(rec.date);
+
+  // Get status ID from raw.id (new), URL, or fallback to hash
+  const rawStatusId = asString(rec.id);
   const parsed = canonicalUrl ? parseXStatusUrl(canonicalUrl) : { handle: null, statusId: null };
+  const statusId = rawStatusId ?? parsed.statusId;
+
+  // Get handle from raw.user_handle (new) or URL
+  const rawUserHandle = asString(rec.user_handle);
+  const handle = rawUserHandle ?? parsed.handle;
+
+  // External ID: prefer status ID, else hash
   const fallbackKey = canonicalUrl ?? bodyText ?? "";
-  const externalId =
-    parsed.statusId ?? sha256Hex([vendor, query, dayBucket, fallbackKey].join("|"));
+  const externalId = statusId ?? sha256Hex([vendor, query, dayBucket, fallbackKey].join("|"));
 
   const extractedUrls =
     bodyText && bodyText.length > 0
@@ -89,10 +151,26 @@ export async function normalizeXPosts(
   // User display name from Grok response (e.g., "Elon Musk")
   const userDisplayName = asString(rec.user_display_name);
 
-  // Convert day bucket to approximate timestamp (noon UTC)
-  // This is an approximation since Grok only provides day-level dates.
-  // UI should treat as approximate (show "2d ago" not "48h ago").
-  const publishedAt = dateDay ? `${dateDay}T12:00:00Z` : null;
+  // Timestamp strategy (ADR: no fabrication from day buckets):
+  // 1. Prefer full ISO timestamp from Grok if available
+  // 2. Else attempt snowflake decode from status ID
+  // 3. Else keep publishedAt = null (rely on fetched_at + metadata.post_date for UI)
+  let publishedAt: string | null = null;
+  let timestampSource: string | null = null;
+
+  if (dateInfo.full) {
+    // Full timestamp from Grok - use as-is
+    publishedAt = dateInfo.full;
+    timestampSource = "grok_timestamp";
+  } else if (statusId) {
+    // Attempt snowflake decode
+    const snowflakeTs = snowflakeToTimestamp(statusId);
+    if (snowflakeTs) {
+      publishedAt = snowflakeTs;
+      timestampSource = "snowflake";
+    }
+  }
+  // If neither, publishedAt remains null - do NOT fabricate from day bucket
 
   return {
     title: null,
@@ -101,7 +179,7 @@ export async function normalizeXPosts(
     sourceType: "x_posts",
     externalId,
     publishedAt,
-    author: parsed.handle ? `@${parsed.handle}` : null,
+    author: handle ? `@${handle}` : null,
     metadata: {
       vendor,
       query,
@@ -109,17 +187,21 @@ export async function normalizeXPosts(
       window_start: params.windowStart,
       window_end: params.windowEnd,
       post_url: canonicalUrl ?? url,
-      post_date: dateDay,
+      post_date: dateInfo.dayOnly,
       extracted_urls: extractedUrls,
       primary_url: primaryUrl,
       user_display_name: userDisplayName,
+      timestamp_source: timestampSource,
+      status_id: statusId,
     },
     raw: {
       kind: "x_post_v1",
       query,
       vendor,
       day_bucket: dayBucket,
-      date: dateDay,
+      date: rec.date,
+      id: rawStatusId,
+      user_handle: rawUserHandle,
       url,
     },
   };

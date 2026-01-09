@@ -264,20 +264,44 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     : undefined;
 
   const startedAt = Date.now();
+  // System prompt optimized for canonical data + token safety
+  // Let downstream triage decide relevance; only light noise filtering here
+  const systemPrompt = `Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array.
+Use the x_search tool if available to fetch real posts. If you cannot access real posts, return [].
+Do NOT fabricate. If a field is unavailable from the tool results, use null (or omit optional keys).
+
+Each array item MUST be an object with ONLY these keys:
+- id (string, digits): the status ID
+- date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
+- url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com). If tool doesn't provide url but you have id + user_handle, construct it.
+- text (string): single line, <= ${maxTextChars} chars, no newlines, no paraphrasing
+- user_handle (string|null): without "@"
+- user_display_name (string|null): display name shown on profile
+- metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
+
+Ordering: newest first. Return at most the requested limit.
+
+Light filtering (cost + quality):
+- Exclude only obvious low-information noise (emoji-only, single-word reactions like "lol"/"true"/"yes", or empty text).
+- Do NOT do "semantic" high-signal judging here; downstream triage handles relevance.
+
+Token safety (critical):
+- If returning N results would exceed the output token budget, return fewer results rather than truncating or emitting invalid JSON.`;
+
   const body = {
     model,
     // OpenAI-compatible Responses API shape.
     input: [
       {
         role: "system",
-        content: `Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array. Each item MUST be { date: "YYYY-MM-DD", url: "https://x.com/...", text: "...", user_display_name: "..." }. user_display_name is the user's display name (not username/handle - the display name that appears above @handle on their profile). If display name is unknown, set to null. Selection: include only high-signal posts (novel/meaningful/insightful). Prefer excluding obvious low-signal noise like emoji-only posts or pure acknowledgements/reactions (e.g. "True", "Yes", "No", "lol") when they add no information. Short posts are allowed if they still communicate a clear idea/claim/information. Do not over-filter: when unsure, include. Text: text MUST be a single line (no newlines) and <= ${maxTextChars} characters (truncate if needed). If there are no qualifying results, return []. Never fabricate posts.`,
+        content: systemPrompt,
       },
       {
         role: "user",
         content:
-          `Search X for query: ${JSON.stringify(params.query)} (mode: Latest). ` +
-          `Return at most ${params.limit} results as JSON (return fewer if only fewer qualify). ` +
-          `If a tool is available, use it to fetch real posts; do not guess or fabricate.`,
+          `Query: ${JSON.stringify(params.query)}\n` +
+          `Mode: Latest\n` +
+          `Return up to ${params.limit} results.`,
       },
     ],
     ...(tools ? { tools } : {}),
