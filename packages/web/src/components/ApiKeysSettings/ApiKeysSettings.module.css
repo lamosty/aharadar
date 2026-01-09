@@ -17,9 +17,7 @@
   font-size: var(--font-size-sm);
 }
 
-.statusSection,
-.addSection,
-.keysSection {
+.statusSection {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -52,12 +50,12 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
+  gap: var(--space-3);
 }
 
-.statusProvider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.providerColumn {
+  flex-shrink: 0;
+  min-width: 140px;
 }
 
 .providerName {
@@ -65,112 +63,76 @@
   color: var(--color-text-primary);
 }
 
-.keySuffix {
+.valueColumn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.valueButton {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
+  min-width: 120px;
+  justify-content: center;
+}
+
+.valueButton:hover {
+  border-color: var(--color-border);
+  background-color: var(--color-surface-hover);
+}
+
+.valueNotConfigured {
+  color: var(--color-text-tertiary);
+}
+
+.valueNotConfigured:hover {
   color: var(--color-text-secondary);
 }
 
-.badge {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
+.valueConfigured {
+  color: var(--color-text-secondary);
 }
 
-.badgeUser {
-  background-color: var(--color-success-bg);
-  color: var(--color-success);
+.maskedKey {
+  font-family: var(--font-mono);
 }
 
-.badgeSystem {
-  background-color: var(--color-warning-bg);
+.systemKey {
+  font-family: var(--font-sans);
   color: var(--color-warning);
 }
 
-.badgeNone {
-  background-color: var(--color-error-bg);
-  color: var(--color-error);
+.notConfigured {
+  font-family: var(--font-sans);
+  font-style: italic;
 }
 
-.addForm {
+.actionButton {
   display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.select {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-  min-width: 160px;
-}
-
-.input {
-  flex: 1;
-  min-width: 200px;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-}
-
-.input::placeholder {
-  color: var(--color-text-tertiary);
-}
-
-.addButton {
-  padding: var(--space-2) var(--space-4);
-  background-color: var(--color-primary);
-  color: var(--color-primary-foreground);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background: none;
   border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.addButton:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.addButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.keysList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.keyItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-}
-
-.keyInfo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.keyDate {
-  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all 0.15s;
+}
+
+.actionButton:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface-hover);
 }
 
 .deleteButton {
@@ -180,14 +142,90 @@
   padding: var(--space-2);
   background: none;
   border: none;
-  color: var(--color-error);
+  color: var(--color-text-tertiary);
   cursor: pointer;
   border-radius: var(--radius-md);
-  transition: background-color 0.15s;
+  transition: all 0.15s;
 }
 
 .deleteButton:hover {
+  color: var(--color-error);
   background-color: var(--color-error-bg);
+}
+
+/* Edit mode styles */
+.editContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.editInput {
+  flex: 1;
+  max-width: 300px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+}
+
+.editInput::placeholder {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.editInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.saveButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.saveButton:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.cancelButton:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .securityNote {

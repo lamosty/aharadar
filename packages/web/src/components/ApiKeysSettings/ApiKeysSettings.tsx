@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getUserApiKeys,
   getProviderKeyStatus,
@@ -31,25 +31,48 @@ const PROVIDER_LABELS: Record<string, string> = {
   ...CONNECTOR_PROVIDER_LABELS,
 };
 
-// Provider descriptions for the dropdown
-const PROVIDER_DESCRIPTIONS: Record<string, string> = {
-  quiver: "Required for Congress Trading source",
-  unusual_whales: "Required for Options Flow source",
-  finnhub: "Required for Market Sentiment source",
+// Provider placeholder text for input
+const PROVIDER_PLACEHOLDERS: Record<string, string> = {
+  openai: "sk-...",
+  anthropic: "sk-ant-...",
+  xai: "xai-...",
+  quiver: "Enter Quiver API key",
+  unusual_whales: "Enter Unusual Whales API key",
+  finnhub: "Enter Finnhub API key",
 };
+
+/**
+ * Mask an API key showing only prefix and suffix.
+ * e.g., "sk-abc123xyz789" -> "sk-abc...789"
+ */
+function maskApiKey(suffix: string | null): string {
+  if (!suffix) return "";
+  return `...${suffix}`;
+}
 
 export function ApiKeysSettings() {
   const [keys, setKeys] = useState<ApiKeySummary[]>([]);
   const [status, setStatus] = useState<ProviderKeyStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [newProvider, setNewProvider] = useState<string>("");
-  const [newKey, setNewKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Track which provider is being edited
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadKeys();
   }, []);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (editingProvider && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [editingProvider]);
 
   async function loadKeys() {
     try {
@@ -64,44 +87,147 @@ export function ApiKeysSettings() {
     }
   }
 
-  async function handleAddKey() {
-    if (!newProvider || !newKey) return;
+  function startEditing(provider: string) {
+    setEditingProvider(provider);
+    setEditValue("");
+    setError(null);
+  }
 
-    setAdding(true);
+  function cancelEditing() {
+    setEditingProvider(null);
+    setEditValue("");
+    setError(null);
+  }
+
+  async function saveKey(provider: string) {
+    if (!editValue.trim()) {
+      cancelEditing();
+      return;
+    }
+
+    setSaving(true);
     setError(null);
 
     try {
-      await addUserApiKey(newProvider, newKey);
-      setNewProvider("");
-      setNewKey("");
+      await addUserApiKey(provider, editValue.trim());
+      setEditingProvider(null);
+      setEditValue("");
       await loadKeys();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add key");
+      setError(err instanceof Error ? err.message : "Failed to save key");
     } finally {
-      setAdding(false);
+      setSaving(false);
     }
   }
 
-  async function handleDeleteKey(id: string) {
+  async function handleDeleteKey(provider: string) {
+    // Find the key for this provider
+    const key = keys.find((k) => k.provider === provider);
+    if (!key) return;
+
     if (!confirm("Are you sure you want to delete this API key?")) return;
 
     try {
-      await deleteUserApiKey(id);
+      await deleteUserApiKey(key.id);
       await loadKeys();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete key");
     }
   }
 
-  function getSourceBadge(source: "user" | "system" | "none") {
-    switch (source) {
-      case "user":
-        return <span className={`${styles.badge} ${styles.badgeUser}`}>Your Key</span>;
-      case "system":
-        return <span className={`${styles.badge} ${styles.badgeSystem}`}>System Key</span>;
-      case "none":
-        return <span className={`${styles.badge} ${styles.badgeNone}`}>Not Configured</span>;
+  function handleKeyDown(e: React.KeyboardEvent, provider: string) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveKey(provider);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEditing();
     }
+  }
+
+  function renderProviderRow(s: ProviderKeyStatus) {
+    const isEditing = editingProvider === s.provider;
+    const hasKey = s.activeSource === "user";
+    const hasSystemKey = s.activeSource === "system";
+
+    if (isEditing) {
+      // Edit mode
+      return (
+        <div key={s.provider} className={styles.statusItem}>
+          <div className={styles.providerColumn}>
+            <span className={styles.providerName}>{PROVIDER_LABELS[s.provider] || s.provider}</span>
+          </div>
+          <div className={styles.editContainer}>
+            <input
+              ref={inputRef}
+              type="password"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, s.provider)}
+              placeholder={PROVIDER_PLACEHOLDERS[s.provider] || "Enter API key"}
+              className={styles.editInput}
+              disabled={saving}
+            />
+            <button
+              onClick={() => saveKey(s.provider)}
+              disabled={saving || !editValue.trim()}
+              className={styles.saveButton}
+              title="Save"
+            >
+              <CheckIcon />
+            </button>
+            <button onClick={cancelEditing} disabled={saving} className={styles.cancelButton} title="Cancel">
+              <XIcon />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // View mode
+    return (
+      <div key={s.provider} className={styles.statusItem}>
+        <div className={styles.providerColumn}>
+          <span className={styles.providerName}>{PROVIDER_LABELS[s.provider] || s.provider}</span>
+        </div>
+        <div className={styles.valueColumn}>
+          <button
+            onClick={() => startEditing(s.provider)}
+            className={`${styles.valueButton} ${hasKey ? styles.valueConfigured : styles.valueNotConfigured}`}
+          >
+            {hasKey ? (
+              <span className={styles.maskedKey}>{maskApiKey(s.keySuffix)}</span>
+            ) : hasSystemKey ? (
+              <span className={styles.systemKey}>System Key</span>
+            ) : (
+              <span className={styles.notConfigured}>Not Configured</span>
+            )}
+          </button>
+          {hasKey ? (
+            <>
+              <button
+                onClick={() => startEditing(s.provider)}
+                className={styles.actionButton}
+                title="Edit key"
+              >
+                <EditIcon />
+              </button>
+              <button
+                onClick={() => handleDeleteKey(s.provider)}
+                className={styles.deleteButton}
+                title="Delete key"
+              >
+                <DeleteIcon />
+              </button>
+            </>
+          ) : (
+            <button onClick={() => startEditing(s.provider)} className={styles.actionButton} title="Add key">
+              <KeyIcon />
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -120,103 +246,52 @@ export function ApiKeysSettings() {
       <div className={styles.statusSection}>
         <h3 className={styles.subtitle}>LLM Providers</h3>
         <p className={styles.description}>API keys for AI/LLM processing</p>
-        <div className={styles.statusList}>
-          {llmStatus.map((s) => (
-            <div key={s.provider} className={styles.statusItem}>
-              <div className={styles.statusProvider}>
-                <span className={styles.providerName}>{PROVIDER_LABELS[s.provider] || s.provider}</span>
-                {s.keySuffix && <span className={styles.keySuffix}>...{s.keySuffix}</span>}
-              </div>
-              {getSourceBadge(s.activeSource)}
-            </div>
-          ))}
-        </div>
+        <div className={styles.statusList}>{llmStatus.map((s) => renderProviderRow(s))}</div>
       </div>
 
       {/* Connector Provider Status */}
       <div className={styles.statusSection}>
         <h3 className={styles.subtitle}>Data Source APIs</h3>
         <p className={styles.description}>API keys for financial data connectors</p>
-        <div className={styles.statusList}>
-          {connectorStatus.map((s) => (
-            <div key={s.provider} className={styles.statusItem}>
-              <div className={styles.statusProvider}>
-                <span className={styles.providerName}>{PROVIDER_LABELS[s.provider] || s.provider}</span>
-                {s.keySuffix && <span className={styles.keySuffix}>...{s.keySuffix}</span>}
-              </div>
-              {getSourceBadge(s.activeSource)}
-            </div>
-          ))}
-        </div>
+        <div className={styles.statusList}>{connectorStatus.map((s) => renderProviderRow(s))}</div>
       </div>
 
-      {/* Add New Key */}
-      <div className={styles.addSection}>
-        <h3 className={styles.subtitle}>Add API Key</h3>
-        <p className={styles.description}>Add your own API key to use your account with a provider</p>
-        <div className={styles.addForm}>
-          <select
-            value={newProvider}
-            onChange={(e) => setNewProvider(e.target.value)}
-            className={styles.select}
-          >
-            <option value="">Select provider</option>
-            <optgroup label="LLM Providers">
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="xai">xAI (Grok)</option>
-            </optgroup>
-            <optgroup label="Data Sources">
-              <option value="quiver">Quiver (Congress Trading)</option>
-              <option value="unusual_whales">Unusual Whales (Options Flow)</option>
-              <option value="finnhub">Finnhub (Market Sentiment)</option>
-            </optgroup>
-          </select>
-
-          <input
-            type="password"
-            placeholder="API key"
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            className={styles.input}
-          />
-
-          <button
-            onClick={handleAddKey}
-            disabled={adding || !newProvider || !newKey}
-            className={styles.addButton}
-          >
-            {adding ? "Adding..." : "Add Key"}
-          </button>
-        </div>
-        {newProvider && PROVIDER_DESCRIPTIONS[newProvider] && (
-          <p className={styles.providerHint}>{PROVIDER_DESCRIPTIONS[newProvider]}</p>
-        )}
-      </div>
-
-      {/* Existing Keys */}
-      {keys.length > 0 && (
-        <div className={styles.keysSection}>
-          <h3 className={styles.subtitle}>Your API Keys</h3>
-          <div className={styles.keysList}>
-            {keys.map((key) => (
-              <div key={key.id} className={styles.keyItem}>
-                <div className={styles.keyInfo}>
-                  <span className={styles.providerName}>{PROVIDER_LABELS[key.provider] || key.provider}</span>
-                  <span className={styles.keySuffix}>...{key.keySuffix}</span>
-                  <span className={styles.keyDate}>Added {new Date(key.createdAt).toLocaleDateString()}</span>
-                </div>
-                <button onClick={() => handleDeleteKey(key.id)} className={styles.deleteButton} title="Delete key">
-                  <DeleteIcon />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <p className={styles.securityNote}>Your keys are encrypted before storage.</p>
+      <p className={styles.securityNote}>Click to configure. Your keys are encrypted before storage.</p>
     </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+    </svg>
   );
 }
 
