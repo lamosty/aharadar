@@ -159,7 +159,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
         )}
       </footer>
 
-      <WhyShown features={item.triageJson?.system_features} />
+      <WhyShown features={item.triageJson} />
     </article>
   );
 }

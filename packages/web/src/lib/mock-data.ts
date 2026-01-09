@@ -421,6 +421,15 @@ function adaptDigestSummary(item: DigestListItem): DigestSummary {
  * Adapt API DigestItem to component DigestItem.
  */
 function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
+  // Derive triageSummary: prefer deep summary, else triage reason
+  const deepSummary = apiItem.summaryJson
+    ? String((apiItem.summaryJson as Record<string, unknown>).summary ?? "")
+    : "";
+  const triageReason = apiItem.triageJson
+    ? String((apiItem.triageJson as Record<string, unknown>).reason ?? "")
+    : "";
+  const triageSummary = deepSummary || triageReason || undefined;
+
   return {
     id: apiItem.contentItemId ?? `item-${index}`,
     rank: apiItem.rank,
@@ -432,9 +441,7 @@ function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
       author: apiItem.item?.author ?? null,
       publishedAt: apiItem.item?.publishedAt ?? null,
       sourceType: apiItem.item?.sourceType ?? "unknown",
-      triageSummary: apiItem.summaryJson
-        ? String((apiItem.summaryJson as Record<string, unknown>).summary ?? "")
-        : undefined,
+      triageSummary,
     },
     triageJson: apiItem.triageJson ? (apiItem.triageJson as unknown as TriageFeatures) : undefined,
     feedback: null, // API doesn't return feedback state per item currently

@@ -128,7 +128,7 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
       </tr>
       <tr className={styles.expandableRow}>
         <td colSpan={6}>
-          <WhyShown features={item.triageJson?.system_features} />
+          <WhyShown features={item.triageJson} />
         </td>
       </tr>
     </>

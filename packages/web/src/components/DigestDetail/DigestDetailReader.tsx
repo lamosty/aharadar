@@ -122,7 +122,7 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
         />
       </footer>
 
-      <WhyShown features={item.triageJson?.system_features} />
+      <WhyShown features={item.triageJson} />
     </article>
   );
 }
