@@ -9,6 +9,7 @@ Rename the hardcoded "default" topic name to "General" (or a more user-friendly 
 ## Background
 
 The default topic is currently named "default" (lowercase), which:
+
 - Looks like a system/internal setting rather than a user-facing topic name
 - Is not user-friendly for new users
 - Doesn't follow capitalization conventions (other topics would be "Tech News", "Finance", etc.)
@@ -33,10 +34,12 @@ packages/web/src/components/TopicProvider/TopicProvider.tsx:78:      const defau
 ## Implementation Options
 
 ### Option A: Migration + Code Update
+
 - Write migration: `UPDATE topics SET name = 'General' WHERE name = 'default'`
 - Update code references from "default" to "General"
 
 ### Option B: Remove Special Default Name
+
 - Remove the check for `name === "default"` in topics.ts (allow deletion)
 - Use first topic as fallback instead of name-based lookup
 - Let users rename any topic including the first one
