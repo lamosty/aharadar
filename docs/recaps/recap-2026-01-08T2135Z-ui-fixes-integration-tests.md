@@ -57,11 +57,26 @@
 - `packages/pipeline/src/stages/digest.int.test.ts` - Added migrations 0007-0010
 - `packages/worker/src/pipeline.worker.int.test.ts` - Added migrations 0007-0010
 
+## Additional Work (Continued Session)
+
+### Task 012: Canonical Cluster Representatives
+- Updated digest.ts, inbox.ts, review.ts to prefer titled items
+- Sort order: title preference (titled first), then recency
+- Clusters with mixed titled/untitled items now show titled representative
+
+### Task 099: Cluster Sources UI (NEW FEATURE)
+- Added "+N sources" badge to feed cards when item represents a cluster
+- Tooltip explains more sources are available in WhyShown
+- Extended WhyShown panel with "Related Sources" section showing:
+  - All cluster items with source type badges
+  - Titles with links
+  - Similarity percentages
+- API extended with clusterId, clusterMemberCount, clusterItems
+
 ## Remaining Open Tasks
 
 | Task | Description | Priority |
 |------|-------------|----------|
-| 012 | Prefer canonical cluster representatives | High |
 | 083 | YouTube connector implementation | Medium |
 | 084 | RSS-based connector types (7 new) | Medium |
 | 085 | Telegram connector | Medium |
