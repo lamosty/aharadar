@@ -67,6 +67,9 @@ export interface ContentItemBrief {
   author: string | null;
   publishedAt: string | null;
   sourceType: string | null;
+  bodyText: string | null;
+  metadata: Record<string, unknown> | null;
+  externalId: string | null;
 }
 
 /** Digest item with triage and summary */

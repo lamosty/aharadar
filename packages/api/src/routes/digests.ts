@@ -25,6 +25,7 @@ interface DigestItemRow {
   score: number;
   content_item_id: string | null;
   cluster_id: string | null;
+  effective_content_item_id: string | null;
   triage_json: Record<string, unknown> | null;
   summary_json: Record<string, unknown> | null;
   entities_json: Record<string, unknown> | null;
@@ -33,6 +34,9 @@ interface DigestItemRow {
   item_author: string | null;
   item_published_at: string | null;
   item_source_type: string | null;
+  item_body_text: string | null;
+  item_metadata_json: Record<string, unknown> | null;
+  item_external_id: string | null;
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -161,12 +165,14 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
 
     // Query digest items, joining both direct content items and cluster representatives
     // Uses COALESCE to prefer direct content item, falling back to cluster representative
+    // effective_content_item_id provides a real ID for feedback/navigation even for cluster rows
     const itemsResult = await db.query<DigestItemRow>(
       `SELECT
          di.rank,
          di.score,
          di.content_item_id,
          di.cluster_id,
+         COALESCE(di.content_item_id, cl.representative_content_item_id)::text as effective_content_item_id,
          di.triage_json,
          di.summary_json,
          di.entities_json,
@@ -174,7 +180,10 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
          COALESCE(ci.canonical_url, ci_rep.canonical_url) as item_url,
          COALESCE(ci.author, ci_rep.author) as item_author,
          COALESCE(ci.published_at, ci_rep.published_at)::text as item_published_at,
-         COALESCE(ci.source_type, ci_rep.source_type) as item_source_type
+         COALESCE(ci.source_type, ci_rep.source_type) as item_source_type,
+         COALESCE(ci.body_text, ci_rep.body_text) as item_body_text,
+         COALESCE(ci.metadata_json, ci_rep.metadata_json) as item_metadata_json,
+         COALESCE(ci.external_id, ci_rep.external_id) as item_external_id
        FROM digest_items di
        LEFT JOIN content_items ci ON ci.id = di.content_item_id
        LEFT JOIN clusters cl ON cl.id = di.cluster_id
@@ -196,20 +205,24 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
       items: itemsResult.rows.map((row) => ({
         rank: row.rank,
         score: row.score,
-        contentItemId: row.content_item_id,
+        // Use effective_content_item_id for feedback/navigation (includes cluster representative)
+        contentItemId: row.effective_content_item_id,
         clusterId: row.cluster_id,
         triageJson: row.triage_json,
         summaryJson: row.summary_json,
         entitiesJson: row.entities_json,
         // Return item if we have any content (direct item or cluster representative)
         item:
-          row.item_title || row.item_url || row.item_source_type
+          row.item_title || row.item_url || row.item_source_type || row.item_body_text
             ? {
                 title: row.item_title,
                 url: row.item_url,
                 author: row.item_author,
                 publishedAt: row.item_published_at,
                 sourceType: row.item_source_type,
+                bodyText: row.item_body_text,
+                metadata: row.item_metadata_json,
+                externalId: row.item_external_id,
               }
             : null,
       })),
