@@ -136,6 +136,9 @@ importers:
 
   packages/queue-ui:
     dependencies:
+      '@aharadar/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@bull-board/api':
         specifier: ^6.5.3
         version: 6.16.2(@bull-board/ui@6.16.2)
