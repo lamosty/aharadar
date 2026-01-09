@@ -65,6 +65,8 @@ export default function TopicsPage() {
   const [addingSourceToTopicId, setAddingSourceToTopicId] = useState<string | null>(null);
   const [newSourceType, setNewSourceType] = useState<SupportedSourceType>("rss");
   const [newSourceName, setNewSourceName] = useState("");
+  const [newSourceCadence, setNewSourceCadence] = useState(60);
+  const [newSourceWeight, setNewSourceWeight] = useState(1.0);
   const [newSourceConfig, setNewSourceConfig] = useState<Partial<SourceTypeConfig>>(() =>
     getDefaultConfig("rss")
   );
@@ -144,6 +146,8 @@ export default function TopicsPage() {
     setAddingSourceToTopicId(topicId);
     setNewSourceType("rss");
     setNewSourceName("");
+    setNewSourceCadence(60);
+    setNewSourceWeight(1.0);
     setNewSourceConfig(getDefaultConfig("rss"));
     setNewSourceErrors({});
   };
@@ -152,6 +156,8 @@ export default function TopicsPage() {
     setAddingSourceToTopicId(null);
     setNewSourceType("rss");
     setNewSourceName("");
+    setNewSourceCadence(60);
+    setNewSourceWeight(1.0);
     setNewSourceConfig(getDefaultConfig("rss"));
     setNewSourceErrors({});
   };
@@ -169,10 +175,16 @@ export default function TopicsPage() {
     }
 
     try {
+      // Merge cadence and weight into the config
+      const fullConfig = {
+        ...newSourceConfig,
+        cadence: { mode: "interval" as const, every_minutes: newSourceCadence },
+        weight: newSourceWeight,
+      };
       await createSourceMutation.mutateAsync({
         type: newSourceType,
         name: newSourceName.trim(),
-        config: newSourceConfig as SourceConfig,
+        config: fullConfig as SourceConfig,
         topicId,
       });
       handleCancelAddSource();
@@ -576,6 +588,39 @@ export default function TopicsPage() {
                               onChange={setNewSourceConfig}
                               errors={newSourceErrors}
                             />
+                          </div>
+                          <div className={styles.formRowInline}>
+                            <div className={styles.formRowHalf}>
+                              <label className={styles.formLabel}>
+                                {t("admin.sources.cadenceMinutes")}
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={1440}
+                                value={newSourceCadence}
+                                onChange={(e) =>
+                                  setNewSourceCadence(parseInt(e.target.value, 10) || 60)
+                                }
+                                className={styles.numberInput}
+                              />
+                            </div>
+                            <div className={styles.formRowHalf}>
+                              <label className={styles.formLabel}>
+                                {t("admin.sources.weight")}
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={10}
+                                step={0.1}
+                                value={newSourceWeight}
+                                onChange={(e) =>
+                                  setNewSourceWeight(parseFloat(e.target.value) || 1.0)
+                                }
+                                className={styles.numberInput}
+                              />
+                            </div>
                           </div>
                           <div className={styles.formActions}>
                             <button

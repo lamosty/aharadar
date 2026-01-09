@@ -611,6 +611,18 @@
   gap: var(--space-1);
 }
 
+.formRowInline {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.formRowHalf {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .formLabel {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
