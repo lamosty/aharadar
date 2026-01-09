@@ -639,7 +639,9 @@ export async function persistDigestFromContentItems(params: {
            and ci.duplicate_of_content_item_id is null
            and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
            and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
-         order by coalesce(ci.published_at, ci.fetched_at) desc
+         order by
+           (case when ci.title is not null then 0 else 1 end) asc,
+           coalesce(ci.published_at, ci.fetched_at) desc
          limit 1
        ) rep on true
        join topic_item_source tis on tis.content_item_id = rep.id

@@ -598,6 +598,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
                and coalesce(ci2.published_at, ci2.fetched_at) < $5::timestamptz
               then 0 else 1
             end) asc,
+           (case when ci2.title is not null then 0 else 1 end) asc,
            coalesce(ci2.published_at, ci2.fetched_at) desc
          limit 1
        ) rep on di.cluster_id is not null
