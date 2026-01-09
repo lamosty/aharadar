@@ -234,6 +234,7 @@ Ingest insider trading filings (Form 4) and institutional holdings (13F) from th
 ```
 
 **Fields:**
+
 - `filing_types` (required): Array of `"form4"` and/or `"13f"`
 - `tickers` (optional): Filter by company ticker symbols
 - `ciks` (optional): Filter by CIK numbers (more precise than tickers)
@@ -258,6 +259,7 @@ Ingest insider trading filings (Form 4) and institutional holdings (13F) from th
 **Fetch**
 
 MVP approach:
+
 - Fetch Form 4 and 13F RSS feeds from SEC Browse-EDGAR
 - For each filing, fetch detailed XML from SEC EDGAR API
 - Parse Form 4 transactions and 13F holdings
@@ -267,6 +269,7 @@ MVP approach:
 **Normalize**
 
 **Form 4 (Insider Trading):**
+
 - `external_id`: `form4_{accession_number}`
 - `canonical_url`: SEC company filing page
 - `title`: `[BUY/SELL/...] {Insider Name} - {Company} - ${Amount}`
@@ -289,6 +292,7 @@ MVP approach:
   - `is_officer`, `is_director`, `is_ten_percent_owner`: Relationship flags
 
 **13F (Institutional Holdings):**
+
 - `external_id`: `13f_{accession_number}`
 - `canonical_url`: SEC filing page
 - `title`: `[13F] {Institution Name} - Q{Quarter} {Year} Holdings`
@@ -331,6 +335,7 @@ Ingest stock trades disclosed by U.S. Congress members using the Quiver Quantita
 ```
 
 **Fields:**
+
 - `politicians` (optional): Filter by specific politicians (case-insensitive partial match)
 - `chambers` (optional, default: both): `"senate"` and/or `"house"`
 - `min_amount` (default: 0): Minimum transaction amount (lower bound of range)
@@ -406,6 +411,7 @@ Ingest prediction market data including market questions, probabilities, volume,
 ```
 
 **Fields:**
+
 - `categories` (optional): Filter by market categories
 - `min_volume` (default: 0): Minimum total volume in USD
 - `min_liquidity` (default: 0): Minimum current liquidity
@@ -466,11 +472,13 @@ Note: `last_prices` tracks previous probabilities to calculate change since last
 **Use Cases**
 
 1. **All active markets with volume filter:**
+
    ```json
    { "min_volume": 10000 }
    ```
 
 2. **Alert on significant probability movements:**
+
    ```json
    { "probability_change_threshold": 5, "min_volume": 50000 }
    ```
@@ -500,6 +508,7 @@ Ingest unusual options activity including sweeps, blocks, and unusual volume usi
 ```
 
 **Fields:**
+
 - `symbols` (optional): Filter by specific tickers (empty = all)
 - `min_premium` (default: 50000): Minimum order premium in USD
 - `flow_types` (optional): Array of `"sweep"`, `"block"`, `"unusual"` (empty = all)
@@ -554,6 +563,7 @@ Ingest unusual options activity including sweeps, blocks, and unusual volume usi
 **Sentiment Classification**
 
 If the API doesn't provide sentiment, it's classified locally:
+
 - Sweeps on OTM calls = bullish
 - Sweeps on OTM puts = bearish
 - ITM options = neutral (could be hedging)
@@ -569,11 +579,13 @@ Sign up at https://unusualwhales.com/ for API access.
 **Use Cases**
 
 1. **Track major stocks with large orders:**
+
    ```json
    { "symbols": ["SPY", "QQQ", "AAPL", "NVDA"], "min_premium": 100000 }
    ```
 
 2. **Bullish sweeps only:**
+
    ```json
    { "flow_types": ["sweep"], "sentiment_filter": "bullish", "min_premium": 500000 }
    ```
@@ -602,6 +614,7 @@ Track social media sentiment for stocks aggregated from Reddit, Twitter, and Sto
 ```
 
 **Fields:**
+
 - `tickers` (required): List of stock tickers to monitor
 - `sentiment_change_threshold` (default: 0): Only emit if sentiment changed by this % since last fetch
 - `min_mentions` (default: 0): Minimum mention count to include
@@ -672,11 +685,13 @@ Sign up free at https://finnhub.io/ - 60 API calls/minute.
 **Use Cases**
 
 1. **Track major indices:**
+
    ```json
    { "tickers": ["SPY", "QQQ"], "min_mentions": 100 }
    ```
 
 2. **Alert on sentiment shifts:**
+
    ```json
    { "tickers": ["AAPL", "TSLA", "NVDA"], "sentiment_change_threshold": 10 }
    ```

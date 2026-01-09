@@ -78,7 +78,10 @@ export function createPipelineWorker(redisUrl: string): { worker: Worker<RunWind
           llmConfig.provider = providerOverride.provider;
         }
         if (providerOverride?.model) {
-          if (providerOverride.provider === "anthropic" || providerOverride.provider === "claude-subscription") {
+          if (
+            providerOverride.provider === "anthropic" ||
+            providerOverride.provider === "claude-subscription"
+          ) {
             llmConfig.anthropicModel = providerOverride.model;
           } else if (providerOverride.provider === "openai") {
             llmConfig.openaiModel = providerOverride.model;

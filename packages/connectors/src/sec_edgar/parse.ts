@@ -130,7 +130,8 @@ export function parseForm4Xml(xmlText: string): Form4Entry | null {
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
     textNodeName: "#text",
-    isArray: (name) => ["nonDerivativeTransaction", "derivativeTransaction", "ownershipNature", "value"].includes(name),
+    isArray: (name) =>
+      ["nonDerivativeTransaction", "derivativeTransaction", "ownershipNature", "value"].includes(name),
   });
 
   try {
@@ -159,12 +160,17 @@ export function parseForm4Xml(xmlText: string): Form4Entry | null {
     const relationship = asRecord(reportingOwner.reportingOwnerRelationship ?? {});
     const isDirector = relationship.isDirector === true || relationship.isDirector === "1";
     const isOfficer = relationship.isOfficer === true || relationship.isOfficer === "1";
-    const isTenPercentOwner = relationship.isTenPercentOwner === true || relationship.isTenPercentOwner === "1";
+    const isTenPercentOwner =
+      relationship.isTenPercentOwner === true || relationship.isTenPercentOwner === "1";
 
     // Extract transactions
     const transactions: Form4Transaction[] = [];
-    const nonDerivative = asArray<Record<string, unknown>>(asRecord(form4.nonDerivativeTable ?? {}).nonDerivativeTransaction);
-    const derivative = asArray<Record<string, unknown>>(asRecord(form4.derivativeTable ?? {}).derivativeTransaction);
+    const nonDerivative = asArray<Record<string, unknown>>(
+      asRecord(form4.nonDerivativeTable ?? {}).nonDerivativeTransaction
+    );
+    const derivative = asArray<Record<string, unknown>>(
+      asRecord(form4.derivativeTable ?? {}).derivativeTransaction
+    );
 
     // Process non-derivative transactions
     for (const txn of nonDerivative) {
@@ -306,7 +312,10 @@ export function parse13fXml(xmlText: string): Form13fEntry | null {
 
     // Extract info table (holdings)
     const holdings: Form13fHolding[] = [];
-    const infoTable = asArray<Record<string, unknown>>(asRecord(root.infoTable ?? root.informationTable).row ?? asRecord(root.infoTable ?? root.informationTable).infoTable);
+    const infoTable = asArray<Record<string, unknown>>(
+      asRecord(root.infoTable ?? root.informationTable).row ??
+        asRecord(root.infoTable ?? root.informationTable).infoTable
+    );
 
     for (const row of infoTable) {
       const rowRecord = asRecord(row);

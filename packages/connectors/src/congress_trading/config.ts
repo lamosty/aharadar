@@ -60,13 +60,18 @@ function asTransactionTypes(value: unknown): ("purchase" | "sale")[] {
   return [...new Set(types)];
 }
 
-export function parseCongressTradingSourceConfig(config: Record<string, unknown>): CongressTradingSourceConfig {
+export function parseCongressTradingSourceConfig(
+  config: Record<string, unknown>
+): CongressTradingSourceConfig {
   const politicians = asStringArray(config.politicians);
   const chambers = asChambers(config.chambers);
   const transactionTypes = asTransactionTypes(config.transaction_types ?? config.transactionTypes);
   const tickers = asUpperStringArray(config.tickers);
   const minAmount = Math.max(0, Math.floor(asNumber(config.min_amount ?? config.minAmount, 0)));
-  const maxTrades = Math.max(1, Math.min(100, Math.floor(asNumber(config.max_trades_per_fetch ?? config.maxTradesPerFetch, 50))));
+  const maxTrades = Math.max(
+    1,
+    Math.min(100, Math.floor(asNumber(config.max_trades_per_fetch ?? config.maxTradesPerFetch, 50)))
+  );
 
   return {
     politicians: politicians.length > 0 ? politicians : undefined,

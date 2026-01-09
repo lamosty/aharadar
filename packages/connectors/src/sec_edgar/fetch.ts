@@ -74,7 +74,11 @@ async function fetchWithDelay(url: string, delayMs: number = MIN_REQUEST_DELAY_M
       const body = await res.text().catch(() => "");
       throw new Error(`SEC EDGAR fetch failed (${res.status} ${res.statusText}): ${body.slice(0, 500)}`);
     } catch (error) {
-      if (retries < maxRetries && error instanceof Error && (error.message.includes("429") || error.message.includes("503"))) {
+      if (
+        retries < maxRetries &&
+        error instanceof Error &&
+        (error.message.includes("429") || error.message.includes("503"))
+      ) {
         const delayMs = baseDelayMs * Math.pow(2, retries);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         retries++;

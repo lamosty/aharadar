@@ -28,10 +28,7 @@ export interface LlmCostParams {
  *
  * If no rates configured, returns 0 (cost tracking disabled).
  */
-export function estimateLlmCredits(
-  params: LlmCostParams,
-  env: NodeJS.ProcessEnv = process.env
-): number {
+export function estimateLlmCredits(params: LlmCostParams, env: NodeJS.ProcessEnv = process.env): number {
   const { provider, inputTokens, outputTokens } = params;
   const providerUpper = provider.toUpperCase().replace(/-/g, "_");
 

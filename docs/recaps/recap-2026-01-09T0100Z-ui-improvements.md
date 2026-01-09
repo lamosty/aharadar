@@ -6,15 +6,18 @@
 ## Completed This Session
 
 ### Task 012: Canonical Cluster Representatives
+
 - Updated SQL in digest.ts, inbox.ts, review.ts
 - Titled items now preferred as cluster representatives
 
 ### Task 099: Cluster Sources UI (NEW)
+
 - Added "+N sources" badge on clustered feed items
 - Extended WhyShown with "Related Sources" section
 - API extended with cluster data (clusterId, clusterMemberCount, clusterItems)
 
 ### Feed Layout Optimization
+
 - Moved FeedbackButtons from footer to header (left of score)
 - Removed footer section entirely - saves ~40-50px per item
 - Only WhyShown remains after title
@@ -32,17 +35,18 @@ de0d808 feat(pipeline): prefer titled items as cluster representatives
 
 ## Open Tasks
 
-| Task | Description | Priority |
-|------|-------------|----------|
-| **100** | **Condensed feed layout (NEW)** | **High** |
-| 083 | YouTube connector | Medium |
-| 084 | RSS-based connector types (7 new) | Medium |
-| 085 | Telegram connector | Medium |
-| 086 | Documentation refresh | Medium |
+| Task    | Description                       | Priority |
+| ------- | --------------------------------- | -------- |
+| **100** | **Condensed feed layout (NEW)**   | **High** |
+| 083     | YouTube connector                 | Medium   |
+| 084     | RSS-based connector types (7 new) | Medium   |
+| 085     | Telegram connector                | Medium   |
+| 086     | Documentation refresh             | Medium   |
 
 ## Key Finding: Layout System
 
 Layout settings exist (condensed/reader/timeline) but don't actually affect feed items:
+
 - CSS variables defined in `globals.css` (`--card-padding`, `--item-spacing`, etc.)
 - But `FeedItem.module.css` uses hardcoded `var(--space-X)` values
 - Need to either use the variables OR create distinct component variants
@@ -80,10 +84,12 @@ Read: `docs/tasks/task-100-condensed-feed-layout.md`
 
 ### Design Target for Condensed
 ```
+
 [HN] Title of item here... · @author · 2h · [👍👎] [85]
 ─────────────────────────────────────────────────────
 [Reddit] Another item title · @user · 5h · [85]
-```
+
+````
 - No card borders/shadows, just separators
 - Everything on one row
 - Feedback actions on hover or tiny inline
@@ -95,9 +101,13 @@ pnpm dev:services && pnpm dev:api && pnpm dev:web
 # Browser: document.cookie = 'BYPASS_AUTH=admin; path=/'
 # http://localhost:3000/app
 # Settings > Appearance > Layout to test switching
-```
+````
 
 ## Other Open Tasks (Lower Priority)
+
 - Task 083-085: Connectors (YouTube, RSS types, Telegram)
 - Task 086: Documentation refresh
+
+```
+
 ```

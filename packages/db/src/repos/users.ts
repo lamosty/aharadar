@@ -72,5 +72,12 @@ export function createUsersRepo(db: Queryable) {
       if (existing) return existing;
       return await this.create(params);
     },
+
+    async listAll(): Promise<UserRow[]> {
+      const res = await db.query<UserRow>(
+        "SELECT id, email, role, created_at FROM users ORDER BY created_at DESC"
+      );
+      return res.rows;
+    },
   };
 }

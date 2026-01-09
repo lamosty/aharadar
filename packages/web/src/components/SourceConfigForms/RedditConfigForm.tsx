@@ -45,8 +45,8 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                   <strong>Required.</strong> The subreddit to fetch posts from.
                 </p>
                 <p>
-                  <strong>One subreddit per source:</strong> Each Reddit source monitors a single subreddit. This
-                  allows independent weight, cadence, and enable/disable settings per subreddit.
+                  <strong>One subreddit per source:</strong> Each Reddit source monitors a single subreddit.
+                  This allows independent weight, cadence, and enable/disable settings per subreddit.
                 </p>
                 <p>
                   <strong>How to enter:</strong> Type the subreddit name without the <code>r/</code> prefix.
@@ -88,16 +88,16 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     <>
                       <p>How posts are sorted when fetching from the subreddit.</p>
                       <p>
-                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date with the latest
-                        content.
+                        <strong>New:</strong> Most recent posts first. Best for staying up-to-date with the
+                        latest content.
                       </p>
                       <p>
-                        <strong>Hot:</strong> Currently trending posts based on recent votes and comments. Best for
-                        popular discussions happening right now.
+                        <strong>Hot:</strong> Currently trending posts based on recent votes and comments.
+                        Best for popular discussions happening right now.
                       </p>
                       <p>
-                        <strong>Top:</strong> Highest-voted posts within the selected time period. Best for finding
-                        the most valuable content.
+                        <strong>Top:</strong> Highest-voted posts within the selected time period. Best for
+                        finding the most valuable content.
                       </p>
                     </>
                   }
@@ -129,7 +129,8 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                         &quot;Top&quot;. Ignored for New and Hot sorting.
                       </p>
                       <p>
-                        <strong>What it does:</strong> Limits which posts are considered when ranking by votes.
+                        <strong>What it does:</strong> Limits which posts are considered when ranking by
+                        votes.
                       </p>
                       <ul>
                         <li>
@@ -200,8 +201,8 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     <strong>What it does:</strong> Fetches the top-voted comments along with each post.
                   </p>
                   <p>
-                    <strong>Why enable:</strong> Comments often contain valuable insights, corrections, additional
-                    context, or expert opinions that add to the original post.
+                    <strong>Why enable:</strong> Comments often contain valuable insights, corrections,
+                    additional context, or expert opinions that add to the original post.
                   </p>
                   <p>
                     <strong>Impact:</strong> Increases the amount of content per post, which can improve AI
@@ -226,7 +227,8 @@ export function RedditConfigForm({ value, onChange, errors }: SourceConfigFormPr
                 content={
                   <>
                     <p>
-                      <strong>What it does:</strong> Limits how many top-level comments are fetched for each post.
+                      <strong>What it does:</strong> Limits how many top-level comments are fetched for each
+                      post.
                     </p>
                     <p>
                       <strong>How it works:</strong> Comments are sorted by votes, so you get the most upvoted

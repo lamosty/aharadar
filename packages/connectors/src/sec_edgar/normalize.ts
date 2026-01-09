@@ -36,7 +36,11 @@ function formatDate(isoString: string | null): string {
 /**
  * Normalize Form 4 (insider trading) filing to ContentItemDraft
  */
-function normalizeForm4(raw: Record<string, unknown>, form4: Form4Entry, _params: FetchParams): ContentItemDraft {
+function normalizeForm4(
+  raw: Record<string, unknown>,
+  form4: Form4Entry,
+  _params: FetchParams
+): ContentItemDraft {
   const accessionNumber = asString(raw.accession_number) ?? form4.accessionNumber;
   const filingDate = form4.filingDate ?? asString(raw.filing_date);
   const insiderName = form4.insiderName;
@@ -80,7 +84,8 @@ function normalizeForm4(raw: Record<string, unknown>, form4: Form4Entry, _params
     bodyText += `\n\nTransactions:\n`;
     for (const txn of form4.transactions.slice(0, 10)) {
       // Limit to first 10 transactions
-      const shareStr = txn.shares !== null ? `${Math.round(txn.shares).toLocaleString()} shares` : "unknown shares";
+      const shareStr =
+        txn.shares !== null ? `${Math.round(txn.shares).toLocaleString()} shares` : "unknown shares";
       const priceStr = txn.pricePerShare !== null ? ` at $${txn.pricePerShare.toFixed(2)}/share` : "";
       const valueStr = txn.totalValue !== null ? ` (${formatCurrency(txn.totalValue)})` : "";
       const typeLabel = txn.type.charAt(0).toUpperCase() + txn.type.slice(1);
@@ -89,7 +94,10 @@ function normalizeForm4(raw: Record<string, unknown>, form4: Form4Entry, _params
   }
 
   // Canonical URL
-  const canonicalUrl = ticker && cik ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=4&dateb=&owner=include&count=40` : null;
+  const canonicalUrl =
+    ticker && cik
+      ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=4&dateb=&owner=include&count=40`
+      : null;
 
   // External ID
   const externalId = accessionNumber ? `form4_${accessionNumber}` : null;
@@ -148,7 +156,11 @@ function normalizeForm4(raw: Record<string, unknown>, form4: Form4Entry, _params
 /**
  * Normalize 13F (institutional holdings) filing to ContentItemDraft
  */
-function normalize13f(raw: Record<string, unknown>, form13f: Form13fEntry, _params: FetchParams): ContentItemDraft {
+function normalize13f(
+  raw: Record<string, unknown>,
+  form13f: Form13fEntry,
+  _params: FetchParams
+): ContentItemDraft {
   const accessionNumber = asString(raw.accession_number) ?? form13f.accessionNumber;
   const filingDate = form13f.filingDate ?? asString(raw.filing_date);
   const institutionName = form13f.institutionName;
@@ -176,7 +188,8 @@ function normalize13f(raw: Record<string, unknown>, form13f: Form13fEntry, _para
     bodyText += `Top Holdings:\n`;
     for (const holding of topHoldings) {
       const name = holding.name || holding.ticker || "Unknown";
-      const shares = holding.shares !== null ? `${Math.round(holding.shares).toLocaleString()} shares` : "position";
+      const shares =
+        holding.shares !== null ? `${Math.round(holding.shares).toLocaleString()} shares` : "position";
       const value = holding.value !== null ? ` ($${Math.round(holding.value * 1000).toLocaleString()})` : "";
       bodyText += `- ${name}: ${shares}${value}\n`;
     }
@@ -188,7 +201,10 @@ function normalize13f(raw: Record<string, unknown>, form13f: Form13fEntry, _para
   }
 
   // Canonical URL
-  const canonicalUrl = cik && accessionNumber ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=13F&dateb=&owner=exclude&count=40` : null;
+  const canonicalUrl =
+    cik && accessionNumber
+      ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=13F&dateb=&owner=exclude&count=40`
+      : null;
 
   // External ID
   const externalId = accessionNumber ? `13f_${accessionNumber}` : null;

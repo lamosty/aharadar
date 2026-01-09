@@ -157,9 +157,19 @@ const mockDigestItems: DigestItem[] = [
       categories: ["AI", "productivity", "code generation"],
       system_features: {
         novelty_v1: { novelty01: 0.92, lookback_days: 7, max_similarity: 0.08 },
-        source_weight_v1: { source_type: "hn", type_weight: 1, source_weight: 1.5, effective_weight: 1.5, source_name: "Hacker News" },
-        signal_corroboration_v1: { matched: true, matched_url: "https://twitter.com/ai_researcher/123", signal_url_sample: [] },
-        recency_decay_v1: { age_hours: 2.5, decay_hours: 24, decay_factor: 0.90 },
+        source_weight_v1: {
+          source_type: "hn",
+          type_weight: 1,
+          source_weight: 1.5,
+          effective_weight: 1.5,
+          source_name: "Hacker News",
+        },
+        signal_corroboration_v1: {
+          matched: true,
+          matched_url: "https://twitter.com/ai_researcher/123",
+          signal_url_sample: [],
+        },
+        recency_decay_v1: { age_hours: 2.5, decay_hours: 24, decay_factor: 0.9 },
       },
     },
     feedback: null,
@@ -185,7 +195,13 @@ const mockDigestItems: DigestItem[] = [
       categories: ["databases", "postgres"],
       system_features: {
         novelty_v1: { novelty01: 0.85, lookback_days: 7, max_similarity: 0.15 },
-        source_weight_v1: { source_type: "reddit", type_weight: 1, source_weight: 1.2, effective_weight: 1.2, source_name: "r/programming" },
+        source_weight_v1: {
+          source_type: "reddit",
+          type_weight: 1,
+          source_weight: 1.2,
+          effective_weight: 1.2,
+          source_name: "r/programming",
+        },
         recency_decay_v1: { age_hours: 4, decay_hours: 24, decay_factor: 0.85 },
       },
     },
@@ -211,7 +227,13 @@ const mockDigestItems: DigestItem[] = [
       categories: ["react", "frontend"],
       system_features: {
         novelty_v1: { novelty01: 0.7, lookback_days: 7, max_similarity: 0.3 },
-        source_weight_v1: { source_type: "rss", type_weight: 1, source_weight: 1.0, effective_weight: 1.0, source_name: "Frontend Weekly RSS" },
+        source_weight_v1: {
+          source_type: "rss",
+          type_weight: 1,
+          source_weight: 1.0,
+          effective_weight: 1.0,
+          source_name: "Frontend Weekly RSS",
+        },
         recency_decay_v1: { age_hours: 6, decay_hours: 24, decay_factor: 0.78 },
       },
     },
@@ -237,7 +259,13 @@ const mockDigestItems: DigestItem[] = [
       categories: ["typescript", "programming"],
       system_features: {
         novelty_v1: { novelty01: 0.65, lookback_days: 7, max_similarity: 0.35 },
-        source_weight_v1: { source_type: "youtube", type_weight: 1, source_weight: 0.9, effective_weight: 0.9, source_name: "Tech Talks" },
+        source_weight_v1: {
+          source_type: "youtube",
+          type_weight: 1,
+          source_weight: 0.9,
+          effective_weight: 0.9,
+          source_name: "Tech Talks",
+        },
         recency_decay_v1: { age_hours: 15, decay_hours: 24, decay_factor: 0.53 },
       },
     },
@@ -264,7 +292,13 @@ const mockDigestItems: DigestItem[] = [
       categories: ["kubernetes", "infrastructure"],
       system_features: {
         novelty_v1: { novelty01: 0.55, lookback_days: 7, max_similarity: 0.45 },
-        source_weight_v1: { source_type: "hn", type_weight: 1, source_weight: 1.5, effective_weight: 1.5, source_name: "Hacker News" },
+        source_weight_v1: {
+          source_type: "hn",
+          type_weight: 1,
+          source_weight: 1.5,
+          effective_weight: 1.5,
+          source_name: "Hacker News",
+        },
         recency_decay_v1: { age_hours: 19, decay_hours: 24, decay_factor: 0.45 },
       },
     },
@@ -400,9 +434,7 @@ function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
         ? String((apiItem.summaryJson as Record<string, unknown>).summary ?? "")
         : undefined,
     },
-    triageJson: apiItem.triageJson
-      ? (apiItem.triageJson as unknown as TriageFeatures)
-      : undefined,
+    triageJson: apiItem.triageJson ? (apiItem.triageJson as unknown as TriageFeatures) : undefined,
     feedback: null, // API doesn't return feedback state per item currently
   };
 }

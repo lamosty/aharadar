@@ -46,8 +46,14 @@ export function parseSecEdgarSourceConfig(config: Record<string, unknown>): SecE
     throw new Error('Config must include "filing_types" with at least one of: ["form4", "13f"]');
   }
 
-  const minValue = Math.max(0, Math.floor(asNumber(config.min_transaction_value ?? config.minTransactionValue, 0)));
-  const maxFilings = Math.max(1, Math.min(100, Math.floor(asNumber(config.max_filings_per_fetch ?? config.maxFilingPerFetch, 50))));
+  const minValue = Math.max(
+    0,
+    Math.floor(asNumber(config.min_transaction_value ?? config.minTransactionValue, 0))
+  );
+  const maxFilings = Math.max(
+    1,
+    Math.min(100, Math.floor(asNumber(config.max_filings_per_fetch ?? config.maxFilingPerFetch, 50)))
+  );
 
   return {
     filing_types: filingTypes,

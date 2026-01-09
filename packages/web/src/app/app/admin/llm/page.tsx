@@ -102,8 +102,7 @@ export default function AdminLlmPage() {
   }
 
   // Determine active model based on provider
-  const activeModel =
-    provider === "openai" ? openaiModel : anthropicModel;
+  const activeModel = provider === "openai" ? openaiModel : anthropicModel;
 
   return (
     <div className={styles.page}>
@@ -254,11 +253,7 @@ export default function AdminLlmPage() {
 
         {/* Submit Button */}
         <div className={styles.formActions}>
-          <button
-            type="submit"
-            className={styles.submitButton}
-            disabled={isSaving || !hasChanges}
-          >
+          <button type="submit" className={styles.submitButton} disabled={isSaving || !hasChanges}>
             {isSaving ? (
               <>
                 <LoadingSpinner />

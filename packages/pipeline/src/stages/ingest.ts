@@ -1,5 +1,12 @@
 import type { Db, SourceRow } from "@aharadar/db";
-import { canonicalizeUrl, sha256Hex, createLogger, type ContentItemDraft, type FetchParams, type ProviderCallDraft } from "@aharadar/shared";
+import {
+  canonicalizeUrl,
+  sha256Hex,
+  createLogger,
+  type ContentItemDraft,
+  type FetchParams,
+  type ProviderCallDraft,
+} from "@aharadar/shared";
 import { getConnector } from "@aharadar/connectors";
 
 const log = createLogger({ component: "ingest" });

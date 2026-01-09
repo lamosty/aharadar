@@ -87,12 +87,17 @@ function generateBodyText(trade: QuiverCongressTrade): string {
 /**
  * Normalize Quiver Congress trade to ContentItemDraft
  */
-export async function normalizeCongressTrading(raw: unknown, _params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeCongressTrading(
+  raw: unknown,
+  _params: FetchParams
+): Promise<ContentItemDraft> {
   const trade = asRecord(raw) as unknown as QuiverCongressTrade;
 
   // Validate required fields
   if (!trade.Representative || !trade.Ticker || !trade.Transaction) {
-    throw new Error("Malformed Congress trade: missing required fields (Representative, Ticker, Transaction)");
+    throw new Error(
+      "Malformed Congress trade: missing required fields (Representative, Ticker, Transaction)"
+    );
   }
 
   const chamber = getChamber(trade.District);

@@ -16,7 +16,10 @@ function generateTitle(sentiment: AggregatedSentiment): string {
   const scoreStr = sentiment.compositeScore.toFixed(2);
 
   if (sentiment.scoreChange !== null && Math.abs(sentiment.scoreChange) >= 5) {
-    const changeStr = sentiment.scoreChange > 0 ? `+${sentiment.scoreChange.toFixed(0)}%` : `${sentiment.scoreChange.toFixed(0)}%`;
+    const changeStr =
+      sentiment.scoreChange > 0
+        ? `+${sentiment.scoreChange.toFixed(0)}%`
+        : `${sentiment.scoreChange.toFixed(0)}%`;
     return `${sentiment.ticker} sentiment: ${label} (${scoreStr}, ${changeStr} change)`;
   }
 
@@ -75,7 +78,10 @@ function buildCanonicalUrl(ticker: string): string {
 /**
  * Normalize market sentiment to ContentItemDraft
  */
-export async function normalizeMarketSentiment(raw: unknown, _params: FetchParams): Promise<ContentItemDraft> {
+export async function normalizeMarketSentiment(
+  raw: unknown,
+  _params: FetchParams
+): Promise<ContentItemDraft> {
   const sentiment = asRecord(raw) as unknown as AggregatedSentiment;
 
   // Validate required fields

@@ -6,7 +6,11 @@ import { HelpTooltip } from "@/components/HelpTooltip";
 import { ApiKeyGuidance, ApiKeyBanner } from "@/components/ApiKeyGuidance";
 import styles from "./SourceConfigForms.module.css";
 
-export function MarketSentimentConfigForm({ value, onChange, errors }: SourceConfigFormProps<MarketSentimentConfig>) {
+export function MarketSentimentConfigForm({
+  value,
+  onChange,
+  errors,
+}: SourceConfigFormProps<MarketSentimentConfig>) {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   const handleChange = <K extends keyof MarketSentimentConfig>(key: K, val: MarketSentimentConfig[K]) => {
@@ -39,11 +43,12 @@ export function MarketSentimentConfigForm({ value, onChange, errors }: SourceCon
 
       <div className={styles.helpBox}>
         <p>
-          Track social media sentiment for stocks aggregated from Reddit, Twitter, and StockTwits via Finnhub. Useful
-          for gauging retail investor sentiment and momentum.
+          Track social media sentiment for stocks aggregated from Reddit, Twitter, and StockTwits via Finnhub.
+          Useful for gauging retail investor sentiment and momentum.
         </p>
         <p style={{ marginTop: "var(--space-2)", color: "var(--color-text-muted)" }}>
-          <strong>Note:</strong> Social sentiment is inherently noisy and should be used as a supplementary signal.
+          <strong>Note:</strong> Social sentiment is inherently noisy and should be used as a supplementary
+          signal.
         </p>
       </div>
 
@@ -103,7 +108,10 @@ export function MarketSentimentConfigForm({ value, onChange, errors }: SourceCon
             max={100}
             value={value.sentiment_change_threshold ?? ""}
             onChange={(e) =>
-              handleChange("sentiment_change_threshold", e.target.value ? parseInt(e.target.value, 10) : undefined)
+              handleChange(
+                "sentiment_change_threshold",
+                e.target.value ? parseInt(e.target.value, 10) : undefined
+              )
             }
             placeholder="0"
             className={styles.numberInput}
@@ -130,7 +138,9 @@ export function MarketSentimentConfigForm({ value, onChange, errors }: SourceCon
             id="ms-minMentions"
             min={0}
             value={value.min_mentions ?? ""}
-            onChange={(e) => handleChange("min_mentions", e.target.value ? parseInt(e.target.value, 10) : undefined)}
+            onChange={(e) =>
+              handleChange("min_mentions", e.target.value ? parseInt(e.target.value, 10) : undefined)
+            }
             placeholder="0"
             className={styles.numberInput}
           />

@@ -262,11 +262,7 @@ export async function fetchMarketSentiment(params: FetchParams): Promise<FetchRe
       const previousData = previousScores[ticker];
       const previousScore = previousData?.score ?? null;
 
-      const sentiment = processSentimentData(
-        response,
-        config.extreme_threshold ?? 0.8,
-        previousScore
-      );
+      const sentiment = processSentimentData(response, config.extreme_threshold ?? 0.8, previousScore);
 
       if (!sentiment) {
         continue;
@@ -289,7 +285,10 @@ export async function fetchMarketSentiment(params: FetchParams): Promise<FetchRe
 
       // Sentiment change threshold filter
       if (config.sentiment_change_threshold && config.sentiment_change_threshold > 0) {
-        if (sentiment.scoreChange === null || Math.abs(sentiment.scoreChange) < config.sentiment_change_threshold) {
+        if (
+          sentiment.scoreChange === null ||
+          Math.abs(sentiment.scoreChange) < config.sentiment_change_threshold
+        ) {
           // If not tracking extreme alerts, skip this ticker
           if (!config.alert_on_extreme) {
             continue;

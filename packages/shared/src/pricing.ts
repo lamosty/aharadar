@@ -31,15 +31,45 @@ export const MODEL_PRICING: ModelPricing[] = [
   { provider: "openai", model: "text-embedding-ada-002", inputPer1MTokens: 0.1, outputPer1MTokens: 0 },
 
   // Anthropic
-  { provider: "anthropic", model: "claude-sonnet-4-20250514", inputPer1MTokens: 3.0, outputPer1MTokens: 15.0 },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4-20250514",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
   { provider: "anthropic", model: "claude-opus-4-20250514", inputPer1MTokens: 15.0, outputPer1MTokens: 75.0 },
-  { provider: "anthropic", model: "claude-3-5-sonnet-20241022", inputPer1MTokens: 3.0, outputPer1MTokens: 15.0 },
-  { provider: "anthropic", model: "claude-3-5-sonnet-latest", inputPer1MTokens: 3.0, outputPer1MTokens: 15.0 },
-  { provider: "anthropic", model: "claude-3-5-haiku-20241022", inputPer1MTokens: 0.8, outputPer1MTokens: 4.0 },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-sonnet-20241022",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-sonnet-latest",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-haiku-20241022",
+    inputPer1MTokens: 0.8,
+    outputPer1MTokens: 4.0,
+  },
   { provider: "anthropic", model: "claude-3-5-haiku-latest", inputPer1MTokens: 0.8, outputPer1MTokens: 4.0 },
   { provider: "anthropic", model: "claude-3-opus-20240229", inputPer1MTokens: 15.0, outputPer1MTokens: 75.0 },
-  { provider: "anthropic", model: "claude-3-sonnet-20240229", inputPer1MTokens: 3.0, outputPer1MTokens: 15.0 },
-  { provider: "anthropic", model: "claude-3-haiku-20240307", inputPer1MTokens: 0.25, outputPer1MTokens: 1.25 },
+  {
+    provider: "anthropic",
+    model: "claude-3-sonnet-20240229",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-haiku-20240307",
+    inputPer1MTokens: 0.25,
+    outputPer1MTokens: 1.25,
+  },
 
   // xAI (Grok)
   { provider: "xai", model: "grok-beta", inputPer1MTokens: 5.0, outputPer1MTokens: 15.0 },

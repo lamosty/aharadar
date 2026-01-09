@@ -4,22 +4,22 @@ This document provides response procedures for all AhaRadar alerts.
 
 ## Quick Reference
 
-| Alert | Severity | Category | First Response |
-|-------|----------|----------|----------------|
-| BudgetWarning | Warning | Budget | Review LLM usage |
-| BudgetCritical | Critical | Budget | Check fallback tier |
-| DailyBudgetWarning | Warning | Budget | Check daily patterns |
-| PipelineFailureSpike | Warning | Pipeline | Check worker logs |
-| PipelineStageSlow | Warning | Pipeline | Check resources |
-| IngestStalled | Warning | Pipeline | Check scheduler |
-| QueueBacklog | Warning | Queue | Check worker health |
-| QueueBacklogCritical | Critical | Queue | Scale workers |
-| APIHighErrorRate | Warning | API | Check API logs |
-| APIHighErrorRateCritical | Critical | API | Immediate triage |
-| APIHighLatency | Warning | API | Check DB/deps |
-| DatabaseSizeWarning | Warning | Storage | Review retention |
-| DatabaseSizeCritical | Critical | Storage | Scale storage |
-| ProviderCallsTableLarge | Warning | Storage | Archive records |
+| Alert                    | Severity | Category | First Response       |
+| ------------------------ | -------- | -------- | -------------------- |
+| BudgetWarning            | Warning  | Budget   | Review LLM usage     |
+| BudgetCritical           | Critical | Budget   | Check fallback tier  |
+| DailyBudgetWarning       | Warning  | Budget   | Check daily patterns |
+| PipelineFailureSpike     | Warning  | Pipeline | Check worker logs    |
+| PipelineStageSlow        | Warning  | Pipeline | Check resources      |
+| IngestStalled            | Warning  | Pipeline | Check scheduler      |
+| QueueBacklog             | Warning  | Queue    | Check worker health  |
+| QueueBacklogCritical     | Critical | Queue    | Scale workers        |
+| APIHighErrorRate         | Warning  | API      | Check API logs       |
+| APIHighErrorRateCritical | Critical | API      | Immediate triage     |
+| APIHighLatency           | Warning  | API      | Check DB/deps        |
+| DatabaseSizeWarning      | Warning  | Storage  | Review retention     |
+| DatabaseSizeCritical     | Critical | Storage  | Scale storage        |
+| ProviderCallsTableLarge  | Warning  | Storage  | Archive records      |
 
 ---
 
@@ -32,6 +32,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. Check current usage in Grafana dashboard (LLM Usage section)
 2. Query provider_calls for unusual patterns:
    ```sql
@@ -52,6 +53,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires immediately
 
 **Actions**:
+
 1. Pipeline will automatically use fallback tier (lower-quality model)
 2. Verify critical digests are still generating
 3. Investigate cause of high usage:
@@ -74,6 +76,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. Check if there's a scheduled bulk operation running
 2. Review hourly usage pattern:
    ```sql
@@ -99,6 +102,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires immediately
 
 **Actions**:
+
 1. Check worker logs for error messages:
    ```bash
    docker compose logs worker --tail 100 | grep -i error
@@ -124,6 +128,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 10 minutes
 
 **Actions**:
+
 1. Check which stage is slow in Grafana dashboard
 2. Common slow stages:
    - **triage**: LLM API latency
@@ -149,6 +154,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 60 minutes
 
 **Actions**:
+
 1. Check if scheduler is running:
    ```bash
    docker compose ps
@@ -178,6 +184,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. Check queue status in Grafana dashboard
 2. Verify worker is processing:
    ```bash
@@ -199,6 +206,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. All actions from QueueBacklog alert
 2. Check for stuck jobs:
    ```bash
@@ -222,6 +230,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. Check API logs:
    ```bash
    docker compose logs api --tail 100 | grep -i error
@@ -243,6 +252,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 2 minutes
 
 **Actions**:
+
 1. **Immediate triage** - API may be effectively down
 2. Check if API process is running:
    ```bash
@@ -268,6 +278,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. Check slow endpoints in Grafana dashboard
 2. Check database query performance:
    ```sql
@@ -298,6 +309,7 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. Check which tables are largest:
    ```sql
    SELECT relname,
@@ -318,8 +330,10 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires after 5 minutes
 
 **Actions**:
+
 1. All of warning actions
 2. Implement emergency retention if needed:
+
    ```sql
    -- Delete old provider call records (90+ days)
    DELETE FROM provider_calls
@@ -328,6 +342,7 @@ This document provides response procedures for all AhaRadar alerts.
    -- Reclaim space
    VACUUM FULL provider_calls;
    ```
+
 3. Scale storage if on cloud (increase volume size)
 4. Notify stakeholders about storage constraints
 
@@ -338,12 +353,14 @@ This document provides response procedures for all AhaRadar alerts.
 **Evaluation**: Every 1 minute, fires immediately
 
 **Actions**:
+
 1. Review if historical data is needed:
    ```sql
    SELECT MIN(created_at), MAX(created_at), COUNT(*)
    FROM provider_calls;
    ```
 2. Consider archiving old records:
+
    ```sql
    -- Create archive table
    CREATE TABLE provider_calls_archive (LIKE provider_calls INCLUDING ALL);
@@ -356,6 +373,7 @@ This document provides response procedures for all AhaRadar alerts.
    DELETE FROM provider_calls
    WHERE created_at < NOW() - INTERVAL '30 days';
    ```
+
 3. Note: `meta_json`/`error_json` columns may contain large blobs
 
 ---
@@ -364,13 +382,13 @@ This document provides response procedures for all AhaRadar alerts.
 
 ### Recommended Retention Policies
 
-| Table | Retention | Notes |
-|-------|-----------|-------|
-| provider_calls | 90 days | Archive to cold storage |
-| digests | 30 days | Keep summaries longer |
-| signals | 7 days | Rebuild from items if needed |
-| embeddings | With content_items | Linked lifecycle |
-| content_items | 30 days | Based on source freshness |
+| Table          | Retention          | Notes                        |
+| -------------- | ------------------ | ---------------------------- |
+| provider_calls | 90 days            | Archive to cold storage      |
+| digests        | 30 days            | Keep summaries longer        |
+| signals        | 7 days             | Rebuild from items if needed |
+| embeddings     | With content_items | Linked lifecycle             |
+| content_items  | 30 days            | Based on source freshness    |
 
 ### Manual Cleanup Commands
 
@@ -409,10 +427,12 @@ REINDEX TABLE <table_name>;
 Alerts are sent to configured contact points in `infra/grafana/provisioning/alerting/contact-points.yml`.
 
 **Default configuration** (placeholder):
+
 - Email: `alerts@example.com`
 - Webhook: `http://localhost:8080/alerts`
 
 **To configure Slack**:
+
 1. Create Slack webhook in your workspace
 2. Update `contact-points.yml` with webhook URL
 3. Restart Grafana

@@ -59,9 +59,7 @@ export function ExperimentalFeaturesForm() {
           <div key={feature.key} className={styles.featureCard}>
             <div className={styles.featureHeader}>
               <div className={styles.featureInfo}>
-                <span className={styles.featureName}>
-                  {t(feature.labelKey as Parameters<typeof t>[0])}
-                </span>
+                <span className={styles.featureName}>{t(feature.labelKey as Parameters<typeof t>[0])}</span>
                 {feature.href && (
                   <Link href={feature.href} className={styles.featureLink}>
                     Open →

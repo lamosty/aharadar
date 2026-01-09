@@ -72,9 +72,7 @@ export function TopicViewingProfileSettings({ topic }: TopicViewingProfileSettin
                 {t(`settings.viewing.profileDescriptions.${option.value}`)}
               </span>
             </div>
-            {option.value !== "custom" && (
-              <span className={styles.profileDecay}>{option.decayHours}h</span>
-            )}
+            {option.value !== "custom" && <span className={styles.profileDecay}>{option.decayHours}h</span>}
           </button>
         ))}
       </div>
@@ -110,9 +108,7 @@ export function TopicViewingProfileSettings({ topic }: TopicViewingProfileSettin
           onClick={handleMarkCaughtUp}
           disabled={isPending}
         >
-          {markCheckedMutation.isPending
-            ? t("digests.feed.markingCaughtUp")
-            : t("digests.feed.markCaughtUp")}
+          {markCheckedMutation.isPending ? t("digests.feed.markingCaughtUp") : t("digests.feed.markCaughtUp")}
         </button>
       </div>
 

@@ -24,10 +24,7 @@ export function Tooltip({ content, children, position = "top", className }: Tool
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -57,11 +54,7 @@ export function Tooltip({ content, children, position = "top", className }: Tool
     >
       {children}
       {isOpen && (
-        <div
-          ref={tooltipRef}
-          className={`${styles.tooltip} ${styles[position]}`}
-          role="tooltip"
-        >
+        <div ref={tooltipRef} className={`${styles.tooltip} ${styles[position]}`} role="tooltip">
           <div className={styles.arrow} />
           <div className={styles.content}>{content}</div>
         </div>

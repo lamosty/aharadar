@@ -7,6 +7,7 @@ Major planning session completed. Designed 4 strategic areas for AhaRadar as it 
 ## 4 Strategic Areas Planned
 
 ### 1. Monitoring & Reporting (Tasks 075-077b)
+
 - **Logging**: pino structured logging with correlation IDs
 - **Metrics**: Prometheus + Grafana dashboards
 - **Storage**: DB size, disk usage, row count monitoring
@@ -14,6 +15,7 @@ Major planning session completed. Designed 4 strategic areas for AhaRadar as it 
 - **Alerts**: Budget thresholds, pipeline failures, storage limits
 
 ### 2. User API Keys (Tasks 078-080)
+
 - **Security**: AES-256-GCM encryption with master key from env
 - **Storage**: `user_api_keys` table (encrypted_key, iv, key_suffix)
 - **Router**: Per-user key resolution in LLM router
@@ -21,6 +23,7 @@ Major planning session completed. Designed 4 strategic areas for AhaRadar as it 
 - **Note**: Optional feature for self-hosters, SaaS model TBD
 
 ### 3. Claude Integration - EXPERIMENTAL (Tasks 081a-082)
+
 - **Research First**: Task 081a - verify SDK auth works for background services
 - **Two Modes**: Subscription (personal) vs API (pay-per-token)
 - **Thinking**: Extended thinking enabled (like OpenAI reasoning)
@@ -30,6 +33,7 @@ Major planning session completed. Designed 4 strategic areas for AhaRadar as it 
 - **Scope**: OpenAI stays as production provider for SaaS
 
 ### 4. Connectors (Tasks 083-085, 087)
+
 - **YouTube**: RSS + transcript preview (first ~3000 chars only)
 - **RSS Types**: Podcasts, Substack, Medium, arXiv, Lobsters, Product Hunt, GitHub Releases
 - **Telegram**: Public channels via Bot API (not personal account)
@@ -37,20 +41,21 @@ Major planning session completed. Designed 4 strategic areas for AhaRadar as it 
 - **Research**: Task 087 - financial data (Polymarket, SEC, insider trading)
 
 ### Documentation (Task 086)
+
 - **Create**: security.md, providers.md, deployment.md
 - **Update**: spec.md, architecture.md, data-model.md, connectors.md
 
 ## Key Decisions Made
 
-| Decision | Rationale |
-|----------|-----------|
-| USD costs from token counts | APIs don't return dollar amounts |
-| Store `cost_estimate_usd` only | Don't need full pricing breakdown |
-| Pricing config in JSON file | Update via PR when prices change |
-| No web Readability fallback | RSS only - simpler and legal |
-| YouTube transcript preview | Full transcripts = future power-user plugin |
-| Claude = experimental | OpenAI stays production for SaaS |
-| AES-256-GCM for keys | Standard, production-ready encryption |
+| Decision                       | Rationale                                   |
+| ------------------------------ | ------------------------------------------- |
+| USD costs from token counts    | APIs don't return dollar amounts            |
+| Store `cost_estimate_usd` only | Don't need full pricing breakdown           |
+| Pricing config in JSON file    | Update via PR when prices change            |
+| No web Readability fallback    | RSS only - simpler and legal                |
+| YouTube transcript preview     | Full transcripts = future power-user plugin |
+| Claude = experimental          | OpenAI stays production for SaaS            |
+| AES-256-GCM for keys           | Standard, production-ready encryption       |
 
 ## Task Files Created
 

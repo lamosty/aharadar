@@ -43,8 +43,8 @@ export function SecEdgarConfigForm({ value, onChange, errors }: SourceConfigForm
 
       <div className={styles.helpBox}>
         <p>
-          Fetch SEC EDGAR filings for insider trading and institutional holdings. Form 4 shows insider buys/sells,
-          while 13F reveals quarterly institutional positions.
+          Fetch SEC EDGAR filings for insider trading and institutional holdings. Form 4 shows insider
+          buys/sells, while 13F reveals quarterly institutional positions.
         </p>
       </div>
 
@@ -56,11 +56,12 @@ export function SecEdgarConfigForm({ value, onChange, errors }: SourceConfigForm
             content={
               <>
                 <p>
-                  <strong>Form 4:</strong> Insider trading disclosures (buys, sells, awards). Filed within 2 days of
-                  transaction.
+                  <strong>Form 4:</strong> Insider trading disclosures (buys, sells, awards). Filed within 2
+                  days of transaction.
                 </p>
                 <p>
-                  <strong>13F:</strong> Institutional holdings. Filed quarterly by investment managers with $100M+ AUM.
+                  <strong>13F:</strong> Institutional holdings. Filed quarterly by investment managers with
+                  $100M+ AUM.
                 </p>
               </>
             }
@@ -105,8 +106,8 @@ export function SecEdgarConfigForm({ value, onChange, errors }: SourceConfigForm
               title="Filter by Stock Tickers"
               content={
                 <p>
-                  Comma-separated list of stock tickers to filter filings (e.g., AAPL, TSLA, NVDA). Leave empty for all
-                  tickers.
+                  Comma-separated list of stock tickers to filter filings (e.g., AAPL, TSLA, NVDA). Leave
+                  empty for all tickers.
                 </p>
               }
             />
@@ -142,7 +143,10 @@ export function SecEdgarConfigForm({ value, onChange, errors }: SourceConfigForm
                 min={0}
                 value={value.min_transaction_value ?? ""}
                 onChange={(e) =>
-                  handleChange("min_transaction_value", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "min_transaction_value",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                  )
                 }
                 placeholder="0"
                 className={styles.numberInput}
@@ -170,7 +174,10 @@ export function SecEdgarConfigForm({ value, onChange, errors }: SourceConfigForm
                 max={100}
                 value={value.max_filings_per_fetch ?? ""}
                 onChange={(e) =>
-                  handleChange("max_filings_per_fetch", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "max_filings_per_fetch",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                  )
                 }
                 placeholder="50"
                 className={styles.numberInput}

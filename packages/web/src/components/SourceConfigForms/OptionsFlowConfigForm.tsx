@@ -55,8 +55,8 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
 
       <div className={styles.helpBox}>
         <p>
-          Track unusual options activity including sweeps (urgent multi-exchange orders), blocks (large negotiated
-          trades), and unusual volume spikes. Options flow often leads stock price movements.
+          Track unusual options activity including sweeps (urgent multi-exchange orders), blocks (large
+          negotiated trades), and unusual volume spikes. Options flow often leads stock price movements.
         </p>
       </div>
 
@@ -95,8 +95,8 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
               content={
                 <>
                   <p>
-                    <strong>Sweep:</strong> Market order split across multiple exchanges to fill quickly - usually
-                    indicates urgency and conviction.
+                    <strong>Sweep:</strong> Market order split across multiple exchanges to fill quickly -
+                    usually indicates urgency and conviction.
                   </p>
                   <p>
                     <strong>Block:</strong> Large privately negotiated order - often institutional activity.
@@ -205,7 +205,9 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
                 id="of-minPremium"
                 min={0}
                 value={value.min_premium ?? ""}
-                onChange={(e) => handleChange("min_premium", e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                onChange={(e) =>
+                  handleChange("min_premium", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                }
                 placeholder="50000"
                 className={styles.numberInput}
               />
@@ -263,7 +265,10 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
                 max={100}
                 value={value.max_alerts_per_fetch ?? ""}
                 onChange={(e) =>
-                  handleChange("max_alerts_per_fetch", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "max_alerts_per_fetch",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                  )
                 }
                 placeholder="50"
                 className={styles.numberInput}
@@ -286,7 +291,8 @@ export function OptionsFlowConfigForm({ value, onChange }: SourceConfigFormProps
               title="Include ETF Options"
               content={
                 <p>
-                  Include options flow for ETFs like SPY, QQQ, IWM. ETF flow can indicate broad market sentiment.
+                  Include options flow for ETFs like SPY, QQQ, IWM. ETF flow can indicate broad market
+                  sentiment.
                 </p>
               }
             />

@@ -11,20 +11,25 @@ Implemented the complete preference-based scoring system (Task 046), recency dec
 ## Commits Made (8 total)
 
 ### Task 053: WhyShown Messaging
+
 - `2fc71d1` feat(web): show unavailable message when triage data missing
 
 ### Task 046: Preference-Based Scoring (4 phases)
+
 - `28f997b` feat(api,db): update preference profile on feedback
 - `d4bed04` feat(pipeline): increase preference weight from 5% to 15%
 - `de11c3c` feat(pipeline): enable source/author weight preferences in ranking
 
 ### Task 047: Recency Decay
+
 - `f056fa2` feat(pipeline): implement recency decay in ranking
 
 ### Task 052: X Display Names
+
 - `bd7e304` feat(connectors,web): add X user display names
 
 ### Task 059: Triage Investigation
+
 - `c15e43d` feat(pipeline): add triage stats to digest output
 
 ## Technical Details
@@ -32,6 +37,7 @@ Implemented the complete preference-based scoring system (Task 046), recency dec
 ### Preference Scoring System (Task 046)
 
 **Phase 1: Auto-update profiles on feedback**
+
 - In `POST /feedback`, after storing event:
   - Fetch item's embedding via new `getByContentItemId()` method
   - Look up topic_id via content_item_sources → sources
@@ -39,10 +45,12 @@ Implemented the complete preference-based scoring system (Task 046), recency dec
 - Files: `packages/api/src/routes/feedback.ts`, `packages/db/src/repos/embeddings.ts`
 
 **Phase 2: Increase preference weight**
+
 - Changed `wPref` from 0.05 to 0.15 (3x more impactful)
 - File: `packages/pipeline/src/stages/rank.ts`
 
 **Phase 3: Source/author weight preferences**
+
 - Wire up `computeUserPreferences()` from feedback_events repo
 - Pass `sourceType` and `author` to each ranking candidate
 - Apply as multipliers: `score × sourceTypeWeight × authorWeight`
@@ -53,6 +61,7 @@ Implemented the complete preference-based scoring system (Task 046), recency dec
 ### Recency Decay (Task 047)
 
 Added exponential decay based on topic's `decay_hours` setting:
+
 ```typescript
 const decayFactor = Math.exp(-ageHours / decayHours);
 const score = baseScore * decayFactor;
@@ -73,15 +82,18 @@ const score = baseScore * decayFactor;
 ### Triage Investigation (Task 059)
 
 **Root cause identified:** Triage is silently disabled when:
+
 1. OpenAI env vars missing (throws in `createEnvLlmRouter()`)
 2. Budget exhausted (`paidCallsAllowed = false`)
 
 **Fix:** Added visibility to digest output:
+
 - `DigestRunResult` now includes `triaged` count and `paidCallsAllowed`
 - Console logs: `[digest] Full triage: 30/30 items have LLM scores.`
 - Ran fresh digest to populate triage_json for recent items
 
 **Current state:**
+
 - 68 items with triage_json
 - 76 items without (from older digests before fix)
 - New runs will fully triage all items
@@ -89,6 +101,7 @@ const score = baseScore * decayFactor;
 ## Files Changed
 
 ### New/Modified in This Session
+
 ```
 packages/api/src/routes/feedback.ts          # Auto-update preference profiles
 packages/db/src/repos/embeddings.ts          # Added getByContentItemId
@@ -124,9 +137,11 @@ packages/web/src/messages/en.json                   # i18n strings
 ### High Priority
 
 #### Task 060: Onboarding Flow
+
 **Problem:** New users land on empty feed with no guidance.
 
 **Scope:**
+
 - Empty state with "Create your first topic" CTA
 - Guide to add sources
 - Optional: topic templates (Tech, Finance, Science)
@@ -134,9 +149,11 @@ packages/web/src/messages/en.json                   # i18n strings
 **Files:** `packages/web/src/app/app/feed/page.tsx`, new onboarding components
 
 #### Task 061: Integration Tests for Core Flows
+
 **Problem:** No automated tests for critical paths.
 
 **Scope:**
+
 - Test feedback → preference profile update flow
 - Test digest with triage
 - Test topic CRUD operations
@@ -146,9 +163,11 @@ packages/web/src/messages/en.json                   # i18n strings
 ### Medium Priority
 
 #### Task 062: Configurable Preference Weight
+
 **Problem:** Preference weight (0.15) is hardcoded.
 
 **Scope:**
+
 - Add `preference_weight` to user_preferences.custom_settings
 - UI slider in Settings: "How much should preferences affect ranking?"
 - Pass to rankCandidates
@@ -156,18 +175,22 @@ packages/web/src/messages/en.json                   # i18n strings
 **Files:** `packages/db/src/repos/user_preferences.ts`, `packages/web/src/app/app/settings/page.tsx`
 
 #### Task 063: Decay Toggle Options
+
 **Problem:** Decay currently always affects score. Plan mentioned toggles.
 
 **Scope:**
+
 - Add to topic settings: "Decay affects: Score ranking / New badge / Both"
 - Implement conditional decay application
 
 **Files:** `packages/db/migrations/`, `packages/pipeline/src/stages/rank.ts`
 
 #### Task 064: WhyShown Decay Display
+
 **Problem:** Decay is now a ranking factor but not visible in WhyShown.
 
 **Scope:**
+
 - Add recency_decay_v1 to WhyShown component
 - Show "90% fresh" or similar indicator
 - Tooltip explaining decay
@@ -177,16 +200,20 @@ packages/web/src/messages/en.json                   # i18n strings
 ### Lower Priority
 
 #### Task 065: Remove Singleton Context
+
 **Problem:** Still using `getSingletonContext()` for user - not multi-user ready.
 
 **Scope:**
+
 - Replace with proper auth context from magic link session
 - Update all API routes to use authenticated user
 
 #### Task 066: Topic URL Params
+
 **Problem:** Topic selection not in URL, can't share/bookmark filtered feeds.
 
 **Scope:**
+
 - Add `?topic=uuid` to feed URL
 - Sync TopicProvider with URL
 - Update on topic switch

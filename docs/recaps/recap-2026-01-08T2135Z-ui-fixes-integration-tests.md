@@ -6,28 +6,33 @@
 ## Completed Tasks
 
 ### Task 095: WhyShown HTML Fix (Hydration Errors)
+
 - Redesigned WhyShown as full-width accordion below feed item actions
 - Replaced nested `<dt>`/`<dd>` elements with `<span>` to fix invalid HTML nesting
 - Added `.metaLabel` and `.metaValue` CSS classes
 - Fixes 4 hydration errors in Next.js dev tools
 
 ### Task 096: Feed Tooltip Z-Index
+
 - Removed `overflow: hidden` from `.card` to prevent tooltip clipping
 - Added `border-radius` to `::before` gradient bar
 - Tooltips now appear above feed item cards
 
 ### Task 097: Source Weight Display
+
 - Added `source_type` field to `SourceWeightFeature` interface
 - Updated `computeEffectiveSourceWeight` to return source type
 - WhyShown now displays source type in Source Weight section
 - Fixed pre-existing test with outdated wPref expectation
 
 ### Task 098: API Keys 500 Error
+
 - Added `APP_ENCRYPTION_KEY` to `.env` (not committed - gitignored)
 - Manually applied migrations 0008-0010
 - Settings > API Keys now loads without error
 
 ### Task 068: Integration Tests Fix
+
 - Added migrations 0007-0010 to all integration test files:
   - `api.int.test.ts`
   - `digest.int.test.ts`
@@ -60,11 +65,13 @@
 ## Additional Work (Continued Session)
 
 ### Task 012: Canonical Cluster Representatives
+
 - Updated digest.ts, inbox.ts, review.ts to prefer titled items
 - Sort order: title preference (titled first), then recency
 - Clusters with mixed titled/untitled items now show titled representative
 
 ### Task 099: Cluster Sources UI (NEW FEATURE)
+
 - Added "+N sources" badge to feed cards when item represents a cluster
 - Tooltip explains more sources are available in WhyShown
 - Extended WhyShown panel with "Related Sources" section showing:
@@ -75,17 +82,18 @@
 
 ## Remaining Open Tasks
 
-| Task | Description | Priority |
-|------|-------------|----------|
-| 083 | YouTube connector implementation | Medium |
-| 084 | RSS-based connector types (7 new) | Medium |
-| 085 | Telegram connector | Medium |
-| 086 | Documentation refresh | Medium |
-| 019 | YouTube connector (deferred to 083) | Low |
+| Task | Description                         | Priority |
+| ---- | ----------------------------------- | -------- |
+| 083  | YouTube connector implementation    | Medium   |
+| 084  | RSS-based connector types (7 new)   | Medium   |
+| 085  | Telegram connector                  | Medium   |
+| 086  | Documentation refresh               | Medium   |
+| 019  | YouTube connector (deferred to 083) | Low      |
 
 ## Local Configuration Note
 
 Remember to add `APP_ENCRYPTION_KEY` to `.env`:
+
 ```bash
 # Generate with: openssl rand -hex 32
 APP_ENCRYPTION_KEY=<your-64-char-hex-key>

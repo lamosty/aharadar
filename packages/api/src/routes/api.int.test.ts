@@ -126,10 +126,10 @@ describe("API Routes Integration Tests", () => {
     contentItemId = contentResult.rows[0].id;
 
     // Link content item to source (junction table for multi-source support)
-    await db.query(
-      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
-      [contentItemId, sourceId]
-    );
+    await db.query(`INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`, [
+      contentItemId,
+      sourceId,
+    ]);
 
     // Create embedding for the content item (needed for preference updates)
     const embeddingVector = Array(1536).fill(0.01); // Fake embedding

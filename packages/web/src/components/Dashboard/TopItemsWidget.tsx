@@ -115,20 +115,12 @@ function TopicItemsSection({ topic }: TopicItemsSectionProps) {
             ))}
           </ul>
           {hasMore && !expanded && (
-            <button
-              type="button"
-              className={styles.showMoreButton}
-              onClick={() => setExpanded(true)}
-            >
+            <button type="button" className={styles.showMoreButton} onClick={() => setExpanded(true)}>
               Show more
             </button>
           )}
           {expanded && (
-            <button
-              type="button"
-              className={styles.showMoreButton}
-              onClick={() => setExpanded(false)}
-            >
+            <button type="button" className={styles.showMoreButton} onClick={() => setExpanded(false)}>
               Show less
             </button>
           )}

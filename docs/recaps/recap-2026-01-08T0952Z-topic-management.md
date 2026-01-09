@@ -11,6 +11,7 @@ Implemented full topic management system allowing users to create multiple "rada
 ## Commits Made (15 total)
 
 ### Auth Feature (from previous session - uncommitted)
+
 - `24bd38f` feat(db): add auth_tokens and sessions tables for magic link auth
 - `02202ea` feat(api): add magic link authentication routes
 - `22c82bc` feat(web): add magic link authentication frontend
@@ -21,18 +22,23 @@ Implemented full topic management system allowing users to create multiple "rada
 - `e86e6f2` refactor: minor code formatting improvements
 
 ### Task 048: X Posts Display
+
 - `3fe39b4` feat(api,web): display body_text for X posts in feed
 
 ### Task 049: Topics Settings UI
+
 - `644a9c7` fix(web): improve Topics settings UI layout
 
 ### Task 051: Reddit Subreddit Display
+
 - `c83fe1b` feat(api,web): display subreddit for Reddit posts in feed
 
 ### Task 053: WhyShown Empty State
+
 - `a4f250a` fix(web): hide WhyShown when no triage data available
 
 ### Task 050: Topic Management (4 phases)
+
 - `8b06793` feat(api): add create, update, and delete topic endpoints
 - `073b789` feat(web): add topic create/delete UI in Settings
 - `6f1ba74` feat(web): add TopicProvider and TopicSwitcher components
@@ -41,16 +47,19 @@ Implemented full topic management system allowing users to create multiple "rada
 ## Architecture Changes
 
 ### New Components
+
 - `TopicProvider` - React context for global topic state, persists to localStorage
 - `TopicSwitcher` - Dropdown component for switching topics in feed
 
 ### API Changes
+
 - `POST /api/topics` - Create new topic
 - `PATCH /api/topics/:id` - Update topic name/description
 - `DELETE /api/topics/:id` - Delete topic (moves sources to default)
 - `GET /api/items?topicId=...` - Filter items by topic
 
 ### Database
+
 - Topics repo: Added `update()` and `delete()` methods
 
 ## What Works Now
@@ -72,6 +81,7 @@ Implemented full topic management system allowing users to create multiple "rada
 ## Files Changed
 
 ### New Files
+
 ```
 packages/web/src/components/TopicProvider/TopicProvider.tsx
 packages/web/src/components/TopicProvider/index.ts
@@ -81,6 +91,7 @@ packages/web/src/components/TopicSwitcher/index.ts
 ```
 
 ### Modified Files
+
 ```
 packages/db/src/repos/topics.ts          # Added update/delete methods
 packages/api/src/routes/topics.ts        # Added create/update/delete endpoints
@@ -109,9 +120,11 @@ packages/web/src/messages/en.json                       # i18n strings
 ### High Priority
 
 #### Task 054: Source-Topic Assignment UI
+
 **Problem:** Users can create topics but can't assign sources to them via UI.
 
 **Scope:**
+
 - Add topic dropdown to source creation form in Admin > Sources
 - Add topic column/badge to source list
 - Add "Move to topic" action for existing sources
@@ -120,9 +133,11 @@ packages/web/src/messages/en.json                       # i18n strings
 **Files:** `packages/web/src/app/app/admin/sources/page.tsx`, `packages/api/src/routes/admin.ts`
 
 #### Task 055: Fix Mark as Caught Up for Selected Topic
+
 **Problem:** "Mark as caught up" in feed uses default topic context, not selected topic.
 
 **Scope:**
+
 - Pass `currentTopicId` to `useMarkChecked` hook
 - Update API to accept topicId (or use session topic)
 - Show confirmation with topic name
@@ -132,9 +147,11 @@ packages/web/src/messages/en.json                       # i18n strings
 ### Medium Priority
 
 #### Task 056: Topic Editing UI
+
 **Problem:** API supports updating topic name/description but no UI exists.
 
 **Scope:**
+
 - Add edit button to topic cards in Settings
 - Inline editing or modal for name/description
 - Prevent renaming "default" topic
@@ -142,9 +159,11 @@ packages/web/src/messages/en.json                       # i18n strings
 **Files:** `packages/web/src/components/TopicViewingProfile/TopicsList.tsx`
 
 #### Task 057: Improve Default Topic UX
+
 **Problem:** "default" is a poor topic name for new users.
 
 **Options:**
+
 - A) Rename to "My Radar" or "General" on first creation
 - B) Allow renaming default topic
 - C) Auto-create with user's name: "John's Radar"
@@ -152,9 +171,11 @@ packages/web/src/messages/en.json                       # i18n strings
 **Scope:** Requires decision on approach.
 
 #### Task 058: Run Pipeline Per Topic
+
 **Problem:** Pipeline runs for all sources, no way to trigger for specific topic.
 
 **Scope:**
+
 - Add topic filter to Admin > Run page
 - Pass topicId to pipeline job
 - Show topic name in run results
@@ -164,25 +185,31 @@ packages/web/src/messages/en.json                       # i18n strings
 ### Lower Priority
 
 #### Task 052: X Display Names (Investigation)
+
 **Problem:** X posts show username but not display name.
 
 **Investigation needed:**
+
 - Check if Grok API returns display name
 - If yes, map to metadata_json in connector
 - Display in FeedItem if available
 
 #### Task 059: Triage Pipeline Investigation
+
 **Problem:** Task 053 was a quick fix (hide WhyShown). Root cause: `triage_json` is NULL.
 
 **Investigation needed:**
+
 - Check if triage stage runs in pipeline
 - Check for errors in triage stage
 - Verify scoring happens after ingest
 
 #### Task 060: Onboarding Flow
+
 **Problem:** New users land on empty feed with no guidance.
 
 **Scope:**
+
 - Empty state with "Create your first topic" CTA
 - Guide to add sources
 - Optional: topic templates (Tech, Finance, Science)

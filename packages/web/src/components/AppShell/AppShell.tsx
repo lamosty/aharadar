@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/components/AuthProvider";
+import { UserMenu } from "@/components/UserMenu";
 import { getNavItemsForRole, getMobileNavItemsForRole, type NavItem } from "./nav-model";
 import styles from "./AppShell.module.css";
 
@@ -13,14 +14,12 @@ interface AppShellProps {
   children: ReactNode;
   /** Optional header slot (e.g., page title, breadcrumbs) */
   header?: ReactNode;
-  /** Optional sidebar footer slot (e.g., user info) */
-  sidebarFooter?: ReactNode;
 }
 
-export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
+export function AppShell({ children, header }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Filter nav items based on user role
   const navItems = getNavItemsForRole(user?.role);
@@ -72,7 +71,9 @@ export function AppShell({ children, header, sidebarFooter }: AppShellProps) {
           </ul>
         </nav>
 
-        {sidebarFooter && <div className={styles.sidebarFooter}>{sidebarFooter}</div>}
+        <div className={styles.sidebarFooter}>
+          <UserMenu />
+        </div>
       </aside>
 
       {/* Main content area */}

@@ -111,7 +111,12 @@ function isAssistantMessage(msg: unknown): msg is { type: "assistant"; content: 
 }
 
 function isResultMessage(msg: unknown): msg is { result: string } {
-  return typeof msg === "object" && msg !== null && "result" in msg && typeof (msg as { result: unknown }).result === "string";
+  return (
+    typeof msg === "object" &&
+    msg !== null &&
+    "result" in msg &&
+    typeof (msg as { result: unknown }).result === "string"
+  );
 }
 
 /**

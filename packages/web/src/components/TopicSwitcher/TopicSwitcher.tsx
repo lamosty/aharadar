@@ -51,9 +51,7 @@ export function TopicSwitcher({ className }: TopicSwitcherProps) {
           </option>
         ))}
       </select>
-      {currentTopic?.description && (
-        <span className={styles.description}>{currentTopic.description}</span>
-      )}
+      {currentTopic?.description && <span className={styles.description}>{currentTopic.description}</span>}
     </div>
   );
 }

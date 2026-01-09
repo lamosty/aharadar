@@ -1,10 +1,6 @@
 import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import {
-  MetricLabels,
-  MetricNames,
-  HTTP_DURATION_BUCKETS,
-} from "@aharadar/shared";
+import { MetricLabels, MetricNames, HTTP_DURATION_BUCKETS } from "@aharadar/shared";
 
 /** Global registry for API metrics */
 export const registry = new Registry();
@@ -45,10 +41,12 @@ function normalizeRoute(url: string): string {
   const path = url.split("?")[0] ?? url;
 
   // Replace UUID-like segments
-  return path
-    .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "/:id")
-    // Replace numeric IDs
-    .replace(/\/\d+/g, "/:id");
+  return (
+    path
+      .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "/:id")
+      // Replace numeric IDs
+      .replace(/\/\d+/g, "/:id")
+  );
 }
 
 /**

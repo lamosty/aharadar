@@ -74,7 +74,10 @@ async function main(): Promise<void> {
   const schedulerConfig = parseSchedulerConfig();
   const tickIntervalMs = getSchedulerIntervalMs();
 
-  log.info({ windowMode: schedulerConfig.windowMode, tickMinutes: tickIntervalMs / 60000 }, "Scheduler configured");
+  log.info(
+    { windowMode: schedulerConfig.windowMode, tickMinutes: tickIntervalMs / 60000 },
+    "Scheduler configured"
+  );
 
   // Create DB connection for scheduler
   const schedulerDb = createDb(env.databaseUrl);

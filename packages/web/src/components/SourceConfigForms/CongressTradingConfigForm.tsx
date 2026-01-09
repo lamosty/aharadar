@@ -74,8 +74,8 @@ export function CongressTradingConfigForm({
 
       <div className={styles.helpBox}>
         <p>
-          Track stock trades disclosed by members of the U.S. Congress. Congress members must disclose trades within
-          45 days. Data provided by Quiver Quantitative API.
+          Track stock trades disclosed by members of the U.S. Congress. Congress members must disclose trades
+          within 45 days. Data provided by Quiver Quantitative API.
         </p>
       </div>
 
@@ -88,7 +88,10 @@ export function CongressTradingConfigForm({
             <HelpTooltip
               title="Filter by Chamber"
               content={
-                <p>Filter trades by House of Representatives, Senate, or both. Leave unchecked for all chambers.</p>
+                <p>
+                  Filter trades by House of Representatives, Senate, or both. Leave unchecked for all
+                  chambers.
+                </p>
               }
             />
           </label>
@@ -163,8 +166,8 @@ export function CongressTradingConfigForm({
               title="Filter by Politician"
               content={
                 <p>
-                  Comma-separated list of politician names to filter (e.g., Nancy Pelosi, Dan Crenshaw). Partial
-                  matching is supported. Leave empty for all politicians.
+                  Comma-separated list of politician names to filter (e.g., Nancy Pelosi, Dan Crenshaw).
+                  Partial matching is supported. Leave empty for all politicians.
                 </p>
               }
             />
@@ -186,8 +189,8 @@ export function CongressTradingConfigForm({
               title="Filter by Stock Tickers"
               content={
                 <p>
-                  Comma-separated list of stock tickers to filter (e.g., AAPL, NVDA, GOOGL). Leave empty for all
-                  tickers.
+                  Comma-separated list of stock tickers to filter (e.g., AAPL, NVDA, GOOGL). Leave empty for
+                  all tickers.
                 </p>
               }
             />
@@ -212,7 +215,10 @@ export function CongressTradingConfigForm({
                   content={
                     <>
                       <p>Filter trades by minimum transaction amount in USD.</p>
-                      <p>Congress disclosures use ranges (e.g., $15,001 - $50,000). This filters by the lower bound.</p>
+                      <p>
+                        Congress disclosures use ranges (e.g., $15,001 - $50,000). This filters by the lower
+                        bound.
+                      </p>
                       <p>Set to 15000 to exclude small trades.</p>
                     </>
                   }
@@ -223,7 +229,9 @@ export function CongressTradingConfigForm({
                 id="ct-minAmount"
                 min={0}
                 value={value.min_amount ?? ""}
-                onChange={(e) => handleChange("min_amount", e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                onChange={(e) =>
+                  handleChange("min_amount", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                }
                 placeholder="0"
                 className={styles.numberInput}
               />
@@ -250,7 +258,10 @@ export function CongressTradingConfigForm({
                 max={100}
                 value={value.max_trades_per_fetch ?? ""}
                 onChange={(e) =>
-                  handleChange("max_trades_per_fetch", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  handleChange(
+                    "max_trades_per_fetch",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                  )
                 }
                 placeholder="50"
                 className={styles.numberInput}

@@ -6,25 +6,30 @@
 ## Work Completed
 
 ### 1. Task 093: Worker Service Deployment (COMMITTED)
+
 - Created `Dockerfile` with worker target
 - Added worker service to `docker-compose.yml`
 - Added `pnpm dev:worker` script
 - Commit: `0f51d1c`
 
 ### 2. Task 088: SEC EDGAR Connector (COMMITTED)
+
 - Created full connector in `packages/connectors/src/sec_edgar/`
 - Form 4 (insider trading) + 13F (institutional holdings) parsing
 - RSS feed fetching with rate limiting
 - Commit: `912e2ba`
 
 ### 3. Task 090: Congress Trading Connector (NEEDS COMMIT)
+
 Backend connector complete:
+
 - `packages/connectors/src/congress_trading/config.ts`
 - `packages/connectors/src/congress_trading/fetch.ts`
 - `packages/connectors/src/congress_trading/normalize.ts`
 - `packages/connectors/src/congress_trading/index.ts`
 
 UI integration complete:
+
 - `packages/web/src/components/SourceConfigForms/CongressTradingConfigForm.tsx` (new)
 - `packages/web/src/components/SourceConfigForms/SecEdgarConfigForm.tsx` (new)
 - Updated `SourceConfigForm.tsx`, `index.ts`, `types.ts`
@@ -35,6 +40,7 @@ UI integration complete:
 ## Files to Commit for Task 090
 
 Stage these files:
+
 ```bash
 git add \
   packages/connectors/src/congress_trading/ \
@@ -53,6 +59,7 @@ git add \
 ```
 
 Suggested commit message:
+
 ```
 feat(connectors): add Congress Trading connector with UI integration
 

@@ -54,7 +54,9 @@ function parseVectorText(text: string): number[] | null {
 
 export function createEmbeddingsRepo(db: Queryable) {
   return {
-    async getByContentItemId(contentItemId: string): Promise<{ model: string; dims: number; vector: number[] } | null> {
+    async getByContentItemId(
+      contentItemId: string
+    ): Promise<{ model: string; dims: number; vector: number[] } | null> {
       const res = await db.query<EmbeddingRow>(
         `select
            content_item_id::text as content_item_id,

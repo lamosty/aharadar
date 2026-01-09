@@ -139,7 +139,8 @@ export async function askCommand(args: string[] = []): Promise<void> {
     }
 
     const confidencePct = (response.confidence.score * 100).toFixed(0);
-    const confidenceEmoji = response.confidence.score >= 0.7 ? "🟢" : response.confidence.score >= 0.4 ? "🟡" : "🔴";
+    const confidenceEmoji =
+      response.confidence.score >= 0.7 ? "🟢" : response.confidence.score >= 0.4 ? "🟡" : "🔴";
     console.log(`\n🎯 Confidence: ${confidenceEmoji} ${confidencePct}%`);
     console.log(`   ${response.confidence.reasoning}`);
 
@@ -151,7 +152,9 @@ export async function askCommand(args: string[] = []): Promise<void> {
     }
 
     const totalTokens = response.usage.tokensUsed.input + response.usage.tokensUsed.output;
-    console.log(`\n📊 Stats: ${response.usage.clustersRetrieved} clusters, ${totalTokens} tokens, ${elapsed}ms`);
+    console.log(
+      `\n📊 Stats: ${response.usage.clustersRetrieved} clusters, ${totalTokens} tokens, ${elapsed}ms`
+    );
   } finally {
     await db.close();
   }

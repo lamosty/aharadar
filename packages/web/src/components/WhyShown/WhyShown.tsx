@@ -27,7 +27,12 @@ function formatSourceType(type: string): string {
   return labels[type] || type.toUpperCase();
 }
 
-export function WhyShown({ features, clusterItems, defaultExpanded = false, compact = false }: WhyShownProps) {
+export function WhyShown({
+  features,
+  clusterItems,
+  defaultExpanded = false,
+  compact = false,
+}: WhyShownProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || compact);
   const panelId = useId();
 
@@ -278,9 +283,7 @@ function WhyShownContent({
             {features.system_features.user_preference_v1.author && (
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>{t("digests.whyShown.userPrefAuthor")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.user_preference_v1.author}
-                </span>
+                <span className={styles.metaValue}>{features.system_features.user_preference_v1.author}</span>
               </div>
             )}
             {typeof features.system_features.user_preference_v1.author_weight === "number" &&

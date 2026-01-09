@@ -66,18 +66,15 @@ export function createUserApiKeysRepo(db: Queryable) {
     },
 
     async delete(userId: string, id: string): Promise<boolean> {
-      const result = await db.query(
-        `DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2`,
-        [id, userId]
-      );
+      const result = await db.query(`DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2`, [id, userId]);
       return (result.rowCount ?? 0) > 0;
     },
 
     async deleteByProvider(userId: string, provider: string): Promise<boolean> {
-      const result = await db.query(
-        `DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`,
-        [userId, provider]
-      );
+      const result = await db.query(`DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`, [
+        userId,
+        provider,
+      ]);
       return (result.rowCount ?? 0) > 0;
     },
   };

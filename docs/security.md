@@ -8,12 +8,12 @@ User-provided API keys are encrypted at rest using AES-256-GCM.
 
 ### Encryption Details
 
-| Property | Value |
-|----------|-------|
-| Algorithm | AES-256-GCM (authenticated encryption) |
-| Key size | 256 bits (32 bytes) |
-| IV size | 96 bits (12 bytes, randomly generated per encryption) |
-| Auth tag | 128 bits (appended to ciphertext) |
+| Property  | Value                                                 |
+| --------- | ----------------------------------------------------- |
+| Algorithm | AES-256-GCM (authenticated encryption)                |
+| Key size  | 256 bits (32 bytes)                                   |
+| IV size   | 96 bits (12 bytes, randomly generated per encryption) |
+| Auth tag  | 128 bits (appended to ciphertext)                     |
 
 ### Why AES-256-GCM?
 
@@ -27,17 +27,20 @@ User-provided API keys are encrypted at rest using AES-256-GCM.
 The master encryption key is provided via `APP_ENCRYPTION_KEY` environment variable.
 
 **Generation:**
+
 ```bash
 # Generate a secure 32-byte key
 openssl rand -hex 32
 ```
 
 **Requirements:**
+
 - Must be 64 hex characters (32 bytes)
 - Must be kept secret and backed up securely
 - Rotation requires re-encrypting all stored keys
 
 **Storage recommendations:**
+
 - Development: `.env` file (gitignored)
 - Production: Secret manager (AWS Secrets Manager, HashiCorp Vault, etc.)
 - Never commit to version control

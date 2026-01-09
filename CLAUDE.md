@@ -56,6 +56,7 @@ This app is highly experimental. Value of features can't be known until tested i
 - **No premature optimization**: build the simple version, see if it works, then iterate
 
 Example config pattern for experimental features:
+
 ```typescript
 {
   "experimental": {
@@ -115,12 +116,13 @@ For Playwright/manual testing, bypass frontend auth via cookie:
 
 ```javascript
 // In browser console:
-document.cookie = 'BYPASS_AUTH=admin; path=/'  // Test as admin user
-document.cookie = 'BYPASS_AUTH=user; path=/'   // Test as regular user
-document.cookie = 'BYPASS_AUTH=; path=/'       // Disable bypass
+document.cookie = "BYPASS_AUTH=admin; path=/"; // Test as admin user
+document.cookie = "BYPASS_AUTH=user; path=/"; // Test as regular user
+document.cookie = "BYPASS_AUTH=; path=/"; // Disable bypass
 ```
 
 **Safety notes:**
+
 - Only bypasses frontend redirect (middleware.ts), NOT API authentication
 - API calls still require valid session or will fail with 401/403
 - Creates mock user object (id: "test-user-id") - won't work for user-specific DB operations

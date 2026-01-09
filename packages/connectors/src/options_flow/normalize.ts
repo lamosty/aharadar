@@ -50,8 +50,7 @@ function generateTitle(flow: OptionsFlowRaw): string {
 function generateBodyText(flow: OptionsFlowRaw): string {
   const daysToExpiry = calculateDaysToExpiry(flow.expiry);
   const volumeOiRatio = flow.open_interest > 0 ? (flow.volume / flow.open_interest).toFixed(2) : "N/A";
-  const isOTM =
-    flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
+  const isOTM = flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
   const moneyness = isOTM ? "OTM" : flow.strike === flow.spot_price ? "ATM" : "ITM";
 
   let body = `${flow.flow_type.toUpperCase()} order on $${flow.symbol}`;
@@ -105,8 +104,7 @@ export async function normalizeOptionsFlow(raw: unknown, _params: FetchParams): 
   const daysToExpiry = calculateDaysToExpiry(flow.expiry);
 
   // Determine if OTM
-  const isOTM =
-    flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
+  const isOTM = flow.contract_type === "call" ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
 
   // Determine if weekly (typically < 7 days to expiry on Friday)
   const isWeekly = daysToExpiry <= 7;

@@ -222,10 +222,7 @@ export function createTopicsRepo(db: Queryable) {
     /**
      * Update topic name and/or description.
      */
-    async update(
-      id: string,
-      updates: { name?: string; description?: string | null }
-    ): Promise<Topic> {
+    async update(id: string, updates: { name?: string; description?: string | null }): Promise<Topic> {
       const { name, description } = updates;
 
       const setClauses: string[] = [];

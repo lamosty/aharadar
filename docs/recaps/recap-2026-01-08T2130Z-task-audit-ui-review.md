@@ -6,19 +6,25 @@
 ## Work Completed
 
 ### 1. Task Audit (Comprehensive)
+
 Audited all 94 task files against actual codebase implementation:
+
 - **80 tasks** moved to `docs/tasks/done/`
 - **7 tasks** remain open (excluding newly created)
 - Created `done/` directory for completed tasks
 
 ### 2. Auth Bypass Feature
+
 Added cookie-based auth bypass for testing:
+
 - `BYPASS_AUTH=admin` or `BYPASS_AUTH=user` cookie
 - Works with middleware.ts + AuthProvider.tsx
 - Documented in CLAUDE.md
 
 ### 3. UI Audit
+
 Systematically tested all pages:
+
 - Dashboard, Feed, Ask, Digests, Sources, Topics, Admin, Settings
 - Found 4 issues, created task files
 
@@ -33,53 +39,62 @@ Systematically tested all pages:
 ## Open Tasks
 
 ### High Priority (New - UI Issues)
-| Task | Description | File |
-|------|-------------|------|
-| **095** | WhyShown HTML nesting (hydration errors) | `task-095-whyshown-html-fix.md` |
-| **098** | Settings API keys 500 error | `task-098-settings-api-keys-500.md` |
+
+| Task    | Description                              | File                                |
+| ------- | ---------------------------------------- | ----------------------------------- |
+| **095** | WhyShown HTML nesting (hydration errors) | `task-095-whyshown-html-fix.md`     |
+| **098** | Settings API keys 500 error              | `task-098-settings-api-keys-500.md` |
 
 ### Medium Priority
-| Task | Description |
-|------|-------------|
-| **096** | Feed tooltip z-index |
+
+| Task    | Description                        |
+| ------- | ---------------------------------- |
+| **096** | Feed tooltip z-index               |
 | **068** | Integration tests fix (17 failing) |
 
 ### Low Priority / Deferred
-| Task | Description |
-|------|-------------|
+
+| Task    | Description                               |
+| ------- | ----------------------------------------- |
 | **012** | Canonical cluster reps (title preference) |
-| **019** | YouTube connector (deferred) |
-| **083** | YouTube connector (deferred) |
-| **084** | RSS connector types |
-| **085** | Telegram connector |
-| **086** | Docs refresh (partial) |
-| **097** | WhyShown source weight empty |
+| **019** | YouTube connector (deferred)              |
+| **083** | YouTube connector (deferred)              |
+| **084** | RSS connector types                       |
+| **085** | Telegram connector                        |
+| **086** | Docs refresh (partial)                    |
+| **097** | WhyShown source weight empty              |
 
 ## Key Findings
 
 ### WhyShown Component (Task 095)
+
 4 hydration errors from invalid HTML nesting:
+
 - `<dt>` inside `<dd>`
 - `<dd>` inside `<dd>`
 - Location: `packages/web/src/components/WhyShown/WhyShown.tsx` lines 70-221
 - Fix: Replace nested `<dt>`/`<dd>` with `<div>` elements
 
 ### API Keys Error (Task 098)
+
 Settings page shows "Failed to load API keys" with 500 error.
 Likely causes:
+
 1. Missing `APP_ENCRYPTION_KEY` in .env
 2. Missing migration `0008_user_api_keys.sql`
 3. Auth bypass creates mock user that doesn't exist in DB
 
 ### Task 012 Status
+
 NOT implemented - the SQL at `digest.ts:642` uses only recency ordering, no title preference. Low priority enhancement.
 
 ## Testing Notes
 
 Auth bypass usage:
+
 ```javascript
-document.cookie = 'BYPASS_AUTH=admin; path=/'  // Admin
-document.cookie = 'BYPASS_AUTH=user; path=/'   // Regular user
+document.cookie = "BYPASS_AUTH=admin; path=/"; // Admin
+document.cookie = "BYPASS_AUTH=user; path=/"; // Regular user
 ```
 
 ## Seed Prompt for Next Session

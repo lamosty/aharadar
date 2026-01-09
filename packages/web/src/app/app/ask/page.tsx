@@ -207,7 +207,9 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
       </DebugSection>
 
       {/* Retrieval Phase */}
-      <DebugSection title={`Retrieval (${debug.retrieval.clustersMatched}/${debug.retrieval.clustersSearched} clusters)`}>
+      <DebugSection
+        title={`Retrieval (${debug.retrieval.clustersMatched}/${debug.retrieval.clustersSearched} clusters)`}
+      >
         <DebugRow label="Clusters Searched" value={debug.retrieval.clustersSearched} />
         <DebugRow label="Clusters Matched" value={debug.retrieval.clustersMatched} />
         <DebugRow label="Min Similarity" value={debug.retrieval.minSimilarityThreshold.toFixed(2)} />
@@ -218,7 +220,9 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
               <div key={cluster.id} className={styles.clusterCard}>
                 <div className={styles.clusterHeader}>
                   <span className={styles.clusterIndex}>Cluster {i + 1}</span>
-                  <span className={styles.clusterSimilarity}>{(cluster.similarity * 100).toFixed(1)}% match</span>
+                  <span className={styles.clusterSimilarity}>
+                    {(cluster.similarity * 100).toFixed(1)}% match
+                  </span>
                 </div>
                 {cluster.summary && <p className={styles.clusterSummary}>{cluster.summary}</p>}
                 <div className={styles.clusterItems}>
@@ -233,7 +237,8 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
                           item.title
                         )}
                         <span className={styles.clusterItemMeta}>
-                          [{item.sourceType}] {item.publishedAt && new Date(item.publishedAt).toLocaleDateString()}
+                          [{item.sourceType}]{" "}
+                          {item.publishedAt && new Date(item.publishedAt).toLocaleDateString()}
                         </span>
                       </div>
                       <p className={styles.clusterItemPreview}>{item.bodyPreview}</p>
@@ -253,11 +258,11 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
         <DebugRow label="Endpoint" value={debug.llm.endpoint} mono />
         <DebugRow label="Input Tokens" value={debug.llm.inputTokens.toLocaleString()} />
         <DebugRow label="Output Tokens" value={debug.llm.outputTokens.toLocaleString()} />
-        <DebugRow label="Total Tokens" value={(debug.llm.inputTokens + debug.llm.outputTokens).toLocaleString()} />
         <DebugRow
-          label="Parse Success"
-          value={debug.llm.parseSuccess ? "✓ Yes" : "✗ No (fallback to raw)"}
+          label="Total Tokens"
+          value={(debug.llm.inputTokens + debug.llm.outputTokens).toLocaleString()}
         />
+        <DebugRow label="Parse Success" value={debug.llm.parseSuccess ? "✓ Yes" : "✗ No (fallback to raw)"} />
 
         <div className={styles.debugCodeBlock}>
           <div className={styles.debugCodeHeader}>
@@ -456,15 +461,15 @@ export default function AskPage() {
 
         <div className={styles.formActions}>
           <label className={styles.debugToggle}>
-            <input
-              type="checkbox"
-              checked={debugMode}
-              onChange={(e) => setDebugMode(e.target.checked)}
-            />
+            <input type="checkbox" checked={debugMode} onChange={(e) => setDebugMode(e.target.checked)} />
             <span>Show debug info</span>
           </label>
 
-          <button type="submit" disabled={loading || !currentTopicId || !question.trim()} className={styles.submitButton}>
+          <button
+            type="submit"
+            disabled={loading || !currentTopicId || !question.trim()}
+            className={styles.submitButton}
+          >
             {loading ? t("ask.thinking") : t("ask.submit")}
           </button>
         </div>
@@ -486,7 +491,9 @@ export default function AskPage() {
           {confidenceLevel && (
             <section className={styles.confidenceSection}>
               <h3>{t("ask.confidence")}</h3>
-              <div className={`${styles.confidenceBadge} ${styles[`confidence${confidenceLevel.charAt(0).toUpperCase() + confidenceLevel.slice(1)}`]}`}>
+              <div
+                className={`${styles.confidenceBadge} ${styles[`confidence${confidenceLevel.charAt(0).toUpperCase() + confidenceLevel.slice(1)}`]}`}
+              >
                 {Math.round(response.confidence.score * 100)}%
               </div>
               <p className={styles.confidenceReasoning}>{response.confidence.reasoning}</p>
@@ -500,7 +507,12 @@ export default function AskPage() {
                 {response.citations.map((cite, i) => (
                   <li key={cite.id || i} className={styles.citation}>
                     {cite.url ? (
-                      <a href={cite.url} target="_blank" rel="noopener noreferrer" className={styles.citationTitle}>
+                      <a
+                        href={cite.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.citationTitle}
+                      >
                         {cite.title}
                       </a>
                     ) : (

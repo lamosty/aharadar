@@ -470,116 +470,114 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   // PATCH /topics/:id - Update topic name/description
-  fastify.patch<{ Params: { id: string }; Body: UpdateTopicBody }>(
-    "/topics/:id",
-    async (request, reply) => {
-      const ctx = await getSingletonContext();
-      if (!ctx) {
-        return reply.code(503).send({
-          ok: false,
-          error: {
-            code: "NOT_INITIALIZED",
-            message: "Database not initialized: no user or topic found",
-          },
-        });
-      }
+  fastify.patch<{ Params: { id: string }; Body: UpdateTopicBody }>("/topics/:id", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
 
-      const { id } = request.params;
+    const { id } = request.params;
 
-      if (!isValidUuid(id)) {
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "id must be a valid UUID",
+        },
+      });
+    }
+
+    const body = request.body as unknown;
+    if (!body || typeof body !== "object") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_BODY",
+          message: "Request body must be a JSON object",
+        },
+      });
+    }
+
+    const { name, description } = body as Record<string, unknown>;
+
+    // Validate name if provided
+    if (name !== undefined) {
+      if (typeof name !== "string" || name.trim().length === 0) {
         return reply.code(400).send({
           ok: false,
           error: {
             code: "INVALID_PARAM",
-            message: "id must be a valid UUID",
+            message: "name must be a non-empty string",
           },
         });
       }
-
-      const body = request.body as unknown;
-      if (!body || typeof body !== "object") {
+      if (name.trim().length > 100) {
         return reply.code(400).send({
           ok: false,
           error: {
-            code: "INVALID_BODY",
-            message: "Request body must be a JSON object",
+            code: "INVALID_PARAM",
+            message: "name must be 100 characters or less",
           },
         });
       }
-
-      const { name, description } = body as Record<string, unknown>;
-
-      // Validate name if provided
-      if (name !== undefined) {
-        if (typeof name !== "string" || name.trim().length === 0) {
-          return reply.code(400).send({
-            ok: false,
-            error: {
-              code: "INVALID_PARAM",
-              message: "name must be a non-empty string",
-            },
-          });
-        }
-        if (name.trim().length > 100) {
-          return reply.code(400).send({
-            ok: false,
-            error: {
-              code: "INVALID_PARAM",
-              message: "name must be 100 characters or less",
-            },
-          });
-        }
-      }
-
-      // Verify topic exists and belongs to user
-      const db = getDb();
-      const existing = await db.topics.getById(id);
-
-      if (!existing) {
-        return reply.code(404).send({
-          ok: false,
-          error: {
-            code: "NOT_FOUND",
-            message: `Topic not found: ${id}`,
-          },
-        });
-      }
-
-      if (existing.user_id !== ctx.userId) {
-        return reply.code(403).send({
-          ok: false,
-          error: {
-            code: "FORBIDDEN",
-            message: "Topic does not belong to current user",
-          },
-        });
-      }
-
-      // Check for duplicate name if renaming
-      if (name !== undefined && name.trim() !== existing.name) {
-        const duplicate = await db.topics.getByName({ userId: ctx.userId, name: name.trim() });
-        if (duplicate) {
-          return reply.code(409).send({
-            ok: false,
-            error: {
-              code: "DUPLICATE",
-              message: `A topic named "${name.trim()}" already exists`,
-            },
-          });
-        }
-      }
-
-      const updated = await db.topics.update(id, {
-        name: typeof name === "string" ? name.trim() : undefined,
-        description: description === null ? null : typeof description === "string" ? description.trim() : undefined,
-      });
-
-      return {
-        ok: true,
-        topic: formatTopic(updated),
-      };
     }
-  );
+
+    // Verify topic exists and belongs to user
+    const db = getDb();
+    const existing = await db.topics.getById(id);
+
+    if (!existing) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: `Topic not found: ${id}`,
+        },
+      });
+    }
+
+    if (existing.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Topic does not belong to current user",
+        },
+      });
+    }
+
+    // Check for duplicate name if renaming
+    if (name !== undefined && name.trim() !== existing.name) {
+      const duplicate = await db.topics.getByName({ userId: ctx.userId, name: name.trim() });
+      if (duplicate) {
+        return reply.code(409).send({
+          ok: false,
+          error: {
+            code: "DUPLICATE",
+            message: `A topic named "${name.trim()}" already exists`,
+          },
+        });
+      }
+    }
+
+    const updated = await db.topics.update(id, {
+      name: typeof name === "string" ? name.trim() : undefined,
+      description:
+        description === null ? null : typeof description === "string" ? description.trim() : undefined,
+    });
+
+    return {
+      ok: true,
+      topic: formatTopic(updated),
+    };
+  });
 
   // DELETE /topics/:id - Delete a topic
   fastify.delete<{ Params: { id: string } }>("/topics/:id", async (request, reply) => {
@@ -646,10 +644,7 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
     // Move sources to the first topic (by creation date) before deleting
     const firstTopic = allTopics.find((t) => t.id !== id);
     if (firstTopic) {
-      await db.query(
-        "UPDATE sources SET topic_id = $1 WHERE topic_id = $2",
-        [firstTopic.id, id]
-      );
+      await db.query("UPDATE sources SET topic_id = $1 WHERE topic_id = $2", [firstTopic.id, id]);
     }
 
     await db.topics.delete(id);

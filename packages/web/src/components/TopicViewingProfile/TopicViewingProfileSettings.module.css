@@ -147,7 +147,9 @@
   background: var(--color-background);
   color: var(--color-text-primary);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   white-space: nowrap;
 }
 

@@ -4,6 +4,7 @@ import { computeCreditsStatus } from "@aharadar/pipeline";
 import type { SourceRow, LlmProvider, LlmSettingsUpdate } from "@aharadar/db";
 import { getDb, getSingletonContext } from "../lib/db.js";
 import { getPipelineQueue } from "../lib/queue.js";
+import { getUserId } from "../auth/session.js";
 
 type RunMode = "low" | "normal" | "high" | "catch_up";
 const VALID_MODES: RunMode[] = ["low", "normal", "high", "catch_up"];
@@ -289,8 +290,14 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           },
         });
       }
-      const { provider: overrideProvider, model: overrideModel } = providerOverride as Record<string, unknown>;
-      if (overrideProvider !== undefined && !validProviders.includes(overrideProvider as typeof validProviders[number])) {
+      const { provider: overrideProvider, model: overrideModel } = providerOverride as Record<
+        string,
+        unknown
+      >;
+      if (
+        overrideProvider !== undefined &&
+        !validProviders.includes(overrideProvider as (typeof validProviders)[number])
+      ) {
         return reply.code(400).send({
           ok: false,
           error: {
@@ -737,6 +744,46 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
+  // GET /admin/users - List all users (admin only)
+  fastify.get("/admin/users", async (request, reply) => {
+    const db = getDb();
+
+    // Get current user and verify admin role
+    try {
+      const userId = getUserId(request);
+      const user = await db.users.getById(userId);
+      if (!user || user.role !== "admin") {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Admin access required",
+          },
+        });
+      }
+    } catch {
+      return reply.code(401).send({
+        ok: false,
+        error: {
+          code: "NOT_AUTHENTICATED",
+          message: "Authentication required",
+        },
+      });
+    }
+
+    const users = await db.users.listAll();
+
+    return {
+      ok: true,
+      users: users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        createdAt: u.created_at,
+      })),
+    };
+  });
+
   // PATCH /admin/llm-settings - Update LLM configuration
   fastify.patch("/admin/llm-settings", async (request, reply) => {
     const ctx = await getSingletonContext();
@@ -826,7 +873,11 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
     // Validate numeric field
     if (claudeCallsPerHour !== undefined) {
-      if (typeof claudeCallsPerHour !== "number" || !Number.isInteger(claudeCallsPerHour) || claudeCallsPerHour < 1) {
+      if (
+        typeof claudeCallsPerHour !== "number" ||
+        !Number.isInteger(claudeCallsPerHour) ||
+        claudeCallsPerHour < 1
+      ) {
         return reply.code(400).send({
           ok: false,
           error: {
@@ -842,8 +893,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     if (provider !== undefined) updateParams.provider = provider as LlmProvider;
     if (anthropicModel !== undefined) updateParams.anthropic_model = anthropicModel as string;
     if (openaiModel !== undefined) updateParams.openai_model = openaiModel as string;
-    if (claudeSubscriptionEnabled !== undefined) updateParams.claude_subscription_enabled = claudeSubscriptionEnabled as boolean;
-    if (claudeTriageThinking !== undefined) updateParams.claude_triage_thinking = claudeTriageThinking as boolean;
+    if (claudeSubscriptionEnabled !== undefined)
+      updateParams.claude_subscription_enabled = claudeSubscriptionEnabled as boolean;
+    if (claudeTriageThinking !== undefined)
+      updateParams.claude_triage_thinking = claudeTriageThinking as boolean;
     if (claudeCallsPerHour !== undefined) updateParams.claude_calls_per_hour = claudeCallsPerHour as number;
 
     const db = getDb();

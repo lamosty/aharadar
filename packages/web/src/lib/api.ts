@@ -280,7 +280,19 @@ export interface SourcePatchResponse {
 }
 
 /** Supported source types */
-export const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube", "sec_edgar", "congress_trading", "polymarket", "options_flow", "market_sentiment"] as const;
+export const SUPPORTED_SOURCE_TYPES = [
+  "reddit",
+  "hn",
+  "rss",
+  "signal",
+  "x_posts",
+  "youtube",
+  "sec_edgar",
+  "congress_trading",
+  "polymarket",
+  "options_flow",
+  "market_sentiment",
+] as const;
 
 export type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
 
@@ -900,10 +912,7 @@ export async function updateTopic(
 /**
  * Delete a topic.
  */
-export async function deleteTopic(
-  id: string,
-  signal?: AbortSignal
-): Promise<DeleteTopicResponse> {
+export async function deleteTopic(id: string, signal?: AbortSignal): Promise<DeleteTopicResponse> {
   return apiFetch<DeleteTopicResponse>(`/topics/${id}`, {
     method: "DELETE",
     signal,

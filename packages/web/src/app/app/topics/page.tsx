@@ -390,11 +390,7 @@ export default function TopicsPage() {
           <TopicsIcon />
           <h2 className={styles.emptyTitle}>{t("topics.emptyTitle")}</h2>
           <p className={styles.emptyDescription}>{t("topics.emptyDescription")}</p>
-          <button
-            type="button"
-            className={styles.emptyButton}
-            onClick={() => setIsCreatingTopic(true)}
-          >
+          <button type="button" className={styles.emptyButton} onClick={() => setIsCreatingTopic(true)}>
             + {t("settings.topics.create")}
           </button>
         </div>
@@ -458,9 +454,7 @@ export default function TopicsPage() {
                         }}
                       >
                         <h3 className={styles.topicName}>{topic.name}</h3>
-                        {topic.description && (
-                          <p className={styles.topicDescription}>{topic.description}</p>
-                        )}
+                        {topic.description && <p className={styles.topicDescription}>{topic.description}</p>}
                         <div className={styles.topicMeta}>
                           <span className={styles.profileBadge}>
                             {t(`settings.viewing.profiles.${topic.viewingProfile}`)}
@@ -556,9 +550,7 @@ export default function TopicsPage() {
                             <label className={styles.formLabel}>{t("admin.sources.type")}</label>
                             <select
                               value={newSourceType}
-                              onChange={(e) =>
-                                setNewSourceType(e.target.value as SupportedSourceType)
-                              }
+                              onChange={(e) => setNewSourceType(e.target.value as SupportedSourceType)}
                               className={styles.selectInput}
                             >
                               {SUPPORTED_SOURCE_TYPES.map((type) => (
@@ -591,33 +583,25 @@ export default function TopicsPage() {
                           </div>
                           <div className={styles.formRowInline}>
                             <div className={styles.formRowHalf}>
-                              <label className={styles.formLabel}>
-                                {t("admin.sources.cadenceMinutes")}
-                              </label>
+                              <label className={styles.formLabel}>{t("admin.sources.cadenceMinutes")}</label>
                               <input
                                 type="number"
                                 min={1}
                                 max={1440}
                                 value={newSourceCadence}
-                                onChange={(e) =>
-                                  setNewSourceCadence(parseInt(e.target.value, 10) || 60)
-                                }
+                                onChange={(e) => setNewSourceCadence(parseInt(e.target.value, 10) || 60)}
                                 className={styles.numberInput}
                               />
                             </div>
                             <div className={styles.formRowHalf}>
-                              <label className={styles.formLabel}>
-                                {t("admin.sources.weight")}
-                              </label>
+                              <label className={styles.formLabel}>{t("admin.sources.weight")}</label>
                               <input
                                 type="number"
                                 min={0}
                                 max={10}
                                 step={0.1}
                                 value={newSourceWeight}
-                                onChange={(e) =>
-                                  setNewSourceWeight(parseFloat(e.target.value) || 1.0)
-                                }
+                                onChange={(e) => setNewSourceWeight(parseFloat(e.target.value) || 1.0)}
                                 className={styles.numberInput}
                               />
                             </div>
@@ -682,9 +666,7 @@ export default function TopicsPage() {
                                       />
                                     </div>
                                     <div className={styles.editSourceRow}>
-                                      <label className={styles.formLabel}>
-                                        {t("admin.sources.weight")}
-                                      </label>
+                                      <label className={styles.formLabel}>{t("admin.sources.weight")}</label>
                                       <input
                                         type="number"
                                         min={0}

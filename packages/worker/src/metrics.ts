@@ -1,11 +1,6 @@
 import http from "node:http";
 import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
-import {
-  MetricLabels,
-  MetricNames,
-  PIPELINE_DURATION_BUCKETS,
-  LLM_DURATION_BUCKETS,
-} from "@aharadar/shared";
+import { MetricLabels, MetricNames, PIPELINE_DURATION_BUCKETS, LLM_DURATION_BUCKETS } from "@aharadar/shared";
 
 /** Global registry for Worker metrics */
 export const registry = new Registry();

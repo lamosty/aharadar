@@ -18,11 +18,13 @@ Implemented per-topic viewing profiles to support the "multiple radars" vision (
 **Issue:** Twitter (x_posts) and Reddit items weren't appearing in feed
 
 **Root Causes:**
+
 - x_posts fetched AFTER digest was created (timing mismatch)
 - Reddit connector hadn't been run recently
 - Cluster-based digest items were being filtered out by API
 
 **Fixes:**
+
 - Re-ran pipeline to include x_posts
 - Ran Reddit connector (`admin:run-now --source-type reddit`)
 - Modified items API to support cluster-based items via `COALESCE(di.content_item_id, c.representative_content_item_id)`
@@ -30,18 +32,21 @@ Implemented per-topic viewing profiles to support the "multiple radars" vision (
 ### 2. Topics Viewing Profile Feature
 
 **Schema Changes:**
+
 - Migration `0006_topics_viewing_profile.sql` adds to `topics` table:
   - `viewing_profile` (text, nullable)
   - `decay_hours` (integer, nullable)
   - `last_checked_at` (timestamptz, nullable)
 
 **API Endpoints:**
+
 - `GET /api/topics` - List topics with viewing profile
 - `GET /api/topics/:id` - Get single topic
 - `PATCH /api/topics/:id/viewing-profile` - Update viewing profile
 - `POST /api/topics/:id/mark-checked` - Mark topic as caught up
 
 **Web UI:**
+
 - New `TopicsList` component showing expandable topic cards
 - `TopicViewingProfileSettings` for per-topic profile selection
 - Replaced global viewing profile in Settings page
@@ -62,14 +67,17 @@ aa73efa feat(db): add viewing profile columns to topics table
 ## Known Issues / Next Tasks
 
 ### 1. X Posts Show "(Untitled)"
+
 - **Task 048** - API needs to return `body_text`, FeedItem needs to display it
 - High priority, quick fix
 
 ### 2. Topics Settings UI Layout Broken
+
 - **Task 049** - CSS grid doesn't work well, options look cramped/overlapping
 - Medium priority, quick fix
 
 ### 3. No Topic Management UI
+
 - **Task 050** - Can't create/delete topics, no topic switcher in feed
 - High priority, larger effort
 - Includes: create topic, delete topic, topic switcher, sources-to-topics assignment
@@ -83,10 +91,12 @@ See `docs/_session/tasks/task-048-050-overview.md` for details.
 ### Cluster Support in Items API
 
 The `digest_items` table has two modes:
+
 1. Individual items: `content_item_id IS NOT NULL, cluster_id IS NULL`
 2. Cluster items: `content_item_id IS NULL, cluster_id IS NOT NULL`
 
 The fix uses:
+
 ```sql
 COALESCE(di.content_item_id, c.representative_content_item_id) as content_item_id
 ```

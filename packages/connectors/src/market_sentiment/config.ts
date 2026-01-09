@@ -28,7 +28,9 @@ function asBoolean(value: unknown, defaultValue: boolean): boolean {
   return typeof value === "boolean" ? value : defaultValue;
 }
 
-export function parseMarketSentimentSourceConfig(config: Record<string, unknown>): MarketSentimentSourceConfig {
+export function parseMarketSentimentSourceConfig(
+  config: Record<string, unknown>
+): MarketSentimentSourceConfig {
   const tickers = asUpperStringArray(config.tickers);
   const sentimentChangeThreshold = Math.max(
     0,

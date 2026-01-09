@@ -2,7 +2,14 @@
 
 import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { usePagedItems, useFeedback, useTopicMarkChecked, useTopics, usePageLayout, useLocalStorage } from "@/lib/hooks";
+import {
+  usePagedItems,
+  useFeedback,
+  useTopicMarkChecked,
+  useTopics,
+  usePageLayout,
+  useLocalStorage,
+} from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
 import { Pagination, type PageSize, PAGE_SIZE_OPTIONS } from "@/components/Pagination";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
@@ -288,7 +295,10 @@ function FeedPageContent() {
 
       {!isLoading && !isError && items.length > 0 && (
         <>
-          <div className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`} data-layout={layout}>
+          <div
+            className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`}
+            data-layout={layout}
+          >
             {items.map((item) => (
               <FeedItem key={item.id} item={item} onFeedback={handleFeedback} layout={layout} />
             ))}

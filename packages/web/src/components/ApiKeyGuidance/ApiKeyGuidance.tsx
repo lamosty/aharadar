@@ -155,7 +155,8 @@ const PROVIDER_INFO: Record<ApiKeyProvider, ProviderInfo> = {
             </p>
             <pre>SEC_EDGAR_USER_AGENT=YourApp/1.0 (your@email.com)</pre>
             <p>
-              Per SEC guidelines, include your app name and a valid email address where they can contact you if needed.
+              Per SEC guidelines, include your app name and a valid email address where they can contact you
+              if needed.
             </p>
           </>
         ),

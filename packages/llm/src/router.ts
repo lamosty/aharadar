@@ -167,7 +167,9 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
 
   // Validate at least one provider is configured
   if (!openaiApiKey && !anthropicApiKey && !subscriptionEnabled) {
-    throw new Error("Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION)");
+    throw new Error(
+      "Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION)"
+    );
   }
 
   return {

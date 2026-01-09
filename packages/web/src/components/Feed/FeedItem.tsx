@@ -137,8 +137,7 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
   // Get preview text - only show if it adds new information
   // When there's no title, getDisplayTitle falls back to bodyText, so don't duplicate
   const hasRealTitle = Boolean(item.item.title);
-  const previewText =
-    hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 100) : null;
+  const previewText = hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 100) : null;
 
   // For condensed layout, render a two-line row with expandable WhyShown
   if (layout === "condensed") {

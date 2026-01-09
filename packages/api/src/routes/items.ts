@@ -367,14 +367,16 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Parse cluster items JSON
       const clusterItems = row.cluster_items_json
-        ? (row.cluster_items_json as Array<{
-            id: string;
-            title: string | null;
-            url: string | null;
-            source_type: string;
-            author: string | null;
-            similarity: number;
-          }>).map((item) => ({
+        ? (
+            row.cluster_items_json as Array<{
+              id: string;
+              title: string | null;
+              url: string | null;
+              source_type: string;
+              author: string | null;
+              similarity: number;
+            }>
+          ).map((item) => ({
             id: item.id,
             title: item.title,
             url: item.url,
