@@ -92,3 +92,14 @@ Task files (in recommended order):
 65. `task-117-worker-ops-status.md` - Worker health endpoint + ops status API
 66. `task-118-bullmq-dashboard-service.md` - Add BullMQ dashboard service
 67. `task-119-web-admin-ops-links.md` - Admin Ops page with status + links
+
+## Topic digest scheduling + depth (new)
+
+68. `task-120-topic-digest-cadence-spec.md` - Docs: contract for topic-level digest cadence + depth
+69. `task-121-db-topic-digest-settings.md` - DB: store topic digest schedule + depth; purge catch_up digests
+70. `task-122-api-topic-digest-settings.md` - API/Web: expose topic digest settings; remove catch_up
+71. `task-123-worker-scheduler-topic-cadence.md` - Worker: schedule digests per topic cadence (+ bounded backfill)
+72. `task-124-pipeline-digest-plan-sizing.md` - Pipeline: compile digest plan from topic settings (size + budgets)
+73. `task-125-pipeline-fair-candidate-selection.md` - Pipeline: fairness sampling + triage allocation + diversity
+74. `task-126-feed-sorting-best-latest-trending.md` - Feed: Best default; Latest/Trending explicit
+75. `task-127-web-topic-digest-settings-ui.md` - Web: topic digest cadence + depth settings UI
