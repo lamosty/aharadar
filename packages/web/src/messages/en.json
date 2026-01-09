@@ -463,7 +463,16 @@
       "error": "Failed to load digest",
       "notFound": "Digest not found",
       "staleData": "Showing cached data",
-      "lastUpdated": "Last updated {time}"
+      "lastUpdated": "Last updated {time}",
+      "runDetails": "Run Details",
+      "status": "Status",
+      "statusComplete": "Complete",
+      "statusFailed": "Failed",
+      "creditsUsed": "Credits Used",
+      "sourceName": "Source",
+      "sourceType": "Type",
+      "sourceStatus": "Status",
+      "itemsFetched": "Items"
     },
     "whyShown": {
       "title": "Why shown",

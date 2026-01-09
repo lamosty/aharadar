@@ -164,6 +164,151 @@
   }
 }
 
+/* Run Details Section */
+.runDetails {
+  margin-bottom: var(--space-8);
+  padding: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.runDetailsSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.runDetailItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.runDetailLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.runDetailValue {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+}
+
+.statusComplete {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.statusFailed {
+  background-color: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-error-subtle);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.sourceResultsTable {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sourceTypeBadge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.sourceStatusBadge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.sourceStatusOk {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.sourceStatusPartial {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.sourceStatusError {
+  background-color: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+.sourceStatusSkipped {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.sourceSkipped {
+  opacity: 0.7;
+}
+
+.skipReason {
+  margin-left: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.itemsFetched {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .title {

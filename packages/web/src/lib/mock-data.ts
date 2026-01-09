@@ -93,7 +93,18 @@ export interface DigestDetail {
   id: string;
   windowStart: string;
   windowEnd: string;
-  mode: "low" | "normal" | "high" | "catch_up";
+  mode: "low" | "normal" | "high";
+  status: "complete" | "failed";
+  creditsUsed: number;
+  sourceResults: Array<{
+    sourceId: string;
+    sourceName: string;
+    sourceType: string;
+    status: "ok" | "partial" | "error" | "skipped";
+    skipReason?: string;
+    itemsFetched: number;
+  }>;
+  errorMessage: string | null;
   itemCount: number;
   createdAt: string;
   items: DigestItem[];
@@ -338,6 +349,23 @@ function getMockDigestDetail(id: string): DigestDetail | null {
 
   return {
     ...digest,
+    sourceResults: [
+      {
+        sourceId: "s1",
+        sourceName: "TechCrunch",
+        sourceType: "rss",
+        status: "ok",
+        itemsFetched: 5,
+      },
+      {
+        sourceId: "s2",
+        sourceName: "r/technology",
+        sourceType: "reddit",
+        status: "ok",
+        itemsFetched: 8,
+      },
+    ],
+    errorMessage: digest.status === "failed" ? "Budget exhausted: x_posts skipped" : null,
     items: mockDigestItems.slice(0, digest.itemCount > 5 ? 5 : digest.itemCount),
   };
 }
@@ -486,6 +514,10 @@ function adaptDigestDetail(response: DigestDetailResponse): DigestDetail {
     windowStart: response.digest.windowStart,
     windowEnd: response.digest.windowEnd,
     mode: response.digest.mode as DigestDetail["mode"],
+    status: response.digest.status,
+    creditsUsed: response.digest.creditsUsed,
+    sourceResults: response.digest.sourceResults,
+    errorMessage: response.digest.errorMessage,
     itemCount: response.items.length,
     createdAt: response.digest.createdAt,
     items: response.items.map(adaptDigestItem),

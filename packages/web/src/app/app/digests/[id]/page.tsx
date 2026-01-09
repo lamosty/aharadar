@@ -12,7 +12,12 @@ import {
 } from "@/components/DigestDetail";
 import { useTheme } from "@/components/ThemeProvider";
 import { t } from "@/lib/i18n";
-import { type DigestItem, useRealDigestDetail, useRealFeedback } from "@/lib/mock-data";
+import {
+  type DigestDetail as DigestDetailData,
+  type DigestItem,
+  useRealDigestDetail,
+  useRealFeedback,
+} from "@/lib/mock-data";
 import styles from "./page.module.css";
 
 interface DigestDetailPageProps {
@@ -96,6 +101,8 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
               </span>
             </div>
           </header>
+
+          <RunDetailsSection digest={digest} />
 
           <section aria-labelledby="ranked-items-heading">
             <h2 id="ranked-items-heading" className={styles.sectionTitle}>
@@ -276,6 +283,140 @@ function InfoIcon() {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
+// Run Details Section - shows status, credits, and source results
+function RunDetailsSection({ digest }: { digest: DigestDetailData }) {
+  const hasSourceResults = digest.sourceResults && digest.sourceResults.length > 0;
+
+  return (
+    <section className={styles.runDetails} aria-labelledby="run-details-heading">
+      <h2 id="run-details-heading" className={styles.sectionTitle}>
+        {t("digests.detail.runDetails")}
+      </h2>
+
+      <div className={styles.runDetailsSummary}>
+        <div className={styles.runDetailItem}>
+          <span className={styles.runDetailLabel}>{t("digests.detail.status")}</span>
+          <span
+            className={`${styles.statusBadge} ${digest.status === "complete" ? styles.statusComplete : styles.statusFailed}`}
+          >
+            {digest.status === "complete" ? (
+              <>
+                <CheckIcon /> {t("digests.detail.statusComplete")}
+              </>
+            ) : (
+              <>
+                <XIcon /> {t("digests.detail.statusFailed")}
+              </>
+            )}
+          </span>
+        </div>
+
+        <div className={styles.runDetailItem}>
+          <span className={styles.runDetailLabel}>{t("digests.detail.creditsUsed")}</span>
+          <span className={styles.runDetailValue}>${digest.creditsUsed.toFixed(4)}</span>
+        </div>
+
+        {digest.errorMessage && (
+          <div className={styles.errorBanner}>
+            <ErrorSmallIcon />
+            <span>{digest.errorMessage}</span>
+          </div>
+        )}
+      </div>
+
+      {hasSourceResults && (
+        <div className={styles.sourceResultsTable}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{t("digests.detail.sourceName")}</th>
+                <th>{t("digests.detail.sourceType")}</th>
+                <th>{t("digests.detail.sourceStatus")}</th>
+                <th>{t("digests.detail.itemsFetched")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {digest.sourceResults.map((source) => (
+                <tr
+                  key={source.sourceId}
+                  className={source.status === "skipped" ? styles.sourceSkipped : ""}
+                >
+                  <td>{source.sourceName}</td>
+                  <td>
+                    <span className={styles.sourceTypeBadge}>{source.sourceType}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={`${styles.sourceStatusBadge} ${styles[`sourceStatus${source.status.charAt(0).toUpperCase()}${source.status.slice(1)}`]}`}
+                    >
+                      {source.status}
+                    </span>
+                    {source.skipReason && (
+                      <span className={styles.skipReason}>({source.skipReason})</span>
+                    )}
+                  </td>
+                  <td className={styles.itemsFetched}>{source.itemsFetched}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function ErrorSmallIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   );
 }
