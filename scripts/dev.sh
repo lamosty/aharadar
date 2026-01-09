@@ -19,15 +19,13 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-docker compose up -d postgres redis
+docker compose up -d postgres redis prometheus grafana
 
 echo ""
-echo "Services are starting:"
-echo "- Postgres: localhost:5432"
-echo "- Redis:    localhost:6379"
-echo ""
-echo "Next:"
-echo "- Copy env: cp .env.example .env"
-echo "- (Later) run migrations + start worker/api when implemented."
+echo "Services started:"
+echo "  - Postgres:   localhost:5432"
+echo "  - Redis:      localhost:6379"
+echo "  - Prometheus: localhost:9090"
+echo "  - Grafana:    localhost:3002 (admin/admin)"
 
 
