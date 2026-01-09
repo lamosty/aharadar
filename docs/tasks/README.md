@@ -86,3 +86,9 @@ Task files (in recommended order):
 62. `task-114-feedback-undo-saved.md` - Undo feedback + meaningful skip/save + saved view
 63. `task-115-whyshown-source-weight.md` - Show full source-weight breakdown in WhyShown
 64. `task-116-api-keys-load-loop.md` - Fix API Keys settings re-fetch loop
+
+## Ops / Observability tasks (new)
+
+65. `task-117-worker-ops-status.md` - Worker health endpoint + ops status API
+66. `task-118-bullmq-dashboard-service.md` - Add BullMQ dashboard service
+67. `task-119-web-admin-ops-links.md` - Admin Ops page with status + links
