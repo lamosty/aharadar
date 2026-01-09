@@ -785,7 +785,8 @@ export async function adminTopicsListCommand(): Promise<void> {
   const db = createDb(env.databaseUrl);
   try {
     const user = await db.users.getOrCreateSingleton();
-    await db.topics.getOrCreateDefaultForUser(user.id);
+    // Note: we don't auto-create a default topic here - only list existing ones
+    // Default topic creation happens in resolveTopicForUser when user has no topics
     const topics = await db.topics.listByUser(user.id);
     console.log(`Topics (${topics.length}):`);
     console.log(formatTopicList(topics));
