@@ -4,6 +4,9 @@ export type SourceType =
   | "reddit"
   | "hn"
   | "rss"
+  | "podcast"
+  | "substack"
+  | "medium"
   | "youtube"
   | "signal"
   | "sec_edgar"
@@ -11,6 +14,9 @@ export type SourceType =
   | "polymarket"
   | "options_flow"
   | "market_sentiment"
+  | "producthunt"
+  | "github_releases"
+  | "telegram"
   | string;
 
 export type Cursor = Record<string, unknown>;
