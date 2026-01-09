@@ -78,12 +78,6 @@ export const mainNavItems: NavItem[] = [
         icon: "admin",
       },
       {
-        id: "admin-sources",
-        href: "/app/admin/sources",
-        labelKey: "admin.nav.sources",
-        icon: "sources",
-      },
-      {
         id: "admin-budgets",
         href: "/app/admin/budgets",
         labelKey: "admin.nav.budgets",
