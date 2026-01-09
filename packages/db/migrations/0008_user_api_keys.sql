@@ -1,7 +1,7 @@
 -- User-provided API keys for LLM providers
 -- Keys are encrypted with AES-256-GCM before storage
 
-CREATE TABLE user_api_keys (
+CREATE TABLE IF NOT EXISTS user_api_keys (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   provider VARCHAR(50) NOT NULL,  -- 'openai', 'anthropic', 'xai'
@@ -13,7 +13,7 @@ CREATE TABLE user_api_keys (
   UNIQUE(user_id, provider)       -- One key per provider per user
 );
 
-CREATE INDEX user_api_keys_user_idx ON user_api_keys(user_id);
+CREATE INDEX IF NOT EXISTS user_api_keys_user_idx ON user_api_keys(user_id);
 
 COMMENT ON TABLE user_api_keys IS 'Encrypted storage for user-provided LLM API keys';
 COMMENT ON COLUMN user_api_keys.encrypted_key IS 'AES-256-GCM encrypted API key';
