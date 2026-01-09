@@ -57,18 +57,11 @@ export const mainNavItems: NavItem[] = [
     adminOnly: true,
   },
   {
-    id: "sources",
-    href: "/app/sources",
-    labelKey: "nav.sources",
-    icon: "sources",
-    mobileNav: true,
-  },
-  {
     id: "topics",
     href: "/app/topics",
     labelKey: "nav.topics",
     icon: "topics",
-    mobileNav: false,
+    mobileNav: true,
   },
   {
     id: "admin",

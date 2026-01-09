@@ -479,7 +479,20 @@
   "topics": {
     "emptyTitle": "No topics yet",
     "emptyDescription": "Create your first topic to organize sources and personalize your feed.",
-    "guidance": "Organize content by creating topics for different interests. Consider splitting a topic when sources have very different content types (news vs memes), or when one source consistently gets buried by others."
+    "guidance": "Organize content by creating topics for different interests. Consider splitting a topic when sources have very different content types (news vs memes), or when one source consistently gets buried by others.",
+    "sources": "Sources",
+    "noSources": "No sources yet",
+    "addSource": "Add Source",
+    "editTopic": "Edit topic",
+    "deleteTopic": "Delete topic",
+    "confirmDeleteTopic": "Delete this topic?",
+    "confirmDeleteTopicDescription": "This will permanently delete the topic and all associated settings. Sources will be moved to the default topic.",
+    "viewingProfile": "Viewing Profile",
+    "lastCaughtUp": "Last caught up",
+    "expandSettings": "Show settings",
+    "collapseSettings": "Hide settings",
+    "sourceInterval": "{minutes} min",
+    "sourceWeight": "Weight: {weight}"
   },
   "feed": {
     "topic": "Topic",
