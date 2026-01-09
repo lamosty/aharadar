@@ -845,6 +845,7 @@ export async function persistDigestFromContentItems(params: {
       const perSourceWeight = asFiniteNumber(c.sourceConfigJson?.weight);
       const sourceWeight = computeEffectiveSourceWeight({
         sourceType: c.sourceType,
+        sourceName: c.sourceName,
         sourceWeight: perSourceWeight,
         typeWeights: sourceTypeWeights,
       });

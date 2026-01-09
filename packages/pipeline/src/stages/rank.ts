@@ -41,6 +41,7 @@ export interface SignalCorroborationFeature {
  */
 export interface SourceWeightFeature {
   source_type?: string;
+  source_name?: string;
   type_weight: number;
   source_weight: number;
   effective_weight: number;
@@ -76,6 +77,7 @@ export function parseSourceTypeWeights(env: NodeJS.ProcessEnv = process.env): Ma
  */
 export function computeEffectiveSourceWeight(params: {
   sourceType: string;
+  sourceName?: string | null;
   sourceWeight: number | null;
   typeWeights: Map<string, number>;
 }): SourceWeightFeature {
@@ -86,6 +88,7 @@ export function computeEffectiveSourceWeight(params: {
 
   return {
     source_type: params.sourceType,
+    source_name: params.sourceName ?? undefined,
     type_weight: typeWeight,
     source_weight: sourceWeight,
     effective_weight: effectiveWeight,
@@ -273,6 +276,7 @@ export function rankCandidates(params: {
     if (c.sourceWeight) {
       systemFeatures.source_weight_v1 = {
         source_type: c.sourceWeight.source_type,
+        source_name: c.sourceWeight.source_name,
         type_weight: c.sourceWeight.type_weight,
         source_weight: c.sourceWeight.source_weight,
         effective_weight: c.sourceWeight.effective_weight,

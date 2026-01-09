@@ -241,15 +241,30 @@ function WhyShownContent({
                 </span>
               </div>
             )}
-            {typeof features.system_features.source_weight_v1.effective_weight === "number" &&
-              features.system_features.source_weight_v1.effective_weight !== 1.0 && (
-                <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{t("digests.whyShown.weight")}</span>
-                  <span className={styles.metaValue}>
-                    {features.system_features.source_weight_v1.effective_weight.toFixed(1)}x
-                  </span>
-                </div>
-              )}
+            {typeof features.system_features.source_weight_v1.type_weight === "number" && (
+              <div className={styles.metaItem}>
+                <span className={styles.metaLabel}>{t("digests.whyShown.typeWeight")}</span>
+                <span className={styles.metaValue}>
+                  {features.system_features.source_weight_v1.type_weight.toFixed(1)}x
+                </span>
+              </div>
+            )}
+            {typeof features.system_features.source_weight_v1.source_weight === "number" && (
+              <div className={styles.metaItem}>
+                <span className={styles.metaLabel}>{t("digests.whyShown.perSourceWeight")}</span>
+                <span className={styles.metaValue}>
+                  {features.system_features.source_weight_v1.source_weight.toFixed(1)}x
+                </span>
+              </div>
+            )}
+            {typeof features.system_features.source_weight_v1.effective_weight === "number" && (
+              <div className={styles.metaItem}>
+                <span className={styles.metaLabel}>{t("digests.whyShown.effectiveWeight")}</span>
+                <span className={styles.metaValue}>
+                  {features.system_features.source_weight_v1.effective_weight.toFixed(1)}x
+                </span>
+              </div>
+            )}
           </div>
         </FeatureSection>
       )}
