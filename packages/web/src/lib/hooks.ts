@@ -22,8 +22,11 @@ import {
   type AdminRunResponse,
   type ApiError,
   type BudgetsResponse,
+  type ClearFeedbackRequest,
+  type ClearFeedbackResponse,
   type CreateTopicRequest,
   type CreateTopicResponse,
+  clearFeedback,
   createTopic,
   type DeleteTopicResponse,
   type DigestDetailResponse,
@@ -366,6 +369,39 @@ export interface LocalFeedbackState {
     action: FeedbackAction;
     pending: boolean;
   };
+}
+
+interface UseClearFeedbackOptions {
+  /** Callback on success */
+  onSuccess?: (data: ClearFeedbackResponse) => void;
+  /** Callback on error */
+  onError?: (error: ApiError | NetworkError) => void;
+}
+
+/**
+ * Clear feedback mutation (undo).
+ */
+export function useClearFeedback(options?: UseClearFeedbackOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation<ClearFeedbackResponse, ApiError | NetworkError, ClearFeedbackRequest>({
+    mutationFn: (request) => clearFeedback(request),
+    onSuccess: (data) => {
+      options?.onSuccess?.(data);
+    },
+    onError: (error) => {
+      options?.onError?.(error);
+    },
+    onSettled: (_data, _error, request) => {
+      // Invalidate items queries to refetch with updated feedback state
+      queryClient.invalidateQueries({ queryKey: ["items"] });
+      if (request.digestId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.digests.detail(request.digestId),
+        });
+      }
+    },
+  });
 }
 
 // ============================================================================

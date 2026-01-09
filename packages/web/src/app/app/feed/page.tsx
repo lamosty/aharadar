@@ -10,7 +10,9 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { useTopic } from "@/components/TopicProvider";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
+import type { FeedView } from "@/lib/api";
 import {
+  useClearFeedback,
   useFeedback,
   useLocalStorage,
   usePagedItems,
@@ -65,11 +67,13 @@ function FeedPageContent() {
   const sortParam = searchParams.get("sort") as SortOption | null;
   const pageParam = searchParams.get("page");
   const topicParam = searchParams.get("topic");
+  const viewParam = searchParams.get("view") as FeedView | null;
 
   const [selectedSources, setSelectedSources] = useState<string[]>(
     sourcesParam ? sourcesParam.split(",").filter(Boolean) : [],
   );
   const [sort, setSort] = useState<SortOption>(sortParam || "score_desc");
+  const [view, setView] = useState<FeedView>(viewParam || "inbox");
 
   // Pagination state - page size persisted in localStorage
   const [pageSize, setPageSize] = useLocalStorage<PageSize>("feedPageSize", DEFAULT_PAGE_SIZE);
@@ -102,15 +106,22 @@ function FeedPageContent() {
   // Determine if we're in "all topics" mode
   const isAllTopicsMode = currentTopicId === null;
 
-  // Update URL when filters/page/topic change
+  // Update URL when filters/page/topic/view change
   const updateUrl = useCallback(
-    (sources: string[], newSort: SortOption, page: number, topic: string | null) => {
+    (
+      sources: string[],
+      newSort: SortOption,
+      page: number,
+      topic: string | null,
+      newView: FeedView,
+    ) => {
       const params = new URLSearchParams();
       if (topic === null) {
         params.set("topic", "all");
       } else if (topic) {
         params.set("topic", topic);
       }
+      if (newView !== "inbox") params.set("view", newView);
       if (sources.length > 0) params.set("sources", sources.join(","));
       if (newSort !== "score_desc") params.set("sort", newSort);
       if (page > 1) params.set("page", String(page));
@@ -123,36 +134,36 @@ function FeedPageContent() {
   const handleSourcesChange = useCallback(
     (sources: string[]) => {
       setSelectedSources(sources);
-      updateUrl(sources, sort, 1, currentTopicId);
+      updateUrl(sources, sort, 1, currentTopicId, view);
     },
-    [sort, updateUrl, currentTopicId],
+    [sort, updateUrl, currentTopicId, view],
   );
 
   const handleSortChange = useCallback(
     (newSort: SortOption) => {
       setSort(newSort);
-      updateUrl(selectedSources, newSort, 1, currentTopicId);
+      updateUrl(selectedSources, newSort, 1, currentTopicId, view);
     },
-    [selectedSources, updateUrl, currentTopicId],
+    [selectedSources, updateUrl, currentTopicId, view],
   );
 
   const handlePageChange = useCallback(
     (page: number) => {
       setCurrentPage(page);
-      updateUrl(selectedSources, sort, page, currentTopicId);
+      updateUrl(selectedSources, sort, page, currentTopicId, view);
       // Scroll to top of feed
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [selectedSources, sort, updateUrl, currentTopicId],
+    [selectedSources, sort, updateUrl, currentTopicId, view],
   );
 
   const handlePageSizeChange = useCallback(
     (size: PageSize) => {
       setPageSize(size);
       setCurrentPage(1);
-      updateUrl(selectedSources, sort, 1, currentTopicId);
+      updateUrl(selectedSources, sort, 1, currentTopicId, view);
     },
-    [selectedSources, sort, updateUrl, setPageSize, currentTopicId],
+    [selectedSources, sort, updateUrl, setPageSize, currentTopicId, view],
   );
 
   // Handle topic change from TopicSwitcher - update URL
@@ -160,25 +171,53 @@ function FeedPageContent() {
     (newTopicId: string | null) => {
       setCurrentTopicId(newTopicId);
       setCurrentPage(1);
-      updateUrl(selectedSources, sort, 1, newTopicId);
+      updateUrl(selectedSources, sort, 1, newTopicId, view);
     },
-    [setCurrentTopicId, updateUrl, selectedSources, sort],
+    [setCurrentTopicId, updateUrl, selectedSources, sort, view],
+  );
+
+  // Handle view change
+  const handleViewChange = useCallback(
+    (newView: FeedView) => {
+      setView(newView);
+      setCurrentPage(1);
+      updateUrl(selectedSources, sort, 1, currentTopicId, newView);
+    },
+    [updateUrl, selectedSources, sort, currentTopicId],
   );
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
-  const { data, isLoading, isError, error, isFetching } = usePagedItems({
+  const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     page: currentPage,
     pageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
+    view,
   });
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
     onError: () => {
       addToast("Failed to save feedback. Please try again.", "error");
+    },
+    onSuccess: () => {
+      // Refetch in inbox view to remove items with feedback
+      if (view === "inbox") {
+        refetch();
+      }
+    },
+  });
+
+  // Clear feedback mutation (undo)
+  const clearFeedbackMutation = useClearFeedback({
+    onError: () => {
+      addToast("Failed to clear feedback. Please try again.", "error");
+    },
+    onSuccess: () => {
+      // Refetch to update the list
+      refetch();
     },
   });
 
@@ -207,6 +246,17 @@ function FeedPageContent() {
       });
     },
     [data, feedbackMutation],
+  );
+
+  const handleClearFeedback = useCallback(
+    async (contentItemId: string) => {
+      const item = data?.items.find((i) => i.id === contentItemId);
+      await clearFeedbackMutation.mutateAsync({
+        contentItemId,
+        digestId: item?.digestId,
+      });
+    },
+    [data, clearFeedbackMutation],
   );
 
   const items = data?.items ?? [];
@@ -279,6 +329,30 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
+            {/* View toggle: Inbox / Saved / All */}
+            <div className={styles.viewToggle}>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${view === "inbox" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("inbox")}
+              >
+                {t("feed.view.inbox")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${view === "saved" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("saved")}
+              >
+                {t("feed.view.saved")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${view === "all" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("all")}
+              >
+                {t("feed.view.all")}
+              </button>
+            </div>
             <LayoutToggle
               layout={layout}
               onLayoutChange={setLayout}
@@ -354,6 +428,7 @@ function FeedPageContent() {
                 key={item.id}
                 item={item}
                 onFeedback={handleFeedback}
+                onClear={handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode}
               />

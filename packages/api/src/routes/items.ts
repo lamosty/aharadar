@@ -68,6 +68,7 @@ interface ItemsListQuerystring {
   until?: string;
   sort?: string;
   topicId?: string;
+  view?: "inbox" | "saved" | "all";
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -108,6 +109,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       until,
       sort = "score_desc",
       topicId: topicIdParam,
+      view = "all",
     } = request.query;
 
     // Determine topic scope:
@@ -225,6 +227,15 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       filterParams.push(until);
       filterParamIdx++;
     }
+
+    // View filter: inbox (no feedback), saved (feedback = 'save'), all (no filter)
+    // Note: fe.action is from the LATERAL subquery, so we reference it directly
+    if (view === "inbox") {
+      filterConditions.push("fe.action IS NULL");
+    } else if (view === "saved") {
+      filterConditions.push("fe.action = 'save'");
+    }
+    // view === 'all' -> no filter
 
     const filterClause = filterConditions.length > 0 ? filterConditions.join(" AND ") : "true";
 

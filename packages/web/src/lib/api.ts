@@ -179,6 +179,9 @@ export interface PaginationInfo {
   hasMore: boolean;
 }
 
+/** Feed view types */
+export type FeedView = "inbox" | "saved" | "all";
+
 /** Items list params */
 export interface ItemsListParams {
   limit?: number;
@@ -190,6 +193,7 @@ export interface ItemsListParams {
   until?: string;
   sort?: "score_desc" | "date_desc" | "date_asc";
   topicId?: string;
+  view?: FeedView;
 }
 
 /** Items list response */
@@ -553,6 +557,7 @@ export async function getItems(
   if (params?.until) searchParams.set("until", params.until);
   if (params?.sort) searchParams.set("sort", params.sort);
   if (params?.topicId) searchParams.set("topicId", params.topicId);
+  if (params?.view) searchParams.set("view", params.view);
 
   const query = searchParams.toString();
   const path = query ? `/items?${query}` : "/items";
@@ -570,6 +575,32 @@ export async function postFeedback(
   return apiFetch<FeedbackResponse>("/feedback", {
     method: "POST",
     body: feedback,
+    signal,
+  });
+}
+
+/** Clear feedback request body */
+export interface ClearFeedbackRequest {
+  contentItemId: string;
+  digestId?: string;
+}
+
+/** Clear feedback response */
+export interface ClearFeedbackResponse {
+  ok: true;
+  deleted: number;
+}
+
+/**
+ * Clear feedback for a content item (undo).
+ */
+export async function clearFeedback(
+  request: ClearFeedbackRequest,
+  signal?: AbortSignal,
+): Promise<ClearFeedbackResponse> {
+  return apiFetch<ClearFeedbackResponse>("/feedback", {
+    method: "DELETE",
+    body: request,
     signal,
   });
 }

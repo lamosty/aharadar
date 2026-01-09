@@ -16,6 +16,8 @@ interface FeedItemProps {
     contentItemId: string,
     action: "like" | "dislike" | "save" | "skip",
   ) => Promise<void>;
+  /** Called when feedback is cleared (toggle off) */
+  onClear?: (contentItemId: string) => Promise<void>;
   /** Layout mode - affects rendering style */
   layout?: Layout;
   /** Whether to show topic badge (for "all topics" mode) */
@@ -125,6 +127,7 @@ function getDisplayTitle(item: FeedItemType): string {
 export function FeedItem({
   item,
   onFeedback,
+  onClear,
   layout = "reader",
   showTopicBadge = false,
 }: FeedItemProps) {
@@ -133,6 +136,12 @@ export function FeedItem({
   const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
     if (onFeedback) {
       await onFeedback(item.id, action);
+    }
+  };
+
+  const handleClear = async () => {
+    if (onClear) {
+      await onClear(item.id);
     }
   };
 
@@ -231,6 +240,7 @@ export function FeedItem({
               digestId={item.digestId}
               currentFeedback={item.feedback}
               onFeedback={handleFeedback}
+              onClear={handleClear}
               variant="compact"
             />
           </div>
@@ -321,6 +331,7 @@ export function FeedItem({
               digestId={item.digestId}
               currentFeedback={item.feedback}
               onFeedback={handleFeedback}
+              onClear={handleClear}
               variant="compact"
             />
           </div>

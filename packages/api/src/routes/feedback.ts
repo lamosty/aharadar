@@ -120,4 +120,88 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
 
     return { ok: true };
   });
+
+  // DELETE /feedback - Clear feedback for a content item (undo)
+  fastify.delete<{ Body: { contentItemId: string; digestId?: string } }>(
+    "/feedback",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
+          },
+        });
+      }
+
+      const { contentItemId, digestId } = body as Record<string, unknown>;
+
+      if (!isValidUuid(contentItemId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "contentItemId must be a valid UUID",
+          },
+        });
+      }
+
+      if (digestId !== undefined && digestId !== null && !isValidUuid(digestId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "digestId must be a valid UUID if provided",
+          },
+        });
+      }
+
+      const db = getDb();
+
+      // Delete feedback for this item
+      const deletedCount = await db.feedbackEvents.deleteByContentItem({
+        userId: ctx.userId,
+        contentItemId,
+      });
+
+      // Rebuild preference profile for the topic(s) containing this item
+      try {
+        const topicRes = await db.query<{ topic_id: string }>(
+          `select distinct s.topic_id::text as topic_id
+           from content_item_sources cis
+           join sources s on s.id = cis.source_id
+           where cis.content_item_id = $1::uuid`,
+          [contentItemId],
+        );
+
+        for (const row of topicRes.rows) {
+          await db.topicPreferenceProfiles.rebuildFromFeedback({
+            userId: ctx.userId,
+            topicId: row.topic_id,
+          });
+        }
+      } catch (err) {
+        // Log but don't fail - preference rebuild is non-critical
+        fastify.log.warn(
+          { err, contentItemId },
+          "Failed to rebuild preference profile after feedback clear",
+        );
+      }
+
+      return { ok: true, deleted: deletedCount };
+    },
+  );
 }

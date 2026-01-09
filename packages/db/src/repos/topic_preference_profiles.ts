@@ -138,5 +138,76 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
 
       return { positiveCount: posCount, negativeCount: negCount };
     },
+
+    /**
+     * Rebuild preference profile from remaining feedback events.
+     * Used after clearing feedback to keep profile consistent.
+     */
+    async rebuildFromFeedback(params: {
+      userId: string;
+      topicId: string;
+    }): Promise<{ positiveCount: number; negativeCount: number }> {
+      // Get all feedback events with embeddings for this topic
+      const feedbackRes = await db.query<{
+        action: string;
+        vector: string;
+      }>(
+        `select fe.action, e.vector::text as vector
+         from feedback_events fe
+         join content_items ci on ci.id = fe.content_item_id
+         join content_item_sources cis on cis.content_item_id = ci.id
+         join sources s on s.id = cis.source_id
+         join embeddings e on e.content_item_id = ci.id
+         where fe.user_id = $1
+           and s.topic_id = $2::uuid
+           and fe.action in ('like', 'save', 'dislike')
+         order by fe.created_at asc`,
+        [params.userId, params.topicId],
+      );
+
+      // Reset and rebuild profile
+      let posVec: number[] | null = null;
+      let negVec: number[] | null = null;
+      let posCount = 0;
+      let negCount = 0;
+
+      for (const row of feedbackRes.rows) {
+        const vec = parseVectorText(row.vector);
+        if (!vec) continue;
+
+        if (row.action === "like" || row.action === "save") {
+          const upd = meanUpdate(posVec, posCount, vec);
+          posVec = upd.vector;
+          posCount = upd.count;
+        } else if (row.action === "dislike") {
+          const upd = meanUpdate(negVec, negCount, vec);
+          negVec = upd.vector;
+          negCount = upd.count;
+        }
+      }
+
+      // Ensure row exists and update it
+      await this.getOrCreate({ userId: params.userId, topicId: params.topicId });
+      await db.query(
+        `update topic_preference_profiles
+         set
+           positive_count = $3,
+           negative_count = $4,
+           positive_vector = $5::vector,
+           negative_vector = $6::vector,
+           updated_at = now()
+         where user_id = $1::uuid and topic_id = $2::uuid`,
+        [
+          params.userId,
+          params.topicId,
+          posCount,
+          negCount,
+          posVec ? asVectorLiteral(posVec) : null,
+          negVec ? asVectorLiteral(negVec) : null,
+        ],
+      );
+
+      return { positiveCount: posCount, negativeCount: negCount };
+    },
   };
 }

@@ -13,6 +13,8 @@ interface FeedbackButtonsProps {
   digestId: string;
   currentFeedback?: FeedbackAction | null;
   onFeedback?: (action: FeedbackAction) => Promise<void>;
+  /** Called when feedback is cleared (toggle off) */
+  onClear?: () => Promise<void>;
   variant?: "default" | "compact";
 }
 
@@ -21,6 +23,7 @@ export function FeedbackButtons({
   digestId,
   currentFeedback,
   onFeedback,
+  onClear,
   variant = "default",
 }: FeedbackButtonsProps) {
   const { addToast } = useToast();
@@ -42,8 +45,16 @@ export function FeedbackButtons({
       setIsPending(true);
 
       try {
-        if (onFeedback && newFeedback) {
-          await onFeedback(newFeedback);
+        if (newFeedback === null) {
+          // Clearing feedback (toggle off)
+          if (onClear) {
+            await onClear();
+          }
+        } else {
+          // Setting new feedback
+          if (onFeedback) {
+            await onFeedback(newFeedback);
+          }
         }
       } catch {
         // Rollback on error
@@ -53,7 +64,7 @@ export function FeedbackButtons({
         setIsPending(false);
       }
     },
-    [isPending, optimisticFeedback, onFeedback, addToast],
+    [isPending, optimisticFeedback, onFeedback, onClear, addToast],
   );
 
   const isCompact = variant === "compact";

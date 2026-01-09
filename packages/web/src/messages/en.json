@@ -538,6 +538,11 @@
     "source": "source",
     "sources": "sources",
     "approximateDate": "Approximate date (day-level precision)",
+    "view": {
+      "inbox": "Inbox",
+      "saved": "Saved",
+      "all": "All"
+    },
     "layout": {
       "condensed": "Condensed",
       "reader": "Reader",
@@ -564,8 +569,8 @@
     "categories": "Topics the AI identified in this content.",
     "feedbackLike": "Mark as interesting - helps surface similar content in the future.",
     "feedbackDislike": "Mark as not relevant - helps filter out similar content.",
-    "feedbackSave": "Bookmark for later reference.",
-    "feedbackSkip": "Dismiss without affecting your preferences.",
+    "feedbackSave": "Bookmark for later (also trains preferences like Like).",
+    "feedbackSkip": "Dismiss from inbox without training preferences.",
     "sourceHN": "Hacker News - tech news and community discussions.",
     "sourceReddit": "Reddit community post.",
     "sourceRSS": "RSS/Atom feed article.",

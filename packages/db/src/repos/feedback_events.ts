@@ -59,6 +59,23 @@ export function createFeedbackEventsRepo(db: Queryable) {
     },
 
     /**
+     * Delete all feedback events for a content item (undo/clear).
+     * Returns the number of deleted rows.
+     */
+    async deleteByContentItem(params: { userId: string; contentItemId: string }): Promise<number> {
+      const res = await db.query<{ count: number }>(
+        `with deleted as (
+           delete from feedback_events
+           where user_id = $1 and content_item_id = $2::uuid
+           returning 1
+         )
+         select count(*)::int as count from deleted`,
+        [params.userId, params.contentItemId],
+      );
+      return res.rows[0]?.count ?? 0;
+    },
+
+    /**
      * Compute user preference weights from feedback history.
      * Like/save → +0.1 weight, dislike → -0.1 weight.
      * Weights are clamped to [0.5, 2.0].
