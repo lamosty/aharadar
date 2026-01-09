@@ -50,6 +50,9 @@ If anything else seems required, **stop and ask**.
    - for `sourceType === "x_posts"`, if `metadata.user_display_name` exists, show:
      - `Display Name (@handle)`
    - otherwise keep current author display.
+4. **X date fallback (approximate)**:
+   - If `publishedAt` is null for an X post but `metadata.post_date` (YYYY-MM-DD) exists, display that date (clearly approximate).
+   - Else keep the existing fallback behavior (digest created time / no date, depending on template).
 4. **Condensed layout constraints**:
    - ensure tweet text is visually truncated (1–2 lines) so the table doesn’t explode in height.
 5. Manual smoke:

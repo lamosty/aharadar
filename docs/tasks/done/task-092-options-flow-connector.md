@@ -4,7 +4,7 @@
 
 ## Goal
 
-Add an options flow connector to fetch unusual options activity, sweeps, and large orders using the Unusual Whales public API (free tier).
+Add an options flow connector to fetch unusual options activity, sweeps, and large orders using the Unusual Whales API (typically requires a paid subscription).
 
 ## Background
 
@@ -21,13 +21,13 @@ Key terms:
 - `docs/connectors.md` (connector contracts)
 - `packages/connectors/src/reddit/*.ts` (reference implementation)
 - Unusual Whales Public API: https://unusualwhales.com/public-api
-- Free tier documentation (verify current limits)
+- Pricing/access may change; verify current API access and limits
 
 ## Prerequisites
 
-1. Sign up for free Unusual Whales account
-2. Obtain API key/access for public API
-3. Verify free tier rate limits and data coverage
+1. Create an Unusual Whales account
+2. Obtain API key/access (API access typically requires a paid subscription)
+3. Verify current rate limits and data coverage
 
 ## Scope
 
@@ -74,7 +74,7 @@ UNUSUAL_WHALES_API_KEY=your_api_key_here
 
 ### 4. API Integration
 
-**Unusual Whales Public API** (verify endpoints - may vary):
+**Unusual Whales API** (verify endpoints - may vary):
 
 ```
 GET https://api.unusualwhales.com/api/flow
@@ -195,7 +195,7 @@ function classifySentiment(flow: OptionsFlowRaw): "bullish" | "bearish" | "neutr
 
 Unusual Whales limits (verify current):
 
-- Free tier: Limited requests per day (check documentation)
+- Rate limits vary by plan (check documentation)
 - Implement request counting with daily reset
 - Add delay between requests
 - Back off on 429 responses
@@ -205,7 +205,7 @@ Unusual Whales limits (verify current):
 Handle common scenarios:
 
 - `401`: Invalid or expired API key
-- `403`: Free tier limit exceeded
+- `403`: Access denied (subscription may be required)
 - `429`: Rate limited - back off and retry
 - `500/503`: Service temporarily unavailable
 - Empty response: No flow matching criteria

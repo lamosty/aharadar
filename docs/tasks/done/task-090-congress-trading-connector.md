@@ -1,14 +1,14 @@
-# Task 090: Congress Trading Connector via Quiver Quantitative
+# Task 090: Congress Trading Connector (public disclosures + optional Quiver)
 
 ## Priority: High
 
 ## Goal
 
-Add a Congress trading connector to fetch stock trades disclosed by U.S. Congress members using the Quiver Quantitative free tier API.
+Add a Congress trading connector to fetch stock trades disclosed by U.S. Congress members using free public disclosure feeds by default, with an optional Quiver vendor for users who have a paid API key.
 
 ## Background
 
-Members of Congress are required to disclose stock trades within 45 days. These disclosures are public record and can provide insight into potential market-moving information. Quiver Quantitative aggregates this data into an accessible API with a free tier.
+Members of Congress are required to disclose stock trades within 45 days. These disclosures are public record and can provide insight into potentially market-moving information. Quiver Quantitative aggregates this data into an API (paid access required for API keys). Free, no-auth alternatives exist via Stock Watcher feeds derived from the same public disclosures.
 
 ## Read First
 
@@ -19,9 +19,11 @@ Members of Congress are required to disclose stock trades within 45 days. These 
 
 ## Prerequisites
 
-1. Sign up for free Quiver Quantitative account
-2. Obtain API key from dashboard
-3. Free tier limits: ~100 requests/day (verify current limits)
+Default (`vendor=stock_watcher`): no API key required.
+
+Optional (`vendor=quiver`):
+1. Subscribe to a Quiver plan that includes API access
+2. Obtain API key from the dashboard
 
 ## Scope
 
@@ -30,7 +32,7 @@ Members of Congress are required to disclose stock trades within 45 days. These 
 Create `packages/connectors/src/congress_trading/`:
 
 - `config.ts` - Parse and validate config
-- `fetch.ts` - Fetch trades via Quiver API
+- `fetch.ts` - Fetch trades via configured vendor (default: free Stock Watcher feeds; optional Quiver)
 - `normalize.ts` - Map trades to ContentItemDraft
 - `index.ts` - Exports
 
@@ -38,6 +40,7 @@ Create `packages/connectors/src/congress_trading/`:
 
 ```json
 {
+  "vendor": "stock_watcher",
   "politicians": ["Nancy Pelosi", "Dan Crenshaw"],
   "chambers": ["senate", "house"],
   "min_amount": 15000,
@@ -49,6 +52,7 @@ Create `packages/connectors/src/congress_trading/`:
 
 Fields:
 
+- `vendor` (optional, default: `"stock_watcher"`): `"stock_watcher"` | `"quiver"`
 - `politicians` (optional): Filter by specific politicians (case-insensitive match)
 - `chambers` (optional, default: both): `"senate"` and/or `"house"`
 - `min_amount` (default: 0): Minimum transaction amount (lower bound of range)
@@ -58,7 +62,7 @@ Fields:
 
 ### 3. Environment Variable
 
-Add API key to `.env.example`:
+Only required when `vendor = "quiver"`:
 
 ```
 QUIVER_API_KEY=your_quiver_api_key_here
@@ -193,19 +197,17 @@ function generateTitle(trade: QuiverCongressTrade): string {
 
 ### 10. Rate Limiting
 
-Quiver free tier limits:
+Rate limiting depends on vendor:
 
-- ~100 requests per day (verify current limits)
-- Implement request counting and daily reset
-- Cache responses where possible
-- Back off on 429 responses
+- `stock_watcher`: cache responses where possible; back off on 429 responses
+- `quiver`: follow your plan limits; back off on 429 responses
 
 ### 11. Error Handling
 
 Handle common scenarios:
 
 - `401`: Invalid or expired API key
-- `403`: Free tier limit exceeded
+- `403`: Access denied (subscription may be required)
 - `429`: Rate limited - back off and retry
 - `500/503`: Service temporarily unavailable
 - Empty response: No new trades
@@ -234,7 +236,7 @@ Handle common scenarios:
 
 ## Alternative Data Sources
 
-If Quiver API is unavailable or too limited, consider these alternatives:
+Default data source uses these free, no-auth alternatives (Quiver is optional):
 
 1. **House Stock Watcher API** (free, no auth):
 

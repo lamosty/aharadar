@@ -3,6 +3,8 @@
 **Date:** 2026-01-08
 **Tasks Completed:** Task 093, Task 088, Task 090 (partial)
 
+**Update (2026-01-09):** Quiver API access appears to require a paid plan. The `congress_trading` connector now defaults to the free House/Senate Stock Watcher disclosure feeds, with Quiver available as an explicit opt-in vendor.
+
 ## Work Completed
 
 ### 1. Task 093: Worker Service Deployment (COMMITTED)

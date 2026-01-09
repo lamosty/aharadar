@@ -3,6 +3,8 @@
 **Date:** 2026-01-08T23:30Z
 **Focus:** Deep exploration of financial data tasks (087-092), options flow research, signal correlation vision, scheduler/worker deployment
 
+**Update (2026-01-09):** Quiver and Unusual Whales API access appears to require paid plans. The app now treats them as paid/BYO-key (when selected), and defaults Congress trading ingestion to the free House/Senate Stock Watcher disclosure feeds.
+
 ## What was done
 
 ### 1. Explored existing financial data tasks (087-091)
