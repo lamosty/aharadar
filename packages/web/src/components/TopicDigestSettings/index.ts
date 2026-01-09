@@ -1,0 +1,1 @@
+export { TopicDigestSettings } from "./TopicDigestSettings";

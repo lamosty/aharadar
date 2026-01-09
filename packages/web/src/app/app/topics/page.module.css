@@ -772,6 +772,13 @@
   margin-left: auto;
 }
 
+/* Digest settings section */
+.digestSettingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 /* Viewing profile section */
 .viewingProfileSection {
   display: flex;

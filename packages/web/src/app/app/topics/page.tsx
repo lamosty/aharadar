@@ -10,6 +10,7 @@ import {
 } from "@/components/SourceConfigForms";
 import { SOURCE_CATALOG, SourceTypePickerModal } from "@/components/SourcePicker";
 import { useToast } from "@/components/Toast";
+import { TopicDigestSettings } from "@/components/TopicDigestSettings";
 import { TopicViewingProfileSettings } from "@/components/TopicViewingProfile/TopicViewingProfileSettings";
 import type { Source, SourceConfig, SupportedSourceType, Topic } from "@/lib/api";
 import {
@@ -798,6 +799,15 @@ export default function TopicsPage() {
                           })}
                         </div>
                       )}
+                    </div>
+
+                    {/* Digest settings section */}
+                    <div className={styles.digestSettingsSection}>
+                      <h4 className={styles.sectionTitle}>{t("topics.digestSettings.title")}</h4>
+                      <TopicDigestSettings
+                        topic={topic}
+                        enabledSourceCount={topicSources.filter((s) => s.isEnabled).length}
+                      />
                     </div>
 
                     {/* Viewing profile section */}

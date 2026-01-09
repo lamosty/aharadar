@@ -524,7 +524,41 @@
     "expandSettings": "Show settings",
     "collapseSettings": "Hide settings",
     "sourceInterval": "{minutes} min",
-    "sourceWeight": "Weight: {weight}"
+    "sourceWeight": "Weight: {weight}",
+    "digestSettings": {
+      "title": "Digest Settings",
+      "schedule": {
+        "title": "Schedule",
+        "enableToggle": "Enable scheduled digests",
+        "cadence": "Cadence",
+        "customInterval": "Custom interval",
+        "presets": {
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "custom": "Custom"
+        }
+      },
+      "depth": {
+        "title": "Depth & Coverage",
+        "mode": "Mode",
+        "modes": {
+          "low": "Low",
+          "normal": "Normal",
+          "high": "High"
+        },
+        "depthSlider": "Depth",
+        "hint": "Higher depth increases digest items, triage calls, and deep summaries. High mode is for deep dives; normal is the default; low is cost-efficient."
+      },
+      "preview": {
+        "title": "Estimated Output",
+        "digestItems": "Digest items",
+        "triageCalls": "Triage calls",
+        "deepSummaries": "Deep summaries",
+        "enabledSources": "Enabled sources"
+      },
+      "updateSuccess": "Digest settings updated",
+      "updateFailed": "Failed to update digest settings"
+    }
   },
   "feed": {
     "topic": "Topic",
