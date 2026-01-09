@@ -146,14 +146,30 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
       <article className={styles.condensedItem} data-testid={`feed-item-${item.id}`}>
         {/* Row 1: Source, Title, Meta, Actions, Score */}
         <div className={styles.condensedRow}>
-          <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
-            <span
-              className={styles.condensedSource}
-              style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
-            >
-              {formatSourceType(item.item.sourceType)}
-            </span>
-          </Tooltip>
+          <div className={styles.condensedSourceGroup}>
+            <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
+              <span
+                className={styles.condensedSource}
+                style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
+              >
+                {formatSourceType(item.item.sourceType)}
+              </span>
+            </Tooltip>
+            {/* HN comments link */}
+            {item.item.sourceType === "hn" && item.item.externalId && (
+              <Tooltip content={t("feed.hnComments")}>
+                <a
+                  href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.condensedCommentsLink}
+                  aria-label={t("feed.hnComments")}
+                >
+                  <CommentIcon />
+                </a>
+              </Tooltip>
+            )}
+          </div>
 
           <div className={styles.condensedContent}>
             <span className={styles.condensedTitle}>

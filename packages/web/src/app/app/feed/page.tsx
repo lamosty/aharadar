@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useItems, useFeedback, useTopicMarkChecked, useTopics, usePageLayout } from "@/lib/hooks";
+import { usePagedItems, useFeedback, useTopicMarkChecked, useTopics, usePageLayout, useLocalStorage } from "@/lib/hooks";
 import { FeedItem, FeedItemSkeleton, FeedFilterBar } from "@/components/Feed";
+import { Pagination, type PageSize, PAGE_SIZE_OPTIONS } from "@/components/Pagination";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { useTopic } from "@/components/TopicProvider";
@@ -13,6 +14,9 @@ import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 type SortOption = "score_desc" | "date_desc" | "date_asc";
+
+// Default page size based on layout
+const DEFAULT_PAGE_SIZE: PageSize = 50;
 
 export default function FeedPage() {
   return (
@@ -51,18 +55,29 @@ function FeedPageContent() {
   // Parse URL params
   const sourcesParam = searchParams.get("sources");
   const sortParam = searchParams.get("sort") as SortOption | null;
+  const pageParam = searchParams.get("page");
 
   const [selectedSources, setSelectedSources] = useState<string[]>(
     sourcesParam ? sourcesParam.split(",").filter(Boolean) : []
   );
   const [sort, setSort] = useState<SortOption>(sortParam || "score_desc");
 
-  // Update URL when filters change
+  // Pagination state - page size persisted in localStorage
+  const [pageSize, setPageSize] = useLocalStorage<PageSize>("feedPageSize", DEFAULT_PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(pageParam ? parseInt(pageParam, 10) : 1);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSources, sort, currentTopicId]);
+
+  // Update URL when filters/page change
   const updateUrl = useCallback(
-    (sources: string[], newSort: SortOption) => {
+    (sources: string[], newSort: SortOption, page: number) => {
       const params = new URLSearchParams();
       if (sources.length > 0) params.set("sources", sources.join(","));
       if (newSort !== "score_desc") params.set("sort", newSort);
+      if (page > 1) params.set("page", String(page));
       const query = params.toString();
       router.replace(query ? `/app/feed?${query}` : "/app/feed", { scroll: false });
     },
@@ -72,7 +87,7 @@ function FeedPageContent() {
   const handleSourcesChange = useCallback(
     (sources: string[]) => {
       setSelectedSources(sources);
-      updateUrl(sources, sort);
+      updateUrl(sources, sort, 1);
     },
     [sort, updateUrl]
   );
@@ -80,16 +95,36 @@ function FeedPageContent() {
   const handleSortChange = useCallback(
     (newSort: SortOption) => {
       setSort(newSort);
-      updateUrl(selectedSources, newSort);
+      updateUrl(selectedSources, newSort, 1);
     },
     [selectedSources, updateUrl]
   );
 
-  // Fetch items - wait for topic context to be ready
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error } = useItems({
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      updateUrl(selectedSources, sort, page);
+      // Scroll to top of feed
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [selectedSources, sort, updateUrl]
+  );
+
+  const handlePageSizeChange = useCallback(
+    (size: PageSize) => {
+      setPageSize(size);
+      setCurrentPage(1);
+      updateUrl(selectedSources, sort, 1);
+    },
+    [selectedSources, sort, updateUrl, setPageSize]
+  );
+
+  // Fetch items using paged query
+  const { data, isLoading, isError, error, isFetching } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
-    limit: 20,
+    page: currentPage,
+    pageSize,
     topicId: currentTopicId || undefined,
   });
 
@@ -117,7 +152,7 @@ function FeedPageContent() {
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
-      const item = data?.pages.flatMap((p) => p.items).find((i) => i.id === contentItemId);
+      const item = data?.items.find((i) => i.id === contentItemId);
       await feedbackMutation.mutateAsync({
         contentItemId,
         digestId: item?.digestId,
@@ -127,9 +162,9 @@ function FeedPageContent() {
     [data, feedbackMutation]
   );
 
-  // Flatten pages into single items array
-  const allItems = data?.pages.flatMap((page) => page.items) ?? [];
-  const totalCount = data?.pages[0]?.pagination.total;
+  const items = data?.items ?? [];
+  const totalCount = data?.pagination.total ?? 0;
+  const isCondensed = layout === "condensed";
 
   // Show onboarding when no topics exist
   if (!topicsLoading && !hasTopics) {
@@ -223,13 +258,12 @@ function FeedPageContent() {
         onSourcesChange={handleSourcesChange}
         sort={sort}
         onSortChange={handleSortChange}
-        totalCount={totalCount}
         layout={layout}
       />
 
       {isLoading && (
         <div className={styles.feedList}>
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
             <FeedItemSkeleton key={i} />
           ))}
         </div>
@@ -245,38 +279,30 @@ function FeedPageContent() {
         </div>
       )}
 
-      {!isLoading && !isError && allItems.length === 0 && (
+      {!isLoading && !isError && items.length === 0 && (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No items yet</p>
           <p className={styles.emptyMessage}>Run the pipeline to fetch and rank items from your sources.</p>
         </div>
       )}
 
-      {!isLoading && !isError && allItems.length > 0 && (
+      {!isLoading && !isError && items.length > 0 && (
         <>
-          <div className={styles.feedList} data-layout={layout}>
-            {allItems.map((item) => (
+          <div className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`} data-layout={layout}>
+            {items.map((item) => (
               <FeedItem key={item.id} item={item} onFeedback={handleFeedback} layout={layout} />
             ))}
           </div>
 
-          {hasNextPage && (
-            <div className={styles.loadMore}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-              >
-                {isFetchingNextPage ? "Loading..." : "Load more"}
-              </button>
-            </div>
-          )}
-
-          {!hasNextPage && allItems.length > 0 && (
-            <div className={styles.endOfFeed}>
-              <p>You've reached the end</p>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalCount}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isFetching}
+            compact={isCondensed}
+          />
         </>
       )}
     </div>

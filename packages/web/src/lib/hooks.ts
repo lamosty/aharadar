@@ -8,6 +8,7 @@
  * - Optimistic updates for feedback
  */
 
+import { useState, useCallback } from "react";
 import {
   useQuery,
   useMutation,
@@ -181,6 +182,60 @@ export function useItems(params?: Omit<ItemsListParams, "offset">) {
       return lastPage.pagination.offset + lastPage.pagination.limit;
     },
   });
+}
+
+/**
+ * Paged query for unified feed items.
+ * Supports page-based navigation with explicit page/pageSize.
+ */
+export interface UsePagedItemsParams extends Omit<ItemsListParams, "offset" | "limit"> {
+  page: number;
+  pageSize: number;
+}
+
+export function usePagedItems(params: UsePagedItemsParams) {
+  const { page, pageSize, ...rest } = params;
+  const offset = (page - 1) * pageSize;
+
+  return useQuery({
+    queryKey: ["items", "paged", { ...rest, page, pageSize }],
+    queryFn: ({ signal }) => getItems({ ...rest, limit: pageSize, offset }, signal),
+    placeholderData: (previousData) => previousData, // Keep previous data while loading new page
+  });
+}
+
+/**
+ * LocalStorage hook for persisting values across sessions.
+ */
+export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === "undefined") {
+      return initialValue;
+    }
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? (JSON.parse(item) as T) : initialValue;
+    } catch {
+      return initialValue;
+    }
+  });
+
+  const setValue = useCallback(
+    (value: T | ((prev: T) => T)) => {
+      try {
+        const valueToStore = value instanceof Function ? value(storedValue) : value;
+        setStoredValue(valueToStore);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        }
+      } catch (error) {
+        console.warn(`Error setting localStorage key "${key}":`, error);
+      }
+    },
+    [key, storedValue]
+  );
+
+  return [storedValue, setValue];
 }
 
 // ============================================================================
@@ -551,7 +606,11 @@ export function useTopic(
 export function useUpdateTopicViewingProfile(
   topicId: string,
   options?: Omit<
-    UseMutationOptions<TopicViewingProfileUpdateResponse, ApiError | NetworkError, TopicViewingProfileUpdateRequest>,
+    UseMutationOptions<
+      TopicViewingProfileUpdateResponse,
+      ApiError | NetworkError,
+      TopicViewingProfileUpdateRequest
+    >,
     "mutationFn"
   >
 ) {
@@ -574,10 +633,7 @@ export function useUpdateTopicViewingProfile(
  */
 export function useTopicMarkChecked(
   topicId: string,
-  options?: Omit<
-    UseMutationOptions<TopicMarkCheckedResponse, ApiError | NetworkError, void>,
-    "mutationFn"
-  >
+  options?: Omit<UseMutationOptions<TopicMarkCheckedResponse, ApiError | NetworkError, void>, "mutationFn">
 ) {
   const queryClient = useQueryClient();
 
@@ -618,7 +674,11 @@ export function useCreateTopic(
  */
 export function useUpdateTopic(
   options?: Omit<
-    UseMutationOptions<UpdateTopicResponse, ApiError | NetworkError, { topicId: string; data: UpdateTopicRequest }>,
+    UseMutationOptions<
+      UpdateTopicResponse,
+      ApiError | NetworkError,
+      { topicId: string; data: UpdateTopicRequest }
+    >,
     "mutationFn"
   >
 ) {
@@ -637,10 +697,7 @@ export function useUpdateTopic(
  * Mutation to delete a topic.
  */
 export function useDeleteTopic(
-  options?: Omit<
-    UseMutationOptions<DeleteTopicResponse, ApiError | NetworkError, string>,
-    "mutationFn"
-  >
+  options?: Omit<UseMutationOptions<DeleteTopicResponse, ApiError | NetworkError, string>, "mutationFn">
 ) {
   const queryClient = useQueryClient();
 
@@ -659,7 +716,7 @@ export function useDeleteTopic(
 // Layout Hooks (Reddit-style per-page overrides)
 // ============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import {
   type Layout,
   type LayoutPage,

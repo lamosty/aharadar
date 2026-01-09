@@ -427,11 +427,20 @@
   min-height: 52px;
 }
 
+/* Source group: badge + comments link - fixed width for alignment */
+.condensedSourceGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  min-width: 55px; /* Fixed width so titles align vertically */
+}
+
 /* Source badge - unified with filter bar style (pill shape) */
 .condensedSource {
   font-size: 0.65rem;
   font-weight: var(--font-weight-bold);
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--source-color, var(--color-primary)) 12%, transparent);
   color: var(--source-color, var(--color-primary));
@@ -440,6 +449,33 @@
   border: 1px solid color-mix(in srgb, var(--source-color, var(--color-primary)) 25%, transparent);
   flex-shrink: 0;
   white-space: nowrap;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* HN comments link in condensed view */
+.condensedCommentsLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 25%, transparent);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.condensedCommentsLink:hover {
+  background: color-mix(in srgb, var(--color-warning) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+}
+
+.condensedCommentsLink svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* Content area: title + optional preview */

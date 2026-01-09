@@ -9,7 +9,6 @@ interface FeedFilterBarProps {
   onSourcesChange: (sources: string[]) => void;
   sort: "score_desc" | "date_desc" | "date_asc";
   onSortChange: (sort: "score_desc" | "date_desc" | "date_asc") => void;
-  totalCount?: number;
   /** Layout mode - condensed uses simpler styling */
   layout?: Layout;
 }
@@ -39,7 +38,6 @@ export function FeedFilterBar({
   onSourcesChange,
   sort,
   onSortChange,
-  totalCount,
   layout = "reader",
 }: FeedFilterBarProps) {
   const toggleSource = (source: string) => {
@@ -79,9 +77,6 @@ export function FeedFilterBar({
       </div>
 
       <div className={styles.rightControls}>
-        {totalCount !== undefined && (
-          <span className={styles.count}>{totalCount.toLocaleString()} items</span>
-        )}
         <select
           className={styles.sortSelect}
           value={sort}
