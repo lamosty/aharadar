@@ -304,6 +304,76 @@
   border-radius: var(--radius-sm);
 }
 
+.helpBox p + p {
+  margin-top: var(--space-2);
+}
+
+/* Budget warning callout */
+.budgetWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background-color: var(--color-info-subtle, rgba(59, 130, 246, 0.1));
+  border: 1px solid var(--color-info, #3b82f6);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.budgetWarning svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-info, #3b82f6);
+}
+
+/* Paste box for bulk input */
+.pasteToggle {
+  display: inline-block;
+  margin-top: var(--space-2);
+  padding: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pasteToggle:hover {
+  color: var(--color-primary-hover);
+}
+
+.pasteBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.pasteTextarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.pasteTextarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
 @media (max-width: 640px) {
   .inlineFields {
     flex-direction: column;

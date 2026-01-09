@@ -10,16 +10,35 @@ import {
   type SourceCategory,
   searchSources,
 } from "@/lib/source_catalog";
+import { SOURCE_RECIPES, type SourceRecipe } from "@/lib/source_recipes";
+import { getStarterPacksGrouped, type StarterPack } from "@/lib/source_starter_packs";
 import styles from "./SourceTypePickerModal.module.css";
+
+type ViewMode = "sources" | "starter-packs";
+
+export interface SourcePickerSelection {
+  sourceType: SupportedSourceType;
+  suggestedName?: string;
+  prefillConfig?: Record<string, unknown>;
+  disclaimer?: string;
+}
 
 interface SourceTypePickerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (sourceType: SupportedSourceType) => void;
+  /** Called when a recipe/starter pack is selected with prefilled config */
+  onSelectWithConfig?: (selection: SourcePickerSelection) => void;
 }
 
-export function SourceTypePickerModal({ isOpen, onClose, onSelect }: SourceTypePickerModalProps) {
+export function SourceTypePickerModal({
+  isOpen,
+  onClose,
+  onSelect,
+  onSelectWithConfig,
+}: SourceTypePickerModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("sources");
   const [selectedCategory, setSelectedCategory] = useState<SourceCategory | "all">("all");
   const [showPaidSources, setShowPaidSources] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -81,10 +100,14 @@ export function SourceTypePickerModal({ isOpen, onClose, onSelect }: SourceTypeP
   useEffect(() => {
     if (isOpen) {
       setSearchQuery("");
+      setViewMode("sources");
       setFocusedIndex(0);
       setTimeout(() => searchInputRef.current?.focus(), 50);
     }
   }, [isOpen]);
+
+  // Get starter packs grouped by category
+  const starterPacksGrouped = useMemo(() => getStarterPacksGrouped(), []);
 
   // Handle click outside
   useEffect(() => {
@@ -144,6 +167,33 @@ export function SourceTypePickerModal({ isOpen, onClose, onSelect }: SourceTypeP
     onClose();
   };
 
+  const handleSelectRecipe = (recipe: SourceRecipe) => {
+    if (onSelectWithConfig) {
+      onSelectWithConfig({
+        sourceType: recipe.sourceType,
+        suggestedName: recipe.defaultName,
+        prefillConfig: recipe.defaultConfig,
+      });
+    } else {
+      onSelect(recipe.sourceType);
+    }
+    onClose();
+  };
+
+  const handleSelectStarterPack = (pack: StarterPack) => {
+    if (onSelectWithConfig) {
+      onSelectWithConfig({
+        sourceType: pack.sourceType,
+        suggestedName: pack.defaultName,
+        prefillConfig: pack.defaultConfig,
+        disclaimer: pack.disclaimer,
+      });
+    } else {
+      onSelect(pack.sourceType);
+    }
+    onClose();
+  };
+
   const categories: Array<{ value: SourceCategory | "all"; label: string }> = [
     { value: "all", label: t("sourcePicker.allCategories") },
     ...Object.entries(CATEGORY_INFO)
@@ -186,124 +236,216 @@ export function SourceTypePickerModal({ isOpen, onClose, onSelect }: SourceTypeP
           </button>
         </div>
 
-        {/* Search and filters */}
-        <div className={styles.controls}>
-          <div className={styles.searchWrapper}>
-            <SearchIcon />
-            <input
-              ref={searchInputRef}
-              type="text"
-              className={styles.searchInput}
-              placeholder={t("sourcePicker.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                className={styles.clearButton}
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search"
-              >
-                <CloseIcon />
-              </button>
-            )}
-          </div>
-
-          <div className={styles.categoryTabs}>
-            {categories.map((cat) => (
-              <button
-                key={cat.value}
-                type="button"
-                className={`${styles.categoryTab} ${selectedCategory === cat.value ? styles.categoryTabActive : ""}`}
-                onClick={() => setSelectedCategory(cat.value)}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+        {/* View mode toggle */}
+        <div className={styles.viewToggle}>
+          <button
+            type="button"
+            className={`${styles.viewToggleButton} ${viewMode === "sources" ? styles.viewToggleActive : ""}`}
+            onClick={() => setViewMode("sources")}
+          >
+            {t("sourcePicker.viewSources")}
+          </button>
+          <button
+            type="button"
+            className={`${styles.viewToggleButton} ${viewMode === "starter-packs" ? styles.viewToggleActive : ""}`}
+            onClick={() => setViewMode("starter-packs")}
+          >
+            {t("sourcePicker.viewStarterPacks")}
+          </button>
         </div>
 
-        {/* Source list */}
-        <div className={styles.body}>
-          {flatSources.length === 0 ? (
-            <div className={styles.emptyState}>
-              <p>{t("sourcePicker.noResults")}</p>
-              {!showPaidSources && hiddenPaidCount > 0 && (
-                <p className={styles.emptyHint}>
-                  {t("sourcePicker.hiddenPaidHint", { count: hiddenPaidCount })}
-                </p>
+        {viewMode === "sources" && (
+          <>
+            {/* Search and filters */}
+            <div className={styles.controls}>
+              <div className={styles.searchWrapper}>
+                <SearchIcon />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder={t("sourcePicker.searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                  >
+                    <CloseIcon />
+                  </button>
+                )}
+              </div>
+
+              <div className={styles.categoryTabs}>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    className={`${styles.categoryTab} ${selectedCategory === cat.value ? styles.categoryTabActive : ""}`}
+                    onClick={() => setSelectedCategory(cat.value)}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Source list */}
+            <div className={styles.body}>
+              {flatSources.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <p>{t("sourcePicker.noResults")}</p>
+                  {!showPaidSources && hiddenPaidCount > 0 && (
+                    <p className={styles.emptyHint}>
+                      {t("sourcePicker.hiddenPaidHint", { count: hiddenPaidCount })}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                groupedSources.map((group) => (
+                  <div key={group.category} className={styles.categoryGroup}>
+                    <h3 className={styles.categoryLabel}>{group.label}</h3>
+                    <div className={styles.sourceList}>
+                      {group.sources.map((entry, idx) => {
+                        const globalIndex = flatSources.indexOf(entry);
+                        const isFocused = globalIndex === focusedIndex;
+
+                        return (
+                          <button
+                            key={entry.sourceType}
+                            type="button"
+                            className={`${styles.sourceItem} ${isFocused ? styles.sourceItemFocused : ""}`}
+                            onClick={() => handleSelect(entry)}
+                            onMouseEnter={() => setFocusedIndex(globalIndex)}
+                          >
+                            <div className={styles.sourceInfo}>
+                              <div className={styles.sourceName}>
+                                {entry.name}
+                                {entry.isPaid && (
+                                  <span className={styles.badgePaid}>
+                                    {t("sourcePicker.badgePaid")}
+                                  </span>
+                                )}
+                                {entry.isBudgetSensitive && (
+                                  <span className={styles.badgeBudget} title={entry.costHint}>
+                                    {t("sourcePicker.badgeBudget")}
+                                  </span>
+                                )}
+                                {entry.isExperimental && (
+                                  <span className={styles.badgeExperimental}>
+                                    {t("sourcePicker.badgeExperimental")}
+                                  </span>
+                                )}
+                              </div>
+                              <div className={styles.sourceDescription}>{entry.description}</div>
+                              {entry.costHint && (
+                                <div className={styles.costHint}>{entry.costHint}</div>
+                              )}
+                            </div>
+                            <ChevronRightIcon />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
-          ) : (
-            groupedSources.map((group) => (
-              <div key={group.category} className={styles.categoryGroup}>
-                <h3 className={styles.categoryLabel}>{group.label}</h3>
-                <div className={styles.sourceList}>
-                  {group.sources.map((entry, idx) => {
-                    const globalIndex = flatSources.indexOf(entry);
-                    const isFocused = globalIndex === focusedIndex;
 
-                    return (
+            {/* Footer with paid toggle */}
+            <div className={styles.footer}>
+              <label className={styles.toggleLabel}>
+                <input
+                  type="checkbox"
+                  checked={showPaidSources}
+                  onChange={(e) => setShowPaidSources(e.target.checked)}
+                  className={styles.toggleInput}
+                />
+                <span className={styles.toggleSlider} />
+                <span className={styles.toggleText}>
+                  {t("sourcePicker.showPaidSources")}
+                  {hiddenPaidCount > 0 && !showPaidSources && (
+                    <span className={styles.hiddenCount}>({hiddenPaidCount})</span>
+                  )}
+                </span>
+              </label>
+            </div>
+          </>
+        )}
+
+        {viewMode === "starter-packs" && (
+          <>
+            {/* Recipes section */}
+            <div className={styles.body}>
+              <div className={styles.starterPacksIntro}>
+                <p>{t("sourcePicker.starterPacksIntro")}</p>
+                <p className={styles.disclaimer}>{t("sourcePicker.starterPacksDisclaimer")}</p>
+              </div>
+
+              {/* Quick Recipes */}
+              <div className={styles.categoryGroup}>
+                <h3 className={styles.categoryLabel}>{t("sourcePicker.quickRecipes")}</h3>
+                <div className={styles.sourceList}>
+                  {SOURCE_RECIPES.map((recipe) => (
+                    <button
+                      key={recipe.id}
+                      type="button"
+                      className={styles.sourceItem}
+                      onClick={() => handleSelectRecipe(recipe)}
+                    >
+                      <div className={styles.sourceInfo}>
+                        <div className={styles.sourceName}>
+                          {recipe.title}
+                          {recipe.badge === "budget-sensitive" && (
+                            <span className={styles.badgeBudget}>
+                              {t("sourcePicker.badgeBudget")}
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.sourceDescription}>{recipe.description}</div>
+                      </div>
+                      <ChevronRightIcon />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Starter Packs by Category */}
+              {starterPacksGrouped.map((group) => (
+                <div key={group.category} className={styles.categoryGroup}>
+                  <h3 className={styles.categoryLabel}>{group.label}</h3>
+                  <div className={styles.sourceList}>
+                    {group.packs.map((pack) => (
                       <button
-                        key={entry.sourceType}
+                        key={pack.id}
                         type="button"
-                        className={`${styles.sourceItem} ${isFocused ? styles.sourceItemFocused : ""}`}
-                        onClick={() => handleSelect(entry)}
-                        onMouseEnter={() => setFocusedIndex(globalIndex)}
+                        className={styles.sourceItem}
+                        onClick={() => handleSelectStarterPack(pack)}
                       >
                         <div className={styles.sourceInfo}>
                           <div className={styles.sourceName}>
-                            {entry.name}
-                            {entry.isPaid && (
-                              <span className={styles.badgePaid}>
-                                {t("sourcePicker.badgePaid")}
-                              </span>
-                            )}
-                            {entry.isBudgetSensitive && (
-                              <span className={styles.badgeBudget} title={entry.costHint}>
+                            {pack.title}
+                            {pack.badge === "budget-sensitive" && (
+                              <span className={styles.badgeBudget}>
                                 {t("sourcePicker.badgeBudget")}
                               </span>
                             )}
-                            {entry.isExperimental && (
-                              <span className={styles.badgeExperimental}>
-                                {t("sourcePicker.badgeExperimental")}
-                              </span>
-                            )}
                           </div>
-                          <div className={styles.sourceDescription}>{entry.description}</div>
-                          {entry.costHint && (
-                            <div className={styles.costHint}>{entry.costHint}</div>
-                          )}
+                          <div className={styles.sourceDescription}>{pack.description}</div>
                         </div>
                         <ChevronRightIcon />
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer with paid toggle */}
-        <div className={styles.footer}>
-          <label className={styles.toggleLabel}>
-            <input
-              type="checkbox"
-              checked={showPaidSources}
-              onChange={(e) => setShowPaidSources(e.target.checked)}
-              className={styles.toggleInput}
-            />
-            <span className={styles.toggleSlider} />
-            <span className={styles.toggleText}>
-              {t("sourcePicker.showPaidSources")}
-              {hiddenPaidCount > 0 && !showPaidSources && (
-                <span className={styles.hiddenCount}>({hiddenPaidCount})</span>
-              )}
-            </span>
-          </label>
-        </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

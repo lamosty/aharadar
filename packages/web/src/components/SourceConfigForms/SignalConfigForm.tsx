@@ -89,6 +89,19 @@ export function SignalConfigForm({ value, onChange, errors }: SourceConfigFormPr
           Unlike X Posts which fetch full content, Signals provide summarized trend data that can be
           corroborated with canonical sources.
         </p>
+        <p>
+          <strong>Signal vs. X Posts:</strong> X Posts creates canonical items shown in your feed.
+          Signals are for background corroboration and trend detection only (bundle-only, not shown
+          as feed items).
+        </p>
+      </div>
+
+      <div className={styles.budgetWarning}>
+        <BudgetIcon />
+        <div>
+          <strong>Budget-sensitive:</strong> Uses Grok/xAI credits. Keep max results low and limit
+          accounts/keywords to control spend.
+        </div>
       </div>
 
       <div className={styles.inlineFields}>
@@ -560,6 +573,24 @@ function SignalIcon() {
       <path d="M12 20v-8" />
       <path d="M17 20V8" />
       <path d="M22 4v16" />
+    </svg>
+  );
+}
+
+function BudgetIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
     </svg>
   );
 }

@@ -875,6 +875,18 @@ Ingest X/Twitter posts as canonical content items, using a provider-backed acces
 
 See ADR `0010-x-posts-canonical-via-grok.md` for background on why we use a provider abstraction rather than the official X API directly.
 
+**X as a free data source alternative**
+
+Many communities, institutions, and individuals publish structured data publicly on X/Twitter:
+- **Financial data**: Congressional trading trackers, insider trade alerts, options flow commentary
+- **Research**: AI labs, academics, and researchers announcing papers and findings
+- **Government**: Official accounts posting policy updates and announcements
+- **Breaking news**: Wire services and journalists posting real-time updates
+
+This makes `x_posts` a viable **free alternative to some paid data APIs** when information is posted publicly by verified accounts. Instead of paying for a specialized data API, you can often track the same accounts/topics via X.
+
+**Budget consideration**: Uses Grok/xAI credits. Control spend by limiting accounts, keywords, and `maxResultsPerQuery`. This is budget-sensitive but not paid (no separate subscription required beyond xAI API access).
+
 **config_json**
 
 ```json

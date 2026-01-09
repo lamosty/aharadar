@@ -9,6 +9,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
   const [accountInput, setAccountInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [queryInput, setQueryInput] = useState("");
+  const [showPasteAccounts, setShowPasteAccounts] = useState(false);
+  const [pasteAccountsValue, setPasteAccountsValue] = useState("");
 
   const handleChange = <K extends keyof XPostsConfig>(key: K, val: XPostsConfig[K]) => {
     onChange({ ...value, [key]: val });
@@ -69,6 +71,21 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
     }
   };
 
+  // Bulk paste handler for accounts
+  const handlePasteAccounts = () => {
+    const lines = pasteAccountsValue
+      .split(/[,\n]/)
+      .map((line) => line.trim().replace(/^@/, ""))
+      .filter((line) => line.length > 0);
+    const existing = new Set(value.accounts ?? []);
+    const newAccounts = lines.filter((acc) => !existing.has(acc));
+    if (newAccounts.length > 0) {
+      handleChange("accounts", [...(value.accounts ?? []), ...newAccounts]);
+    }
+    setPasteAccountsValue("");
+    setShowPasteAccounts(false);
+  };
+
   return (
     <div>
       <div className={styles.sourceTypeHeader}>
@@ -86,6 +103,19 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
           Monitor X/Twitter for content. You can follow specific accounts, track keywords, or use
           custom search queries. At least one of accounts, keywords, or queries should be specified.
         </p>
+        <p>
+          <strong>X as a data source:</strong> Many communities publish structured data publicly on
+          X (financial trackers, research labs, official announcements). This is a free alternative
+          to some paid data APIs.
+        </p>
+      </div>
+
+      <div className={styles.budgetWarning}>
+        <BudgetIcon />
+        <div>
+          <strong>Budget-sensitive:</strong> Uses Grok/xAI credits. Reduce accounts, keywords, and
+          max results to control spend.
+        </div>
       </div>
 
       <div className={styles.field}>
@@ -173,6 +203,32 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     </button>
                   </span>
                 ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowPasteAccounts(!showPasteAccounts)}
+              className={styles.pasteToggle}
+            >
+              {showPasteAccounts ? "Cancel bulk paste" : "Paste multiple accounts"}
+            </button>
+            {showPasteAccounts && (
+              <div className={styles.pasteBox}>
+                <textarea
+                  value={pasteAccountsValue}
+                  onChange={(e) => setPasteAccountsValue(e.target.value)}
+                  placeholder="Paste usernames (one per line, or comma-separated)"
+                  className={styles.pasteTextarea}
+                  rows={4}
+                />
+                <button
+                  type="button"
+                  onClick={handlePasteAccounts}
+                  disabled={!pasteAccountsValue.trim()}
+                  className={styles.addButton}
+                >
+                  Add All
+                </button>
               </div>
             )}
           </div>
@@ -431,6 +487,24 @@ function XIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function BudgetIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
     </svg>
   );
 }

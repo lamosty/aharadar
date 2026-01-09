@@ -582,6 +582,11 @@
     "badgePaid": "Paid",
     "badgeBudget": "Credits",
     "badgeExperimental": "Beta",
-    "chooseType": "Choose type..."
+    "chooseType": "Choose type...",
+    "viewSources": "All Sources",
+    "viewStarterPacks": "Starter Packs",
+    "starterPacksIntro": "Pre-configured source templates for common use cases. X via Grok can serve as a free alternative to some paid data APIs when information is posted publicly.",
+    "starterPacksDisclaimer": "These are convenience presets. Verify accuracy; not official data sources.",
+    "quickRecipes": "Quick Start Recipes"
   }
 }
