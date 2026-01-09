@@ -26,6 +26,7 @@ None - Polymarket API is free and requires no authentication for public market d
 ### 1. Create Connector Directory
 
 Create `packages/connectors/src/polymarket/`:
+
 - `config.ts` - Parse and validate config
 - `fetch.ts` - Fetch markets via API
 - `normalize.ts` - Map markets to ContentItemDraft
@@ -45,6 +46,7 @@ Create `packages/connectors/src/polymarket/`:
 ```
 
 Fields:
+
 - `categories` (optional): Filter by market categories
 - `min_volume` (default: 0): Minimum total volume in USD
 - `min_liquidity` (default: 0): Minimum current liquidity
@@ -57,6 +59,7 @@ Fields:
 **Gamma API (Primary):**
 
 1. **List Markets:**
+
    ```
    GET https://gamma-api.polymarket.com/markets
    ?limit=100
@@ -65,6 +68,7 @@ Fields:
    ```
 
 2. **Market Details:**
+
    ```
    GET https://gamma-api.polymarket.com/markets/{condition_id}
    ```
@@ -75,9 +79,10 @@ Fields:
    ```
 
 **CLOB API (Order Book Data):**
-   ```
-   GET https://clob.polymarket.com/markets/{token_id}
-   ```
+
+```
+GET https://clob.polymarket.com/markets/{token_id}
+```
 
 ### 4. Fetch Implementation
 
@@ -91,7 +96,7 @@ interface PolymarketRawMarket {
   category: string;
   end_date_iso: string;
   outcomes: string[];
-  outcome_prices: string[];  // Current probabilities as strings "0.65"
+  outcome_prices: string[]; // Current probabilities as strings "0.65"
   volume: string;
   liquidity: string;
   spread: string;
@@ -106,6 +111,7 @@ interface PolymarketRawMarket {
 ```
 
 **Fetch Logic:**
+
 1. Call `/markets` endpoint with filters
 2. Parse response and apply local filters (min_volume, category, etc.)
 3. Calculate 24h probability change where available
@@ -186,6 +192,7 @@ This allows the connector to act as a "prediction market alert" system.
 ### 9. Rate Limiting
 
 Polymarket API limits are not strictly documented. Implement conservative limits:
+
 - Maximum 5 requests per second
 - Implement exponential backoff on 429 responses
 - Cache market metadata where possible
@@ -193,6 +200,7 @@ Polymarket API limits are not strictly documented. Implement conservative limits
 ### 10. Error Handling
 
 Handle common scenarios:
+
 - `404`: Market not found or removed
 - `429`: Rate limited - back off and retry
 - `500/503`: Service temporarily unavailable

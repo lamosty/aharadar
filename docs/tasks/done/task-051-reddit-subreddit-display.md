@@ -7,7 +7,9 @@ Reddit posts don't show which subreddit they're from, making it hard to scan and
 ## Current State
 
 ### Database
+
 Reddit `metadata_json` contains subreddit info:
+
 ```json
 {
   "subreddit": "Bitcoin",
@@ -21,10 +23,12 @@ Reddit `metadata_json` contains subreddit info:
 ```
 
 ### API
+
 - `metadata_json` is NOT returned by items API
 - Feed items only have `sourceType: "reddit"`, no subreddit info
 
 ### FeedItem Component
+
 - Shows "Reddit" badge, no subreddit distinction
 
 ## Solution
@@ -34,6 +38,7 @@ Reddit `metadata_json` contains subreddit info:
 **File:** `packages/api/src/routes/items.ts`
 
 Add `metadata_json` to the query:
+
 ```sql
 SELECT
   ...
@@ -42,6 +47,7 @@ SELECT
 ```
 
 Or extract specific fields:
+
 ```sql
 SELECT
   ...
@@ -52,6 +58,7 @@ SELECT
 ```
 
 Update response:
+
 ```typescript
 item: {
   ...
@@ -68,15 +75,17 @@ item: {
 **File:** `packages/web/src/components/Feed/FeedItem.tsx`
 
 For Reddit items, show subreddit:
+
 ```tsx
-{item.item.sourceType === 'reddit' && item.item.metadata?.subreddit && (
-  <span className={styles.subreddit}>
-    r/{item.item.metadata.subreddit}
-  </span>
-)}
+{
+  item.item.sourceType === "reddit" && item.item.metadata?.subreddit && (
+    <span className={styles.subreddit}>r/{item.item.metadata.subreddit}</span>
+  );
+}
 ```
 
 Could also show:
+
 - Upvotes count
 - Comment count
 - Upvote ratio as quality indicator
@@ -86,23 +95,26 @@ Could also show:
 **File:** `packages/web/src/app/app/feed/page.tsx`
 
 When sourceTypes includes "reddit", show subreddit filter dropdown:
+
 ```tsx
-{activeSourceTypes.includes('reddit') && (
-  <select
-    value={selectedSubreddit}
-    onChange={(e) => setSelectedSubreddit(e.target.value)}
-  >
-    <option value="">All subreddits</option>
-    {subreddits.map(sub => (
-      <option key={sub} value={sub}>r/{sub}</option>
-    ))}
-  </select>
-)}
+{
+  activeSourceTypes.includes("reddit") && (
+    <select value={selectedSubreddit} onChange={(e) => setSelectedSubreddit(e.target.value)}>
+      <option value="">All subreddits</option>
+      {subreddits.map((sub) => (
+        <option key={sub} value={sub}>
+          r/{sub}
+        </option>
+      ))}
+    </select>
+  );
+}
 ```
 
 **File:** `packages/api/src/routes/items.ts`
 
 Add subreddit filter:
+
 ```typescript
 if (subreddit) {
   filterConditions.push(`ci.metadata_json->>'subreddit' = $${filterParamIdx}`);
@@ -139,6 +151,7 @@ interface FeedItemContent {
 ## Visual Design
 
 ### Reddit Feed Item
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Reddit  r/Bitcoin  @user123  2h ago                    [87] │

@@ -9,6 +9,7 @@
 Add a Q&A feature that lets users ask questions about their ingested content. The system retrieves relevant clusters, synthesizes an answer using Claude, and returns citations.
 
 **Use cases:**
+
 - "What would Warren Buffett do?" - Persona-based analysis
 - "What happens next for Venezuela?" - Synthesis + prediction
 - "Is crypto sentiment changing?" - Trend analysis
@@ -17,6 +18,7 @@ Add a Q&A feature that lets users ask questions about their ingested content. Th
 ## Background
 
 The infrastructure is 80% ready:
+
 - Embeddings stored in pgvector (1536 dims, HNSW index)
 - Semantic search implemented (CLI `search` command)
 - Clusters group similar items into "stories"
@@ -25,6 +27,7 @@ The infrastructure is 80% ready:
 - Preference profiles available from feedback
 
 **What's needed:**
+
 - Context assembly function (retrieve clusters → build prompt context)
 - Q&A prompt templates
 - API/CLI/Web endpoints
@@ -43,12 +46,14 @@ The infrastructure is 80% ready:
 ## Architecture
 
 **Cluster-Based RAG:**
+
 ```
 Question → Embed → Search clusters (topic-scoped) → Top K clusters →
   → Fetch representative items per cluster → Build prompt → Call Claude → Parse response
 ```
 
 Why clusters over items:
+
 - Aligns with digest paradigm (stories, not raw items)
 - Reduces noise (clusters are deduplicated)
 - Pre-ranked by aha_score
@@ -96,14 +101,14 @@ packages/shared/src/types/index.ts        # Export QA types
 ```typescript
 // POST /api/ask
 interface AskRequest {
-  question: string;           // Natural language - persona can be embedded: "What would Buffett think?"
+  question: string; // Natural language - persona can be embedded: "What would Buffett think?"
   topicId: string;
   options?: {
     timeWindow?: {
-      from?: string;          // ISO date - defaults to last 30 days
+      from?: string; // ISO date - defaults to last 30 days
       to?: string;
     };
-    maxClusters?: number;     // Override default (5)
+    maxClusters?: number; // Override default (5)
   };
 }
 
@@ -115,13 +120,13 @@ interface AskResponse {
     url: string;
     sourceType: string;
     publishedAt: string;
-    relevance: string;       // Why this source matters
+    relevance: string; // Why this source matters
   }[];
   confidence: {
-    score: number;           // 0.0 - 1.0
-    reasoning: string;       // "Based on 5 recent sources..."
+    score: number; // 0.0 - 1.0
+    reasoning: string; // "Based on 5 recent sources..."
   };
-  dataGaps?: string[];       // "No recent data on X"
+  dataGaps?: string[]; // "No recent data on X"
   usage: {
     clustersRetrieved: number;
     tokensUsed: { input: number; output: number };
@@ -149,15 +154,19 @@ interface AskResponse {
 ### Question Types
 
 **Factual:** "What happened with X?"
+
 - Return timeline, quotes, source attribution
 
 **Trend:** "Is Y trending?"
+
 - Analyze mention frequency, sentiment, related topics
 
 **Persona:** "What would Z think?"
+
 - Respond in persona's voice, cite supporting evidence
 
 **Synthesis:** "How do A and B connect?"
+
 - Find direct/thematic connections, flag speculation
 
 ### Prompt Template (Simplified)
@@ -182,21 +191,24 @@ You are answering questions based on a curated knowledge base.
 ## Edge Cases
 
 ### No Relevant Data
+
 ```typescript
 if (clusters.length === 0) {
   return {
     answer: "I don't have relevant information about this in your knowledge base.",
     confidence: { score: 0, reasoning: "No matching sources found" },
-    dataGaps: ["Consider adding sources that cover this topic"]
+    dataGaps: ["Consider adding sources that cover this topic"],
   };
 }
 ```
 
 ### Low Confidence
+
 - Prefix answer with "Based on limited information..."
 - Flag what's missing in `dataGaps`
 
 ### Contradictory Sources
+
 - Present both viewpoints
 - Note which sources disagree
 - Let user decide
@@ -204,6 +216,7 @@ if (clusters.length === 0) {
 ## Web UI Design
 
 Simple chat-style interface:
+
 - Topic selector dropdown (required)
 - Text input for question
 - "Ask" button
@@ -216,11 +229,13 @@ Simple chat-style interface:
 ## Cost Analysis
 
 **Per question:**
+
 - Embedding: ~200 tokens (~$0.00002)
 - LLM call: ~30K tokens (~$0.003-0.03)
 - **Total: ~$0.03/question**
 
 **Budget integration:**
+
 - Track in `provider_calls` table
 - Separate Q&A budget from digest processing
 - Fallback to Haiku when budget low
@@ -334,8 +349,8 @@ export interface QALlmResponse {
 ### Step 2: Retrieval Function (`packages/pipeline/src/qa/retrieval.ts`)
 
 ```typescript
-import { db } from '@aharadar/db';
-import { embedText } from '@aharadar/llm';
+import { db } from "@aharadar/db";
+import { embedText } from "@aharadar/llm";
 
 export interface RetrievedContext {
   clusters: {
@@ -379,8 +394,8 @@ export async function retrieveContext(
       const items = await db.clusterItems.getTopItems(cluster.id, 3); // Top 3 per cluster
       return {
         id: cluster.id,
-        summary: cluster.summary ?? '',
-        items: items.map(item => ({
+        summary: cluster.summary ?? "",
+        items: items.map((item) => ({
           id: item.id,
           title: item.title,
           bodyText: truncate(item.bodyText, 2000),
@@ -400,24 +415,24 @@ export async function retrieveContext(
 
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + '...';
+  return text.slice(0, maxChars) + "...";
 }
 ```
 
 ### Step 3: Prompt Builder (`packages/pipeline/src/qa/prompt.ts`)
 
 ```typescript
-import { RetrievedContext } from './retrieval';
+import { RetrievedContext } from "./retrieval";
 
 export function buildQAPrompt(question: string, context: RetrievedContext): string {
   const contextText = context.clusters
     .map((cluster, i) => {
       const itemsText = cluster.items
-        .map(item => `- **${item.title}** (${item.sourceType}, ${item.publishedAt})\n  ${item.bodyText}`)
-        .join('\n\n');
+        .map((item) => `- **${item.title}** (${item.sourceType}, ${item.publishedAt})\n  ${item.bodyText}`)
+        .join("\n\n");
       return `### Source Group ${i + 1}\n${itemsText}`;
     })
-    .join('\n\n---\n\n');
+    .join("\n\n---\n\n");
 
   return `You are a knowledgeable analyst answering questions based on a curated knowledge base.
 
@@ -457,16 +472,13 @@ export const QA_SYSTEM_PROMPT = `You are a helpful analyst. Answer questions bas
 ### Step 4: Handler (`packages/pipeline/src/qa/handler.ts`)
 
 ```typescript
-import { AskRequest, AskResponse, QALlmResponse } from '@aharadar/shared/types/qa';
-import { retrieveContext } from './retrieval';
-import { buildQAPrompt, QA_SYSTEM_PROMPT } from './prompt';
-import { llmRouter } from '@aharadar/llm';
-import { db } from '@aharadar/db';
+import { AskRequest, AskResponse, QALlmResponse } from "@aharadar/shared/types/qa";
+import { retrieveContext } from "./retrieval";
+import { buildQAPrompt, QA_SYSTEM_PROMPT } from "./prompt";
+import { llmRouter } from "@aharadar/llm";
+import { db } from "@aharadar/db";
 
-export async function handleAskQuestion(
-  request: AskRequest,
-  userId: string
-): Promise<AskResponse> {
+export async function handleAskQuestion(request: AskRequest, userId: string): Promise<AskResponse> {
   const { question, topicId, options } = request;
 
   // 1. Retrieve relevant context
@@ -477,8 +489,8 @@ export async function handleAskQuestion(
     return {
       answer: "I don't have relevant information about this in your knowledge base for this topic.",
       citations: [],
-      confidence: { score: 0, reasoning: 'No matching sources found' },
-      dataGaps: ['Consider adding sources that cover this topic'],
+      confidence: { score: 0, reasoning: "No matching sources found" },
+      dataGaps: ["Consider adding sources that cover this topic"],
       usage: { clustersRetrieved: 0, tokensUsed: { input: 0, output: 0 } },
     };
   }
@@ -488,10 +500,10 @@ export async function handleAskQuestion(
 
   // 4. Call LLM
   const llmResponse = await llmRouter.call({
-    task: 'qa',
+    task: "qa",
     systemPrompt: QA_SYSTEM_PROMPT,
     userPrompt,
-    responseFormat: 'json',
+    responseFormat: "json",
     userId,
   });
 
@@ -499,18 +511,18 @@ export async function handleAskQuestion(
   const parsed = JSON.parse(llmResponse.content) as QALlmResponse;
 
   // 6. Enrich citations with full item data
-  const citations = parsed.citations.map(cite => {
+  const citations = parsed.citations.map((cite) => {
     // Find matching item by title
     const matchingItem = context.clusters
-      .flatMap(c => c.items)
-      .find(item => item.title.includes(cite.title) || cite.title.includes(item.title));
+      .flatMap((c) => c.items)
+      .find((item) => item.title.includes(cite.title) || cite.title.includes(item.title));
 
     return {
-      id: matchingItem?.id ?? '',
+      id: matchingItem?.id ?? "",
       title: cite.title,
-      url: matchingItem?.url ?? '',
-      sourceType: matchingItem?.sourceType ?? 'unknown',
-      publishedAt: matchingItem?.publishedAt ?? '',
+      url: matchingItem?.url ?? "",
+      sourceType: matchingItem?.sourceType ?? "unknown",
+      publishedAt: matchingItem?.publishedAt ?? "",
       relevance: cite.relevance,
     };
   });
@@ -518,7 +530,7 @@ export async function handleAskQuestion(
   // 7. Log usage
   await db.providerCalls.record({
     userId,
-    purpose: 'qa',
+    purpose: "qa",
     provider: llmResponse.provider,
     model: llmResponse.model,
     inputTokens: llmResponse.usage.inputTokens,
@@ -544,33 +556,33 @@ export async function handleAskQuestion(
 ### Step 5: API Endpoint (`packages/api/src/routes/ask.ts`)
 
 ```typescript
-import { Router } from 'express';
-import { handleAskQuestion } from '@aharadar/pipeline/qa/handler';
-import { AskRequest } from '@aharadar/shared/types/qa';
+import { Router } from "express";
+import { handleAskQuestion } from "@aharadar/pipeline/qa/handler";
+import { AskRequest } from "@aharadar/shared/types/qa";
 
 const router = Router();
 
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const request = req.body as AskRequest;
-    const userId = req.user?.id ?? 'singleton'; // MVP: singleton user
+    const userId = req.user?.id ?? "singleton"; // MVP: singleton user
 
     // Validate
     if (!request.question || !request.topicId) {
-      return res.status(400).json({ error: 'question and topicId required' });
+      return res.status(400).json({ error: "question and topicId required" });
     }
 
     // Check experimental flag
-    const qaEnabled = process.env.QA_ENABLED === 'true';
+    const qaEnabled = process.env.QA_ENABLED === "true";
     if (!qaEnabled) {
-      return res.status(403).json({ error: 'Q&A feature is not enabled' });
+      return res.status(403).json({ error: "Q&A feature is not enabled" });
     }
 
     const response = await handleAskQuestion(request, userId);
     res.json(response);
   } catch (error) {
-    console.error('Q&A error:', error);
-    res.status(500).json({ error: 'Failed to process question' });
+    console.error("Q&A error:", error);
+    res.status(500).json({ error: "Failed to process question" });
   }
 });
 
@@ -580,26 +592,29 @@ export default router;
 ### Step 6: CLI Command (`packages/cli/src/commands/ask.ts`)
 
 ```typescript
-import { Command } from 'commander';
-import { handleAskQuestion } from '@aharadar/pipeline/qa/handler';
+import { Command } from "commander";
+import { handleAskQuestion } from "@aharadar/pipeline/qa/handler";
 
-export const askCommand = new Command('ask')
-  .description('Ask a question about your knowledge base')
-  .argument('<question>', 'The question to ask')
-  .requiredOption('--topic <id>', 'Topic ID to search within')
-  .option('--max-clusters <n>', 'Max clusters to retrieve', '5')
+export const askCommand = new Command("ask")
+  .description("Ask a question about your knowledge base")
+  .argument("<question>", "The question to ask")
+  .requiredOption("--topic <id>", "Topic ID to search within")
+  .option("--max-clusters <n>", "Max clusters to retrieve", "5")
   .action(async (question, options) => {
-    const response = await handleAskQuestion({
-      question,
-      topicId: options.topic,
-      options: { maxClusters: parseInt(options.maxClusters) },
-    }, 'singleton');
+    const response = await handleAskQuestion(
+      {
+        question,
+        topicId: options.topic,
+        options: { maxClusters: parseInt(options.maxClusters) },
+      },
+      "singleton"
+    );
 
-    console.log('\n📝 Answer:\n');
+    console.log("\n📝 Answer:\n");
     console.log(response.answer);
 
-    console.log('\n📚 Citations:');
-    response.citations.forEach(cite => {
+    console.log("\n📚 Citations:");
+    response.citations.forEach((cite) => {
       console.log(`  - ${cite.title}`);
       console.log(`    ${cite.url}`);
     });
@@ -608,41 +623,43 @@ export const askCommand = new Command('ask')
     console.log(`   ${response.confidence.reasoning}`);
 
     if (response.dataGaps?.length) {
-      console.log('\n⚠️ Data gaps:');
-      response.dataGaps.forEach(gap => console.log(`  - ${gap}`));
+      console.log("\n⚠️ Data gaps:");
+      response.dataGaps.forEach((gap) => console.log(`  - ${gap}`));
     }
 
-    console.log(`\n📊 Retrieved ${response.usage.clustersRetrieved} clusters, used ${response.usage.tokensUsed.input + response.usage.tokensUsed.output} tokens`);
+    console.log(
+      `\n📊 Retrieved ${response.usage.clustersRetrieved} clusters, used ${response.usage.tokensUsed.input + response.usage.tokensUsed.output} tokens`
+    );
   });
 ```
 
 ### Step 7: Web UI (`packages/web/src/app/app/ask/page.tsx`)
 
 ```tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useTopics } from '@/hooks/useTopics';
+import { useState } from "react";
+import { useTopics } from "@/hooks/useTopics";
 
 export default function AskPage() {
   const { topics } = useTopics();
-  const [topicId, setTopicId] = useState('');
-  const [question, setQuestion] = useState('');
+  const [topicId, setTopicId] = useState("");
+  const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<AskResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || !topicId) return;
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const res = await fetch('/api/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, topicId }),
       });
 
@@ -650,7 +667,7 @@ export default function AskPage() {
 
       setResponse(await res.json());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to get answer');
+      setError(e instanceof Error ? e.message : "Failed to get answer");
     } finally {
       setLoading(false);
     }
@@ -668,8 +685,10 @@ export default function AskPage() {
           required
         >
           <option value="">Select a topic...</option>
-          {topics.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+          {topics.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
           ))}
         </select>
 
@@ -686,13 +705,11 @@ export default function AskPage() {
           disabled={loading || !topicId}
           className="px-6 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
         >
-          {loading ? 'Thinking...' : 'Ask'}
+          {loading ? "Thinking..." : "Ask"}
         </button>
       </form>
 
-      {error && (
-        <div className="p-4 bg-red-50 text-red-700 rounded mb-4">{error}</div>
-      )}
+      {error && <div className="p-4 bg-red-50 text-red-700 rounded mb-4">{error}</div>}
 
       {response && (
         <div className="space-y-6">
@@ -749,8 +766,8 @@ Add `qa` task type to the LLM router config:
 ```typescript
 // In packages/llm/src/router.ts or env config
 const QA_CONFIG = {
-  model: process.env.QA_MODEL ?? 'claude-3-haiku-20240307',
-  maxOutputTokens: parseInt(process.env.QA_MAX_OUTPUT_TOKENS ?? '2000'),
+  model: process.env.QA_MODEL ?? "claude-3-haiku-20240307",
+  maxOutputTokens: parseInt(process.env.QA_MAX_OUTPUT_TOKENS ?? "2000"),
   creditsPerInputToken: 0.00025,
   creditsPerOutputToken: 0.00125,
 };

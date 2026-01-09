@@ -3,6 +3,7 @@
 ## Problem
 
 On the Feed page, when hovering over:
+
 - The AHA score badge
 - The source type logo/icon
 
@@ -11,6 +12,7 @@ The tooltip/popover is hidden behind the background. The z-index is incorrect, c
 ## Location
 
 Likely in one of these files:
+
 - `packages/web/src/components/Feed/FeedItem.module.css`
 - `packages/web/src/components/Feed/FeedItem.tsx`
 - `packages/web/src/styles/globals.css` (tooltip styles)

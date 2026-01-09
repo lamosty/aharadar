@@ -27,6 +27,7 @@ Telegram public channels are valuable content sources for many topics (crypto, t
 ### 1. Create Connector Directory
 
 Create `packages/connectors/src/telegram/`:
+
 - `config.ts` - Parse and validate config
 - `fetch.ts` - Fetch messages via Bot API
 - `normalize.ts` - Map messages to ContentItemDraft
@@ -44,6 +45,7 @@ Create `packages/connectors/src/telegram/`:
 ```
 
 Fields:
+
 - `channels` (required): List of public channel usernames (with or without @)
 - `max_messages_per_channel` (default: 50, clamp 1-100): Max messages per channel
 - `include_media_captions` (default: true): Extract captions from media posts
@@ -68,6 +70,7 @@ TELEGRAM_BOT_TOKEN=your_bot_token_here
 ```
 
 **Recommended approach for MVP:**
+
 - Use `getUpdates` to receive channel posts the bot can see
 - Bot must be added as admin to receive channel posts
 - For truly public channels without admin access, consider web scraping as fallback (document limitations)
@@ -110,6 +113,7 @@ Map Telegram message to `ContentItemDraft`:
 ### 7. Error Handling
 
 Handle common Telegram API errors:
+
 - `400 Bad Request: chat not found` - Channel doesn't exist or is private
 - `403 Forbidden: bot was kicked` - Bot removed from channel
 - `429 Too Many Requests` - Rate limited, respect `retry_after`
@@ -117,6 +121,7 @@ Handle common Telegram API errors:
 ### 8. Rate Limiting
 
 Telegram Bot API limits:
+
 - 30 messages per second to same chat
 - 20 messages per minute to same group
 - Respect `retry_after` in 429 responses

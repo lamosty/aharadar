@@ -35,35 +35,35 @@ If anything else seems required, **stop and ask**.
 
 ### Budget alerts
 
-| Alert | Condition | Severity | For |
-|-------|-----------|----------|-----|
-| BudgetWarning | credits_consumed > 80% monthly | warning | 5m |
-| BudgetCritical | credits_consumed >= 100% monthly | critical | 0m |
-| DailyBudgetWarning | credits_consumed > 90% daily | warning | 5m |
+| Alert              | Condition                        | Severity | For |
+| ------------------ | -------------------------------- | -------- | --- |
+| BudgetWarning      | credits_consumed > 80% monthly   | warning  | 5m  |
+| BudgetCritical     | credits_consumed >= 100% monthly | critical | 0m  |
+| DailyBudgetWarning | credits_consumed > 90% daily     | warning  | 5m  |
 
 ### Pipeline alerts
 
-| Alert | Condition | Severity | For |
-|-------|-----------|----------|-----|
-| PipelineFailureSpike | pipeline failures > 3 in 1 hour | warning | 0m |
-| PipelineStageSlow | p95 stage duration > 5 minutes | warning | 10m |
-| IngestStalled | ingest_items_total unchanged for 1 hour | warning | 60m |
+| Alert                | Condition                               | Severity | For |
+| -------------------- | --------------------------------------- | -------- | --- |
+| PipelineFailureSpike | pipeline failures > 3 in 1 hour         | warning  | 0m  |
+| PipelineStageSlow    | p95 stage duration > 5 minutes          | warning  | 10m |
+| IngestStalled        | ingest_items_total unchanged for 1 hour | warning  | 60m |
 
 ### Queue alerts
 
-| Alert | Condition | Severity | For |
-|-------|-----------|----------|-----|
-| QueueBacklog | queue_depth > 50 | warning | 5m |
-| QueueBacklogCritical | queue_depth > 100 | critical | 5m |
-| JobsStuck | oldest job age > 30 minutes | warning | 5m |
+| Alert                | Condition                   | Severity | For |
+| -------------------- | --------------------------- | -------- | --- |
+| QueueBacklog         | queue_depth > 50            | warning  | 5m  |
+| QueueBacklogCritical | queue_depth > 100           | critical | 5m  |
+| JobsStuck            | oldest job age > 30 minutes | warning  | 5m  |
 
 ### API alerts
 
-| Alert | Condition | Severity | For |
-|-------|-----------|----------|-----|
-| APIHighErrorRate | 5xx rate > 5% | warning | 5m |
-| APIHighErrorRateCritical | 5xx rate > 15% | critical | 2m |
-| APIHighLatency | p99 latency > 5s | warning | 5m |
+| Alert                    | Condition        | Severity | For |
+| ------------------------ | ---------------- | -------- | --- |
+| APIHighErrorRate         | 5xx rate > 5%    | warning  | 5m  |
+| APIHighErrorRateCritical | 5xx rate > 15%   | critical | 2m  |
+| APIHighLatency           | p99 latency > 5s | warning  | 5m  |
 
 ## Implementation steps (ordered)
 
@@ -94,7 +94,7 @@ groups:
         condition: A
         data:
           - refId: A
-            queryType: ''
+            queryType: ""
             relativeTimeRange:
               from: 600
               to: 0
@@ -243,20 +243,24 @@ Create `docs/alerts.md`:
 ## Budget Alerts
 
 ### BudgetWarning (80%)
+
 **Severity**: Warning
 **Condition**: Monthly credit usage exceeds 80%
 
 **Actions**:
+
 1. Check `provider_calls` table for unusual patterns
 2. Review recent digest generation frequency
 3. Consider reducing digest frequency or item counts
 4. If legitimate usage, prepare for budget increase
 
 ### BudgetCritical (100%)
+
 **Severity**: Critical
 **Condition**: Monthly budget exhausted
 
 **Actions**:
+
 1. Pipeline will automatically use fallback tier
 2. Check if critical digests are still generating
 3. Investigate cause of high usage
@@ -265,22 +269,26 @@ Create `docs/alerts.md`:
 ## Pipeline Alerts
 
 ### PipelineFailureSpike
+
 ...
 
 ## Queue Alerts
 
 ### QueueBacklog
+
 ...
 
 ## API Alerts
 
 ### APIHighErrorRate
+
 ...
 ```
 
 ### 7. Add alert annotations to dashboard
 
 Update `infra/grafana/dashboards/aharadar-overview.json`:
+
 - Add alert state indicators to relevant panels
 - Add alert history annotations
 

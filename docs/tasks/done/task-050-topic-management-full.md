@@ -3,6 +3,7 @@
 ## Problem
 
 The app has topics at the database level but lacks UI for:
+
 1. Creating new topics
 2. Deleting topics
 3. Switching between topics in the feed
@@ -14,6 +15,7 @@ Currently everything goes to "default" topic with no way to organize content.
 ## Vision
 
 Users should be able to:
+
 - Create multiple "radars" (topics) like "Tech News", "Finance", "Science"
 - Assign sources to different topics
 - Configure viewing profile per topic (daily tech radar, weekly science digest)
@@ -23,16 +25,19 @@ Users should be able to:
 ## Current State
 
 ### Database
+
 - `topics` table exists with `viewing_profile`, `decay_hours`, `last_checked_at`
 - `sources.topic_id` links sources to topics
 - Only "default" topic is created automatically
 
 ### API
+
 - `GET /api/topics` - lists topics ✓
 - `PATCH /api/topics/:id/viewing-profile` - updates viewing profile ✓
 - Missing: `POST /api/topics` (create), `DELETE /api/topics/:id` (delete)
 
 ### Web
+
 - Settings page shows topics list with viewing profile ✓
 - Missing: Create topic button, delete topic, topic switcher in nav/feed
 
@@ -43,6 +48,7 @@ Users should be able to:
 **File:** `packages/api/src/routes/topics.ts`
 
 Add:
+
 ```typescript
 // POST /api/topics - Create new topic
 fastify.post("/topics", async (request, reply) => {
@@ -70,6 +76,7 @@ fastify.patch("/topics/:id", async (request, reply) => {
 **File:** `packages/db/src/repos/topics.ts`
 
 Add:
+
 ```typescript
 async delete(id: string): Promise<void>
 async update(id: string, updates: { name?: string; description?: string }): Promise<Topic>
@@ -78,6 +85,7 @@ async update(id: string, updates: { name?: string; description?: string }): Prom
 ### Phase 2: Topic Switcher Component
 
 **Files:**
+
 - `packages/web/src/components/TopicSwitcher/TopicSwitcher.tsx`
 - `packages/web/src/components/TopicSwitcher/TopicSwitcher.module.css`
 
@@ -87,12 +95,11 @@ export function TopicSwitcher() {
   const [currentTopicId, setCurrentTopicId] = useTopicContext();
 
   return (
-    <select
-      value={currentTopicId}
-      onChange={(e) => setCurrentTopicId(e.target.value)}
-    >
-      {data?.topics.map(topic => (
-        <option key={topic.id} value={topic.id}>{topic.name}</option>
+    <select value={currentTopicId} onChange={(e) => setCurrentTopicId(e.target.value)}>
+      {data?.topics.map((topic) => (
+        <option key={topic.id} value={topic.id}>
+          {topic.name}
+        </option>
       ))}
     </select>
   );
@@ -116,9 +123,7 @@ export function TopicProvider({ children }) {
   // Update API requests to include topicId
 
   return (
-    <TopicContext.Provider value={{ currentTopicId, setCurrentTopicId }}>
-      {children}
-    </TopicContext.Provider>
+    <TopicContext.Provider value={{ currentTopicId, setCurrentTopicId }}>{children}</TopicContext.Provider>
   );
 }
 ```
@@ -141,6 +146,7 @@ export function TopicProvider({ children }) {
 **File:** `packages/web/src/components/TopicViewingProfile/TopicsList.tsx`
 
 Add:
+
 - "Create Topic" button
 - Delete button per topic (except default)
 - Edit topic name inline
@@ -149,19 +155,19 @@ Add:
 <div className={styles.header}>
   <h3>Topics</h3>
   <button onClick={openCreateModal}>+ Create Topic</button>
-</div>
+</div>;
 
-{topics.map(topic => (
-  <div key={topic.id} className={styles.topicCard}>
-    <div className={styles.topicHeader}>
-      <span>{topic.name}</span>
-      {topic.name !== 'default' && (
-        <button onClick={() => deleteTopic(topic.id)}>Delete</button>
-      )}
+{
+  topics.map((topic) => (
+    <div key={topic.id} className={styles.topicCard}>
+      <div className={styles.topicHeader}>
+        <span>{topic.name}</span>
+        {topic.name !== "default" && <button onClick={() => deleteTopic(topic.id)}>Delete</button>}
+      </div>
+      {/* ... viewing profile settings ... */}
     </div>
-    {/* ... viewing profile settings ... */}
-  </div>
-))}
+  ));
+}
 ```
 
 ### Phase 6: Sources Page - Topic Assignment
@@ -202,6 +208,7 @@ User configures viewing profile
 ## Files to Create/Modify
 
 ### New Files
+
 - `packages/web/src/components/TopicSwitcher/TopicSwitcher.tsx`
 - `packages/web/src/components/TopicSwitcher/TopicSwitcher.module.css`
 - `packages/web/src/components/TopicSwitcher/index.ts`
@@ -209,6 +216,7 @@ User configures viewing profile
 - `packages/web/src/components/CreateTopicModal/` (optional)
 
 ### Modified Files
+
 - `packages/api/src/routes/topics.ts` - Add create/delete endpoints
 - `packages/db/src/repos/topics.ts` - Add delete/update methods
 - `packages/web/src/app/app/feed/page.tsx` - Add topic switcher

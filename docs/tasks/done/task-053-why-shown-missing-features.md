@@ -7,11 +7,13 @@ Feed items show "No ranking features available" in the "Why shown" dropdown. Thi
 ## Current State
 
 ### What's Happening
+
 - `triage_json` is NULL for digest items
 - WhyShown component checks `triage_json?.system_features`
 - Since it's null, shows "No ranking features available"
 
 ### Database Check
+
 ```sql
 SELECT di.triage_json FROM digest_items di LIMIT 5;
 -- All NULL
@@ -20,11 +22,13 @@ SELECT di.triage_json FROM digest_items di LIMIT 5;
 ### Why triage_json is NULL
 
 The triage step (LLM-based ranking) was SKIPPED because:
+
 1. Digests were created manually (no LLM triage)
 2. OR digests were created with `paidCallsAllowed: false`
 3. OR triage step failed/timed out
 
 Looking at digest creation:
+
 - Manual insert didn't run triage
 - CLI `admin:digest-now` may have failed on triage (OpenAI model "gpt-5.1" doesn't exist)
 
@@ -33,6 +37,7 @@ Looking at digest creation:
 ### 1. Check triage configuration
 
 **File:** `.env`
+
 ```
 OPENAI_TRIAGE_MODEL=gpt-5.1
 ```
@@ -44,6 +49,7 @@ Model name is valid (see https://platform.openai.com/docs/models/gpt-5.1). Issue
 **File:** `packages/pipeline/src/stages/digest.ts`
 
 Line ~735:
+
 ```typescript
 if (paidCallsAllowed) {
   // Run LLM triage
@@ -67,6 +73,7 @@ LIMIT 10;
 ### Cause A: Digest created without triage (Most Likely)
 
 **Fix:** Re-run pipeline with triage enabled:
+
 ```bash
 pnpm dev:cli -- admin:run-now
 ```
@@ -78,11 +85,13 @@ This should run full pipeline including triage (if paidCallsAllowed=true).
 If monthly/daily credits exhausted, `paidCallsAllowed` becomes false.
 
 **Fix:** Check budgets:
+
 ```bash
 pnpm dev:cli -- admin:budgets
 ```
 
 If exhausted, either:
+
 - Wait for reset
 - Increase budget in .env
 - Run with `--skip-triage` flag (if available)
@@ -90,6 +99,7 @@ If exhausted, either:
 ## What triage_json Should Contain
 
 When triage runs successfully:
+
 ```json
 {
   "system_features": {
@@ -107,21 +117,25 @@ When triage runs successfully:
 ## Implementation Steps
 
 ### 1. Fix .env model name
+
 ```
 OPENAI_TRIAGE_MODEL=gpt-4o-mini
 ```
 
 ### 2. Verify credits available
+
 ```bash
 pnpm dev:cli -- admin:budgets
 ```
 
 ### 3. Re-run pipeline with triage
+
 ```bash
 pnpm dev:cli -- admin:run-now
 ```
 
 ### 4. Verify triage_json populated
+
 ```sql
 SELECT di.triage_json
 FROM digest_items di
@@ -134,6 +148,7 @@ LIMIT 5;
 **File:** `packages/web/src/components/WhyShown/WhyShown.tsx`
 
 Verify it reads from correct path:
+
 ```tsx
 const features = triageJson?.system_features;
 ```
@@ -141,6 +156,7 @@ const features = triageJson?.system_features;
 ## Alternative: Heuristic Features
 
 If LLM triage is too expensive, could show heuristic-based features:
+
 - Recency score
 - Source weight
 - Engagement signals (for Reddit: upvotes; for HN: points)
@@ -148,6 +164,7 @@ If LLM triage is too expensive, could show heuristic-based features:
 **File:** `packages/pipeline/src/stages/digest.ts`
 
 Even without LLM, could populate basic features:
+
 ```typescript
 const heuristicFeatures = {
   recency_score: calculateRecencyScore(item.publishedAt),
@@ -184,6 +201,6 @@ If just want to suppress the "No features" message for now:
 
 ```tsx
 if (!features || Object.keys(features).length === 0) {
-  return null;  // Hide instead of showing "no features"
+  return null; // Hide instead of showing "no features"
 }
 ```

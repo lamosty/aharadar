@@ -18,13 +18,17 @@ The WhyShown component has invalid HTML nesting causing 4 hydration errors in Ne
 The `FeatureSection` component wraps children in `<dd>` (line 221), but within the parent WhyShown component, nested `<dt>` and `<dd>` elements are rendered inside those children (e.g., lines 74-75 for novelty score).
 
 This creates invalid HTML structure:
+
 ```html
 <dl>
   <dt>Novelty</dt>
-  <dd>  <!-- from FeatureSection -->
+  <dd>
+    <!-- from FeatureSection -->
     <div>
-      <dt>Novelty score</dt>  <!-- INVALID: dt inside dd -->
-      <dd>73%</dd>            <!-- INVALID: dd inside dd -->
+      <dt>Novelty score</dt>
+      <!-- INVALID: dt inside dd -->
+      <dd>73%</dd>
+      <!-- INVALID: dd inside dd -->
     </div>
   </dd>
 </dl>
@@ -35,6 +39,7 @@ This creates invalid HTML structure:
 Replace nested `<dt>`/`<dd>` pairs inside FeatureSection children with semantic `<div>` or custom styled elements. The description list (`<dl>`) pattern should only be used at the top level.
 
 Options:
+
 1. Use `<div className="label">` / `<div className="value">` for nested pairs
 2. Use a different component structure that doesn't nest definition lists
 3. Keep `<dl>` only for top-level features, use divs for sub-properties

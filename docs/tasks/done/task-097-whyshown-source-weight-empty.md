@@ -12,6 +12,7 @@ In the WhyShown panel on the Feed page, the "Source Weight" section shows an emp
 ## Current Behavior
 
 When expanding "Why shown" on a feed item:
+
 - AI Score: Shows score and reason
 - Novelty: Shows score and lookback
 - Freshness: Shows score and age
@@ -22,6 +23,7 @@ When expanding "Why shown" on a feed item:
 ## Expected Behavior
 
 Source Weight should display:
+
 - Source type weight (e.g., "x_posts: 1.2")
 - Individual source weight (e.g., "1.0")
 - Effective combined weight

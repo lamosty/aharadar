@@ -13,11 +13,13 @@ Create user-facing UI for managing API keys and viewing usage costs. Users can a
 ## Background
 
 Currently:
+
 - No UI for users to add their own API keys
 - No visibility into actual LLM spend
 - Users cannot see which provider will be used for their requests
 
 With Tasks 078 and 079 complete:
+
 - Encrypted key storage infrastructure exists
 - USD cost tracking is in place
 - Need UI to expose these capabilities
@@ -38,15 +40,18 @@ With Tasks 078 and 079 complete:
 ## Scope (allowed files)
 
 ### API (packages/api/src/routes/)
+
 - `user-api-keys.ts` (new)
 - `user-usage.ts` (new)
 - `index.ts` (register new routes)
 
 ### Web (packages/web/src/app/app/)
+
 - `settings/api-keys/page.tsx` (new)
 - `usage/page.tsx` (new)
 
 ### Shared components
+
 - `packages/web/src/components/` as needed
 
 If anything else seems required, **stop and ask**.
@@ -58,15 +63,15 @@ If anything else seems required, **stop and ask**.
 File: `packages/api/src/routes/user-api-keys.ts`
 
 ```typescript
-import { Router } from 'express';
-import { z } from 'zod';
-import { encryptApiKey, getMasterKey, getKeySuffix } from '../auth/crypto';
-import { createUserApiKeysRepo } from '@aharadar/db/repos/user_api_keys';
+import { Router } from "express";
+import { z } from "zod";
+import { encryptApiKey, getMasterKey, getKeySuffix } from "../auth/crypto";
+import { createUserApiKeysRepo } from "@aharadar/db/repos/user_api_keys";
 
 const router = Router();
 
 // Supported providers
-const PROVIDERS = ['openai', 'anthropic', 'xai'] as const;
+const PROVIDERS = ["openai", "anthropic", "xai"] as const;
 
 const addKeySchema = z.object({
   provider: z.enum(PROVIDERS),
@@ -77,12 +82,12 @@ const addKeySchema = z.object({
  * GET /api/user/api-keys
  * List user's configured API keys (suffix only, never full key)
  */
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   const repo = createUserApiKeysRepo(req.pool);
   const keys = await repo.listByUser(req.user.id);
 
   // Map to safe response (never include encrypted key)
-  const response = keys.map(k => ({
+  const response = keys.map((k) => ({
     id: k.id,
     provider: k.provider,
     keySuffix: k.keySuffix,
@@ -97,10 +102,10 @@ router.get('/', async (req, res) => {
  * POST /api/user/api-keys
  * Add or update an API key for a provider
  */
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const parsed = addKeySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ ok: false, error: 'Invalid request', details: parsed.error.issues });
+    return res.status(400).json({ ok: false, error: "Invalid request", details: parsed.error.issues });
   }
 
   const { provider, apiKey } = parsed.data;
@@ -124,8 +129,8 @@ router.post('/', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Failed to store API key:', error);
-    res.status(500).json({ ok: false, error: 'Failed to store API key' });
+    console.error("Failed to store API key:", error);
+    res.status(500).json({ ok: false, error: "Failed to store API key" });
   }
 });
 
@@ -133,14 +138,14 @@ router.post('/', async (req, res) => {
  * DELETE /api/user/api-keys/:id
  * Remove an API key
  */
-router.delete('/:id', async (req, res) => {
+router.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
   const repo = createUserApiKeysRepo(req.pool);
   const deleted = await repo.delete(req.user.id, id);
 
   if (!deleted) {
-    return res.status(404).json({ ok: false, error: 'Key not found' });
+    return res.status(404).json({ ok: false, error: "Key not found" });
   }
 
   res.json({ ok: true });
@@ -150,22 +155,22 @@ router.delete('/:id', async (req, res) => {
  * GET /api/user/api-keys/status
  * Get key source status for each provider
  */
-router.get('/status', async (req, res) => {
+router.get("/status", async (req, res) => {
   const repo = createUserApiKeysRepo(req.pool);
   const keys = await repo.listByUser(req.user.id);
 
-  const allowFallback = process.env.ALLOW_SYSTEM_KEY_FALLBACK === 'true';
+  const allowFallback = process.env.ALLOW_SYSTEM_KEY_FALLBACK === "true";
 
-  const status = PROVIDERS.map(provider => {
-    const userKey = keys.find(k => k.provider === provider);
-    const hasSystemKey = !!process.env[`${provider.toUpperCase()}_API_KEY`] ||
-                         (provider === 'xai' && !!process.env.XAI_API_KEY);
+  const status = PROVIDERS.map((provider) => {
+    const userKey = keys.find((k) => k.provider === provider);
+    const hasSystemKey =
+      !!process.env[`${provider.toUpperCase()}_API_KEY`] || (provider === "xai" && !!process.env.XAI_API_KEY);
 
-    let source: 'user' | 'system' | 'none' = 'none';
+    let source: "user" | "system" | "none" = "none";
     if (userKey) {
-      source = 'user';
+      source = "user";
     } else if (allowFallback && hasSystemKey) {
-      source = 'system';
+      source = "system";
     }
 
     return {
@@ -188,9 +193,9 @@ export default router;
 File: `packages/api/src/routes/user-usage.ts`
 
 ```typescript
-import { Router } from 'express';
-import { z } from 'zod';
-import { createProviderCallsRepo } from '@aharadar/db/repos/provider_calls';
+import { Router } from "express";
+import { z } from "zod";
+import { createProviderCallsRepo } from "@aharadar/db/repos/provider_calls";
 
 const router = Router();
 
@@ -203,13 +208,13 @@ const periodSchema = z.object({
  * GET /api/user/usage
  * Get usage summary for current month by default
  */
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   const repo = createProviderCallsRepo(req.pool);
   const usage = await repo.getMonthlyUsage(req.user.id);
 
   res.json({
     ok: true,
-    period: 'current_month',
+    period: "current_month",
     ...usage,
   });
 });
@@ -218,7 +223,7 @@ router.get('/', async (req, res) => {
  * GET /api/user/usage/period
  * Get usage for a specific date range
  */
-router.get('/period', async (req, res) => {
+router.get("/period", async (req, res) => {
   const startDate = req.query.startDate
     ? new Date(req.query.startDate as string)
     : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -241,7 +246,7 @@ router.get('/period', async (req, res) => {
  * GET /api/user/usage/daily
  * Get daily usage for charts (last 30 days by default)
  */
-router.get('/daily', async (req, res) => {
+router.get("/daily", async (req, res) => {
   const days = parseInt(req.query.days as string) || 30;
   const endDate = new Date();
   const startDate = new Date();
@@ -267,22 +272,22 @@ export default router;
 File: `packages/web/src/app/app/settings/api-keys/page.tsx`
 
 ```tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Key, Shield } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Plus, Key, Shield } from "lucide-react";
 
 interface ApiKeyStatus {
   provider: string;
   hasUserKey: boolean;
   keySuffix: string | null;
   hasSystemFallback: boolean;
-  activeSource: 'user' | 'system' | 'none';
+  activeSource: "user" | "system" | "none";
 }
 
 interface ApiKeySummary {
@@ -294,9 +299,9 @@ interface ApiKeySummary {
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  xai: 'xAI (Grok)',
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  xai: "xAI (Grok)",
 };
 
 export default function ApiKeysPage() {
@@ -304,8 +309,8 @@ export default function ApiKeysPage() {
   const [status, setStatus] = useState<ApiKeyStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [newProvider, setNewProvider] = useState<string>('');
-  const [newKey, setNewKey] = useState('');
+  const [newProvider, setNewProvider] = useState<string>("");
+  const [newKey, setNewKey] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -315,8 +320,8 @@ export default function ApiKeysPage() {
   async function loadKeys() {
     try {
       const [keysRes, statusRes] = await Promise.all([
-        fetch('/api/user/api-keys'),
-        fetch('/api/user/api-keys/status'),
+        fetch("/api/user/api-keys"),
+        fetch("/api/user/api-keys/status"),
       ]);
 
       const keysData = await keysRes.json();
@@ -325,7 +330,7 @@ export default function ApiKeysPage() {
       if (keysData.ok) setKeys(keysData.keys);
       if (statusData.ok) setStatus(statusData.status);
     } catch (err) {
-      setError('Failed to load API keys');
+      setError("Failed to load API keys");
     } finally {
       setLoading(false);
     }
@@ -338,52 +343,52 @@ export default function ApiKeysPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/user/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/user/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: newProvider, apiKey: newKey }),
       });
 
       const data = await res.json();
 
       if (data.ok) {
-        setNewProvider('');
-        setNewKey('');
+        setNewProvider("");
+        setNewKey("");
         await loadKeys();
       } else {
-        setError(data.error || 'Failed to add key');
+        setError(data.error || "Failed to add key");
       }
     } catch (err) {
-      setError('Failed to add key');
+      setError("Failed to add key");
     } finally {
       setAdding(false);
     }
   }
 
   async function handleDeleteKey(id: string) {
-    if (!confirm('Are you sure you want to delete this API key?')) return;
+    if (!confirm("Are you sure you want to delete this API key?")) return;
 
     try {
-      const res = await fetch(`/api/user/api-keys/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/user/api-keys/${id}`, { method: "DELETE" });
       const data = await res.json();
 
       if (data.ok) {
         await loadKeys();
       } else {
-        setError(data.error || 'Failed to delete key');
+        setError(data.error || "Failed to delete key");
       }
     } catch (err) {
-      setError('Failed to delete key');
+      setError("Failed to delete key");
     }
   }
 
-  function getSourceBadge(source: 'user' | 'system' | 'none') {
+  function getSourceBadge(source: "user" | "system" | "none") {
     switch (source) {
-      case 'user':
+      case "user":
         return <Badge variant="default">Your Key</Badge>;
-      case 'system':
+      case "system":
         return <Badge variant="secondary">System Key</Badge>;
-      case 'none':
+      case "none":
         return <Badge variant="destructive">Not Configured</Badge>;
     }
   }
@@ -401,11 +406,7 @@ export default function ApiKeysPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-md">
-          {error}
-        </div>
-      )}
+      {error && <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-md">{error}</div>}
 
       {/* Provider Status */}
       <Card>
@@ -414,9 +415,7 @@ export default function ApiKeysPage() {
             <Shield className="h-5 w-5" />
             Provider Status
           </CardTitle>
-          <CardDescription>
-            Which API key will be used for each provider
-          </CardDescription>
+          <CardDescription>Which API key will be used for each provider</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -425,9 +424,7 @@ export default function ApiKeysPage() {
                 <div>
                   <span className="font-medium">{PROVIDER_LABELS[s.provider] || s.provider}</span>
                   {s.keySuffix && (
-                    <span className="ml-2 text-muted-foreground text-sm">
-                      ...{s.keySuffix}
-                    </span>
+                    <span className="ml-2 text-muted-foreground text-sm">...{s.keySuffix}</span>
                   )}
                 </div>
                 {getSourceBadge(s.activeSource)}
@@ -444,9 +441,7 @@ export default function ApiKeysPage() {
             <Plus className="h-5 w-5" />
             Add API Key
           </CardTitle>
-          <CardDescription>
-            Add your own API key to use your account with a provider
-          </CardDescription>
+          <CardDescription>Add your own API key to use your account with a provider</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
@@ -470,7 +465,7 @@ export default function ApiKeysPage() {
             />
 
             <Button onClick={handleAddKey} disabled={adding || !newProvider || !newKey}>
-              {adding ? 'Adding...' : 'Add Key'}
+              {adding ? "Adding..." : "Add Key"}
             </Button>
           </div>
         </CardContent>
@@ -520,11 +515,11 @@ export default function ApiKeysPage() {
 File: `packages/web/src/app/app/usage/page.tsx`
 
 ```tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, BarChart3, TrendingUp, Zap } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DollarSign, BarChart3, TrendingUp, Zap } from "lucide-react";
 
 interface UsageSummary {
   totalUsd: number;
@@ -580,8 +575,8 @@ export default function UsagePage() {
   async function loadUsage() {
     try {
       const [monthlyRes, dailyRes] = await Promise.all([
-        fetch('/api/user/usage'),
-        fetch('/api/user/usage/daily?days=30'),
+        fetch("/api/user/usage"),
+        fetch("/api/user/usage/daily?days=30"),
       ]);
 
       const monthlyData = await monthlyRes.json();
@@ -597,7 +592,7 @@ export default function UsagePage() {
         setDaily(dailyData.daily);
       }
     } catch (err) {
-      console.error('Failed to load usage:', err);
+      console.error("Failed to load usage:", err);
     } finally {
       setLoading(false);
     }
@@ -607,15 +602,13 @@ export default function UsagePage() {
     return <div className="p-6">Loading...</div>;
   }
 
-  const maxDailySpend = Math.max(...daily.map(d => d.totalUsd), 0.01);
+  const maxDailySpend = Math.max(...daily.map((d) => d.totalUsd), 0.01);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Usage & Costs</h1>
-        <p className="text-muted-foreground mt-1">
-          Track your LLM API usage and spending
-        </p>
+        <p className="text-muted-foreground mt-1">Track your LLM API usage and spending</p>
       </div>
 
       {/* Summary Cards */}
@@ -677,7 +670,7 @@ export default function UsagePage() {
               <div
                 key={d.date}
                 className="flex-1 bg-primary/80 hover:bg-primary rounded-t transition-colors cursor-pointer group relative"
-                style={{ height: `${(d.totalUsd / maxDailySpend) * 100}%`, minHeight: '2px' }}
+                style={{ height: `${(d.totalUsd / maxDailySpend) * 100}%`, minHeight: "2px" }}
                 title={`${d.date}: ${formatUsd(d.totalUsd)}`}
               >
                 <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-popover px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
@@ -707,13 +700,12 @@ export default function UsagePage() {
                     <div key={p.provider}>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="font-medium capitalize">{p.provider}</span>
-                        <span>{formatUsd(p.totalUsd)} ({percentage.toFixed(0)}%)</span>
+                        <span>
+                          {formatUsd(p.totalUsd)} ({percentage.toFixed(0)}%)
+                        </span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${percentage}%` }} />
                       </div>
                     </div>
                   );
@@ -735,7 +727,10 @@ export default function UsagePage() {
             ) : (
               <div className="space-y-3">
                 {byModel.slice(0, 5).map((m, i) => (
-                  <div key={`${m.provider}-${m.model}`} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div
+                    key={`${m.provider}-${m.model}`}
+                    className="flex items-center justify-between py-2 border-b last:border-0"
+                  >
                     <div>
                       <div className="font-medium text-sm">{m.model}</div>
                       <div className="text-xs text-muted-foreground capitalize">{m.provider}</div>
@@ -761,13 +756,13 @@ export default function UsagePage() {
 Update `packages/api/src/routes/index.ts` to include new routes:
 
 ```typescript
-import userApiKeysRouter from './user-api-keys';
-import userUsageRouter from './user-usage';
+import userApiKeysRouter from "./user-api-keys";
+import userUsageRouter from "./user-usage";
 
 // ... existing routes
 
-app.use('/api/user/api-keys', authMiddleware, userApiKeysRouter);
-app.use('/api/user/usage', authMiddleware, userUsageRouter);
+app.use("/api/user/api-keys", authMiddleware, userApiKeysRouter);
+app.use("/api/user/usage", authMiddleware, userUsageRouter);
 ```
 
 Add navigation links in sidebar (location depends on existing navigation structure):

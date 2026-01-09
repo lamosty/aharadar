@@ -26,6 +26,7 @@ None - SEC EDGAR API is free and requires no authentication. However, requests m
 ### 1. Create Connector Directory
 
 Create `packages/connectors/src/sec_edgar/`:
+
 - `config.ts` - Parse and validate config
 - `fetch.ts` - Fetch filings via SEC API
 - `normalize.ts` - Map filings to ContentItemDraft
@@ -44,6 +45,7 @@ Create `packages/connectors/src/sec_edgar/`:
 ```
 
 Fields:
+
 - `filing_types` (required): Array of `"form4"` and/or `"13f"`
 - `tickers` (optional): Filter by company ticker symbols
 - `ciks` (optional): Filter by CIK numbers (more precise than tickers)
@@ -65,11 +67,13 @@ SEC_EDGAR_USER_AGENT=AhaRadar/1.0 (contact@example.com)
 **API Endpoints:**
 
 1. **Company Submissions** (get all filings for a company):
+
    ```
    https://data.sec.gov/submissions/CIK{cik}.json
    ```
 
 2. **Full-Text Search** (search recent filings):
+
    ```
    https://efts.sec.gov/LATEST/search-index?q=*&dateRange=custom&startdt=2025-01-01&enddt=2025-01-08&forms=4
    ```
@@ -79,6 +83,7 @@ SEC_EDGAR_USER_AGENT=AhaRadar/1.0 (contact@example.com)
    - 13F: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=13F&company=&dateb=&owner=include&count=100&output=atom`
 
 **Recommended MVP approach:**
+
 - Use RSS feeds for real-time Form 4 and 13F filing notifications
 - Parse the Atom XML to get filing URLs
 - Fetch individual filing details from the submission JSON endpoint
@@ -87,11 +92,13 @@ SEC_EDGAR_USER_AGENT=AhaRadar/1.0 (contact@example.com)
 ### 5. Filing Parsing
 
 **Form 4 XML Structure:**
+
 - Located at: `https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/primary_doc.xml`
 - Contains: `reportingOwner`, `issuer`, `nonDerivativeTransaction`, `derivativeTransaction`
 - Transaction codes: P (purchase), S (sale), A (award), D (disposition), etc.
 
 **13F XML Structure:**
+
 - Located at: `https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/infotable.xml`
 - Contains: `infoTable` with holdings positions
 
@@ -100,6 +107,7 @@ SEC_EDGAR_USER_AGENT=AhaRadar/1.0 (contact@example.com)
 Map SEC filing to `ContentItemDraft`:
 
 **Form 4 (Insider Trading):**
+
 - `sourceType`: `"sec_edgar"`
 - `externalId`: `form4_{accession_number}`
 - `canonicalUrl`: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=4&dateb=&owner=include&count=40`
@@ -122,6 +130,7 @@ Map SEC filing to `ContentItemDraft`:
   - `is_direct`: Direct vs indirect ownership
 
 **13F (Institutional Holdings):**
+
 - `sourceType`: `"sec_edgar"`
 - `externalId`: `13f_{accession_number}`
 - `canonicalUrl`: Filing URL on SEC
@@ -156,6 +165,7 @@ Map SEC filing to `ContentItemDraft`:
 ### 8. Rate Limiting
 
 SEC EDGAR has rate limits:
+
 - Maximum 10 requests per second
 - Include User-Agent header with contact info
 - Implement exponential backoff on 429 responses
@@ -165,6 +175,7 @@ Add delay between requests (minimum 100ms).
 ### 9. Error Handling
 
 Handle common scenarios:
+
 - `404`: Filing not found or CIK invalid
 - `429`: Rate limited - back off and retry
 - `503`: Service temporarily unavailable

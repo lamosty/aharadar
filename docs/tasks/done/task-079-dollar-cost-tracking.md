@@ -13,12 +13,14 @@ Track real USD costs for LLM provider calls instead of abstract credits. This en
 ## Background
 
 Currently:
+
 - `provider_calls` table tracks usage with `cost_estimate_credits` (abstract units)
 - No direct mapping to actual USD costs
 - Users cannot see real spend in dollars
 - Hard to compare costs across providers/models
 
 Desired:
+
 - Store USD cost per LLM call at call time
 - Maintain a pricing table for all supported models
 - Query aggregated costs by period, provider, model
@@ -58,42 +60,67 @@ File: `packages/shared/src/pricing.ts`
 export interface ModelPricing {
   provider: string;
   model: string;
-  inputPer1MTokens: number;   // USD per 1M input tokens
-  outputPer1MTokens: number;  // USD per 1M output tokens
-  effectiveDate?: string;     // When this pricing became effective
+  inputPer1MTokens: number; // USD per 1M input tokens
+  outputPer1MTokens: number; // USD per 1M output tokens
+  effectiveDate?: string; // When this pricing became effective
 }
 
 export const MODEL_PRICING: ModelPricing[] = [
   // OpenAI
-  { provider: 'openai', model: 'gpt-4o', inputPer1MTokens: 2.50, outputPer1MTokens: 10.00 },
-  { provider: 'openai', model: 'gpt-4o-2024-11-20', inputPer1MTokens: 2.50, outputPer1MTokens: 10.00 },
-  { provider: 'openai', model: 'gpt-4o-mini', inputPer1MTokens: 0.15, outputPer1MTokens: 0.60 },
-  { provider: 'openai', model: 'gpt-4o-mini-2024-07-18', inputPer1MTokens: 0.15, outputPer1MTokens: 0.60 },
-  { provider: 'openai', model: 'gpt-4-turbo', inputPer1MTokens: 10.00, outputPer1MTokens: 30.00 },
-  { provider: 'openai', model: 'gpt-4-turbo-preview', inputPer1MTokens: 10.00, outputPer1MTokens: 30.00 },
-  { provider: 'openai', model: 'gpt-3.5-turbo', inputPer1MTokens: 0.50, outputPer1MTokens: 1.50 },
-  { provider: 'openai', model: 'text-embedding-3-small', inputPer1MTokens: 0.02, outputPer1MTokens: 0 },
-  { provider: 'openai', model: 'text-embedding-3-large', inputPer1MTokens: 0.13, outputPer1MTokens: 0 },
-  { provider: 'openai', model: 'text-embedding-ada-002', inputPer1MTokens: 0.10, outputPer1MTokens: 0 },
+  { provider: "openai", model: "gpt-4o", inputPer1MTokens: 2.5, outputPer1MTokens: 10.0 },
+  { provider: "openai", model: "gpt-4o-2024-11-20", inputPer1MTokens: 2.5, outputPer1MTokens: 10.0 },
+  { provider: "openai", model: "gpt-4o-mini", inputPer1MTokens: 0.15, outputPer1MTokens: 0.6 },
+  { provider: "openai", model: "gpt-4o-mini-2024-07-18", inputPer1MTokens: 0.15, outputPer1MTokens: 0.6 },
+  { provider: "openai", model: "gpt-4-turbo", inputPer1MTokens: 10.0, outputPer1MTokens: 30.0 },
+  { provider: "openai", model: "gpt-4-turbo-preview", inputPer1MTokens: 10.0, outputPer1MTokens: 30.0 },
+  { provider: "openai", model: "gpt-3.5-turbo", inputPer1MTokens: 0.5, outputPer1MTokens: 1.5 },
+  { provider: "openai", model: "text-embedding-3-small", inputPer1MTokens: 0.02, outputPer1MTokens: 0 },
+  { provider: "openai", model: "text-embedding-3-large", inputPer1MTokens: 0.13, outputPer1MTokens: 0 },
+  { provider: "openai", model: "text-embedding-ada-002", inputPer1MTokens: 0.1, outputPer1MTokens: 0 },
 
   // Anthropic
-  { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', inputPer1MTokens: 3.00, outputPer1MTokens: 15.00 },
-  { provider: 'anthropic', model: 'claude-3-5-sonnet-latest', inputPer1MTokens: 3.00, outputPer1MTokens: 15.00 },
-  { provider: 'anthropic', model: 'claude-3-5-haiku-20241022', inputPer1MTokens: 0.80, outputPer1MTokens: 4.00 },
-  { provider: 'anthropic', model: 'claude-3-5-haiku-latest', inputPer1MTokens: 0.80, outputPer1MTokens: 4.00 },
-  { provider: 'anthropic', model: 'claude-3-opus-20240229', inputPer1MTokens: 15.00, outputPer1MTokens: 75.00 },
-  { provider: 'anthropic', model: 'claude-3-sonnet-20240229', inputPer1MTokens: 3.00, outputPer1MTokens: 15.00 },
-  { provider: 'anthropic', model: 'claude-3-haiku-20240307', inputPer1MTokens: 0.25, outputPer1MTokens: 1.25 },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-sonnet-20241022",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-sonnet-latest",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-5-haiku-20241022",
+    inputPer1MTokens: 0.8,
+    outputPer1MTokens: 4.0,
+  },
+  { provider: "anthropic", model: "claude-3-5-haiku-latest", inputPer1MTokens: 0.8, outputPer1MTokens: 4.0 },
+  { provider: "anthropic", model: "claude-3-opus-20240229", inputPer1MTokens: 15.0, outputPer1MTokens: 75.0 },
+  {
+    provider: "anthropic",
+    model: "claude-3-sonnet-20240229",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
+  {
+    provider: "anthropic",
+    model: "claude-3-haiku-20240307",
+    inputPer1MTokens: 0.25,
+    outputPer1MTokens: 1.25,
+  },
 
   // xAI (Grok)
-  { provider: 'xai', model: 'grok-beta', inputPer1MTokens: 5.00, outputPer1MTokens: 15.00 },
-  { provider: 'xai', model: 'grok-2-1212', inputPer1MTokens: 2.00, outputPer1MTokens: 10.00 },
-  { provider: 'xai', model: 'grok-2-vision-1212', inputPer1MTokens: 2.00, outputPer1MTokens: 10.00 },
+  { provider: "xai", model: "grok-beta", inputPer1MTokens: 5.0, outputPer1MTokens: 15.0 },
+  { provider: "xai", model: "grok-2-1212", inputPer1MTokens: 2.0, outputPer1MTokens: 10.0 },
+  { provider: "xai", model: "grok-2-vision-1212", inputPer1MTokens: 2.0, outputPer1MTokens: 10.0 },
 
   // Google (for future use)
-  { provider: 'google', model: 'gemini-1.5-pro', inputPer1MTokens: 1.25, outputPer1MTokens: 5.00 },
-  { provider: 'google', model: 'gemini-1.5-flash', inputPer1MTokens: 0.075, outputPer1MTokens: 0.30 },
-  { provider: 'google', model: 'gemini-2.0-flash-exp', inputPer1MTokens: 0.075, outputPer1MTokens: 0.30 },
+  { provider: "google", model: "gemini-1.5-pro", inputPer1MTokens: 1.25, outputPer1MTokens: 5.0 },
+  { provider: "google", model: "gemini-1.5-flash", inputPer1MTokens: 0.075, outputPer1MTokens: 0.3 },
+  { provider: "google", model: "gemini-2.0-flash-exp", inputPer1MTokens: 0.075, outputPer1MTokens: 0.3 },
 ];
 
 // Index for fast lookup
@@ -150,16 +177,14 @@ export function formatUsd(amount: number): string {
  * List all supported providers.
  */
 export function getSupportedProviders(): string[] {
-  return [...new Set(MODEL_PRICING.map(p => p.provider))];
+  return [...new Set(MODEL_PRICING.map((p) => p.provider))];
 }
 
 /**
  * List all models for a provider.
  */
 export function getModelsForProvider(provider: string): string[] {
-  return MODEL_PRICING
-    .filter(p => p.provider === provider)
-    .map(p => p.model);
+  return MODEL_PRICING.filter((p) => p.provider === provider).map((p) => p.model);
 }
 ```
 
@@ -309,7 +334,7 @@ async getDailyUsage(
 Modify all places that create provider_calls records to include USD cost:
 
 ```typescript
-import { calculateCostUsd } from '@aharadar/shared/pricing';
+import { calculateCostUsd } from "@aharadar/shared/pricing";
 
 // When logging a provider call:
 const costUsd = calculateCostUsd(provider, model, inputTokens, outputTokens);
@@ -321,8 +346,8 @@ await providerCallsRepo.create({
   model,
   inputTokens,
   outputTokens,
-  costEstimateCredits,  // Keep for backward compat
-  costEstimateUsd: costUsd,  // New field
+  costEstimateCredits, // Keep for backward compat
+  costEstimateUsd: costUsd, // New field
   status,
   // ... other fields
 });

@@ -9,6 +9,7 @@
 ## Goal
 
 Add Claude subscription mode for LLM calls using the Claude Agent SDK, enabling:
+
 1. Use of Claude Max subscription instead of API billing
 2. Extended thinking for improved triage quality
 3. WebSearch/WebFetch tools for enhanced context on ambiguous items
@@ -23,6 +24,7 @@ Add Claude subscription mode for LLM calls using the Claude Agent SDK, enabling:
 ## Background
 
 User has Claude Max subscription ($100/month) that is underutilized. The Claude Agent SDK can potentially use subscription credentials for API calls, avoiding per-token billing. This task adds:
+
 - Subscription mode as highest-priority provider option
 - Extended thinking for deeper analysis
 - Tool use for web research on ambiguous items
@@ -56,13 +58,13 @@ If anything else seems required, **stop and ask**.
 #### 1.1 Create `packages/llm/src/claude_subscription.ts`
 
 ```typescript
-import { query, type QueryOptions } from '@anthropic-ai/claude-agent-sdk';
-import type { LlmCallResult, LlmRequest, ModelRef } from './types';
+import { query, type QueryOptions } from "@anthropic-ai/claude-agent-sdk";
+import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 
 export interface ClaudeSubscriptionConfig {
   enableThinking?: boolean;
   thinkingBudget?: number;
-  enabledTools?: ('WebSearch' | 'WebFetch')[];
+  enabledTools?: ("WebSearch" | "WebFetch")[];
   maxSearchesPerCall?: number;
 }
 
@@ -89,7 +91,7 @@ export async function callClaudeSubscription(
   // Add extended thinking if enabled
   if (mergedConfig.enableThinking) {
     options.thinking = {
-      type: 'enabled',
+      type: "enabled",
       budgetTokens: mergedConfig.thinkingBudget,
     };
   }
@@ -114,14 +116,14 @@ export async function callClaudeSubscription(
     rawResponse: result,
     inputTokens: result.usage?.inputTokens ?? 0,
     outputTokens: result.usage?.outputTokens ?? 0,
-    endpoint: 'claude-subscription',
+    endpoint: "claude-subscription",
   };
 }
 
 function extractOutputText(result: unknown): string {
   // Implementation depends on SDK response shape
-  if (typeof result === 'string') return result;
-  if (result && typeof result === 'object' && 'text' in result) {
+  if (typeof result === "string") return result;
+  if (result && typeof result === "object" && "text" in result) {
     return String((result as { text: unknown }).text);
   }
   return JSON.stringify(result);
@@ -160,8 +162,7 @@ let usageState: ClaudeUsageState = {
 
 function maybeResetHour(): void {
   const now = new Date();
-  const hoursSinceReset =
-    (now.getTime() - usageState.lastResetAt.getTime()) / (1000 * 60 * 60);
+  const hoursSinceReset = (now.getTime() - usageState.lastResetAt.getTime()) / (1000 * 60 * 60);
 
   if (hoursSinceReset >= 1) {
     usageState = {
@@ -185,16 +186,10 @@ export function canUseWebSearch(limits = DEFAULT_LIMITS): boolean {
 
 export function canUseThinking(budgetTokens: number, limits = DEFAULT_LIMITS): boolean {
   maybeResetHour();
-  return (
-    usageState.thinkingTokensThisHour + budgetTokens <= limits.thinkingTokensPerHour
-  );
+  return usageState.thinkingTokensThisHour + budgetTokens <= limits.thinkingTokensPerHour;
 }
 
-export function recordUsage(opts: {
-  calls?: number;
-  searches?: number;
-  thinkingTokens?: number;
-}): void {
+export function recordUsage(opts: { calls?: number; searches?: number; thinkingTokens?: number }): void {
   maybeResetHour();
   usageState.callsThisHour += opts.calls ?? 0;
   usageState.searchesThisHour += opts.searches ?? 0;
@@ -210,30 +205,30 @@ export function getUsageState(): Readonly<ClaudeUsageState> {
 #### 1.3 Update router priority in `packages/llm/src/router.ts`
 
 ```typescript
-type Provider = 'claude-subscription' | 'anthropic' | 'openai';
+type Provider = "claude-subscription" | "anthropic" | "openai";
 
 function resolveProvider(env: NodeJS.ProcessEnv, task: TaskType): Provider {
   // Check if subscription mode is enabled and available
-  if (env.CLAUDE_USE_SUBSCRIPTION === 'true') {
+  if (env.CLAUDE_USE_SUBSCRIPTION === "true") {
     if (canUseClaudeSubscription()) {
-      return 'claude-subscription';
+      return "claude-subscription";
     }
-    console.warn('Claude subscription quota exceeded, falling back to API');
+    console.warn("Claude subscription quota exceeded, falling back to API");
   }
 
   // Check for task-specific provider override
   const taskKey = `LLM_${task.toUpperCase()}_PROVIDER`;
   const taskProvider = env[taskKey]?.toLowerCase();
-  if (taskProvider === 'anthropic' || taskProvider === 'openai') {
+  if (taskProvider === "anthropic" || taskProvider === "openai") {
     return taskProvider;
   }
 
   // Check for global provider preference (anthropic > openai if key available)
   if (env.ANTHROPIC_API_KEY) {
-    return 'anthropic';
+    return "anthropic";
   }
 
-  return 'openai';
+  return "openai";
 }
 ```
 
@@ -248,9 +243,9 @@ Create enhanced triage wrapper that uses WebSearch for ambiguous items:
 
 export interface EnhancedTriageConfig {
   enableEnhanced: boolean;
-  minScoreForEnhancement: number;  // e.g., 40
-  maxScoreForEnhancement: number;  // e.g., 60
-  sourceTypesAllowed: string[];    // e.g., ['x_posts', 'signal']
+  minScoreForEnhancement: number; // e.g., 40
+  maxScoreForEnhancement: number; // e.g., 60
+  sourceTypesAllowed: string[]; // e.g., ['x_posts', 'signal']
 }
 
 export async function enhancedTriage(
@@ -287,7 +282,7 @@ IMPORTANT: This item has an ambiguous relevance score. Use WebSearch to gather a
     {
       enableThinking: true,
       thinkingBudget: 5000,
-      enabledTools: ['WebSearch', 'WebFetch'],
+      enabledTools: ["WebSearch", "WebFetch"],
       maxSearchesPerCall: 2,
     }
   );
@@ -326,19 +321,15 @@ CLAUDE_THINKING_TOKENS_PER_HOUR=50000
 Update `packages/pipeline/src/stages/triage.ts` to use enhanced mode when available:
 
 ```typescript
-import {
-  callClaudeSubscription,
-  enhancedTriage,
-  EnhancedTriageConfig,
-} from '@aharadar/llm';
+import { callClaudeSubscription, enhancedTriage, EnhancedTriageConfig } from "@aharadar/llm";
 
 // In triage function, after initial scoring:
 if (shouldUseEnhancedTriage(item, initialScore, env)) {
   const config: EnhancedTriageConfig = {
-    enableEnhanced: env.CLAUDE_ENHANCED_TRIAGE === 'true',
-    minScoreForEnhancement: parseInt(env.CLAUDE_ENHANCED_MIN_SCORE ?? '40'),
-    maxScoreForEnhancement: parseInt(env.CLAUDE_ENHANCED_MAX_SCORE ?? '60'),
-    sourceTypesAllowed: (env.CLAUDE_ENHANCED_SOURCE_TYPES ?? '').split(','),
+    enableEnhanced: env.CLAUDE_ENHANCED_TRIAGE === "true",
+    minScoreForEnhancement: parseInt(env.CLAUDE_ENHANCED_MIN_SCORE ?? "40"),
+    maxScoreForEnhancement: parseInt(env.CLAUDE_ENHANCED_MAX_SCORE ?? "60"),
+    sourceTypesAllowed: (env.CLAUDE_ENHANCED_SOURCE_TYPES ?? "").split(","),
   };
 
   result = await enhancedTriage(ref, request, initialScore, item.sourceType, config);
@@ -403,7 +394,7 @@ curl http://localhost:3001/api/admin/claude-usage  # if endpoint added
 Add logging for subscription usage:
 
 ```typescript
-console.log('[claude-subscription] Call made', {
+console.log("[claude-subscription] Call made", {
   model: ref.model,
   thinkingEnabled: config.enableThinking,
   toolsUsed: config.enabledTools,

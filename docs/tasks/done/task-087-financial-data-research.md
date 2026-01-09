@@ -19,6 +19,7 @@ Users interested in finance/trading topics would benefit from connectors for mar
 ### 1. Polymarket (Prediction Markets)
 
 Questions to answer:
+
 - Does Polymarket have a public API?
 - Is there an RSS feed for new markets or resolved markets?
 - What are the rate limits?
@@ -28,6 +29,7 @@ Questions to answer:
 ### 2. Finviz (Stock Screener/News)
 
 Questions to answer:
+
 - Is there an RSS feed for news or screener results?
 - What are the terms of service regarding data access?
 - Is scraping allowed or explicitly prohibited?
@@ -37,6 +39,7 @@ Questions to answer:
 ### 3. SEC EDGAR (Regulatory Filings)
 
 Questions to answer:
+
 - What RSS feeds are available? (Form 4, 8-K, 13F, etc.)
 - Is there a structured API for filings?
 - How to parse Form 4 (insider trading) data?
@@ -46,12 +49,14 @@ Questions to answer:
 ### 4. Congressional Trading
 
 Sources to investigate:
+
 - quiverquant.com API - availability, pricing, data format
 - capitoltrades.com - data format, access method
 - housestockwatcher.com - RSS/API availability
 - senatestockwatcher.com - RSS/API availability
 
 Questions:
+
 - Which source has the most reliable/timely data?
 - Are there free tiers available?
 - What's the typical delay from trade to disclosure?
@@ -59,6 +64,7 @@ Questions:
 ### 5. 13F Filings (Institutional Holdings)
 
 Questions to answer:
+
 - SEC EDGAR 13F RSS availability?
 - How to parse 13F XML format?
 - Quarterly filing schedule and timing?
@@ -68,6 +74,7 @@ Questions to answer:
 ### 6. Whale Alert (Crypto On-Chain)
 
 Questions to answer:
+
 - API pricing tiers?
 - Webhook support for real-time alerts?
 - What blockchains/tokens are covered?
@@ -77,6 +84,7 @@ Questions to answer:
 ## Additional Sources to Consider
 
 If time permits, also research:
+
 - **Unusual Whales** - Options flow, insider trading
 - **OpenInsider** - Insider trading aggregator
 - **Stocktwits** - Social sentiment
@@ -91,36 +99,43 @@ For each source, document:
 ## [Source Name]
 
 ### Availability
+
 - API: Yes/No/Paid
 - RSS: Yes/No (URL if yes)
 - Scraping: Allowed/Prohibited/Gray area
 
 ### Access Method
+
 - Authentication required?
 - API key signup process?
 - Rate limits?
 
 ### Legal Considerations
+
 - Terms of Service summary
 - Commercial use allowed?
 - Attribution requirements?
 
 ### Data Format
+
 - Response format (JSON/XML/HTML)
 - Key fields available
 - Sample data structure
 
 ### Implementation Complexity
+
 - Estimate: Low/Medium/High
 - Dependencies needed
 - Parsing complexity
 
 ### Value Assessment
+
 - User value: High/Medium/Low
 - Uniqueness of data
 - Timeliness (real-time, hourly, daily)
 
 ### Recommendation
+
 - Priority: High/Medium/Low/Skip
 - Rationale
 ```

@@ -9,6 +9,7 @@ Create a genuinely different "condensed" layout for the feed page that shows mor
 ## Background
 
 The app has three layout settings (condensed/reader/timeline) defined in Settings, but:
+
 1. CSS variables exist in `globals.css` but FeedItem uses hardcoded `var(--space-X)` values
 2. All three layouts look essentially the same - just minor spacing differences
 3. Users wanting to scan many items quickly have no good option
@@ -16,6 +17,7 @@ The app has three layout settings (condensed/reader/timeline) defined in Setting
 ## Current State
 
 **Layout CSS variables** (globals.css lines 203-224):
+
 ```css
 [data-layout="condensed"] {
   --content-max-width: 100%;
@@ -32,6 +34,7 @@ The app has three layout settings (condensed/reader/timeline) defined in Setting
 ### Option A: Layout-Aware Styling (Minimum)
 
 Update FeedItem.module.css to use the layout variables:
+
 - Replace `padding: var(--space-5)` with `padding: var(--card-padding)`
 - Replace gaps/margins with `var(--item-spacing)` or `var(--content-gap)`
 - This makes the existing layout settings actually work
@@ -41,6 +44,7 @@ Update FeedItem.module.css to use the layout variables:
 Create a completely different component/variant for condensed layout:
 
 **Condensed layout characteristics:**
+
 - Single-line or two-line per item (not card)
 - No card borders/shadows - just subtle separators
 - Source badge, title, author, time, score all on one row
@@ -49,6 +53,7 @@ Create a completely different component/variant for condensed layout:
 - Target: 8-12 items visible per viewport vs current 3-4
 
 **Example condensed row:**
+
 ```
 [HN] Title of the item goes here... · @author · 2h · [👍][👎] [85]
 ```
@@ -74,12 +79,14 @@ Add a quick toggle button on the feed page header to switch between layouts with
 ## Design Reference
 
 **Current "Reader" layout** (default):
+
 - Card with padding, border, shadow on hover
 - Header row with badges, meta, score
 - Title as heading
 - WhyShown accordion below
 
 **Proposed "Condensed" layout**:
+
 - No card wrapper, just horizontal rule separator
 - All info on 1-2 lines
 - Inline score badge (smaller)

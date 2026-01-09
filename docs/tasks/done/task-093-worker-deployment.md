@@ -32,6 +32,7 @@ Currently, pipeline runs must be triggered manually via the Admin UI - this task
 - No external cron dependency
 
 **Why this approach:**
+
 - Most portable (Docker works same everywhere)
 - Already implemented (just need Docker config)
 - App-internal scheduling = simpler ops
@@ -74,6 +75,7 @@ CMD ["pnpm", "--filter", "@aharadar/worker", "start"]
 ### 3. Add local dev command
 
 In root `package.json`:
+
 ```json
 {
   "scripts": {
@@ -83,6 +85,7 @@ In root `package.json`:
 ```
 
 In `packages/worker/package.json`:
+
 ```json
 {
   "scripts": {
@@ -95,6 +98,7 @@ In `packages/worker/package.json`:
 ### 4. Update documentation
 
 Add to README or CLAUDE.md commands section:
+
 ```bash
 # Local development (3 terminals)
 pnpm dev:services    # Start Postgres + Redis
@@ -107,13 +111,13 @@ docker compose up -d
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `docker-compose.yml` | Add worker service definition |
-| `Dockerfile` | Add worker target stage |
-| `package.json` (root) | Add `dev:worker` script |
+| File                           | Change                        |
+| ------------------------------ | ----------------------------- |
+| `docker-compose.yml`           | Add worker service definition |
+| `Dockerfile`                   | Add worker target stage       |
+| `package.json` (root)          | Add `dev:worker` script       |
 | `packages/worker/package.json` | Add `dev` and `start` scripts |
-| `CLAUDE.md` | Update commands section |
+| `CLAUDE.md`                    | Update commands section       |
 
 ## Out of Scope
 
@@ -125,6 +129,7 @@ docker compose up -d
 ## Test Plan
 
 1. **Local dev test:**
+
    ```bash
    pnpm dev:services
    pnpm dev:worker  # In separate terminal
@@ -132,6 +137,7 @@ docker compose up -d
    ```
 
 2. **Docker test:**
+
    ```bash
    docker compose up -d
    docker compose logs -f worker

@@ -39,19 +39,20 @@ If anything else seems required, **stop and ask**.
 
 ### Database-level metrics
 
-| Metric | Description | Source |
-|--------|-------------|--------|
-| `postgres_database_size_bytes` | Total database size | pg_database_size() |
-| `postgres_table_size_bytes` | Size per table (with labels) | pg_total_relation_size() |
-| `postgres_index_size_bytes` | Index size per table | pg_indexes_size() |
+| Metric                         | Description                  | Source                   |
+| ------------------------------ | ---------------------------- | ------------------------ |
+| `postgres_database_size_bytes` | Total database size          | pg_database_size()       |
+| `postgres_table_size_bytes`    | Size per table (with labels) | pg_total_relation_size() |
+| `postgres_index_size_bytes`    | Index size per table         | pg_indexes_size()        |
 
 ### Row count metrics
 
-| Metric | Description | Source |
-|--------|-------------|--------|
+| Metric               | Description         | Source                         |
+| -------------------- | ------------------- | ------------------------------ |
 | `postgres_row_count` | Estimated row count | pg_stat_user_tables.n_live_tup |
 
 Key tables to monitor:
+
 - `provider_calls` (grows with every LLM call)
 - `content_items` (grows with ingestion)
 - `digests` (grows with pipeline runs)
@@ -60,11 +61,11 @@ Key tables to monitor:
 
 ### Disk metrics
 
-| Metric | Description | Source |
-|--------|-------------|--------|
-| `disk_usage_bytes` | Used disk space | node_exporter or custom |
-| `disk_free_bytes` | Free disk space | node_exporter or custom |
-| `disk_usage_percent` | Usage percentage | calculated |
+| Metric               | Description      | Source                  |
+| -------------------- | ---------------- | ----------------------- |
+| `disk_usage_bytes`   | Used disk space  | node_exporter or custom |
+| `disk_free_bytes`    | Free disk space  | node_exporter or custom |
+| `disk_usage_percent` | Usage percentage | calculated              |
 
 ## Implementation options
 
@@ -73,11 +74,13 @@ Key tables to monitor:
 Add a `/api/storage/metrics` endpoint that queries Postgres directly and returns Prometheus format.
 
 Pros:
+
 - No additional container
 - Direct control over queries
 - Simpler setup
 
 Cons:
+
 - Adds load to API
 - Manual metric definition
 
@@ -86,11 +89,13 @@ Cons:
 Use official postgres_exporter container.
 
 Pros:
+
 - Standard approach
 - Rich default metrics
 - No custom code
 
 Cons:
+
 - Additional container
 - More complex config
 
@@ -162,6 +167,7 @@ export const storageRoutes: FastifyPluginAsync = async (fastify) => {
 ### 2. Register storage route
 
 Update `packages/api/src/main.ts`:
+
 - Import and register `storageRoutes` under `/api`
 - Route should be public (or protected, depending on preference)
 
@@ -177,7 +183,7 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:3001"]
     metrics_path: /api/storage/metrics
-    scrape_interval: 60s  # Less frequent for DB queries
+    scrape_interval: 60s # Less frequent for DB queries
 ```
 
 ### 4. Add storage panels to Grafana dashboard
@@ -187,23 +193,27 @@ Update `infra/grafana/dashboards/aharadar-overview.json`:
 Add new row "Storage":
 
 **Panel: Database Size**
+
 - Type: Stat
 - Query: `postgres_database_size_bytes`
 - Unit: bytes(SI)
 - Thresholds: 5GB yellow, 10GB red
 
 **Panel: Table Sizes**
+
 - Type: Bar gauge
 - Query: `postgres_table_size_bytes`
 - Sort: Descending
 - Top 10 tables
 
 **Panel: Row Counts Over Time**
+
 - Type: Time series
 - Query: `postgres_row_count{table=~"provider_calls|content_items|digests"}`
 - Show growth trend
 
 **Panel: Storage Growth Rate**
+
 - Type: Stat
 - Query: `rate(postgres_database_size_bytes[24h]) * 86400`
 - Unit: bytes/day
@@ -221,7 +231,7 @@ Update `infra/grafana/provisioning/alerting/rules.yml`:
     - refId: A
       datasourceUid: prometheus
       model:
-        expr: postgres_database_size_bytes > 5368709120  # 5GB
+        expr: postgres_database_size_bytes > 5368709120 # 5GB
   for: 5m
   labels:
     severity: warning
@@ -239,7 +249,7 @@ Update `infra/grafana/provisioning/alerting/rules.yml`:
     - refId: A
       datasourceUid: prometheus
       model:
-        expr: postgres_database_size_bytes > 10737418240  # 10GB
+        expr: postgres_database_size_bytes > 10737418240 # 10GB
   for: 5m
   labels:
     severity: critical
@@ -269,14 +279,16 @@ Update `infra/grafana/provisioning/alerting/rules.yml`:
 
 Update `docs/alerts.md` with storage section:
 
-```markdown
+````markdown
 ## Storage Alerts
 
 ### DatabaseSizeWarning (5GB)
+
 **Severity**: Warning
 **Condition**: Total database size exceeds 5GB
 
 **Actions**:
+
 1. Check which tables are largest:
    ```sql
    SELECT relname, pg_size_pretty(pg_total_relation_size(relid))
@@ -284,15 +296,19 @@ Update `docs/alerts.md` with storage section:
    ORDER BY pg_total_relation_size(relid) DESC
    LIMIT 10;
    ```
+````
+
 2. Review `provider_calls` for old records
 3. Check `content_items` for duplicates
 4. Consider VACUUM FULL on large tables
 
 ### DatabaseSizeCritical (10GB)
+
 **Severity**: Critical
 **Condition**: Database size exceeds 10GB
 
 **Actions**:
+
 1. All of warning actions
 2. Implement emergency retention:
    ```sql
@@ -303,10 +319,12 @@ Update `docs/alerts.md` with storage section:
 4. Notify stakeholders
 
 ### ProviderCallsTableLarge (1M rows)
+
 **Severity**: Warning
 **Condition**: provider_calls exceeds 1M rows
 
 **Actions**:
+
 1. Review if historical data is needed
 2. Consider archiving old records
 3. Implement automated retention job
@@ -315,12 +333,14 @@ Update `docs/alerts.md` with storage section:
 ## Storage Housekeeping
 
 ### Recommended retention policies
+
 - `provider_calls`: 90 days (archive to cold storage)
 - `digests`: 30 days (keep summaries)
 - `signals`: 7 days (rebuild from items)
 - `embeddings`: Keep with content_items
 
 ### Manual cleanup commands
+
 ```sql
 -- Check table bloat
 SELECT schemaname, relname, n_dead_tup, n_live_tup
@@ -330,7 +350,8 @@ WHERE n_dead_tup > 10000;
 -- Reclaim space
 VACUUM ANALYZE;
 ```
-```
+
+````
 
 ## Future considerations
 
@@ -377,7 +398,7 @@ curl -s 'localhost:9090/api/v1/query?query=postgres_database_size_bytes' | jq
 # Open Grafana
 open http://localhost:3002
 # Check Storage row in dashboard
-```
+````
 
 ## Commit
 

@@ -7,9 +7,11 @@ X (Twitter) posts only show the handle (e.g., "@aravind") but not the user's ful
 ## Current State
 
 ### Database
+
 ```sql
 SELECT author, metadata_json FROM content_items WHERE source_type = 'x_posts' LIMIT 1;
 ```
+
 ```
 author: "@aravind"
 metadata_json: {
@@ -24,6 +26,7 @@ metadata_json: {
 **Full name is NOT stored** - only the handle.
 
 ### API/UI
+
 - Shows `@aravind` as author
 - No display name available
 
@@ -34,6 +37,7 @@ metadata_json: {
 **File:** `packages/connectors/src/x_posts/normalize.ts`
 
 Does the Grok API return display name? Check:
+
 - What fields come back from Grok search
 - Is display name available but not being stored?
 
@@ -50,6 +54,7 @@ What does the raw API response include?
 If Grok API returns display name:
 
 **File:** `packages/connectors/src/x_posts/normalize.ts`
+
 ```typescript
 return {
   ...
@@ -68,12 +73,14 @@ Then update API/UI to show `metadata.display_name` if available.
 ### Option B: Fetch user info separately
 
 If Grok doesn't return display name, could make separate API call:
+
 - Not recommended - adds complexity and API costs
 - Could do batch lookup for top authors
 
 ### Option C: Display enhancement without data change
 
 If we can't get display name, improve current display:
+
 - Make handle more prominent
 - Add link to profile
 - Show avatar if available
@@ -110,14 +117,16 @@ SELECT
 **File:** `packages/web/src/components/Feed/FeedItem.tsx`
 
 ```tsx
-{item.item.sourceType === 'x_posts' && (
-  <span className={styles.xAuthor}>
-    {item.item.metadata?.displayName && (
-      <span className={styles.displayName}>{item.item.metadata.displayName}</span>
-    )}
-    <span className={styles.handle}>{item.item.author}</span>
-  </span>
-)}
+{
+  item.item.sourceType === "x_posts" && (
+    <span className={styles.xAuthor}>
+      {item.item.metadata?.displayName && (
+        <span className={styles.displayName}>{item.item.metadata.displayName}</span>
+      )}
+      <span className={styles.handle}>{item.item.author}</span>
+    </span>
+  );
+}
 ```
 
 ### 5. Styling
@@ -144,11 +153,13 @@ SELECT
 ## Visual Design
 
 ### Current
+
 ```
 x  @aravind  (Untitled)
 ```
 
 ### After Fix
+
 ```
 x  Aravind Srinivas @aravind
    His name says he's of Italian descent...
@@ -157,10 +168,12 @@ x  Aravind Srinivas @aravind
 ## Investigation First
 
 Before implementing, verify:
+
 1. Does Grok API return display name?
 2. If not, what alternatives exist?
 
 Check:
+
 - `packages/connectors/src/x_posts/fetch.ts`
 - Grok API documentation
 - Sample raw response from Grok

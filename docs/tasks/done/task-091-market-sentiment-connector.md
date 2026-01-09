@@ -30,6 +30,7 @@ Finnhub provides social sentiment data aggregated from Reddit, Twitter, and Stoc
 ### 1. Create Connector Directory
 
 Create `packages/connectors/src/market_sentiment/`:
+
 - `config.ts` - Parse and validate config
 - `fetch.ts` - Fetch sentiment via Finnhub API
 - `normalize.ts` - Map sentiment to ContentItemDraft
@@ -50,6 +51,7 @@ Create `packages/connectors/src/market_sentiment/`:
 ```
 
 Fields:
+
 - `tickers` (required): List of stock tickers to monitor
 - `sentiment_change_threshold` (default: 0): Only emit if sentiment score changed by this percentage since last fetch
 - `min_mentions` (default: 0): Minimum mention count to include
@@ -71,6 +73,7 @@ FINNHUB_API_KEY=your_finnhub_api_key_here
 **Finnhub Social Sentiment:**
 
 1. **Social Sentiment (by ticker):**
+
    ```
    GET https://finnhub.io/api/v1/stock/social-sentiment?symbol={ticker}&token={api_key}
    ```
@@ -94,7 +97,7 @@ FINNHUB_API_KEY=your_finnhub_api_key_here
          "mention": 500,
          "positiveMention": 350,
          "negativeMention": 100,
-         "score": 0.70
+         "score": 0.7
        }
      ]
    }
@@ -110,7 +113,7 @@ interface FinnhubSentimentData {
   mention: number;
   positiveMention: number;
   negativeMention: number;
-  score: number;  // 0-1, higher = more bullish
+  score: number; // 0-1, higher = more bullish
 }
 
 interface FinnhubSentimentResponse {
@@ -126,7 +129,7 @@ interface AggregatedSentiment {
   positiveMentions: number;
   negativeMentions: number;
   neutralMentions: number;
-  compositeScore: number;  // Weighted average of reddit + twitter
+  compositeScore: number; // Weighted average of reddit + twitter
   redditScore: number | null;
   twitterScore: number | null;
   redditMentions: number;
@@ -137,6 +140,7 @@ interface AggregatedSentiment {
 ```
 
 **Fetch Logic:**
+
 1. Iterate through configured tickers
 2. Call `/stock/social-sentiment` for each ticker
 3. Aggregate Reddit and Twitter data
@@ -159,16 +163,14 @@ function calculateCompositeSentiment(
   const totalMentions = redditMentions + twitterMentions;
 
   if (totalMentions === 0) {
-    return { score: 0.5, mentions: 0 };  // Neutral if no data
+    return { score: 0.5, mentions: 0 }; // Neutral if no data
   }
 
   // Weighted average by mention count
   const redditWeight = redditMentions / totalMentions;
   const twitterWeight = twitterMentions / totalMentions;
 
-  const score =
-    (redditLatest?.score ?? 0.5) * redditWeight +
-    (twitterLatest?.score ?? 0.5) * twitterWeight;
+  const score = (redditLatest?.score ?? 0.5) * redditWeight + (twitterLatest?.score ?? 0.5) * twitterWeight;
 
   return { score, mentions: totalMentions };
 }
@@ -214,8 +216,7 @@ Map sentiment data to `ContentItemDraft`:
 
 ```typescript
 function generateTitle(sentiment: AggregatedSentiment, previousScore?: number): string {
-  const label = sentiment.sentimentLabel.charAt(0).toUpperCase() +
-                sentiment.sentimentLabel.slice(1);
+  const label = sentiment.sentimentLabel.charAt(0).toUpperCase() + sentiment.sentimentLabel.slice(1);
   const scoreStr = sentiment.compositeScore.toFixed(2);
 
   if (previousScore !== undefined) {
@@ -247,6 +248,7 @@ Track previous scores to calculate changes and apply threshold filtering.
 ### 10. Rate Limiting
 
 Finnhub free tier limits:
+
 - 60 API calls per minute
 - Some premium endpoints restricted
 - Implement request counting with minute-based reset
@@ -256,6 +258,7 @@ Finnhub free tier limits:
 ### 11. Error Handling
 
 Handle common scenarios:
+
 - `401`: Invalid API key
 - `403`: Premium endpoint or rate limit exceeded
 - `429`: Rate limited - back off and retry
@@ -313,6 +316,7 @@ Document these limitations in `docs/connectors.md`:
 3. Whale Alert Telegram channel is free and provides real-time on-chain alerts
 
 Example Telegram source for whale alerts:
+
 ```json
 {
   "channels": ["@whale_alert_io"],

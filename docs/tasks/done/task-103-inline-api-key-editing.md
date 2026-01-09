@@ -9,17 +9,20 @@ Improve the API Keys section in Settings to allow inline editing by clicking on 
 ## Background
 
 Currently the Settings > API Keys section shows a list of providers with their configuration status:
+
 ```
 OpenAI API Key: Not Configured
 Anthropic API Key: Not Configured
 ```
 
 To add an API key, users must:
+
 1. Select the provider from a dropdown below
 2. Enter the key in a separate input field
 3. Click Save
 
 This is unintuitive because:
+
 - The list and the form are disconnected
 - Users expect to click "Not Configured" to configure it
 - Common UX pattern is inline editing (click to edit)
@@ -62,6 +65,7 @@ Click to configure. Keys are stored locally in your browser.
 ```
 
 When clicking to edit:
+
 ```
 OpenAI         [_________________________] [✓] [✗]
                Enter your OpenAI API key

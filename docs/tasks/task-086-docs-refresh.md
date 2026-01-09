@@ -17,6 +17,7 @@ AhaRadar has evolved significantly with new features (user authentication, API k
 #### 1.1 Create `docs/security.md`
 
 Content to cover:
+
 - **Encryption Approach**
   - User API keys encrypted at rest (AES-256-GCM)
   - Encryption key storage (environment variable)
@@ -37,6 +38,7 @@ Content to cover:
 #### 1.2 Create `docs/providers.md`
 
 Content to cover:
+
 - **Provider Architecture**
   - Provider interface abstraction
   - Supported providers: OpenAI, Anthropic, Grok/xAI
@@ -57,6 +59,7 @@ Content to cover:
 #### 1.3 Create `docs/deployment.md`
 
 Content to cover:
+
 - **Local Development**
   - Required environment variables
   - Docker Compose setup (Postgres, Redis)
@@ -80,6 +83,7 @@ Content to cover:
 #### 2.1 Update `docs/spec.md`
 
 Review and update:
+
 - Feature list (add authentication, API keys, web UI)
 - Architecture overview (add packages/web, packages/api)
 - User journeys (update with current flows)
@@ -88,6 +92,7 @@ Review and update:
 #### 2.2 Update `docs/architecture.md`
 
 Review and update:
+
 - Package structure (add packages/web, packages/api, packages/queues)
 - Component diagram (add web UI, API layer, queue workers)
 - Data flow (update with current pipeline)
@@ -97,11 +102,13 @@ Review and update:
 #### 2.3 Update `docs/data-model.md`
 
 Add missing tables:
+
 - `user_api_keys` - User's provider API keys
 - `sessions` - User session management
 - Recent migrations (0007, 0008, etc.)
 
 Update existing tables:
+
 - `users` - Add new columns if any
 - `sources` - Add new source types
 - `content_items` - Add any new metadata patterns
@@ -109,11 +116,13 @@ Update existing tables:
 #### 2.4 Update `docs/connectors.md`
 
 Add documentation for:
+
 - YouTube connector (when Task 083 complete)
 - Telegram connector (when Task 085 complete)
 - RSS-based types: podcast, substack, medium, arxiv, lobsters, producthunt, github_releases (when Task 084 complete)
 
 Update existing:
+
 - Reddit connector updates
 - X_Posts connector updates
 - Any connector contract changes
@@ -194,6 +203,7 @@ pnpm format
 ## Commit Strategy
 
 Split into multiple commits:
+
 1. `docs: create security.md`
 2. `docs: create providers.md`
 3. `docs: create deployment.md`

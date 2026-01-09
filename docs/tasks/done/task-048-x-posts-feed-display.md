@@ -3,22 +3,28 @@
 ## Problem
 
 X (Twitter) posts show "(Untitled)" in the feed because they have `body_text` instead of `title`. The current implementation:
+
 1. API doesn't return `body_text` for feed items
 2. FeedItem component only displays `title`, falling back to "(Untitled)"
 
 ## Current State
 
 ### API (`packages/api/src/routes/items.ts`)
+
 - Returns `ci.title` but NOT `ci.body_text`
 - X posts have `title = NULL` and meaningful content in `body_text`
 
 ### FeedItem Component (`packages/web/src/components/Feed/FeedItem.tsx`)
+
 ```tsx
 // Line 91-95
-{item.item.title || "(Untitled)"}
+{
+  item.item.title || "(Untitled)";
+}
 ```
 
 ### Database
+
 ```sql
 SELECT title, body_text FROM content_items WHERE source_type = 'x_posts' LIMIT 1;
 -- title: NULL
@@ -32,6 +38,7 @@ SELECT title, body_text FROM content_items WHERE source_type = 'x_posts' LIMIT 1
 **File:** `packages/api/src/routes/items.ts`
 
 Add `body_text` to the query and response:
+
 ```sql
 SELECT
   ...
@@ -42,6 +49,7 @@ SELECT
 Update `UnifiedItemRow` interface to include `body_text: string | null`.
 
 Update response mapping:
+
 ```typescript
 item: {
   title: row.title,
@@ -56,6 +64,7 @@ item: {
 **File:** `packages/web/src/lib/api.ts`
 
 Add to `FeedItem.item`:
+
 ```typescript
 interface FeedItemContent {
   title: string | null;
@@ -70,26 +79,28 @@ interface FeedItemContent {
 **File:** `packages/web/src/components/Feed/FeedItem.tsx`
 
 Change display logic:
+
 ```tsx
 // Get display text: prefer title, fall back to truncated body_text, then "(Untitled)"
-const displayTitle = item.item.title
-  || (item.item.bodyText ? truncate(item.item.bodyText, 200) : null)
-  || "(Untitled)";
+const displayTitle =
+  item.item.title || (item.item.bodyText ? truncate(item.item.bodyText, 200) : null) || "(Untitled)";
 
 // For X posts specifically, might want different layout:
 // - Show author more prominently
 // - Show body_text as main content (like Twitter)
 // - Smaller/different styling
 
-{item.item.sourceType === 'x_posts' ? (
-  <div className={styles.tweetContent}>
-    <p className={styles.tweetBody}>{item.item.bodyText}</p>
-  </div>
-) : (
-  <h3 className={styles.title}>
-    <a href={item.item.url}>{displayTitle}</a>
-  </h3>
-)}
+{
+  item.item.sourceType === "x_posts" ? (
+    <div className={styles.tweetContent}>
+      <p className={styles.tweetBody}>{item.item.bodyText}</p>
+    </div>
+  ) : (
+    <h3 className={styles.title}>
+      <a href={item.item.url}>{displayTitle}</a>
+    </h3>
+  );
+}
 ```
 
 ### 4. Add styles for X posts
@@ -97,6 +108,7 @@ const displayTitle = item.item.title
 **File:** `packages/web/src/components/Feed/FeedItem.module.css`
 
 Add Twitter-like styling:
+
 ```css
 .tweetContent {
   /* Tweet body styling */

@@ -98,12 +98,14 @@ export { baseLogger as logger };
 ### 2. Add dependencies
 
 Update `packages/shared/package.json`:
+
 - Add `pino` as dependency
 - Add `pino-pretty` as devDependency
 
 ### 3. Update API entry point
 
 Update `packages/api/src/main.ts`:
+
 - Import shared logger
 - Configure Fastify to use pino with request ID
 - Replace all `console.log` with logger calls
@@ -112,6 +114,7 @@ Update `packages/api/src/main.ts`:
 ### 4. Update Worker entry point
 
 Update `packages/worker/src/main.ts`:
+
 - Import shared logger
 - Create component logger for scheduler
 - Pass job-scoped loggers to pipeline execution
@@ -120,6 +123,7 @@ Update `packages/worker/src/main.ts`:
 ### 5. Update CLI entry point
 
 Update `packages/cli/src/main.ts`:
+
 - Import shared logger
 - Create CLI logger
 - Replace `console.log` with logger.info
@@ -128,6 +132,7 @@ Update `packages/cli/src/main.ts`:
 ### 6. Update pipeline stages
 
 Grep for `console.log` in `packages/pipeline/src/`:
+
 - Pass logger through pipeline context
 - Replace direct console calls with structured logs
 - Include relevant metadata (topicId, sourceId, itemCount, etc.)
@@ -135,12 +140,14 @@ Grep for `console.log` in `packages/pipeline/src/`:
 ### 7. Update remaining packages
 
 Search all packages for remaining `console.log`:
+
 - Replace with appropriate logger calls
 - Ensure component name is meaningful
 
 ## Log format specification
 
 Production (JSON):
+
 ```json
 {
   "level": "info",
@@ -156,6 +163,7 @@ Production (JSON):
 ```
 
 Development (pretty):
+
 ```
 [10:30:00] INFO (api): Request completed
   correlationId: "req-abc123"

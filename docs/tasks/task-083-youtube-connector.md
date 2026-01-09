@@ -66,6 +66,7 @@ Config schema:
 ```
 
 Fields:
+
 - `channel_id` (required): YouTube channel ID
 - `max_video_count` (default: 30, clamp 1-100): Max videos per fetch
 - `include_transcript` (default: false): Whether to fetch transcript preview
@@ -74,6 +75,7 @@ Fields:
 ### 5. Body Text Construction
 
 Construct `bodyText` as follows:
+
 - Video title (already in `title` field, skip in body)
 - Video description (first 500 chars, truncated at word boundary)
 - If `include_transcript`: transcript preview (first 2000 chars, truncated at sentence boundary)

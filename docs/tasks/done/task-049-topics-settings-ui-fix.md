@@ -3,6 +3,7 @@
 ## Problem
 
 The Topics section in Settings page has broken visual layout:
+
 1. Profile option buttons appear in a confusing grid that looks broken
 2. Options seem to overlap or flow incorrectly
 3. The expandable topic card doesn't collapse/expand cleanly
@@ -11,12 +12,14 @@ The Topics section in Settings page has broken visual layout:
 ## Current State
 
 ### Screenshot Issue
+
 - All 5 profile options (Power User, Daily, Weekly, Research, Custom) show as a 2x3 grid
 - The buttons appear to have inconsistent sizing
 - Not clear which option is selected
 - Looks cramped when expanded
 
 ### CSS (`TopicViewingProfileSettings.module.css`)
+
 ```css
 .profileGrid {
   display: grid;
@@ -24,11 +27,13 @@ The Topics section in Settings page has broken visual layout:
   gap: var(--spacing-sm);
 }
 ```
+
 This creates an auto-flowing grid that looks broken at certain widths.
 
 ## Solution
 
 ### Option A: Radio-style vertical list (Recommended)
+
 Change from grid to vertical list with clear selection state:
 
 ```css
@@ -60,6 +65,7 @@ Change from grid to vertical list with clear selection state:
 ```
 
 ### Option B: Fixed 2-column grid
+
 If grid is preferred, use fixed columns:
 
 ```css
@@ -125,15 +131,11 @@ Consider simplifying the button layout:
         disabled={isPending}
         className={styles.radioInput}
       />
-      <span className={styles.profileLabel}>
-        {t(`settings.viewing.profiles.${option.value}`)}
-      </span>
+      <span className={styles.profileLabel}>{t(`settings.viewing.profiles.${option.value}`)}</span>
       <span className={styles.profileDescription}>
         {t(`settings.viewing.profileDescriptions.${option.value}`)}
       </span>
-      {option.value !== "custom" && (
-        <span className={styles.profileDecay}>{option.decayHours}h</span>
-      )}
+      {option.value !== "custom" && <span className={styles.profileDecay}>{option.decayHours}h</span>}
     </label>
   ))}
 </div>

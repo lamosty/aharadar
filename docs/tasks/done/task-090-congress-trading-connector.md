@@ -28,6 +28,7 @@ Members of Congress are required to disclose stock trades within 45 days. These 
 ### 1. Create Connector Directory
 
 Create `packages/connectors/src/congress_trading/`:
+
 - `config.ts` - Parse and validate config
 - `fetch.ts` - Fetch trades via Quiver API
 - `normalize.ts` - Map trades to ContentItemDraft
@@ -47,6 +48,7 @@ Create `packages/connectors/src/congress_trading/`:
 ```
 
 Fields:
+
 - `politicians` (optional): Filter by specific politicians (case-insensitive match)
 - `chambers` (optional, default: both): `"senate"` and/or `"house"`
 - `min_amount` (default: 0): Minimum transaction amount (lower bound of range)
@@ -67,6 +69,7 @@ QUIVER_API_KEY=your_quiver_api_key_here
 **Quiver Quantitative API:**
 
 1. **Congress Trading (Recent):**
+
    ```
    GET https://api.quiverquant.com/beta/live/congresstrading
    Authorization: Bearer {api_key}
@@ -79,6 +82,7 @@ QUIVER_API_KEY=your_quiver_api_key_here
    ```
 
 **Alternative Free Sources (if Quiver unavailable):**
+
 - House Stock Watcher: https://housestockwatcher.com/api
 - Senate Stock Watcher: https://senatestockwatcher.com/api
 
@@ -90,19 +94,20 @@ QUIVER_API_KEY=your_quiver_api_key_here
 interface QuiverCongressTrade {
   Representative: string;
   BioGuideId: string;
-  District: string;  // e.g., "CA-12" or "TX-Sen"
-  Party: string;     // "D" | "R" | "I"
+  District: string; // e.g., "CA-12" or "TX-Sen"
+  Party: string; // "D" | "R" | "I"
   Ticker: string;
-  Asset: string;     // Full asset description
-  Transaction: string;  // "Purchase" | "Sale" | "Exchange"
-  Range: string;     // "$1,001 - $15,000" | "$15,001 - $50,000" etc.
-  Date: string;      // Transaction date
-  ReportDate: string;  // Filing date
-  Link: string;      // Link to disclosure
+  Asset: string; // Full asset description
+  Transaction: string; // "Purchase" | "Sale" | "Exchange"
+  Range: string; // "$1,001 - $15,000" | "$15,001 - $50,000" etc.
+  Date: string; // Transaction date
+  ReportDate: string; // Filing date
+  Link: string; // Link to disclosure
 }
 ```
 
 **Fetch Logic:**
+
 1. Call `/beta/live/congresstrading` endpoint
 2. Parse response and apply local filters (politician, chamber, amount, etc.)
 3. Determine chamber from District field (contains "-Sen" for Senate)
@@ -165,8 +170,12 @@ Map Congress trade to `ContentItemDraft`:
 ```typescript
 function generateTitle(trade: QuiverCongressTrade): string {
   const chamber = trade.District.includes("-Sen") ? "Senate" : "House";
-  const action = trade.Transaction === "Purchase" ? "BUY" :
-                 trade.Transaction === "Sale" ? "SELL" : trade.Transaction.toUpperCase();
+  const action =
+    trade.Transaction === "Purchase"
+      ? "BUY"
+      : trade.Transaction === "Sale"
+        ? "SELL"
+        : trade.Transaction.toUpperCase();
 
   return `[${chamber}] ${trade.Representative} (${trade.Party}) ${action} ${trade.Ticker}`;
 }
@@ -185,6 +194,7 @@ function generateTitle(trade: QuiverCongressTrade): string {
 ### 10. Rate Limiting
 
 Quiver free tier limits:
+
 - ~100 requests per day (verify current limits)
 - Implement request counting and daily reset
 - Cache responses where possible
@@ -193,6 +203,7 @@ Quiver free tier limits:
 ### 11. Error Handling
 
 Handle common scenarios:
+
 - `401`: Invalid or expired API key
 - `403`: Free tier limit exceeded
 - `429`: Rate limited - back off and retry
@@ -226,6 +237,7 @@ Handle common scenarios:
 If Quiver API is unavailable or too limited, consider these alternatives:
 
 1. **House Stock Watcher API** (free, no auth):
+
    ```
    GET https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json
    ```

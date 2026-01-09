@@ -11,6 +11,7 @@ Add an options flow connector to fetch unusual options activity, sweeps, and lar
 Options flow often leads stock price movements. Large call/put sweeps can indicate institutional conviction before news breaks. This data complements textual sources (Reddit, Twitter, news) for identifying corroborating signals.
 
 Key terms:
+
 - **Sweep**: Market order split across multiple exchanges to fill quickly (usually indicates urgency/conviction)
 - **Block**: Large privately negotiated order
 - **Unusual activity**: Volume significantly higher than normal for that contract
@@ -33,6 +34,7 @@ Key terms:
 ### 1. Create Connector Directory
 
 Create `packages/connectors/src/options_flow/`:
+
 - `config.ts` - Parse and validate config
 - `fetch.ts` - Fetch options flow via API
 - `normalize.ts` - Map flow data to ContentItemDraft
@@ -53,6 +55,7 @@ Create `packages/connectors/src/options_flow/`:
 ```
 
 Fields:
+
 - `symbols` (optional): Filter by specific tickers (empty = all)
 - `min_premium` (default: 50000): Minimum order premium in USD
 - `flow_types` (default: all): Array of `"sweep"`, `"block"`, `"unusual"`
@@ -84,6 +87,7 @@ Query params (likely):
 ```
 
 **Alternative/Fallback**: If Unusual Whales API is limited:
+
 - Consider web scraping InsiderFinance (https://www.insiderfinance.io/flow)
 - Or use Twitter @unusual_whales, @SweepCast via Signal connector
 
@@ -94,16 +98,16 @@ interface OptionsFlowRaw {
   id: string;
   symbol: string;
   strike: number;
-  expiry: string;           // YYYY-MM-DD
+  expiry: string; // YYYY-MM-DD
   contract_type: "call" | "put";
   flow_type: "sweep" | "block" | "unusual";
   sentiment: "bullish" | "bearish" | "neutral";
-  premium: number;          // Total premium in USD
-  volume: number;           // Number of contracts
-  open_interest: number;    // Prior open interest
-  spot_price: number;       // Underlying price at time of order
-  timestamp: string;        // ISO timestamp
-  exchange?: string;        // Exchange(s) where executed
+  premium: number; // Total premium in USD
+  volume: number; // Number of contracts
+  open_interest: number; // Prior open interest
+  spot_price: number; // Underlying price at time of order
+  timestamp: string; // ISO timestamp
+  exchange?: string; // Exchange(s) where executed
 }
 ```
 
@@ -172,9 +176,7 @@ If API doesn't provide sentiment, classify locally:
 ```typescript
 function classifySentiment(flow: OptionsFlowRaw): "bullish" | "bearish" | "neutral" {
   const isCall = flow.contract_type === "call";
-  const isOTM = isCall
-    ? flow.strike > flow.spot_price
-    : flow.strike < flow.spot_price;
+  const isOTM = isCall ? flow.strike > flow.spot_price : flow.strike < flow.spot_price;
 
   // Sweeps on OTM calls = bullish
   // Sweeps on OTM puts = bearish
@@ -192,6 +194,7 @@ function classifySentiment(flow: OptionsFlowRaw): "bullish" | "bearish" | "neutr
 ### 10. Rate Limiting
 
 Unusual Whales limits (verify current):
+
 - Free tier: Limited requests per day (check documentation)
 - Implement request counting with daily reset
 - Add delay between requests
@@ -200,6 +203,7 @@ Unusual Whales limits (verify current):
 ### 11. Error Handling
 
 Handle common scenarios:
+
 - `401`: Invalid or expired API key
 - `403`: Free tier limit exceeded
 - `429`: Rate limited - back off and retry
@@ -281,6 +285,7 @@ pnpm dev -- inbox --table
 Once this connector and other financial data sources (Tasks 088-091) are working, a future enhancement could add automatic correlation detection:
 
 During triage/enrichment, pass cluster content + recent options flow to Claude:
+
 ```
 Cluster: "Venezuela tensions discussion"
 Recent flow: "Large put sweeps on $XOM, $HAL"
@@ -290,6 +295,7 @@ Recent flow: "Large put sweeps on $XOM, $HAL"
 This leverages the LLM's knowledge (e.g., knowing XOM/HAL have Venezuela exposure) without building complex entity mapping.
 
 **Implementation notes:**
+
 - **Off by default** - opt-in via config flag
 - **Budget-aware** - only runs when budget tier allows
 - **Model selection** - use cheap model (Haiku) for correlation check

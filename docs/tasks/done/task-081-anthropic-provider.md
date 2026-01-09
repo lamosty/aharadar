@@ -13,6 +13,7 @@ Add Anthropic as a standard pay-per-token API provider alongside OpenAI. This en
 ## Background
 
 Currently AhaRadar only supports OpenAI-compatible endpoints via `packages/llm/src/openai_compat.ts`. Adding Anthropic as a native provider:
+
 - Enables Claude model usage with standard API billing
 - Provides foundation for future Claude subscription mode (task 082)
 - Offers model diversity for different task types
@@ -51,8 +52,8 @@ pnpm add @anthropic-ai/sdk
 ### 2. Create `packages/llm/src/anthropic.ts`
 
 ```typescript
-import Anthropic from '@anthropic-ai/sdk';
-import type { LlmCallResult, LlmRequest, ModelRef } from './types';
+import Anthropic from "@anthropic-ai/sdk";
+import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 
 export interface AnthropicConfig {
   apiKey: string;
@@ -70,21 +71,21 @@ export async function callAnthropicApi(
     max_tokens: request.maxOutputTokens ?? 4096,
     temperature: request.temperature ?? 0,
     system: request.system,
-    messages: [{ role: 'user', content: request.user }],
+    messages: [{ role: "user", content: request.user }],
   });
 
   // Extract text content
   const outputText = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
     .map((block) => block.text)
-    .join('');
+    .join("");
 
   return {
     outputText,
     rawResponse: response,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
-    endpoint: 'https://api.anthropic.com/v1/messages',
+    endpoint: "https://api.anthropic.com/v1/messages",
   };
 }
 ```
@@ -99,26 +100,22 @@ export interface ModelPricing {
 }
 
 export const ANTHROPIC_PRICING: Record<string, ModelPricing> = {
-  'claude-opus-4-5-20251101': { inputPer1M: 15.0, outputPer1M: 75.0 },
-  'claude-sonnet-4-5-20251101': { inputPer1M: 3.0, outputPer1M: 15.0 },
-  'claude-sonnet-4-20250514': { inputPer1M: 3.0, outputPer1M: 15.0 },
-  'claude-haiku-3-5-20241022': { inputPer1M: 0.80, outputPer1M: 4.0 },
+  "claude-opus-4-5-20251101": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "claude-sonnet-4-5-20251101": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-sonnet-4-20250514": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-haiku-3-5-20241022": { inputPer1M: 0.8, outputPer1M: 4.0 },
   // Aliases
-  'claude-opus-4-5': { inputPer1M: 15.0, outputPer1M: 75.0 },
-  'claude-sonnet-4-5': { inputPer1M: 3.0, outputPer1M: 15.0 },
-  'claude-sonnet-4': { inputPer1M: 3.0, outputPer1M: 15.0 },
-  'claude-haiku-3-5': { inputPer1M: 0.80, outputPer1M: 4.0 },
+  "claude-opus-4-5": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "claude-sonnet-4-5": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-sonnet-4": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-haiku-3-5": { inputPer1M: 0.8, outputPer1M: 4.0 },
 };
 
-export function calculateAnthropicCost(
-  model: string,
-  inputTokens: number,
-  outputTokens: number
-): number {
+export function calculateAnthropicCost(model: string, inputTokens: number, outputTokens: number): number {
   const pricing = ANTHROPIC_PRICING[model];
   if (!pricing) {
     console.warn(`Unknown Anthropic model for pricing: ${model}, using Sonnet pricing`);
-    return calculateAnthropicCost('claude-sonnet-4-5', inputTokens, outputTokens);
+    return calculateAnthropicCost("claude-sonnet-4-5", inputTokens, outputTokens);
   }
   const inputCost = (inputTokens / 1_000_000) * pricing.inputPer1M;
   const outputCost = (outputTokens / 1_000_000) * pricing.outputPer1M;
@@ -136,24 +133,24 @@ import { callOpenAiCompat } from "./openai_compat";
 import { callAnthropicApi } from "./anthropic";
 import type { LlmCallResult, LlmRequest, LlmRouter, ModelRef, TaskType } from "./types";
 
-type Provider = 'openai' | 'anthropic';
+type Provider = "openai" | "anthropic";
 
 function resolveProvider(env: NodeJS.ProcessEnv, task: TaskType): Provider {
   // Check for task-specific provider override
   const taskKey = `LLM_${task.toUpperCase()}_PROVIDER`;
   const taskProvider = env[taskKey]?.toLowerCase();
-  if (taskProvider === 'anthropic' || taskProvider === 'openai') {
+  if (taskProvider === "anthropic" || taskProvider === "openai") {
     return taskProvider;
   }
 
   // Check for global provider preference
   const globalProvider = env.LLM_PROVIDER?.toLowerCase();
-  if (globalProvider === 'anthropic' || globalProvider === 'openai') {
+  if (globalProvider === "anthropic" || globalProvider === "openai") {
     return globalProvider;
   }
 
   // Default to openai for backward compatibility
-  return 'openai';
+  return "openai";
 }
 
 function resolveAnthropicModel(env: NodeJS.ProcessEnv, task: TaskType, tier: BudgetTier): string {
@@ -169,9 +166,9 @@ function resolveAnthropicModel(env: NodeJS.ProcessEnv, task: TaskType, tier: Bud
 
   // Sensible defaults by tier
   const defaults: Record<BudgetTier, string> = {
-    low: 'claude-haiku-3-5',
-    normal: 'claude-sonnet-4-5',
-    high: 'claude-sonnet-4-5',
+    low: "claude-haiku-3-5",
+    normal: "claude-sonnet-4-5",
+    high: "claude-sonnet-4-5",
   };
   return defaults[tier];
 }
@@ -182,37 +179,37 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
 
   // Validate at least one provider is configured
   if (!openaiApiKey && !anthropicApiKey) {
-    throw new Error('Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY');
+    throw new Error("Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY");
   }
 
   return {
     chooseModel(task: TaskType, tier: BudgetTier): ModelRef {
       const provider = resolveProvider(env, task);
 
-      if (provider === 'anthropic') {
+      if (provider === "anthropic") {
         if (!anthropicApiKey) {
-          throw new Error('ANTHROPIC_API_KEY required when using Anthropic provider');
+          throw new Error("ANTHROPIC_API_KEY required when using Anthropic provider");
         }
         return {
-          provider: 'anthropic',
+          provider: "anthropic",
           model: resolveAnthropicModel(env, task, tier),
-          endpoint: 'https://api.anthropic.com/v1/messages',
+          endpoint: "https://api.anthropic.com/v1/messages",
         };
       }
 
       // OpenAI path (existing logic)
       if (!openaiApiKey) {
-        throw new Error('OPENAI_API_KEY required when using OpenAI provider');
+        throw new Error("OPENAI_API_KEY required when using OpenAI provider");
       }
       return {
-        provider: 'openai',
+        provider: "openai",
         model: resolveOpenAiModel(env, task, tier),
         endpoint: resolveOpenAiEndpoint(env),
       };
     },
 
     async call(task: TaskType, ref: ModelRef, request: LlmRequest): Promise<LlmCallResult> {
-      if (ref.provider === 'anthropic') {
+      if (ref.provider === "anthropic") {
         return callAnthropicApi(ref, request, { apiKey: anthropicApiKey! });
       }
       return callOpenAiCompat({
@@ -229,8 +226,8 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
 ### 5. Update exports in `packages/llm/src/index.ts`
 
 ```typescript
-export { callAnthropicApi } from './anthropic';
-export { calculateAnthropicCost, ANTHROPIC_PRICING } from './pricing';
+export { callAnthropicApi } from "./anthropic";
+export { calculateAnthropicCost, ANTHROPIC_PRICING } from "./pricing";
 ```
 
 ### 6. Add environment variables to `.env.example`

@@ -9,6 +9,7 @@ Add specialized source types that use RSS under the hood but provide custom UI, 
 ## Background
 
 Many valuable content sources expose RSS feeds but have platform-specific fields and UX expectations. Rather than forcing users to configure generic RSS and lose context, we create typed wrappers that:
+
 - Auto-detect feed URLs from user input
 - Extract platform-specific metadata
 - Display with appropriate icons/labels in UI
@@ -46,21 +47,22 @@ export type SourceType =
 ### 2. Create Connector Directories
 
 For each type, create `packages/connectors/src/{type}/`:
+
 - `config.ts` - Parse and validate config
 - `normalize.ts` - Map RSS items to ContentItemDraft with custom fields
 - `index.ts` - Export normalize function, reuse RSS fetch
 
 ### 3. Type-Specific Implementations
 
-| Type | RSS Pattern | Config | Custom Metadata Fields |
-|------|-------------|--------|------------------------|
-| `podcast` | Standard RSS with enclosures | `feed_url` | `duration`, `enclosure_url`, `episode_number`, `season` |
-| `substack` | `{pub}.substack.com/feed` | `publication` or `feed_url` | `publication_name`, `subtitle`, `likes` |
-| `medium` | `medium.com/feed/@{user}` | `username` or `feed_url` | `claps`, `reading_time`, `collection` |
-| `arxiv` | `arxiv.org/rss/{category}` | `category` | `authors[]`, `pdf_url`, `abstract`, `arxiv_id` |
-| `lobsters` | `lobste.rs/rss` | (none, single feed) | `tags[]`, `comment_count`, `submitter`, `domain` |
-| `producthunt` | `producthunt.com/feed` | (none, single feed) | `votes`, `maker`, `tagline`, `topics[]` |
-| `github_releases` | `github.com/{owner}/{repo}/releases.atom` | `owner`, `repo` | `version`, `release_notes`, `assets[]`, `prerelease` |
+| Type              | RSS Pattern                               | Config                      | Custom Metadata Fields                                  |
+| ----------------- | ----------------------------------------- | --------------------------- | ------------------------------------------------------- |
+| `podcast`         | Standard RSS with enclosures              | `feed_url`                  | `duration`, `enclosure_url`, `episode_number`, `season` |
+| `substack`        | `{pub}.substack.com/feed`                 | `publication` or `feed_url` | `publication_name`, `subtitle`, `likes`                 |
+| `medium`          | `medium.com/feed/@{user}`                 | `username` or `feed_url`    | `claps`, `reading_time`, `collection`                   |
+| `arxiv`           | `arxiv.org/rss/{category}`                | `category`                  | `authors[]`, `pdf_url`, `abstract`, `arxiv_id`          |
+| `lobsters`        | `lobste.rs/rss`                           | (none, single feed)         | `tags[]`, `comment_count`, `submitter`, `domain`        |
+| `producthunt`     | `producthunt.com/feed`                    | (none, single feed)         | `votes`, `maker`, `tagline`, `topics[]`                 |
+| `github_releases` | `github.com/{owner}/{repo}/releases.atom` | `owner`, `repo`             | `version`, `release_notes`, `assets[]`, `prerelease`    |
 
 ### 4. URL Detection Helper
 
@@ -68,12 +70,12 @@ Create `packages/connectors/src/utils/detect_source_type.ts`:
 
 ```typescript
 export function detectSourceTypeFromUrl(url: string): SourceType | null {
-  if (url.includes('.substack.com')) return 'substack';
-  if (url.includes('medium.com/feed')) return 'medium';
-  if (url.includes('arxiv.org/rss')) return 'arxiv';
-  if (url.includes('lobste.rs')) return 'lobsters';
-  if (url.includes('producthunt.com')) return 'producthunt';
-  if (url.includes('github.com') && url.includes('/releases')) return 'github_releases';
+  if (url.includes(".substack.com")) return "substack";
+  if (url.includes("medium.com/feed")) return "medium";
+  if (url.includes("arxiv.org/rss")) return "arxiv";
+  if (url.includes("lobste.rs")) return "lobsters";
+  if (url.includes("producthunt.com")) return "producthunt";
+  if (url.includes("github.com") && url.includes("/releases")) return "github_releases";
   // Check for podcast indicators (enclosure, itunes namespace)
   return null; // Fallback to generic RSS
 }
@@ -84,8 +86,9 @@ export function detectSourceTypeFromUrl(url: string): SourceType | null {
 All types should reuse `fetchRss()` from the RSS connector. Only the normalize step differs.
 
 Create helper in `packages/connectors/src/utils/rss_shared.ts`:
+
 ```typescript
-export { fetchRss } from '../rss/fetch';
+export { fetchRss } from "../rss/fetch";
 ```
 
 ### 6. Connector Registry Update
@@ -95,6 +98,7 @@ Update `packages/connectors/src/index.ts` to register all new types.
 ### 7. UI Updates
 
 Update source creation UI in `packages/web/`:
+
 - Show dropdown with all source types
 - Type-specific icons (podcast icon, Substack logo, etc.)
 - Type-specific config fields
@@ -103,6 +107,7 @@ Update source creation UI in `packages/web/`:
 ## Files to Create/Modify
 
 **New directories:**
+
 - `packages/connectors/src/podcast/`
 - `packages/connectors/src/substack/`
 - `packages/connectors/src/medium/`
@@ -113,6 +118,7 @@ Update source creation UI in `packages/web/`:
 - `packages/connectors/src/utils/`
 
 **Modify:**
+
 - `packages/shared/src/types/connector.ts`
 - `packages/connectors/src/index.ts`
 - `packages/web/src/components/sources/` (UI components)

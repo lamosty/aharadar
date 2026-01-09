@@ -53,44 +53,44 @@ If anything else seems required, **stop and ask**.
 import { Registry, Counter, Histogram, Gauge } from "prom-client";
 
 // HTTP request metrics
-http_request_duration_seconds: Histogram
-  labels: method, route, status_code
+http_request_duration_seconds: Histogram;
+labels: (method, route, status_code);
 
-http_requests_total: Counter
-  labels: method, route, status_code
+http_requests_total: Counter;
+labels: (method, route, status_code);
 
 // Active connections
-http_active_connections: Gauge
+http_active_connections: Gauge;
 ```
 
 ### Worker metrics (`packages/worker/src/metrics.ts`)
 
 ```typescript
 // Pipeline execution
-pipeline_run_duration_seconds: Histogram
-  labels: stage, status (success|error)
+pipeline_run_duration_seconds: Histogram;
+labels: (stage, status(success | error));
 
-pipeline_runs_total: Counter
-  labels: stage, status
+pipeline_runs_total: Counter;
+labels: (stage, status);
 
 // Ingestion
-ingest_items_total: Counter
-  labels: source_type, status (success|skipped|error)
+ingest_items_total: Counter;
+labels: (source_type, status(success | skipped | error));
 
 // LLM calls
-llm_call_duration_seconds: Histogram
-  labels: provider, model, purpose
+llm_call_duration_seconds: Histogram;
+labels: (provider, model, purpose);
 
-llm_calls_total: Counter
-  labels: provider, model, purpose, status
+llm_calls_total: Counter;
+labels: (provider, model, purpose, status);
 
 // Credits (from provider_calls table)
-credits_consumed_total: Counter
-  labels: provider, purpose
+credits_consumed_total: Counter;
+labels: (provider, purpose);
 
 // Queue depth
-queue_depth: Gauge
-  labels: queue_name
+queue_depth: Gauge;
+labels: queue_name;
 ```
 
 ## Implementation steps (ordered)
@@ -98,6 +98,7 @@ queue_depth: Gauge
 ### 1. Add prom-client dependency
 
 Update `packages/api/package.json` and `packages/worker/package.json`:
+
 ```json
 "dependencies": {
   "prom-client": "^15.1.0"
@@ -107,6 +108,7 @@ Update `packages/api/package.json` and `packages/worker/package.json`:
 ### 2. Create shared metrics helpers
 
 Create `packages/shared/src/metrics.ts`:
+
 - Export common label names
 - Export metric name constants
 - Helper for creating registries
@@ -114,6 +116,7 @@ Create `packages/shared/src/metrics.ts`:
 ### 3. Create API metrics module
 
 Create `packages/api/src/metrics.ts`:
+
 - Initialize prom-client Registry
 - Create HTTP metrics
 - Export middleware for recording request metrics
@@ -122,15 +125,18 @@ Create `packages/api/src/metrics.ts`:
 ### 4. Wire API metrics
 
 Update `packages/api/src/main.ts`:
+
 - Add metrics middleware
 - Track request duration and status
 
 Update `packages/api/src/routes/health.ts`:
+
 - Add GET `/metrics` endpoint returning Prometheus format
 
 ### 5. Create Worker metrics module
 
 Create `packages/worker/src/metrics.ts`:
+
 - Initialize prom-client Registry
 - Create pipeline metrics
 - Create ingestion metrics
@@ -140,17 +146,20 @@ Create `packages/worker/src/metrics.ts`:
 ### 6. Wire Worker metrics
 
 Update `packages/worker/src/workers/pipeline.worker.ts`:
+
 - Record pipeline stage duration
 - Record item counts
 - Record errors
 
 Update `packages/worker/src/main.ts`:
+
 - Periodically update queue depth gauge
 - Expose metrics via simple HTTP server on port 9091
 
 ### 7. Create Prometheus configuration
 
 Create `infra/prometheus/prometheus.yml`:
+
 ```yaml
 global:
   scrape_interval: 15s
@@ -171,6 +180,7 @@ scrape_configs:
 ### 8. Create Grafana provisioning
 
 Create `infra/grafana/provisioning/datasources/prometheus.yml`:
+
 ```yaml
 apiVersion: 1
 datasources:
@@ -182,6 +192,7 @@ datasources:
 ```
 
 Create `infra/grafana/provisioning/dashboards/dashboard.yml`:
+
 ```yaml
 apiVersion: 1
 providers:
@@ -197,6 +208,7 @@ providers:
 Create `infra/grafana/dashboards/aharadar-overview.json`:
 
 Dashboard panels:
+
 - **Row: API Health**
   - Request rate (req/s by route)
   - Request latency (p50, p95, p99)
@@ -223,6 +235,7 @@ Dashboard panels:
 ### 10. Update docker-compose.yml
 
 Add prometheus and grafana services:
+
 ```yaml
 prometheus:
   image: prom/prometheus:v2.47.0

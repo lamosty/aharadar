@@ -13,11 +13,13 @@ Enable users to store their own API keys for LLM providers (OpenAI, Anthropic, G
 ## Background
 
 Currently:
+
 - All API keys are stored in `.env` as system-wide secrets
 - Single-tenant architecture assumes one set of provider keys
 - No mechanism for users to bring their own keys
 
 Desired:
+
 - Users can add their own API keys via UI/API
 - Keys are encrypted before storage using a master encryption key
 - Provider resolution checks user keys first, falls back to system keys when allowed
@@ -76,10 +78,10 @@ COMMENT ON COLUMN user_api_keys.key_suffix IS 'Last 4 characters of key for user
 File: `packages/api/src/auth/crypto.ts`
 
 ```typescript
-import crypto from 'crypto';
+import crypto from "crypto";
 
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12;  // GCM standard
+const ALGORITHM = "aes-256-gcm";
+const IV_LENGTH = 12; // GCM standard
 const AUTH_TAG_LENGTH = 16;
 
 export interface EncryptedData {
@@ -93,7 +95,7 @@ export interface EncryptedData {
  */
 export function encryptApiKey(plainKey: string, masterKey: Buffer): EncryptedData {
   if (masterKey.length !== 32) {
-    throw new Error('Master key must be 32 bytes for AES-256');
+    throw new Error("Master key must be 32 bytes for AES-256");
   }
 
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -101,11 +103,7 @@ export function encryptApiKey(plainKey: string, masterKey: Buffer): EncryptedDat
     authTagLength: AUTH_TAG_LENGTH,
   });
 
-  const encrypted = Buffer.concat([
-    cipher.update(plainKey, 'utf8'),
-    cipher.final(),
-    cipher.getAuthTag(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(plainKey, "utf8"), cipher.final(), cipher.getAuthTag()]);
 
   return { encrypted, iv };
 }
@@ -116,7 +114,7 @@ export function encryptApiKey(plainKey: string, masterKey: Buffer): EncryptedDat
  */
 export function decryptApiKey(encrypted: Buffer, iv: Buffer, masterKey: Buffer): string {
   if (masterKey.length !== 32) {
-    throw new Error('Master key must be 32 bytes for AES-256');
+    throw new Error("Master key must be 32 bytes for AES-256");
   }
 
   const authTag = encrypted.subarray(-AUTH_TAG_LENGTH);
@@ -127,12 +125,9 @@ export function decryptApiKey(encrypted: Buffer, iv: Buffer, masterKey: Buffer):
   });
   decipher.setAuthTag(authTag);
 
-  const decrypted = Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ]);
+  const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
-  return decrypted.toString('utf8');
+  return decrypted.toString("utf8");
 }
 
 /**
@@ -142,12 +137,12 @@ export function decryptApiKey(encrypted: Buffer, iv: Buffer, masterKey: Buffer):
 export function getMasterKey(): Buffer {
   const keyHex = process.env.APP_ENCRYPTION_KEY;
   if (!keyHex) {
-    throw new Error('APP_ENCRYPTION_KEY environment variable is required');
+    throw new Error("APP_ENCRYPTION_KEY environment variable is required");
   }
   if (keyHex.length !== 64) {
-    throw new Error('APP_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
+    throw new Error("APP_ENCRYPTION_KEY must be 64 hex characters (32 bytes)");
   }
-  return Buffer.from(keyHex, 'hex');
+  return Buffer.from(keyHex, "hex");
 }
 
 /**
@@ -163,7 +158,7 @@ export function getKeySuffix(key: string, length: number = 4): string {
 File: `packages/db/src/repos/user_api_keys.ts`
 
 ```typescript
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 export interface UserApiKey {
   id: string;
@@ -232,18 +227,18 @@ export function createUserApiKeysRepo(pool: Pool) {
     },
 
     async delete(userId: string, id: string): Promise<boolean> {
-      const result = await pool.query(
-        `DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2`,
-        [id, userId]
-      );
+      const result = await pool.query(`DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2`, [
+        id,
+        userId,
+      ]);
       return (result.rowCount ?? 0) > 0;
     },
 
     async deleteByProvider(userId: string, provider: string): Promise<boolean> {
-      const result = await pool.query(
-        `DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`,
-        [userId, provider]
-      );
+      const result = await pool.query(`DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`, [
+        userId,
+        provider,
+      ]);
       return (result.rowCount ?? 0) > 0;
     },
   };
@@ -255,27 +250,26 @@ export function createUserApiKeysRepo(pool: Pool) {
 File: `packages/llm/src/providers/key-resolver.ts`
 
 ```typescript
-import { Pool } from 'pg';
-import { decryptApiKey, getMasterKey } from '@aharadar/api/auth/crypto';
-import { createUserApiKeysRepo } from '@aharadar/db/repos/user_api_keys';
+import { Pool } from "pg";
+import { decryptApiKey, getMasterKey } from "@aharadar/api/auth/crypto";
+import { createUserApiKeysRepo } from "@aharadar/db/repos/user_api_keys";
 
-export type Provider = 'openai' | 'anthropic' | 'xai';
+export type Provider = "openai" | "anthropic" | "xai";
 
 const SYSTEM_KEY_ENV_MAP: Record<Provider, string> = {
-  openai: 'OPENAI_API_KEY',
-  anthropic: 'ANTHROPIC_API_KEY',
-  xai: 'XAI_API_KEY',
+  openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  xai: "XAI_API_KEY",
 };
 
 export interface KeyResolverOptions {
   pool: Pool;
-  allowSystemKeyFallback?: boolean;  // Default from ALLOW_SYSTEM_KEY_FALLBACK env
+  allowSystemKeyFallback?: boolean; // Default from ALLOW_SYSTEM_KEY_FALLBACK env
 }
 
 export function createKeyResolver(options: KeyResolverOptions) {
   const repo = createUserApiKeysRepo(options.pool);
-  const allowFallback = options.allowSystemKeyFallback ??
-    process.env.ALLOW_SYSTEM_KEY_FALLBACK === 'true';
+  const allowFallback = options.allowSystemKeyFallback ?? process.env.ALLOW_SYSTEM_KEY_FALLBACK === "true";
 
   return {
     /**
@@ -316,16 +310,16 @@ export function createKeyResolver(options: KeyResolverOptions) {
     /**
      * Get key source for display/debugging (never exposes actual key).
      */
-    async getKeySource(userId: string, provider: Provider): Promise<'user' | 'system' | 'none'> {
+    async getKeySource(userId: string, provider: Provider): Promise<"user" | "system" | "none"> {
       const userKey = await repo.findByUserAndProvider(userId, provider);
-      if (userKey) return 'user';
+      if (userKey) return "user";
 
       if (allowFallback) {
         const envVar = SYSTEM_KEY_ENV_MAP[provider];
-        if (process.env[envVar]) return 'system';
+        if (process.env[envVar]) return "system";
       }
 
-      return 'none';
+      return "none";
     },
   };
 }
@@ -335,7 +329,7 @@ export function createKeyResolver(options: KeyResolverOptions) {
 
 Update or create `docs/security.md`:
 
-```markdown
+````markdown
 ## API Key Encryption
 
 User-provided API keys are encrypted at rest using AES-256-GCM.
@@ -352,12 +346,15 @@ User-provided API keys are encrypted at rest using AES-256-GCM.
 The master encryption key is provided via `APP_ENCRYPTION_KEY` environment variable.
 
 **Generation:**
+
 ```bash
 # Generate a secure 32-byte key
 openssl rand -hex 32
 ```
+````
 
 **Requirements:**
+
 - Must be 64 hex characters (32 bytes)
 - Must be kept secret and backed up securely
 - Rotation requires re-encrypting all stored keys
@@ -368,7 +365,8 @@ openssl rand -hex 32
 - [ ] KMS integration (AWS KMS, GCP KMS, HashiCorp Vault)
 - [ ] Key rotation automation
 - [ ] Audit logging for key access
-```
+
+````
 
 ## Environment variables
 
@@ -381,7 +379,7 @@ APP_ENCRYPTION_KEY=
 
 # Allow fallback to system API keys when user has none configured
 ALLOW_SYSTEM_KEY_FALLBACK=true
-```
+````
 
 ## Acceptance criteria
 

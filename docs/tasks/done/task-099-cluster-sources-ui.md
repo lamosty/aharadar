@@ -5,6 +5,7 @@
 ## Goal
 
 When a feed item represents a cluster of similar items from multiple sources, show:
+
 1. A "+N sources" badge on the card with tooltip explanation
 2. Full list of related sources in the WhyShown panel
 
@@ -17,6 +18,7 @@ Currently, when multiple items are clustered together (e.g., same news from HN, 
 ### 1. API Changes (`packages/api/src/routes/items.ts`)
 
 Extend FeedItem response to include:
+
 ```typescript
 clusterId?: string | null;
 clusterMemberCount?: number;  // Total items in cluster (including representative)
@@ -33,6 +35,7 @@ clusterItems?: Array<{
 ### 2. Feed Card Badge
 
 On cards with `clusterMemberCount > 1`, show badge:
+
 - Text: "+N sources" (where N = clusterMemberCount - 1)
 - Position: In header, near source tag
 - Tooltip on hover: "This topic has coverage from N sources. Expand 'Why shown' to see all."
@@ -40,6 +43,7 @@ On cards with `clusterMemberCount > 1`, show badge:
 ### 3. WhyShown Panel Extension
 
 Add "Related Sources" section when cluster data exists:
+
 ```
 📚 Related Sources (N total)
 ├─ [HN] Title of HN post (94% similar)
@@ -48,6 +52,7 @@ Add "Related Sources" section when cluster data exists:
 ```
 
 Each item should:
+
 - Show source type badge
 - Show title (or "(Untitled)" if null)
 - Show similarity percentage
