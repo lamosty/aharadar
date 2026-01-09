@@ -129,12 +129,16 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
   const scorePercent = Math.round(item.score * 100);
   const subreddit = item.item.metadata?.subreddit as string | undefined;
   const displayDate = getDisplayDate(item);
-  const author = item.item.sourceType === "x_posts" && item.item.metadata?.user_display_name
-    ? `${item.item.metadata.user_display_name} (${item.item.author})`
-    : item.item.author;
+  const author =
+    item.item.sourceType === "x_posts" && item.item.metadata?.user_display_name
+      ? `${item.item.metadata.user_display_name} (${item.item.author})`
+      : item.item.author;
 
-  // Get preview text (truncated body text for condensed view)
-  const previewText = item.item.bodyText ? truncateText(item.item.bodyText, 120) : null;
+  // Get preview text - only show if it adds new information
+  // When there's no title, getDisplayTitle falls back to bodyText, so don't duplicate
+  const hasRealTitle = Boolean(item.item.title);
+  const previewText =
+    hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 100) : null;
 
   // For condensed layout, render a two-line row with expandable WhyShown
   if (layout === "condensed") {
@@ -154,7 +158,12 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
           <div className={styles.condensedContent}>
             <span className={styles.condensedTitle}>
               {item.item.url ? (
-                <a href={item.item.url} target="_blank" rel="noopener noreferrer" className={styles.condensedTitleLink}>
+                <a
+                  href={item.item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.condensedTitleLink}
+                >
                   {getDisplayTitle(item)}
                 </a>
               ) : (
@@ -162,9 +171,7 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
               )}
             </span>
             {/* Row 2: Preview text */}
-            {previewText && (
-              <span className={styles.condensedPreview}>{previewText}</span>
-            )}
+            {previewText && <span className={styles.condensedPreview}>{previewText}</span>}
           </div>
 
           <div className={styles.condensedMeta}>
@@ -175,7 +182,7 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
           </div>
 
           <div className={styles.condensedActions}>
-            {/* WhyShown toggle button */}
+            {/* WhyShown toggle button - sparkles icon for AI insights */}
             <Tooltip content={t("digests.whyShown.title")}>
               <button
                 type="button"
@@ -184,7 +191,7 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
                 aria-expanded={whyShownOpen}
                 aria-label={t("digests.whyShown.title")}
               >
-                <InfoIcon />
+                <SparklesIcon />
               </button>
             </Tooltip>
 
@@ -202,12 +209,13 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
           </Tooltip>
         </div>
 
-        {/* Expandable WhyShown section */}
+        {/* Expandable WhyShown section - starts expanded so no second click needed */}
         {whyShownOpen && (
           <div className={styles.condensedWhyShown}>
             <WhyShown
               features={item.triageJson as TriageFeatures | undefined}
               clusterItems={item.clusterItems}
+              defaultExpanded={true}
             />
           </div>
         )}
@@ -238,7 +246,8 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
             {item.clusterMemberCount && item.clusterMemberCount > 1 && (
               <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
                 <span className={styles.clusterBadge}>
-                  +{item.clusterMemberCount - 1} {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
+                  +{item.clusterMemberCount - 1}{" "}
+                  {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
                 </span>
               </Tooltip>
             )}
@@ -300,10 +309,7 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
         )}
       </h3>
 
-      <WhyShown
-        features={item.triageJson as TriageFeatures | undefined}
-        clusterItems={item.clusterItems}
-      />
+      <WhyShown features={item.triageJson as TriageFeatures | undefined} clusterItems={item.clusterItems} />
     </article>
   );
 }
@@ -340,7 +346,7 @@ function CommentIcon() {
   );
 }
 
-function InfoIcon() {
+function SparklesIcon() {
   return (
     <svg
       width="16"
@@ -353,9 +359,8 @@ function InfoIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="16" x2="12" y2="12" />
-      <line x1="12" y1="8" x2="12.01" y2="8" />
+      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+      <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
     </svg>
   );
 }
