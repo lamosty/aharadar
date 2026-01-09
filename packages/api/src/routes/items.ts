@@ -382,6 +382,12 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       SELECT COUNT(*)::int as total
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
+      LEFT JOIN LATERAL (
+        SELECT action FROM feedback_events
+        WHERE user_id = '${ctx.userId}' AND content_item_id = li.content_item_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) fe ON true
       WHERE ${filterClause}
     `;
 
