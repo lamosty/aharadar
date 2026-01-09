@@ -565,5 +565,10 @@
     "sourcesWeight": "Priority multiplier for items from this source (1.0 = normal).",
     "clusterSources": "This topic has coverage from {count} sources. Expand 'Why shown' below to see all related sources.",
     "relatedSources": "Multiple sources covered this topic. Similarity % shows how related each source is to the main item."
+  },
+  "queue": {
+    "running": "Processing {count} job(s)",
+    "waiting": "{count} job(s) queued",
+    "queued": "queued"
   }
 }

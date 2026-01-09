@@ -42,6 +42,7 @@ import {
   getItem,
   getItems,
   getPreferences,
+  getQueueStatus,
   getTopic,
   getTopics,
   type HealthResponse,
@@ -63,6 +64,7 @@ import {
   postFeedback,
   postMarkChecked,
   postTopicMarkChecked,
+  type QueueStatusResponse,
   type SourceCreateRequest,
   type SourceCreateResponse,
   type SourceDeleteResponse,
@@ -100,6 +102,7 @@ export const queryKeys = {
     sources: ["admin", "sources"] as const,
     budgets: ["admin", "budgets"] as const,
     llmSettings: ["admin", "llm-settings"] as const,
+    queueStatus: ["admin", "queue-status"] as const,
   },
   preferences: ["preferences"] as const,
   topics: {
@@ -498,6 +501,26 @@ export function useAdminLlmSettingsUpdate(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.llmSettings });
     },
+    ...options,
+  });
+}
+
+/**
+ * Query for pipeline queue status.
+ * Shows active and waiting jobs.
+ */
+export function useQueueStatus(
+  options?: Omit<
+    UseQueryOptions<QueueStatusResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.queueStatus,
+    queryFn: ({ signal }) => getQueueStatus(signal),
+    // Poll frequently when there are active jobs
+    refetchInterval: 5000,
+    staleTime: 2000,
     ...options,
   });
 }

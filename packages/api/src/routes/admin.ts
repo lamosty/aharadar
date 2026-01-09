@@ -922,4 +922,54 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       },
     };
   });
+
+  // GET /admin/queue-status - Get status of pipeline jobs in queue
+  fastify.get("/admin/queue-status", async (_request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const queue = getPipelineQueue();
+
+    // Get active and waiting jobs
+    const [activeJobs, waitingJobs] = await Promise.all([
+      queue.getJobs(["active"]),
+      queue.getJobs(["waiting", "delayed"]),
+    ]);
+
+    // Format job info
+    const formatJob = (job: Awaited<ReturnType<typeof queue.getJobs>>[number]) => ({
+      id: job.id,
+      name: job.name,
+      data: {
+        topicId: job.data.topicId,
+        windowStart: job.data.windowStart,
+        windowEnd: job.data.windowEnd,
+        mode: job.data.mode,
+      },
+      progress: job.progress,
+      attemptsMade: job.attemptsMade,
+      timestamp: job.timestamp,
+      processedOn: job.processedOn,
+    });
+
+    return {
+      ok: true,
+      queue: {
+        active: activeJobs.map(formatJob),
+        waiting: waitingJobs.map(formatJob),
+        counts: {
+          active: activeJobs.length,
+          waiting: waitingJobs.length,
+        },
+      },
+    };
+  });
 }

@@ -1088,3 +1088,43 @@ export async function getDailyUsage(
   const query = days ? `?days=${days}` : "";
   return apiFetch<DailyUsageResponse>(`/user/usage/daily${query}`, { signal });
 }
+
+// ============================================================================
+// Queue Status
+// ============================================================================
+
+/** Queue job info */
+export interface QueueJob {
+  id: string | undefined;
+  name: string;
+  data: {
+    topicId: string;
+    windowStart: string;
+    windowEnd: string;
+    mode: string;
+  };
+  progress: number | object;
+  attemptsMade: number;
+  timestamp: number | undefined;
+  processedOn: number | undefined;
+}
+
+/** Queue status response */
+export interface QueueStatusResponse {
+  ok: true;
+  queue: {
+    active: QueueJob[];
+    waiting: QueueJob[];
+    counts: {
+      active: number;
+      waiting: number;
+    };
+  };
+}
+
+/**
+ * Get pipeline queue status.
+ */
+export async function getQueueStatus(signal?: AbortSignal): Promise<QueueStatusResponse> {
+  return apiFetch<QueueStatusResponse>("/admin/queue-status", { signal });
+}

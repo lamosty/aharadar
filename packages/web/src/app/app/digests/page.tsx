@@ -8,6 +8,7 @@ import {
   DigestsListTimeline,
   DigestsListTimelineSkeleton,
 } from "@/components/DigestsList";
+import { QueueStatus } from "@/components/QueueStatus";
 import { useTheme } from "@/components/ThemeProvider";
 import { t } from "@/lib/i18n";
 import { useRealDigests } from "@/lib/mock-data";
@@ -23,6 +24,8 @@ export default function DigestsPage() {
       <header className={styles.header}>
         <h1 className={styles.title}>{t("digests.title")}</h1>
       </header>
+
+      <QueueStatus />
 
       {isLoading && <DigestsListSkeleton layout={layout} />}
 
