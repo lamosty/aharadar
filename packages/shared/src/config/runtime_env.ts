@@ -1,3 +1,10 @@
+export interface OpsLinks {
+  grafana?: string;
+  prometheus?: string;
+  queue?: string;
+  logs?: string;
+}
+
 export interface RuntimeEnv {
   appEnv: "local" | "dev" | "prod";
   timezone: string;
@@ -10,6 +17,12 @@ export interface RuntimeEnv {
   monthlyCredits: number;
   dailyThrottleCredits?: number;
   defaultTier: "low" | "normal" | "high";
+
+  // Worker health probe URL
+  workerHealthUrl: string;
+
+  // Ops dashboard links
+  opsLinks: OpsLinks;
 }
 
 function requireEnv(name: string, value: string | undefined): string {
@@ -43,6 +56,13 @@ export function loadRuntimeEnv(env: NodeJS.ProcessEnv = process.env): RuntimeEnv
       ? Number.parseInt(dailyThrottleRaw, 10)
       : undefined;
 
+  // Parse ops links (all optional)
+  const opsLinks: OpsLinks = {};
+  if (env.OPS_GRAFANA_URL) opsLinks.grafana = env.OPS_GRAFANA_URL;
+  if (env.OPS_PROMETHEUS_URL) opsLinks.prometheus = env.OPS_PROMETHEUS_URL;
+  if (env.OPS_QUEUE_DASHBOARD_URL) opsLinks.queue = env.OPS_QUEUE_DASHBOARD_URL;
+  if (env.OPS_LOGS_URL) opsLinks.logs = env.OPS_LOGS_URL;
+
   return {
     appEnv,
     timezone: env.APP_TIMEZONE ?? "UTC",
@@ -52,5 +72,7 @@ export function loadRuntimeEnv(env: NodeJS.ProcessEnv = process.env): RuntimeEnv
     monthlyCredits: parseIntEnv("MONTHLY_CREDITS", env.MONTHLY_CREDITS),
     dailyThrottleCredits,
     defaultTier,
+    workerHealthUrl: env.WORKER_HEALTH_URL ?? "http://localhost:9091/health",
+    opsLinks,
   };
 }

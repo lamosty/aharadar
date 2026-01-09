@@ -1,6 +1,7 @@
 import type { LlmProvider, LlmSettingsUpdate, SourceRow } from "@aharadar/db";
 import { computeCreditsStatus } from "@aharadar/pipeline";
 import { type ProviderOverride, RUN_WINDOW_JOB_NAME } from "@aharadar/queues";
+import { loadRuntimeEnv, type OpsLinks } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getUserId } from "../auth/session.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
@@ -937,6 +938,83 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           waiting: waitingJobs.length,
         },
       },
+    };
+  });
+
+  // GET /admin/ops-status - Get worker health, queue counts, and ops links
+  fastify.get("/admin/ops-status", async (request, reply) => {
+    const db = getDb();
+
+    // Verify admin role
+    try {
+      const userId = getUserId(request);
+      const user = await db.users.getById(userId);
+      if (!user || user.role !== "admin") {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Admin access required",
+          },
+        });
+      }
+    } catch {
+      return reply.code(401).send({
+        ok: false,
+        error: {
+          code: "NOT_AUTHENTICATED",
+          message: "Authentication required",
+        },
+      });
+    }
+
+    const env = loadRuntimeEnv();
+
+    // Probe worker health with short timeout (1s)
+    let workerHealth: { ok: boolean; startedAt?: string; lastSchedulerTickAt?: string | null } = {
+      ok: false,
+    };
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const response = await fetch(env.workerHealthUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const data = (await response.json()) as {
+          ok: boolean;
+          startedAt: string;
+          lastSchedulerTickAt: string | null;
+        };
+        workerHealth = {
+          ok: data.ok,
+          startedAt: data.startedAt,
+          lastSchedulerTickAt: data.lastSchedulerTickAt,
+        };
+      }
+    } catch {
+      // Worker unreachable or timed out
+      workerHealth = { ok: false };
+    }
+
+    // Get queue counts from BullMQ
+    const queue = getPipelineQueue();
+    const counts = await queue.getJobCounts("waiting", "active");
+
+    // Build ops links (only include if configured)
+    const links: OpsLinks = {};
+    if (env.opsLinks.grafana) links.grafana = env.opsLinks.grafana;
+    if (env.opsLinks.prometheus) links.prometheus = env.opsLinks.prometheus;
+    if (env.opsLinks.queue) links.queue = env.opsLinks.queue;
+    if (env.opsLinks.logs) links.logs = env.opsLinks.logs;
+
+    return {
+      ok: true,
+      worker: workerHealth,
+      queue: {
+        active: counts.active,
+        waiting: counts.waiting,
+      },
+      links,
     };
   });
 }

@@ -163,8 +163,27 @@ export function getMetricsContentType(): string {
   return registry.contentType;
 }
 
+/** Health status data for the worker */
+export interface HealthStatus {
+  startedAt: string;
+  lastSchedulerTickAt: string | null;
+}
+
+/** Mutable health status updated by main.ts */
+let healthStatus: HealthStatus = {
+  startedAt: new Date().toISOString(),
+  lastSchedulerTickAt: null,
+};
+
 /**
- * Start a simple HTTP server for exposing metrics.
+ * Update the health status (called from main.ts after each scheduler tick).
+ */
+export function updateHealthStatus(status: Partial<HealthStatus>): void {
+  healthStatus = { ...healthStatus, ...status };
+}
+
+/**
+ * Start a simple HTTP server for exposing metrics and health.
  * Returns a function to close the server.
  */
 export function startMetricsServer(port: number): { close: () => Promise<void> } {
@@ -173,6 +192,15 @@ export function startMetricsServer(port: number): { close: () => Promise<void> }
       const metrics = await getMetrics();
       res.setHeader("Content-Type", getMetricsContentType());
       res.end(metrics);
+    } else if (req.url === "/health" && req.method === "GET") {
+      res.setHeader("Content-Type", "application/json");
+      res.end(
+        JSON.stringify({
+          ok: true,
+          startedAt: healthStatus.startedAt,
+          lastSchedulerTickAt: healthStatus.lastSchedulerTickAt,
+        }),
+      );
     } else {
       res.statusCode = 404;
       res.end("Not Found");

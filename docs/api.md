@@ -179,6 +179,45 @@ Optional MVP admin endpoints to manage:
 
 - schedule
 
+### `GET /api/admin/ops-status`
+
+Returns worker health status, queue counts, and ops dashboard links. Admin-only endpoint.
+
+Response:
+
+```json
+{
+  "ok": true,
+  "worker": {
+    "ok": true,
+    "startedAt": "2025-01-09T10:00:00.000Z",
+    "lastSchedulerTickAt": "2025-01-09T12:30:00.000Z"
+  },
+  "queue": {
+    "active": 1,
+    "waiting": 5
+  },
+  "links": {
+    "grafana": "https://grafana.example.com/d/worker",
+    "prometheus": "https://prometheus.example.com",
+    "queue": "http://localhost:3101",
+    "logs": "https://logs.example.com"
+  }
+}
+```
+
+Notes:
+
+- `worker.ok` is `false` if the worker is unreachable (1s timeout)
+- `worker.startedAt` and `worker.lastSchedulerTickAt` are only present when worker is reachable
+- `links` only includes URLs that are configured via env vars (`OPS_GRAFANA_URL`, `OPS_PROMETHEUS_URL`, `OPS_QUEUE_DASHBOARD_URL`, `OPS_LOGS_URL`)
+- Worker health probe URL is configurable via `WORKER_HEALTH_URL` (default: `http://localhost:9091/health`)
+
+Errors:
+
+- 401 if not authenticated
+- 403 if not admin role
+
 ## Error responses (Proposed)
 
 All errors return:

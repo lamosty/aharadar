@@ -2,7 +2,7 @@ import { createDb } from "@aharadar/db";
 import { generateDueWindows, getSchedulableTopics, parseSchedulerConfig } from "@aharadar/pipeline";
 import { createLogger, loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
 
-import { startMetricsServer, updateQueueDepth } from "./metrics";
+import { startMetricsServer, updateHealthStatus, updateQueueDepth } from "./metrics";
 import { createPipelineQueue } from "./queues";
 import { createPipelineWorker } from "./workers/pipeline.worker";
 
@@ -87,6 +87,10 @@ async function main(): Promise<void> {
   const schedulerConfig = parseSchedulerConfig();
   const tickIntervalMs = getSchedulerIntervalMs();
 
+  // Record startup time for health endpoint
+  const startedAt = new Date().toISOString();
+  updateHealthStatus({ startedAt });
+
   log.info(
     {
       maxBackfillWindows: schedulerConfig.maxBackfillWindows,
@@ -105,7 +109,7 @@ async function main(): Promise<void> {
   // Create worker to process jobs
   const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
 
-  // Start metrics server
+  // Start metrics server (also serves /health)
   const metricsServer = startMetricsServer(METRICS_PORT);
   log.info({ port: METRICS_PORT }, "Metrics server started");
 
@@ -123,11 +127,13 @@ async function main(): Promise<void> {
 
   // Run scheduler immediately on startup
   await runSchedulerTick(schedulerDb, queue, schedulerConfig);
+  updateHealthStatus({ lastSchedulerTickAt: new Date().toISOString() });
 
   // Then run scheduler periodically
   const schedulerInterval = setInterval(async () => {
     try {
       await runSchedulerTick(schedulerDb, queue, schedulerConfig);
+      updateHealthStatus({ lastSchedulerTickAt: new Date().toISOString() });
     } catch (err) {
       schedulerLog.error({ err }, "Error during tick");
     }
