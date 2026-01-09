@@ -789,13 +789,17 @@ export async function persistDigestFromContentItems(params: {
   }
 
   // Load signal corroboration URL set from recent signal bundles
-  const signalCorr = await loadSignalCorroborationSet({
-    db: params.db,
-    userId: params.userId,
-    topicId: params.topicId,
-    windowStart: params.windowStart,
-    windowEnd: params.windowEnd,
-  });
+  // Disabled by default (ENABLE_SIGNAL_CORROBORATION=1 to enable)
+  const enableSignalCorroboration = (process.env.ENABLE_SIGNAL_CORROBORATION ?? "0") === "1";
+  const signalCorr = enableSignalCorroboration
+    ? await loadSignalCorroborationSet({
+        db: params.db,
+        userId: params.userId,
+        topicId: params.topicId,
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+      })
+    : { urlHashes: new Set<string>(), sampleUrls: [] };
 
   // Compute novelty for candidates (topic-scoped, embedding-based)
   const noveltyLookbackDays = getNoveltyLookbackDays();
