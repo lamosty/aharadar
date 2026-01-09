@@ -11,8 +11,8 @@ import styles from "./QueueStatus.module.css";
 export function QueueStatus() {
   const { data, isLoading, isError } = useQueueStatus();
 
-  // Don't show anything if no jobs in queue
-  if (isLoading || isError || !data) {
+  // Don't show anything if no jobs in queue or queue data unavailable
+  if (isLoading || isError || !data?.queue) {
     return null;
   }
 
