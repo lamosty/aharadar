@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ApiKeySummary,
   addUserApiKey,
@@ -63,18 +63,7 @@ export function ApiKeysSettings() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadKeys();
-  }, [loadKeys]);
-
-  // Focus input when entering edit mode
-  useEffect(() => {
-    if (editingProvider && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [editingProvider]);
-
-  async function loadKeys() {
+  const loadKeys = useCallback(async () => {
     try {
       const [keysRes, statusRes] = await Promise.all([getUserApiKeys(), getProviderKeyStatus()]);
 
@@ -85,7 +74,18 @@ export function ApiKeysSettings() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadKeys();
+  }, [loadKeys]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (editingProvider && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [editingProvider]);
 
   function startEditing(provider: string) {
     setEditingProvider(provider);
