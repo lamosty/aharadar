@@ -1,4 +1,5 @@
 import type { Queryable } from "../db";
+import type { DigestMode } from "./digests";
 import type { ViewingProfile } from "./user_preferences";
 import { PROFILE_DECAY_HOURS } from "./user_preferences";
 
@@ -11,6 +12,12 @@ export interface TopicRow {
   decay_hours: number | null;
   last_checked_at: string | null;
   created_at: string;
+  // Digest schedule fields
+  digest_schedule_enabled: boolean;
+  digest_interval_minutes: number;
+  digest_mode: DigestMode;
+  digest_depth: number;
+  digest_cursor_end: string | null;
 }
 
 export interface Topic {
@@ -22,6 +29,12 @@ export interface Topic {
   decayHours: number | null;
   lastCheckedAt: Date | null;
   createdAt: Date;
+  // Digest schedule fields
+  digestScheduleEnabled: boolean;
+  digestIntervalMinutes: number;
+  digestMode: DigestMode;
+  digestDepth: number;
+  digestCursorEnd: Date | null;
 }
 
 function rowToTopic(row: TopicRow): Topic {
@@ -34,6 +47,12 @@ function rowToTopic(row: TopicRow): Topic {
     decayHours: row.decay_hours,
     lastCheckedAt: row.last_checked_at ? new Date(row.last_checked_at) : null,
     createdAt: new Date(row.created_at),
+    // Digest schedule fields
+    digestScheduleEnabled: row.digest_schedule_enabled,
+    digestIntervalMinutes: row.digest_interval_minutes,
+    digestMode: row.digest_mode,
+    digestDepth: row.digest_depth,
+    digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
   };
 }
 
@@ -43,7 +62,9 @@ export function createTopicsRepo(db: Queryable) {
       const res = await db.query<TopicRow>(
         `SELECT id, user_id, name, description,
                 viewing_profile, decay_hours, last_checked_at::text,
-                created_at::text AS created_at
+                created_at::text AS created_at,
+                digest_schedule_enabled, digest_interval_minutes,
+                digest_mode, digest_depth, digest_cursor_end::text
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC`,
@@ -56,7 +77,9 @@ export function createTopicsRepo(db: Queryable) {
       const res = await db.query<TopicRow>(
         `SELECT id, user_id, name, description,
                 viewing_profile, decay_hours, last_checked_at::text,
-                created_at::text AS created_at
+                created_at::text AS created_at,
+                digest_schedule_enabled, digest_interval_minutes,
+                digest_mode, digest_depth, digest_cursor_end::text
          FROM topics
          WHERE id = $1
          LIMIT 1`,
@@ -69,7 +92,9 @@ export function createTopicsRepo(db: Queryable) {
       const res = await db.query<TopicRow>(
         `SELECT id, user_id, name, description,
                 viewing_profile, decay_hours, last_checked_at::text,
-                created_at::text AS created_at
+                created_at::text AS created_at,
+                digest_schedule_enabled, digest_interval_minutes,
+                digest_mode, digest_depth, digest_cursor_end::text
          FROM topics
          WHERE user_id = $1 AND name = $2
          LIMIT 1`,
@@ -100,7 +125,9 @@ export function createTopicsRepo(db: Queryable) {
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
-                   created_at::text AS created_at`,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text`,
         [
           params.userId,
           params.name,
@@ -136,7 +163,9 @@ export function createTopicsRepo(db: Queryable) {
       const res = await db.query<TopicRow>(
         `SELECT id, user_id, name, description,
                 viewing_profile, decay_hours, last_checked_at::text,
-                created_at::text AS created_at
+                created_at::text AS created_at,
+                digest_schedule_enabled, digest_interval_minutes,
+                digest_mode, digest_depth, digest_cursor_end::text
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC
@@ -195,7 +224,9 @@ export function createTopicsRepo(db: Queryable) {
          WHERE id = $${paramIdx}
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
-                   created_at::text AS created_at`,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text`,
         values,
       );
 
@@ -214,7 +245,9 @@ export function createTopicsRepo(db: Queryable) {
          WHERE id = $1
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
-                   created_at::text AS created_at`,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text`,
         [id],
       );
 
@@ -262,12 +295,108 @@ export function createTopicsRepo(db: Queryable) {
          WHERE id = $${paramIdx}
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
-                   created_at::text AS created_at`,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text`,
         values,
       );
 
       const row = res.rows[0];
       if (!row) throw new Error("topics.update: topic not found");
+      return rowToTopic(row);
+    },
+
+    /**
+     * Update digest schedule settings for a topic.
+     * All fields are optional (patch semantics).
+     */
+    async updateDigestSettings(
+      id: string,
+      updates: {
+        digestScheduleEnabled?: boolean;
+        digestIntervalMinutes?: number;
+        digestMode?: DigestMode;
+        digestDepth?: number;
+      },
+    ): Promise<Topic> {
+      const { digestScheduleEnabled, digestIntervalMinutes, digestMode, digestDepth } = updates;
+
+      const setClauses: string[] = [];
+      const values: unknown[] = [];
+      let paramIdx = 1;
+
+      if (digestScheduleEnabled !== undefined) {
+        setClauses.push(`digest_schedule_enabled = $${paramIdx}`);
+        values.push(digestScheduleEnabled);
+        paramIdx++;
+      }
+
+      if (digestIntervalMinutes !== undefined) {
+        // DB constraint will enforce range [15, 43200]
+        setClauses.push(`digest_interval_minutes = $${paramIdx}`);
+        values.push(digestIntervalMinutes);
+        paramIdx++;
+      }
+
+      if (digestMode !== undefined) {
+        // DB constraint will enforce valid values
+        setClauses.push(`digest_mode = $${paramIdx}`);
+        values.push(digestMode);
+        paramIdx++;
+      }
+
+      if (digestDepth !== undefined) {
+        // DB constraint will enforce range [0, 100]
+        setClauses.push(`digest_depth = $${paramIdx}`);
+        values.push(digestDepth);
+        paramIdx++;
+      }
+
+      if (setClauses.length === 0) {
+        const current = await this.getById(id);
+        if (!current) throw new Error("topics.updateDigestSettings: topic not found");
+        return rowToTopic(current);
+      }
+
+      values.push(id);
+
+      const res = await db.query<TopicRow>(
+        `UPDATE topics
+         SET ${setClauses.join(", ")}
+         WHERE id = $${paramIdx}
+         RETURNING id, user_id, name, description,
+                   viewing_profile, decay_hours, last_checked_at::text,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text`,
+        values,
+      );
+
+      const row = res.rows[0];
+      if (!row) throw new Error("topics.updateDigestSettings: topic not found");
+      return rowToTopic(row);
+    },
+
+    /**
+     * Update the digest cursor end timestamp.
+     * Used by scheduled runs to track progress.
+     * Uses monotonicity: only updates if new value > existing (or existing is null).
+     */
+    async updateDigestCursorEnd(id: string, cursorEndIso: string): Promise<Topic> {
+      const res = await db.query<TopicRow>(
+        `UPDATE topics
+         SET digest_cursor_end = GREATEST(digest_cursor_end, $2::timestamptz)
+         WHERE id = $1
+         RETURNING id, user_id, name, description,
+                   viewing_profile, decay_hours, last_checked_at::text,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text`,
+        [id, cursorEndIso],
+      );
+
+      const row = res.rows[0];
+      if (!row) throw new Error("topics.updateDigestCursorEnd: topic not found");
       return rowToTopic(row);
     },
 

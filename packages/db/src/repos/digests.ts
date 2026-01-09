@@ -1,6 +1,7 @@
 import type { Queryable } from "../db";
 
-export type DigestMode = "low" | "normal" | "high" | "catch_up";
+// catch_up mode removed per task-121; migration deletes existing catch_up digests
+export type DigestMode = "low" | "normal" | "high";
 
 export interface DigestRow {
   id: string;
