@@ -38,6 +38,11 @@ If anything else seems required, stop and ask.
 - Ops status + links endpoint(s) from Task 117.
 - BullMQ dashboard service from Task 118 (for link target).
 
+## Decisions (confirmed)
+
+- Add `/app/admin/ops` with read-only status + links (no action buttons).
+- Add a new card/link on `/app/admin` pointing to the Ops page.
+
 ## Implementation steps (ordered)
 
 1. Add a new Admin page at `/app/admin/ops`:

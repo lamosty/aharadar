@@ -31,13 +31,11 @@ Add a BullMQ dashboard UI (bull-board) so operators can inspect queue state, job
 
 If anything else seems required, stop and ask.
 
-## Decisions (driver required)
+## Decisions (confirmed)
 
-- Where to host bull-board:
-  - **Option A (recommended):** separate service/package (e.g., `@aharadar/queue-ui`) with its own port.
-  - **Option B:** mount bull-board inside the API server (Fastify adapter), behind the existing admin key.
-- Default local port (suggested): `3101`.
-- Auth: no auth in local dev, rely on network boundaries. If API-mounted, reuse admin auth.
+- Host bull-board as a **separate service/package** (e.g., `@aharadar/queue-ui`) with its own port.
+- Default local port: `3101`.
+- Auth: none in local dev; rely on network boundaries. (If prod needs auth later, add at reverse proxy.)
 
 ## Implementation steps (ordered)
 

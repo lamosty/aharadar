@@ -37,15 +37,16 @@ This is read-only status/links only (no start/stop controls).
 
 If anything else seems required, stop and ask.
 
-## Decisions (driver required)
+## Decisions (confirmed)
 
-- Health mechanism: prefer a lightweight HTTP health endpoint in the worker (default) vs Redis/DB heartbeat.
-- Endpoint shape: `GET /api/admin/ops-status` (single payload) vs separate `worker-status` + `ops-links` endpoints.
-- Env names for ops links (recommended):
+- Health mechanism: lightweight HTTP endpoint on the worker (`/health`) is the source of truth.
+- Endpoint shape: single `GET /api/admin/ops-status` payload (includes worker, queue, and links).
+- Ops link env names:
   - `OPS_GRAFANA_URL`
   - `OPS_PROMETHEUS_URL`
   - `OPS_QUEUE_DASHBOARD_URL`
   - optional `OPS_LOGS_URL`
+- Worker health probe URL env: `WORKER_HEALTH_URL` (default to `http://localhost:9091/health` for local dev).
 
 ## Implementation steps (ordered)
 
