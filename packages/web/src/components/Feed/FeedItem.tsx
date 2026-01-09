@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { type FeedItem as FeedItemType } from "@/lib/api";
 import { type Layout } from "@/lib/theme";
 import { WhyShown } from "@/components/WhyShown";
@@ -117,6 +118,8 @@ function getDisplayTitle(item: FeedItemType): string {
 }
 
 export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps) {
+  const [whyShownOpen, setWhyShownOpen] = useState(false);
+
   const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
     if (onFeedback) {
       await onFeedback(item.id, action);
@@ -130,41 +133,84 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
     ? `${item.item.metadata.user_display_name} (${item.item.author})`
     : item.item.author;
 
-  // For condensed layout, render a simpler row-based view
+  // Get preview text (truncated body text for condensed view)
+  const previewText = item.item.bodyText ? truncateText(item.item.bodyText, 120) : null;
+
+  // For condensed layout, render a two-line row with expandable WhyShown
   if (layout === "condensed") {
     return (
-      <article className={styles.condensedRow} data-testid={`feed-item-${item.id}`}>
-        <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
-          <span
-            className={styles.condensedSource}
-            style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
-          >
-            {formatSourceType(item.item.sourceType)}
-          </span>
-        </Tooltip>
-        <span className={styles.condensedTitle}>
-          {item.item.url ? (
-            <a href={item.item.url} target="_blank" rel="noopener noreferrer" className={styles.condensedTitleLink}>
-              {getDisplayTitle(item)}
-            </a>
-          ) : (
-            getDisplayTitle(item)
-          )}
-        </span>
-        {author && <span className={styles.condensedAuthor}>{author}</span>}
-        <time className={styles.condensedTime}>
-          {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
-        </time>
-        <FeedbackButtons
-          contentItemId={item.id}
-          digestId={item.digestId}
-          currentFeedback={item.feedback}
-          onFeedback={handleFeedback}
-          variant="compact"
-        />
-        <Tooltip content={t("tooltips.ahaScore")}>
-          <span className={styles.condensedScore}>{scorePercent}</span>
-        </Tooltip>
+      <article className={styles.condensedItem} data-testid={`feed-item-${item.id}`}>
+        {/* Row 1: Source, Title, Meta, Actions, Score */}
+        <div className={styles.condensedRow}>
+          <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
+            <span
+              className={styles.condensedSource}
+              style={{ "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties}
+            >
+              {formatSourceType(item.item.sourceType)}
+            </span>
+          </Tooltip>
+
+          <div className={styles.condensedContent}>
+            <span className={styles.condensedTitle}>
+              {item.item.url ? (
+                <a href={item.item.url} target="_blank" rel="noopener noreferrer" className={styles.condensedTitleLink}>
+                  {getDisplayTitle(item)}
+                </a>
+              ) : (
+                getDisplayTitle(item)
+              )}
+            </span>
+            {/* Row 2: Preview text */}
+            {previewText && (
+              <span className={styles.condensedPreview}>{previewText}</span>
+            )}
+          </div>
+
+          <div className={styles.condensedMeta}>
+            {author && <span className={styles.condensedAuthor}>{author}</span>}
+            <time className={styles.condensedTime}>
+              {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
+            </time>
+          </div>
+
+          <div className={styles.condensedActions}>
+            {/* WhyShown toggle button */}
+            <Tooltip content={t("digests.whyShown.title")}>
+              <button
+                type="button"
+                className={`${styles.whyShownToggle} ${whyShownOpen ? styles.whyShownToggleActive : ""}`}
+                onClick={() => setWhyShownOpen(!whyShownOpen)}
+                aria-expanded={whyShownOpen}
+                aria-label={t("digests.whyShown.title")}
+              >
+                <InfoIcon />
+              </button>
+            </Tooltip>
+
+            <FeedbackButtons
+              contentItemId={item.id}
+              digestId={item.digestId}
+              currentFeedback={item.feedback}
+              onFeedback={handleFeedback}
+              variant="compact"
+            />
+          </div>
+
+          <Tooltip content={t("tooltips.ahaScore")}>
+            <span className={styles.condensedScore}>{scorePercent}</span>
+          </Tooltip>
+        </div>
+
+        {/* Expandable WhyShown section */}
+        {whyShownOpen && (
+          <div className={styles.condensedWhyShown}>
+            <WhyShown
+              features={item.triageJson as TriageFeatures | undefined}
+              clusterItems={item.clusterItems}
+            />
+          </div>
+        )}
       </article>
     );
   }
@@ -290,6 +336,26 @@ function CommentIcon() {
       aria-hidden="true"
     >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   );
 }
