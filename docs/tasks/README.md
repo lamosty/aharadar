@@ -67,3 +67,16 @@ Task files (in recommended order):
 49. `task-085-telegram-connector.md` - Add Telegram public channel connector
 50. `task-086-docs-refresh.md` - Update outdated docs, create new required docs
 51. `task-087-financial-data-research.md` - RESEARCH: Financial/trading data sources
+
+## Source discovery UX + free alternatives (new)
+
+52. `task-104-congress-trading-free-vendor.md` - Congress trading: free public disclosures default + paid Quiver opt-in
+53. `task-105-source-picker-categorized-modal.md` - Web: categorized, searchable source picker modal (paid sources less prominent)
+54. `task-106-x-as-free-data-sources.md` - Web/docs: make X (via Grok) an explicit “data source” path + generic recipes
+
+## Debug / regression tasks (new)
+
+55. `task-107-web-digest-detail-whyshown-triage.md` - Fix digest detail WhyShown + show triage reason
+56. `task-108-api-digest-detail-include-bodytext-metadata.md` - API: include bodyText/metadata + effective contentItemId in `GET /digests/:id`
+57. `task-109-web-digest-detail-x-posts-display.md` - Web: render x_posts text + display name in digest detail
+58. `task-110-x-posts-published-at-timestamp.md` - Fix x_posts published_at handling + decide timestamp strategy
