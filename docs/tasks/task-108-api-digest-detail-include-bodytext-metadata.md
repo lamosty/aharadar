@@ -49,6 +49,10 @@ If anything else seems required, **stop and ask**.
 - **Cluster compatibility**: for cluster rows, return the cluster representative’s `body_text/metadata/external_id` (same COALESCE approach as today for title/url/etc).
 - **Cluster actions**: for cluster rows, return `contentItemId = representative_content_item_id` (effective id for feedback/navigation) while still returning `clusterId`.
 
+Already decided (driver):
+
+- OK to expand `GET /api/digests/:id` items to include `bodyText`, `metadata`, and `externalId`.
+
 ## Implementation steps (ordered)
 
 1. Update the digest items SQL in `packages/api/src/routes/digests.ts` to select:

@@ -80,3 +80,4 @@ Task files (in recommended order):
 56. `task-108-api-digest-detail-include-bodytext-metadata.md` - API: include bodyText/metadata + effective contentItemId in `GET /digests/:id`
 57. `task-109-web-digest-detail-x-posts-display.md` - Web: render x_posts text + display name in digest detail
 58. `task-110-x-posts-published-at-timestamp.md` - Fix x_posts published_at handling + decide timestamp strategy
+59. `task-111-deprioritize-signal.md` - De-prioritize/disable signal features by default (since unused)

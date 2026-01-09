@@ -116,7 +116,8 @@ Proposed Opus tasks (see `docs/tasks/task-107`+ in this batch):
 1. **Fix digest detail WhyShown wiring + triage reason display** (web-only)
 2. **Return `body_text` + `metadata_json` in `GET /api/digests/:id` items** and return an effective `contentItemId` for cluster items (api + types)
 3. **Update digest detail UI to display tweet text + display name for X** (web)
-4. **Decide + implement correct `x_posts.published_at` strategy** (connectors/pipeline, docs alignment)
+4. **Improve Grok prompt for canonical X post data + correct `x_posts.published_at` strategy** (connectors, docs alignment)
+5. (Optional) **De-prioritize/disable “signal” features by default** since unused (pipeline/web)
 
 ## Quick verification checklist (for debugging on a live DB)
 

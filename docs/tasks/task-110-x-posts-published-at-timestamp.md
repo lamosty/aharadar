@@ -55,41 +55,91 @@ If anything else seems required, **stop and ask**.
 
 ## Decisions (driver required)
 
-Choose ONE strategy for post timestamps:
+Already decided (driver):
 
-### Option A (recommended): derive timestamp from X status ID (“snowflake decode”)
+- **Primary**: update the shared Grok x_search prompt to return a full ISO timestamp when possible (e.g. `2026-01-08T05:23:00Z`) rather than day-only.
+- **Fallback (secondary)**: if Grok does not return a reliable timestamp, derive it from the X status ID (“snowflake decode”) when possible.
+- **Fallback (final)**: if neither is available (or the derived timestamp is implausible), keep `published_at = null` and rely on `fetched_at`/digest timestamps for windowing + UI fallback.
 
-- If `externalId/statusId` is parseable as a numeric X ID, derive creation time deterministically.
-- Treat as a “true timestamp” (not fabrication) and store it in `published_at`.
-- Pros: no extra provider dependency; works even if provider only returns URLs.
-- Cons: assumes X IDs remain snowflake-like (likely stable, but still an assumption).
+Notes:
 
-### Option B: change provider output to include full ISO timestamps
+- We are currently **not using the `signal` concept**; do not add signal-related behavior here.
 
-- Update the Grok system prompt to return `date` as an ISO timestamp (e.g. `2026-01-08T05:23:00Z`) instead of `YYYY-MM-DD`.
-- Update normalization to parse full timestamps.
-- Pros: explicit source-provided timestamp.
-- Cons: relies on model/tool behavior; may still degrade to day-level.
+## Prompt design (critical — optimize for reliability + low tokens)
 
-### Option C: keep `published_at = null` unless a full timestamp is available; display day bucket from metadata
+The current `grok_x_search.ts` prompt is optimized for “high-signal filtering” and day-level dates. For `x_posts`, we want **reliable canonical data** (id/url/text/timestamp) and we should let the downstream pipeline triage decide what’s “high signal”.
 
-- Use `fetched_at` for windowing/recency, and only show `day_bucket/post_date` in the UI as an approximate date.
-- Pros: strictly follows “don’t fabricate”; windowing behaves predictably.
-- Cons: you lose true publish time unless you also implement A or B.
+### Output schema (strict)
+
+Return a JSON array of objects (no wrapper). Each object must be:
+
+```json
+{
+  "id": "1234567890",
+  "date": "2026-01-08T05:23:00Z",
+  "url": "https://x.com/handle/status/1234567890",
+  "text": "single line tweet text…",
+  "user_handle": "handle",
+  "user_display_name": "Display Name",
+  "metrics": { "reply_count": 0, "repost_count": 0, "like_count": 0, "quote_count": 0, "view_count": 0 }
+}
+```
+
+Rules:
+
+- `date`: **prefer full ISO timestamp in UTC**. If only day-level is available, return `YYYY-MM-DD`. If unknown, `null`.
+- `url`: must be a status URL (x.com or twitter.com). If tool doesn’t provide `url` but you have `id` + `user_handle`, construct: `https://x.com/<user_handle>/status/<id>`.
+- `text`: must be **one line**, no newlines, **no paraphrasing**, and `<= maxTextChars`.
+- `metrics`: **omit** the entire key if counts are unavailable (saves tokens). If present, counts must be numbers.
+
+### Recommended new system prompt (drop “high-signal” filtering)
+
+Replace the current system prompt with something like:
+
+```text
+Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array.
+Use the x_search tool if available to fetch real posts. If you cannot access real posts, return [].
+Do NOT fabricate. If a field is unavailable from the tool results, use null (or omit optional keys).
+
+Each array item MUST be an object with ONLY these keys:
+- id (string, digits)
+- date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
+- url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com)
+- text (string): single line, <= ${maxTextChars} chars, no newlines, no paraphrasing
+- user_handle (string|null): without "@"
+- user_display_name (string|null): display name shown on profile
+- metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count
+
+Return at most the requested limit results, newest first. Exclude only empty/invalid items (missing text or missing both url and (id+user_handle)).
+```
+
+### User prompt (keep short)
+
+Keep the user prompt simple (the tool + query parameters do the work). Avoid adding “high-signal” constraints here; downstream triage handles it.
 
 ## Implementation steps (ordered)
 
 1. Remove the noon-UTC fabrication from `packages/connectors/src/x_posts/normalize.ts`.
-2. Implement the chosen strategy:
-   - **A**: add a small helper to decode timestamp from numeric status ID (use `BigInt`), return ISO string.
-   - **B**: update `grok_x_search` prompt + parsing to accept ISO timestamps; update normalizer accordingly.
-   - **C**: set `publishedAt = null` when only day bucket; ensure metadata keeps `day_bucket` and/or `post_date`.
-3. Add/extend tests:
-   - at minimum: parsing/decoding returns a valid ISO timestamp for a known X ID (if A)
-   - ensure invalid IDs don’t crash (fallback to null)
-4. Validate impact on digest windowing:
-   - run multiple digests per day and confirm X posts are included where expected (based on chosen semantics).
-5. If this changes any spec/contract wording, update `docs/connectors.md` accordingly (explicitly, no silent divergence).
+2. Update `packages/connectors/src/x_shared/grok_x_search.ts` system prompt to the new schema above (optimize for reliability + low tokens):
+   - Prefer full ISO timestamps in `date`
+   - Include `id` and `user_handle` (enables URL construction + snowflake fallback)
+   - Omit `metrics` unless present (token saver)
+   - Remove “high-signal only” pre-filtering (leave that to triage)
+3. Update `packages/connectors/src/x_posts/fetch.ts` to persist the additional raw fields (`id`, `user_handle`, optional `metrics`) into the raw item (so normalize can use them).
+4. Update `packages/connectors/src/x_posts/normalize.ts`:
+   - If `date` is a full ISO timestamp, set `publishedAt` to that exact timestamp.
+   - Else attempt snowflake decode from the numeric status id (from `id` or parsed from URL):
+     - accept only if it yields a plausible time (not in the far past/future)
+   - Else keep `publishedAt = null` (do not fabricate).
+   - Keep `metadata.post_date` (day, when available) and `metadata.day_bucket` for UI/analytics.
+5. Add/extend tests:
+   - accepts ISO timestamps and stores them exactly
+   - accepts day-only and leaves `publishedAt = null`
+   - snowflake decode returns a plausible timestamp for a known id (and rejects implausible)
+   - invalid/empty fields do not crash (safe null behavior)
+6. Validate impact on digest windowing:
+   - run multiple digests per day and confirm X posts are included predictably (no noon-window “stickiness”).
+7. If this changes any spec/contract wording, update `docs/connectors.md` accordingly (explicitly, no silent divergence).
 
 ## Acceptance criteria
 
