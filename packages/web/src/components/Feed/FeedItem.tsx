@@ -18,6 +18,8 @@ interface FeedItemProps {
   ) => Promise<void>;
   /** Layout mode - affects rendering style */
   layout?: Layout;
+  /** Whether to show topic badge (for "all topics" mode) */
+  showTopicBadge?: boolean;
 }
 
 interface DisplayDate {
@@ -120,7 +122,12 @@ function getDisplayTitle(item: FeedItemType): string {
   return "(Untitled)";
 }
 
-export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps) {
+export function FeedItem({
+  item,
+  onFeedback,
+  layout = "reader",
+  showTopicBadge = false,
+}: FeedItemProps) {
   const [whyShownOpen, setWhyShownOpen] = useState(false);
 
   const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
@@ -150,6 +157,9 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
         {/* Row 1: Source, Title, Meta, Actions, Score */}
         <div className={styles.condensedRow}>
           <div className={styles.condensedSourceGroup}>
+            {showTopicBadge && item.topicName && (
+              <span className={styles.topicBadge}>{item.topicName}</span>
+            )}
             <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
               <span
                 className={styles.condensedSource}
@@ -252,6 +262,9 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
         <div className={styles.headerLeft}>
           {/* Badge group: source badges, clusters, comments link */}
           <div className={styles.badgeGroup}>
+            {showTopicBadge && item.topicName && (
+              <span className={styles.topicBadge}>{item.topicName}</span>
+            )}
             {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
             <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
               <span

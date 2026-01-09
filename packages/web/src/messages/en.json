@@ -529,6 +529,7 @@
   "feed": {
     "topic": "Topic",
     "allTopics": "All Topics",
+    "selectTopicForCaughtUp": "Select a topic to mark as caught up",
     "title": "Feed",
     "subtitle": "All your ranked items in one place",
     "empty": "No items yet",

@@ -53,6 +53,9 @@ interface UnifiedItemRow {
   cluster_id: string | null;
   cluster_member_count: number | null;
   cluster_items_json: ClusterItemRow[] | null;
+  // Topic fields (for "all topics" mode)
+  topic_id: string;
+  topic_name: string;
 }
 
 interface ItemsListQuerystring {
@@ -107,9 +110,14 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       topicId: topicIdParam,
     } = request.query;
 
-    // Use topic from query param if provided, otherwise use default
-    let effectiveTopicId = ctx.topicId;
-    if (topicIdParam) {
+    // Determine topic scope:
+    // - "all" = aggregate across all user's topics
+    // - UUID = specific topic (validated)
+    // - missing = default topic
+    const isAllTopics = topicIdParam === "all";
+    let effectiveTopicId: string | null = isAllTopics ? null : ctx.topicId;
+
+    if (topicIdParam && !isAllTopics) {
       // Validate topic belongs to user
       const db = getDb();
       const topic = await db.topics.getById(topicIdParam);
@@ -242,6 +250,11 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     const decayHoursParamIdx = filterParamIdx;
     filterParamIdx++;
 
+    // Build topic filter clause (empty for "all topics" mode)
+    const topicFilterClause = effectiveTopicId
+      ? `AND d.topic_id = '${effectiveTopicId}'::uuid`
+      : "";
+
     const itemsQuery = `
       WITH latest_items AS (
         SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
@@ -252,14 +265,15 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
           di.triage_json,
           di.summary_json,
           di.entities_json,
-          d.created_at as digest_created_at
+          d.created_at as digest_created_at,
+          d.topic_id as digest_topic_id
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
         LEFT JOIN clusters c ON c.id = di.cluster_id
         JOIN content_items ci_inner ON ci_inner.id = COALESCE(di.content_item_id, c.representative_content_item_id)
         WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
-          AND d.topic_id = '${effectiveTopicId}'::uuid
+          ${topicFilterClause}
         ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
       )
       SELECT
@@ -291,9 +305,13 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         -- Cluster member count (excluding representative)
         cluster_count.member_count as cluster_member_count,
         -- Cluster items (excluding representative, ordered by similarity)
-        cluster_members.items_json as cluster_items_json
+        cluster_members.items_json as cluster_items_json,
+        -- Topic fields
+        li.digest_topic_id::text as topic_id,
+        t.name as topic_name
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
+      JOIN topics t ON t.id = li.digest_topic_id
       LEFT JOIN LATERAL (
         SELECT action FROM feedback_events
         WHERE user_id = '${ctx.userId}' AND content_item_id = li.content_item_id
@@ -343,7 +361,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         LEFT JOIN clusters c ON c.id = di.cluster_id
         WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
-          AND d.topic_id = '${effectiveTopicId}'::uuid
+          ${topicFilterClause}
         ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
       )
       SELECT COUNT(*)::int as total
@@ -413,6 +431,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         clusterId: row.cluster_id,
         clusterMemberCount: row.cluster_member_count ?? undefined,
         clusterItems: clusterItems?.length ? clusterItems : undefined,
+        // Topic context (for "all topics" mode)
+        topicId: row.topic_id,
+        topicName: row.topic_name,
       };
     });
 

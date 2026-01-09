@@ -7,6 +7,7 @@ import { FeedFilterBar, FeedItem, FeedItemSkeleton } from "@/components/Feed";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
+import { Tooltip } from "@/components/Tooltip";
 import { useTopic } from "@/components/TopicProvider";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
 import {
@@ -53,7 +54,7 @@ function FeedPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { addToast } = useToast();
-  const { currentTopicId, isReady: topicReady } = useTopic();
+  const { currentTopicId, setCurrentTopicId, isReady: topicReady } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
   const { layout, setLayout, hasOverride, resetToGlobal } = usePageLayout("feed");
 
@@ -63,6 +64,7 @@ function FeedPageContent() {
   const sourcesParam = searchParams.get("sources");
   const sortParam = searchParams.get("sort") as SortOption | null;
   const pageParam = searchParams.get("page");
+  const topicParam = searchParams.get("topic");
 
   const [selectedSources, setSelectedSources] = useState<string[]>(
     sourcesParam ? sourcesParam.split(",").filter(Boolean) : [],
@@ -73,15 +75,42 @@ function FeedPageContent() {
   const [pageSize, setPageSize] = useLocalStorage<PageSize>("feedPageSize", DEFAULT_PAGE_SIZE);
   const [currentPage, setCurrentPage] = useState(pageParam ? parseInt(pageParam, 10) : 1);
 
+  // Track if URL sync has been done
+  const [urlSynced, setUrlSynced] = useState(false);
+
+  // Sync URL topic param with TopicProvider on mount
+  useEffect(() => {
+    if (!topicReady || urlSynced) return;
+
+    if (topicParam === "all") {
+      setCurrentTopicId(null);
+    } else if (topicParam) {
+      // Validate that topic exists before setting
+      const topicExists = topicsData?.topics.some((t) => t.id === topicParam);
+      if (topicExists) {
+        setCurrentTopicId(topicParam);
+      }
+    }
+    setUrlSynced(true);
+  }, [topicParam, topicReady, topicsData, setCurrentTopicId, urlSynced]);
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, []);
 
-  // Update URL when filters/page change
+  // Determine if we're in "all topics" mode
+  const isAllTopicsMode = currentTopicId === null;
+
+  // Update URL when filters/page/topic change
   const updateUrl = useCallback(
-    (sources: string[], newSort: SortOption, page: number) => {
+    (sources: string[], newSort: SortOption, page: number, topic: string | null) => {
       const params = new URLSearchParams();
+      if (topic === null) {
+        params.set("topic", "all");
+      } else if (topic) {
+        params.set("topic", topic);
+      }
       if (sources.length > 0) params.set("sources", sources.join(","));
       if (newSort !== "score_desc") params.set("sort", newSort);
       if (page > 1) params.set("page", String(page));
@@ -94,45 +123,56 @@ function FeedPageContent() {
   const handleSourcesChange = useCallback(
     (sources: string[]) => {
       setSelectedSources(sources);
-      updateUrl(sources, sort, 1);
+      updateUrl(sources, sort, 1, currentTopicId);
     },
-    [sort, updateUrl],
+    [sort, updateUrl, currentTopicId],
   );
 
   const handleSortChange = useCallback(
     (newSort: SortOption) => {
       setSort(newSort);
-      updateUrl(selectedSources, newSort, 1);
+      updateUrl(selectedSources, newSort, 1, currentTopicId);
     },
-    [selectedSources, updateUrl],
+    [selectedSources, updateUrl, currentTopicId],
   );
 
   const handlePageChange = useCallback(
     (page: number) => {
       setCurrentPage(page);
-      updateUrl(selectedSources, sort, page);
+      updateUrl(selectedSources, sort, page, currentTopicId);
       // Scroll to top of feed
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [selectedSources, sort, updateUrl],
+    [selectedSources, sort, updateUrl, currentTopicId],
   );
 
   const handlePageSizeChange = useCallback(
     (size: PageSize) => {
       setPageSize(size);
       setCurrentPage(1);
-      updateUrl(selectedSources, sort, 1);
+      updateUrl(selectedSources, sort, 1, currentTopicId);
     },
-    [selectedSources, sort, updateUrl, setPageSize],
+    [selectedSources, sort, updateUrl, setPageSize, currentTopicId],
+  );
+
+  // Handle topic change from TopicSwitcher - update URL
+  const handleTopicChange = useCallback(
+    (newTopicId: string | null) => {
+      setCurrentTopicId(newTopicId);
+      setCurrentPage(1);
+      updateUrl(selectedSources, sort, 1, newTopicId);
+    },
+    [setCurrentTopicId, updateUrl, selectedSources, sort],
   );
 
   // Fetch items using paged query
+  // Pass "all" for all topics mode, otherwise the topic ID
   const { data, isLoading, isError, error, isFetching } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     page: currentPage,
     pageSize,
-    topicId: currentTopicId || undefined,
+    topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
   });
 
   // Feedback mutation
@@ -246,16 +286,24 @@ function FeedPageContent() {
               onResetToGlobal={resetToGlobal}
               size="sm"
             />
-            <TopicSwitcher />
-            <button
-              className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
-              onClick={handleMarkCaughtUp}
-              disabled={markCheckedMutation.isPending || !currentTopicId}
-            >
-              {markCheckedMutation.isPending
-                ? t("digests.feed.markingCaughtUp")
-                : t("digests.feed.markCaughtUp")}
-            </button>
+            <TopicSwitcher onTopicChange={handleTopicChange} />
+            {isAllTopicsMode ? (
+              <Tooltip content={t("feed.selectTopicForCaughtUp")}>
+                <button className={`btn btn-secondary ${styles.markCaughtUpBtn}`} disabled>
+                  {t("digests.feed.markCaughtUp")}
+                </button>
+              </Tooltip>
+            ) : (
+              <button
+                className={`btn btn-secondary ${styles.markCaughtUpBtn}`}
+                onClick={handleMarkCaughtUp}
+                disabled={markCheckedMutation.isPending}
+              >
+                {markCheckedMutation.isPending
+                  ? t("digests.feed.markingCaughtUp")
+                  : t("digests.feed.markCaughtUp")}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -302,7 +350,13 @@ function FeedPageContent() {
             data-layout={layout}
           >
             {items.map((item) => (
-              <FeedItem key={item.id} item={item} onFeedback={handleFeedback} layout={layout} />
+              <FeedItem
+                key={item.id}
+                item={item}
+                onFeedback={handleFeedback}
+                layout={layout}
+                showTopicBadge={isAllTopicsMode}
+              />
             ))}
           </div>
 

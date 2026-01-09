@@ -166,6 +166,9 @@ export interface FeedItem {
   clusterId?: string | null;
   clusterMemberCount?: number;
   clusterItems?: ClusterItem[];
+  // Topic context (for "all topics" mode)
+  topicId: string;
+  topicName: string;
 }
 
 /** Pagination info */

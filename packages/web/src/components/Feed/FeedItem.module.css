@@ -71,6 +71,20 @@
   border: 1px solid color-mix(in srgb, var(--source-color, var(--color-primary)) 30%, transparent);
 }
 
+.topicBadge {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-info) 12%, transparent);
+  color: var(--color-info);
+  border: 1px solid color-mix(in srgb, var(--color-info) 25%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
 .newBadge {
   font-size: 0.65rem;
   font-weight: var(--font-weight-bold);

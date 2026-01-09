@@ -8,9 +8,11 @@ import styles from "./TopicSwitcher.module.css";
 interface TopicSwitcherProps {
   /** Additional CSS class */
   className?: string;
+  /** Optional callback when topic changes (for URL sync) */
+  onTopicChange?: (topicId: string | null) => void;
 }
 
-export function TopicSwitcher({ className }: TopicSwitcherProps) {
+export function TopicSwitcher({ className, onTopicChange }: TopicSwitcherProps) {
   const { data, isLoading } = useTopics();
   const { currentTopicId, setCurrentTopicId, isReady } = useTopic();
 
@@ -33,6 +35,12 @@ export function TopicSwitcher({ className }: TopicSwitcherProps) {
 
   const currentTopic = topics.find((t) => t.id === currentTopicId);
 
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTopicId = e.target.value === "all" ? null : e.target.value;
+    setCurrentTopicId(newTopicId);
+    onTopicChange?.(newTopicId);
+  };
+
   return (
     <div className={`${styles.container} ${className || ""}`}>
       <label htmlFor="topic-switcher" className={styles.label}>
@@ -42,7 +50,7 @@ export function TopicSwitcher({ className }: TopicSwitcherProps) {
         id="topic-switcher"
         className={styles.select}
         value={currentTopicId || "all"}
-        onChange={(e) => setCurrentTopicId(e.target.value === "all" ? null : e.target.value)}
+        onChange={handleChange}
       >
         <option value="all">{t("feed.allTopics")}</option>
         {topics.map((topic) => (
