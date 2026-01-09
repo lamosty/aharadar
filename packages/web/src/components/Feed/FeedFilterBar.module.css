@@ -12,6 +12,42 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Condensed variant - flat, minimal styling */
+.filterBarCondensed {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+  padding: var(--space-3) 0;
+  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+}
+
+.filterBarCondensed .sourceButton {
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  border-color: var(--color-border-subtle);
+}
+
+.filterBarCondensed .sourceButton:hover {
+  transform: none;
+}
+
+.filterBarCondensed .count {
+  padding: 3px 8px;
+  font-size: var(--font-size-xs);
+  background: transparent;
+  border: none;
+}
+
+.filterBarCondensed .sortSelect {
+  padding: 4px 28px 4px 10px;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-md);
+  background-position: right 6px center;
+}
+
 .sourceFilters {
   display: flex;
   gap: var(--space-2);

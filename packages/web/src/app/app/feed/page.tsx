@@ -224,6 +224,7 @@ function FeedPageContent() {
         sort={sort}
         onSortChange={handleSortChange}
         totalCount={totalCount}
+        layout={layout}
       />
 
       {isLoading && (

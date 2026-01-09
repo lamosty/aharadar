@@ -1,6 +1,7 @@
 "use client";
 
 import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType } from "@/lib/api";
+import { type Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
 
 interface FeedFilterBarProps {
@@ -9,6 +10,8 @@ interface FeedFilterBarProps {
   sort: "score_desc" | "date_desc" | "date_asc";
   onSortChange: (sort: "score_desc" | "date_desc" | "date_asc") => void;
   totalCount?: number;
+  /** Layout mode - condensed uses simpler styling */
+  layout?: Layout;
 }
 
 const SOURCE_LABELS: Record<SupportedSourceType, string> = {
@@ -37,6 +40,7 @@ export function FeedFilterBar({
   sort,
   onSortChange,
   totalCount,
+  layout = "reader",
 }: FeedFilterBarProps) {
   const toggleSource = (source: string) => {
     if (selectedSources.includes(source)) {
@@ -47,9 +51,10 @@ export function FeedFilterBar({
   };
 
   const allSelected = selectedSources.length === 0;
+  const isCondensed = layout === "condensed";
 
   return (
-    <div className={styles.filterBar}>
+    <div className={`${styles.filterBar} ${isCondensed ? styles.filterBarCondensed : ""}`}>
       <div className={styles.sourceFilters}>
         <button
           className={`${styles.sourceButton} ${allSelected ? styles.sourceButtonActive : ""}`}

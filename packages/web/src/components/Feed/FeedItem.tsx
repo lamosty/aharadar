@@ -209,13 +209,13 @@ export function FeedItem({ item, onFeedback, layout = "reader" }: FeedItemProps)
           </Tooltip>
         </div>
 
-        {/* Expandable WhyShown section - starts expanded so no second click needed */}
+        {/* Expandable WhyShown section - compact mode, shows directly */}
         {whyShownOpen && (
           <div className={styles.condensedWhyShown}>
             <WhyShown
               features={item.triageJson as TriageFeatures | undefined}
               clusterItems={item.clusterItems}
-              defaultExpanded={true}
+              compact={true}
             />
           </div>
         )}
