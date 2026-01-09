@@ -113,7 +113,7 @@ export function createTopicsRepo(db: Queryable) {
     async getOrCreateDefaultForUser(userId: string): Promise<{ id: string; inserted: boolean }> {
       const res = await db.query<{ id: string; inserted: boolean }>(
         `insert into topics (user_id, name)
-         values ($1, 'default')
+         values ($1, 'General')
          on conflict (user_id, name)
          do update set name = excluded.name
          returning id, (xmax = 0) as inserted`,
@@ -125,15 +125,17 @@ export function createTopicsRepo(db: Queryable) {
     },
 
     /**
-     * Get the default topic for a user (returns null if not exists).
+     * Get the first topic for a user (by creation date).
+     * Returns null if the user has no topics.
      */
-    async getDefaultByUserId(userId: string): Promise<Topic | null> {
+    async getFirstByUserId(userId: string): Promise<Topic | null> {
       const res = await db.query<TopicRow>(
         `SELECT id, user_id, name, description,
                 viewing_profile, decay_hours, last_checked_at::text,
                 created_at::text AS created_at
          FROM topics
-         WHERE user_id = $1 AND name = 'default'
+         WHERE user_id = $1
+         ORDER BY created_at ASC
          LIMIT 1`,
         [userId]
       );

@@ -34,20 +34,12 @@ export async function resolveTopicForUser(params: {
 
   if (topics.length === 0) {
     const created = await params.db.topics.getOrCreateDefaultForUser(params.userId);
-    return { id: created.id, name: "default" };
+    return { id: created.id, name: "General" };
   }
 
-  if (topics.length === 1) {
-    const only = topics[0]!;
-    return { id: only.id, name: only.name };
-  }
-
-  const def = topics.find((t) => t.name === "default");
-  if (def) return { id: def.id, name: def.name };
-
-  throw new Error(
-    `Multiple topics exist. Pass --topic <id-or-name>. Available: ${topics.map((t) => t.name).join(", ")}`
-  );
+  // Use first topic by creation date as default
+  const first = topics[0]!;
+  return { id: first.id, name: first.name };
 }
 
 export function formatTopicList(topics: TopicRow[]): string {

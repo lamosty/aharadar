@@ -23,8 +23,8 @@ export async function getSingletonContext(): Promise<SingletonContext | null> {
   if (!user) return null;
 
   const topics = await database.topics.listByUser(user.id);
-  const defaultTopic = topics.find((t) => t.name === "default") ?? topics[0];
-  if (!defaultTopic) return null;
+  const firstTopic = topics[0];
+  if (!firstTopic) return null;
 
-  return { userId: user.id, topicId: defaultTopic.id, db: database };
+  return { userId: user.id, topicId: firstTopic.id, db: database };
 }

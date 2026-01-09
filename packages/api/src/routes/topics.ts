@@ -629,23 +629,26 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    // Don't allow deleting the default topic
-    if (existing.name === "default") {
+    // Get all topics to check if this is the last one
+    const allTopics = await db.topics.listByUser(ctx.userId);
+
+    // Don't allow deleting the last topic
+    if (allTopics.length <= 1) {
       return reply.code(400).send({
         ok: false,
         error: {
           code: "INVALID_OPERATION",
-          message: "Cannot delete the default topic",
+          message: "Cannot delete your only topic",
         },
       });
     }
 
-    // Move sources to default topic before deleting
-    const defaultTopic = await db.topics.getDefaultByUserId(ctx.userId);
-    if (defaultTopic) {
+    // Move sources to the first topic (by creation date) before deleting
+    const firstTopic = allTopics.find((t) => t.id !== id);
+    if (firstTopic) {
       await db.query(
         "UPDATE sources SET topic_id = $1 WHERE topic_id = $2",
-        [defaultTopic.id, id]
+        [firstTopic.id, id]
       );
     }
 
@@ -653,7 +656,7 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
 
     return {
       ok: true,
-      message: "Topic deleted. Sources have been moved to the default topic.",
+      message: `Topic deleted. Sources have been moved to "${firstTopic?.name ?? "another topic"}".`,
     };
   });
 }

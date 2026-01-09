@@ -79,10 +79,10 @@ export function TopicProvider({ children }: TopicProviderProps) {
     if (storedIsValid) {
       setCurrentTopicIdState(stored);
     } else {
-      // Use default topic (usually first one, named "default")
-      const defaultTopic = topics.find((t) => t.name === "default") || topics[0];
-      setCurrentTopicIdState(defaultTopic.id);
-      setStoredTopicId(defaultTopic.id);
+      // Use first topic as default
+      const firstTopic = topics[0];
+      setCurrentTopicIdState(firstTopic.id);
+      setStoredTopicId(firstTopic.id);
     }
   }, [mounted, topicsLoading, topicsData]);
 
