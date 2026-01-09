@@ -1,8 +1,39 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { createLogger } from "../logging.js";
 
 const log = createLogger({ component: "config" });
+
+/**
+ * Find the project root by searching up for a directory containing .env or package.json with workspaces.
+ */
+function findProjectRoot(startDir: string): string {
+  let dir = startDir;
+  const root = dirname("/");
+
+  while (dir !== root) {
+    // Check for .env file
+    if (existsSync(resolve(dir, ".env"))) {
+      return dir;
+    }
+    // Check for root package.json with workspaces (monorepo root)
+    const pkgPath = resolve(dir, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+        if (pkg.workspaces) {
+          return dir;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    dir = dirname(dir);
+  }
+
+  // Fallback to start directory if nothing found
+  return startDir;
+}
 
 function stripInlineComment(value: string): string {
   // Treat " # ..." as a comment delimiter for unquoted values (common dotenv style).
@@ -56,10 +87,13 @@ function parseEnvValue(raw: string): string {
  * Load environment variables from .env and .env.local files.
  * Does not override existing environment variables.
  * Should be called at the start of the application before using loadRuntimeEnv().
+ *
+ * Searches up from cwd to find project root (directory with .env or monorepo package.json).
  */
 export function loadDotEnvIfPresent(cwd: string = process.cwd()): void {
+  const projectRoot = findProjectRoot(cwd);
   for (const filename of [".env", ".env.local"]) {
-    const fullPath = resolve(cwd, filename);
+    const fullPath = resolve(projectRoot, filename);
     if (!existsSync(fullPath)) continue;
     let raw: string;
     try {
