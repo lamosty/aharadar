@@ -142,7 +142,7 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
           <>
             <div className={styles.presetRow}>
               <span className={styles.fieldLabel}>
-                {t("topics.digestSettings.schedule.cadence")}
+                {t("topics.digestSettings.schedule.frequency")}
               </span>
               <div className={styles.presetButtons}>
                 {(["daily", "weekly", "custom"] as const).map((preset) => (

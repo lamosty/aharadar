@@ -4,10 +4,13 @@ import { getDb, getSingletonContext } from "../lib/db.js";
 interface DigestListRow {
   id: string;
   mode: string;
+  status: string;
+  credits_used: string; // numeric comes as string from pg
   window_start: string;
   window_end: string;
   created_at: string;
   item_count: string; // bigint comes as string from pg
+  source_results: unknown; // JSONB
 }
 
 interface DigestDetailRow {
@@ -15,9 +18,22 @@ interface DigestDetailRow {
   user_id: string;
   topic_id: string;
   mode: string;
+  status: string;
+  credits_used: string; // numeric comes as string from pg
+  source_results: unknown; // JSONB
+  error_message: string | null;
   window_start: string;
   window_end: string;
   created_at: string;
+}
+
+interface SourceResult {
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  status: string;
+  skipReason?: string;
+  itemsFetched: number;
 }
 
 interface DigestItemRow {
@@ -94,6 +110,9 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         `SELECT
          d.id,
          d.mode,
+         d.status,
+         d.credits_used,
+         d.source_results,
          d.window_start::text,
          d.window_end::text,
          d.created_at::text,
@@ -108,14 +127,33 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
 
       return {
         ok: true,
-        digests: result.rows.map((row) => ({
-          id: row.id,
-          mode: row.mode,
-          windowStart: row.window_start,
-          windowEnd: row.window_end,
-          createdAt: row.created_at,
-          itemCount: Number.parseInt(row.item_count, 10),
-        })),
+        digests: result.rows.map((row) => {
+          const sourceResults = (
+            typeof row.source_results === "string"
+              ? JSON.parse(row.source_results)
+              : (row.source_results ?? [])
+          ) as SourceResult[];
+          const succeededCount = sourceResults.filter(
+            (s) => s.status === "ok" || s.status === "partial",
+          ).length;
+          const skippedCount = sourceResults.filter((s) => s.status === "skipped").length;
+
+          return {
+            id: row.id,
+            mode: row.mode,
+            status: row.status,
+            creditsUsed: parseFloat(row.credits_used) || 0,
+            windowStart: row.window_start,
+            windowEnd: row.window_end,
+            createdAt: row.created_at,
+            itemCount: Number.parseInt(row.item_count, 10),
+            sourceCount: {
+              total: sourceResults.length,
+              succeeded: succeededCount,
+              skipped: skippedCount,
+            },
+          };
+        }),
       };
     },
   );
@@ -136,7 +174,8 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
     const db = getDb();
 
     const digestResult = await db.query<DigestDetailRow>(
-      `SELECT id, user_id, topic_id::text, mode, window_start::text, window_end::text, created_at::text
+      `SELECT id, user_id, topic_id::text, mode, status, credits_used, source_results, error_message,
+              window_start::text, window_end::text, created_at::text
        FROM digests
        WHERE id = $1`,
       [id],
@@ -193,11 +232,21 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
       [id],
     );
 
+    const sourceResults = (
+      typeof digest.source_results === "string"
+        ? JSON.parse(digest.source_results)
+        : (digest.source_results ?? [])
+    ) as SourceResult[];
+
     return {
       ok: true,
       digest: {
         id: digest.id,
         mode: digest.mode,
+        status: digest.status,
+        creditsUsed: parseFloat(digest.credits_used) || 0,
+        sourceResults,
+        errorMessage: digest.error_message,
         windowStart: digest.window_start,
         windowEnd: digest.window_end,
         createdAt: digest.created_at,

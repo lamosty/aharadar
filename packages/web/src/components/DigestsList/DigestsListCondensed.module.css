@@ -25,6 +25,11 @@
   white-space: nowrap;
 }
 
+.thStatus {
+  width: 50px;
+  text-align: center;
+}
+
 .thWindow {
   min-width: 200px;
 }
@@ -36,6 +41,10 @@
 .thItems {
   width: 80px;
   text-align: right;
+}
+
+.thSources {
+  width: 120px;
 }
 
 .thCreated {
@@ -109,6 +118,38 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
+}
+
+.tdStatus {
+  text-align: center;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.statusComplete {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.statusFailed {
+  background-color: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+.tdSources {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.sourcesWarning {
+  color: var(--color-warning);
 }
 
 .tdCreated {

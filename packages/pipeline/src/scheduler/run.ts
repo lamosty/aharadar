@@ -1,4 +1,4 @@
-import type { Db } from "@aharadar/db";
+import type { Db, DigestSourceResult } from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger } from "@aharadar/shared";
@@ -12,6 +12,7 @@ import {
   type IngestLimits,
   type IngestRunResult,
   type IngestSourceFilter,
+  type IngestSourceResult,
   ingestEnabledSources,
 } from "../stages/ingest";
 
@@ -58,6 +59,18 @@ function resolveTier(mode: BudgetTier | undefined, paidCallsAllowed: boolean): B
   if (!paidCallsAllowed) return "low";
   // Default to "normal" if mode not specified (catch_up removed per task-121)
   return mode ?? "normal";
+}
+
+/** Convert IngestSourceResult to DigestSourceResult format */
+function toDigestSourceResults(ingestResults: IngestSourceResult[]): DigestSourceResult[] {
+  return ingestResults.map((r) => ({
+    sourceId: r.sourceId,
+    sourceName: r.sourceName,
+    sourceType: r.sourceType,
+    status: r.status,
+    skipReason: r.skipReason,
+    itemsFetched: r.fetched,
+  }));
 }
 
 export async function runPipelineOnce(
@@ -158,17 +171,41 @@ export async function runPipelineOnce(
     windowEnd: params.windowEnd,
   });
 
-  // Policy: STOP - when credits exhausted, skip digest creation for scheduled runs
-  // This prevents creating empty/low-quality digests when we can't afford triage
-  if (!paidCallsAllowed && params.budget) {
+  // Convert ingest results to digest source results format
+  const sourceResults = toDigestSourceResults(ingest.perSource);
+
+  // Check if any source was skipped
+  const skippedSources = ingest.perSource.filter((s) => s.status === "skipped");
+  const hasSkippedSources = skippedSources.length > 0;
+
+  // Policy: FAIL - when any source is skipped, create failed digest record
+  // This gives users visibility into what happened
+  if (hasSkippedSources) {
+    const skippedNames = skippedSources.map((s) => `${s.sourceName} (${s.skipReason})`).join(", ");
+    const errorMessage = `Sources skipped: ${skippedNames}`;
+
     log.info(
       {
         topicId: params.topicId.slice(0, 8),
         windowStart: params.windowStart,
         windowEnd: params.windowEnd,
+        skippedSources: skippedSources.map((s) => s.sourceName),
       },
-      "Skipping digest creation: credits exhausted (policy=stop)",
+      "Creating failed digest: sources were skipped",
     );
+
+    // Create failed digest record (no items)
+    const failedDigest = await db.digests.upsert({
+      userId: params.userId,
+      topicId: params.topicId,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      mode: digestMode,
+      status: "failed",
+      creditsUsed: 0, // TODO: calculate actual credits used for ingest
+      sourceResults,
+      errorMessage,
+    });
 
     return {
       userId: params.userId,
@@ -179,10 +216,19 @@ export async function runPipelineOnce(
       embed,
       dedupe,
       cluster,
-      digest: null,
+      digest: {
+        digestId: failedDigest.id,
+        mode: digestMode,
+        topicId: params.topicId,
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+        items: 0,
+        triaged: 0,
+        paidCallsAllowed,
+      },
       digestPlan,
       creditsStatus,
-      digestSkippedDueToCredits: true,
+      digestSkippedDueToCredits: !paidCallsAllowed,
     };
   }
 
@@ -204,6 +250,7 @@ export async function runPipelineOnce(
     filter: params.ingestFilter,
     paidCallsAllowed,
     llmConfig: params.llmConfig,
+    sourceResults,
   });
 
   return {

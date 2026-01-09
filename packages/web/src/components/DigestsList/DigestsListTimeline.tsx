@@ -42,7 +42,6 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
     low: "Low",
     normal: "Normal",
     high: "High",
-    catch_up: "Catch-up",
   };
   return labels[mode];
 }

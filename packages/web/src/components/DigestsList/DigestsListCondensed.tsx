@@ -20,10 +20,7 @@ function formatWindowRange(start: string, end: string): string {
   };
 
   const startStr = startDate.toLocaleString("en-US", options);
-  const endStr = endDate.toLocaleString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const endStr = endDate.toLocaleString("en-US", options);
 
   return `${startStr} - ${endStr}`;
 }
@@ -46,9 +43,45 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
     low: "Low",
     normal: "Normal",
     high: "High",
-    catch_up: "Catch-up",
   };
   return labels[mode];
+}
+
+function StatusBadge({ status }: { status: DigestSummary["status"] }) {
+  return (
+    <span
+      className={`${styles.statusBadge} ${status === "complete" ? styles.statusComplete : styles.statusFailed}`}
+      title={
+        status === "complete" ? "All sources succeeded" : "Some sources failed or were skipped"
+      }
+    >
+      {status === "complete" ? (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+      )}
+    </span>
+  );
 }
 
 export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
@@ -57,6 +90,9 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
       <table className={styles.table}>
         <thead className={styles.tableHead}>
           <tr>
+            <th scope="col" className={styles.thStatus}>
+              {t("digests.list.status")}
+            </th>
             <th scope="col" className={styles.thWindow}>
               {t("digests.list.window")}
             </th>
@@ -66,6 +102,9 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
             <th scope="col" className={styles.thItems}>
               {t("digests.list.items")}
             </th>
+            <th scope="col" className={styles.thSources}>
+              {t("digests.list.sources")}
+            </th>
             <th scope="col" className={styles.thCreated}>
               {t("digests.list.created")}
             </th>
@@ -74,6 +113,9 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
         <tbody>
           {digests.map((digest) => (
             <tr key={digest.id} className={styles.row} data-testid={`digest-item-${digest.id}`}>
+              <td className={styles.tdStatus}>
+                <StatusBadge status={digest.status} />
+              </td>
               <td className={styles.tdWindow}>
                 <Link
                   href={`/app/digests/${digest.id}`}
@@ -85,12 +127,18 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
               </td>
               <td className={styles.tdMode}>
                 <span
-                  className={`${styles.modeBadge} ${styles[`mode${digest.mode.charAt(0).toUpperCase()}${digest.mode.slice(1).replace("_", "")}`]}`}
+                  className={`${styles.modeBadge} ${styles[`mode${digest.mode.charAt(0).toUpperCase()}${digest.mode.slice(1)}`]}`}
                 >
                   {getModeLabel(digest.mode)}
                 </span>
               </td>
               <td className={styles.tdItems}>{digest.itemCount}</td>
+              <td className={styles.tdSources}>
+                <span className={digest.sourceCount.skipped > 0 ? styles.sourcesWarning : ""}>
+                  {digest.sourceCount.succeeded}/{digest.sourceCount.total}
+                  {digest.sourceCount.skipped > 0 && ` (${digest.sourceCount.skipped} skipped)`}
+                </span>
+              </td>
               <td className={styles.tdCreated}>
                 <time dateTime={digest.createdAt}>{formatRelativeTime(digest.createdAt)}</time>
               </td>
@@ -108,6 +156,9 @@ export function DigestsListCondensedSkeleton() {
       <table className={styles.table} aria-busy="true">
         <thead className={styles.tableHead}>
           <tr>
+            <th scope="col" className={styles.thStatus}>
+              {t("digests.list.status")}
+            </th>
             <th scope="col" className={styles.thWindow}>
               {t("digests.list.window")}
             </th>
@@ -117,6 +168,9 @@ export function DigestsListCondensedSkeleton() {
             <th scope="col" className={styles.thItems}>
               {t("digests.list.items")}
             </th>
+            <th scope="col" className={styles.thSources}>
+              {t("digests.list.sources")}
+            </th>
             <th scope="col" className={styles.thCreated}>
               {t("digests.list.created")}
             </th>
@@ -125,6 +179,9 @@ export function DigestsListCondensedSkeleton() {
         <tbody>
           {Array.from({ length: 5 }).map((_, i) => (
             <tr key={i} className={styles.row}>
+              <td className={styles.tdStatus}>
+                <span className={styles.skeleton} style={{ width: "20px" }} />
+              </td>
               <td className={styles.tdWindow}>
                 <span className={styles.skeleton} style={{ width: "180px" }} />
               </td>
@@ -133,6 +190,9 @@ export function DigestsListCondensedSkeleton() {
               </td>
               <td className={styles.tdItems}>
                 <span className={styles.skeleton} style={{ width: "30px" }} />
+              </td>
+              <td className={styles.tdSources}>
+                <span className={styles.skeleton} style={{ width: "50px" }} />
               </td>
               <td className={styles.tdCreated}>
                 <span className={styles.skeleton} style={{ width: "50px" }} />

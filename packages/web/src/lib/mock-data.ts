@@ -7,8 +7,15 @@ export interface DigestSummary {
   id: string;
   windowStart: string;
   windowEnd: string;
-  mode: "low" | "normal" | "high" | "catch_up";
+  mode: "low" | "normal" | "high";
+  status: "complete" | "failed";
+  creditsUsed: number;
   itemCount: number;
+  sourceCount: {
+    total: number;
+    succeeded: number;
+    skipped: number;
+  };
   createdAt: string;
 }
 
@@ -99,7 +106,10 @@ const mockDigests: DigestSummary[] = [
     windowStart: "2025-01-06T08:00:00Z",
     windowEnd: "2025-01-06T14:00:00Z",
     mode: "normal",
+    status: "complete",
+    creditsUsed: 0.05,
     itemCount: 12,
+    sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-06T14:05:00Z",
   },
   {
@@ -107,7 +117,10 @@ const mockDigests: DigestSummary[] = [
     windowStart: "2025-01-06T00:00:00Z",
     windowEnd: "2025-01-06T08:00:00Z",
     mode: "normal",
+    status: "complete",
+    creditsUsed: 0.04,
     itemCount: 8,
+    sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-06T08:03:00Z",
   },
   {
@@ -115,7 +128,10 @@ const mockDigests: DigestSummary[] = [
     windowStart: "2025-01-05T16:00:00Z",
     windowEnd: "2025-01-06T00:00:00Z",
     mode: "high",
+    status: "complete",
+    creditsUsed: 0.08,
     itemCount: 15,
+    sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-06T00:04:00Z",
   },
   {
@@ -123,15 +139,21 @@ const mockDigests: DigestSummary[] = [
     windowStart: "2025-01-05T08:00:00Z",
     windowEnd: "2025-01-05T16:00:00Z",
     mode: "low",
+    status: "failed",
+    creditsUsed: 0.01,
     itemCount: 5,
+    sourceCount: { total: 4, succeeded: 3, skipped: 1 },
     createdAt: "2025-01-05T16:02:00Z",
   },
   {
     id: "d5-uuid-mock",
     windowStart: "2025-01-05T00:00:00Z",
     windowEnd: "2025-01-05T08:00:00Z",
-    mode: "catch_up",
+    mode: "normal",
+    status: "complete",
+    creditsUsed: 0.06,
     itemCount: 22,
+    sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-05T08:10:00Z",
   },
 ];
@@ -414,7 +436,10 @@ function adaptDigestSummary(item: DigestListItem): DigestSummary {
     windowStart: item.windowStart,
     windowEnd: item.windowEnd,
     mode: item.mode as DigestSummary["mode"],
+    status: item.status,
+    creditsUsed: item.creditsUsed,
     itemCount: item.itemCount,
+    sourceCount: item.sourceCount,
     createdAt: item.createdAt,
   };
 }

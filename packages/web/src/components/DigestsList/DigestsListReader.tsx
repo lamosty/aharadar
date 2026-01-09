@@ -39,7 +39,6 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
     low: "Low Priority",
     normal: "Normal",
     high: "High Priority",
-    catch_up: "Catch-up",
   };
   return labels[mode];
 }
@@ -49,7 +48,6 @@ function getModeDescription(mode: DigestSummary["mode"]): string {
     low: "Budget-conscious processing",
     normal: "Standard processing depth",
     high: "Deep analysis enabled",
-    catch_up: "Backlog processing",
   };
   return descriptions[mode];
 }

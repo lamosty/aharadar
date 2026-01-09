@@ -593,6 +593,15 @@ export async function persistDigestFromContentItems(params: {
   paidCallsAllowed?: boolean;
   /** Optional runtime LLM configuration (overrides env vars) */
   llmConfig?: LlmRuntimeConfig;
+  /** Source results from ingest stage (for observability) */
+  sourceResults?: Array<{
+    sourceId: string;
+    sourceName: string;
+    sourceType: string;
+    status: "ok" | "partial" | "error" | "skipped";
+    skipReason?: string;
+    itemsFetched: number;
+  }>;
 }): Promise<DigestRunResult | null> {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? 20;
@@ -1104,6 +1113,9 @@ export async function persistDigestFromContentItems(params: {
       windowStart: params.windowStart,
       windowEnd: params.windowEnd,
       mode: params.mode,
+      status: "complete",
+      creditsUsed: 0, // TODO: calculate actual credits used during this digest run
+      sourceResults: params.sourceResults ?? [],
     });
     await tx.digestItems.replaceForDigest({ digestId: res.id, items });
     return res;
