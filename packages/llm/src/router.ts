@@ -95,11 +95,11 @@ function resolveAnthropicModel(env: NodeJS.ProcessEnv, task: TaskType, tier: Bud
   const fallback = env.ANTHROPIC_MODEL;
   if (fallback && fallback.trim().length > 0) return fallback.trim();
 
-  // Default by tier
+  // Default by tier - updated 2026-01 to Sonnet 4.5
   const defaults: Record<BudgetTier, string> = {
     low: "claude-3-5-haiku-latest",
-    normal: "claude-sonnet-4-20250514",
-    high: "claude-sonnet-4-20250514",
+    normal: "claude-sonnet-4-5",
+    high: "claude-sonnet-4-5",
   };
   return defaults[tier];
 }
