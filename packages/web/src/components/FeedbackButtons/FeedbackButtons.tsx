@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
-import { type MessageKey, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import styles from "./FeedbackButtons.module.css";
 
 type FeedbackAction = "like" | "dislike" | "save" | "skip";
@@ -104,6 +104,28 @@ export function FeedbackButtons({
         onClick={() => handleFeedback("skip")}
         compact={isCompact}
       />
+      <Tooltip
+        content={
+          <div className={styles.helpTooltip}>
+            <div className={styles.helpRow}>
+              <LikeIcon filled={false} /> <span>More like this</span>
+            </div>
+            <div className={styles.helpRow}>
+              <DislikeIcon filled={false} /> <span>Less like this</span>
+            </div>
+            <div className={styles.helpRow}>
+              <SaveIcon filled={false} /> <span>Bookmark</span>
+            </div>
+            <div className={styles.helpRow}>
+              <SkipIcon filled={false} /> <span>Dismiss</span>
+            </div>
+          </div>
+        }
+      >
+        <button type="button" className={styles.helpButton} aria-label="Help with feedback actions">
+          <HelpIcon />
+        </button>
+      </Tooltip>
     </div>
   );
 }
@@ -131,33 +153,23 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
     skip: t("digests.feedback.skipped"),
   };
 
-  const tooltipKeys: Record<FeedbackAction, MessageKey> = {
-    like: "tooltips.feedbackLike",
-    dislike: "tooltips.feedbackDislike",
-    save: "tooltips.feedbackSave",
-    skip: "tooltips.feedbackSkip",
-  };
-
   const Icon = feedbackIcons[action];
-  const tooltip = t(tooltipKeys[action]);
 
   return (
-    <Tooltip content={tooltip}>
-      <button
-        type="button"
-        className={`${styles.button} ${styles[action]} ${isActive ? styles.active : ""}`}
-        onClick={onClick}
-        disabled={isPending}
-        aria-pressed={isActive}
-        aria-label={isActive ? activeLabels[action] : labels[action]}
-        data-testid={`feedback-${action}`}
-      >
-        <Icon filled={isActive} />
-        {!compact && (
-          <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>
-        )}
-      </button>
-    </Tooltip>
+    <button
+      type="button"
+      className={`${styles.button} ${styles[action]} ${isActive ? styles.active : ""}`}
+      onClick={onClick}
+      disabled={isPending}
+      aria-pressed={isActive}
+      aria-label={isActive ? activeLabels[action] : labels[action]}
+      data-testid={`feedback-${action}`}
+    >
+      <Icon filled={isActive} />
+      {!compact && (
+        <span className={styles.label}>{isActive ? activeLabels[action] : labels[action]}</span>
+      )}
+    </button>
   );
 }
 
@@ -238,6 +250,26 @@ function SkipIcon({ filled }: { filled: boolean }) {
     >
       <polygon points="5 4 15 12 5 20 5 4" />
       <line x1="19" y1="5" x2="19" y2="19" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   );
 }
