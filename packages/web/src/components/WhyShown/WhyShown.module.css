@@ -1,14 +1,10 @@
 .container {
-  border-top: 1px solid var(--color-border-subtle);
-  margin-top: var(--space-3);
-  padding-top: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 /* Compact variant for condensed layouts */
 .compact {
-  border-top: none;
   margin-top: 0;
-  padding-top: 0;
 }
 
 .panelCompact {
@@ -370,4 +366,138 @@
   background: color-mix(in srgb, var(--color-info) 10%, transparent);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
+}
+
+/* ==========================================
+   Refactored: Main score + Advanced toggle
+   ========================================== */
+
+.mainScore {
+  margin-bottom: var(--space-2);
+}
+
+.scoreHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.scoreLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.scoreLabel::after {
+  content: ":";
+}
+
+.categoriesSection {
+  margin-bottom: var(--space-2);
+}
+
+.clusterSection {
+  margin-bottom: var(--space-2);
+}
+
+.sectionLabel {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.advancedToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+  margin-top: var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.advancedToggle:hover {
+  color: var(--color-primary);
+}
+
+.toggleChevron {
+  display: inline-flex;
+  transition: transform var(--transition-fast);
+}
+
+.toggleChevron.expanded {
+  transform: rotate(180deg);
+}
+
+.advancedSection {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.advancedTable {
+  width: 100%;
+  font-size: var(--font-size-xs);
+  border-collapse: collapse;
+}
+
+.advancedTable th,
+.advancedTable td {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  vertical-align: top;
+}
+
+.advancedTable th {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  width: 100px;
+}
+
+.advancedTable td {
+  color: var(--color-text-secondary);
+}
+
+.advancedTable tr:not(:last-child) {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* Compact overrides for new structure */
+.compact .mainScore {
+  margin-bottom: var(--space-1);
+}
+
+.compact .scoreHeader {
+  gap: var(--space-1);
+}
+
+.compact .scoreLabel {
+  font-size: 0.6rem;
+}
+
+.compact .advancedToggle {
+  font-size: 0.65rem;
+  margin-top: var(--space-1);
+}
+
+.compact .advancedTable {
+  font-size: 0.65rem;
+}
+
+.compact .advancedTable th {
+  width: 80px;
+  padding: 2px var(--space-1);
+}
+
+.compact .advancedTable td {
+  padding: 2px var(--space-1);
 }

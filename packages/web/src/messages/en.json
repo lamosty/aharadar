@@ -302,6 +302,7 @@
       "type": "Type",
       "enabled": "Enabled",
       "weight": "Weight",
+      "weightHint": "Higher weight (1.0-3.0) gives this source more influence on ranking",
       "weightDescription": "Higher weight = more influence on ranking",
       "topic": "Topic",
       "save": "Save",
@@ -507,7 +508,9 @@
       "recencyDecay": "Freshness",
       "freshness": "Fresh score",
       "age": "Age",
-      "categories": "Categories"
+      "categories": "Categories",
+      "showAdvanced": "Show details",
+      "hideAdvanced": "Hide details"
     },
     "feedback": {
       "like": "Like",
@@ -610,6 +613,7 @@
     "empty": "No items yet",
     "emptyDescription": "Items will appear here after running the pipeline.",
     "hnComments": "Comments",
+    "redditComments": "Reddit comments",
     "source": "source",
     "sources": "sources",
     "approximateDate": "Approximate date (day-level precision)",
@@ -633,7 +637,9 @@
       "step2": "Add sources like Reddit, HN, RSS, or X",
       "step3": "Run the pipeline to fetch and rank items",
       "cta": "Get Started"
-    }
+    },
+    "openArticle": "Open Article",
+    "saveForLater": "Save for Later"
   },
   "tooltips": {
     "ahaScore": "Your personalized relevance score. Combines AI analysis with freshness, novelty, and your preferences. Higher = more relevant to you right now.",
@@ -662,6 +668,11 @@
     "running": "Processing {count} job(s)",
     "waiting": "{count} job(s) queued",
     "queued": "queued"
+  },
+  "editSource": {
+    "title": "Edit Source",
+    "subtitle": "Editing {type} source",
+    "configTitle": "Source Configuration"
   },
   "sourcePicker": {
     "title": "Choose Source Type",

@@ -121,14 +121,53 @@ function WhyShownContent({
   features: TriageFeatures;
   clusterItems?: ClusterItem[];
 }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Check if there's any advanced data to show
+  const hasAdvancedData =
+    features.system_features?.novelty_v1 ||
+    features.system_features?.recency_decay_v1 ||
+    features.system_features?.source_weight_v1 ||
+    features.system_features?.user_preference_v1 ||
+    features.system_features?.signal_corroboration_v1?.matched;
+
   return (
-    <dl className={styles.featureList}>
+    <div className={styles.featureList}>
+      {/* Main section - always visible */}
+
+      {/* AI Score - LLM triage score (main insight) */}
+      {typeof features.aha_score === "number" && (
+        <div className={styles.mainScore}>
+          <div className={styles.scoreHeader}>
+            <span className={styles.scoreLabel}>{t("digests.whyShown.ahaScore")}</span>
+            <div className={styles.scoreRow}>
+              <span className={styles.scoreValue}>{features.aha_score}</span>
+              <span className={styles.scoreMax}>/100</span>
+            </div>
+          </div>
+          {features.reason && <p className={styles.reason}>{features.reason}</p>}
+        </div>
+      )}
+
+      {/* Categories from LLM triage */}
+      {features.categories && features.categories.length > 0 && (
+        <div className={styles.categoriesSection}>
+          <div className={styles.tagList}>
+            {features.categories.map((cat) => (
+              <span key={cat} className={styles.tag}>
+                {cat}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Related Sources - Cluster items */}
       {clusterItems && clusterItems.length > 0 && (
-        <FeatureSection
-          title={t("digests.whyShown.relatedSources", { count: clusterItems.length + 1 })}
-          tooltipKey="tooltips.relatedSources"
-        >
+        <div className={styles.clusterSection}>
+          <span className={styles.sectionLabel}>
+            {t("digests.whyShown.relatedSources", { count: clusterItems.length + 1 })}
+          </span>
           <div className={styles.clusterList}>
             {clusterItems.map((item) => (
               <div key={item.id} className={styles.clusterItem}>
@@ -150,9 +189,6 @@ function WhyShownContent({
                       {item.title || t("digests.whyShown.untitled")}
                     </span>
                   )}
-                  {item.author && (
-                    <span className={styles.clusterItemAuthor}>by {item.author}</span>
-                  )}
                 </div>
                 {typeof item.similarity === "number" && (
                   <span className={styles.clusterSimilarity}>
@@ -162,203 +198,103 @@ function WhyShownContent({
               </div>
             ))}
           </div>
-        </FeatureSection>
+        </div>
       )}
 
-      {/* AI Score - LLM triage score */}
-      {typeof features.aha_score === "number" && (
-        <FeatureSection title={t("digests.whyShown.ahaScore")} tooltipKey="tooltips.aiScore">
-          <div className={styles.scoreRow}>
-            <span className={styles.scoreValue}>{features.aha_score}</span>
-            <span className={styles.scoreMax}>/100</span>
-          </div>
-          {features.reason && <p className={styles.reason}>{features.reason}</p>}
-        </FeatureSection>
-      )}
-
-      {/* System features from ranking */}
-      {features.system_features?.novelty_v1 && (
-        <FeatureSection title={t("digests.whyShown.novelty")} tooltipKey="tooltips.novelty">
-          <div className={styles.metaGrid}>
-            {typeof features.system_features.novelty_v1.novelty01 === "number" && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.noveltyScore")}</span>
-                <span className={styles.metaValue}>
-                  {(features.system_features.novelty_v1.novelty01 * 100).toFixed(0)}%
-                </span>
-              </div>
-            )}
-            {typeof features.system_features.novelty_v1.lookback_days === "number" && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.lookbackDays")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.novelty_v1.lookback_days} days
-                </span>
-              </div>
-            )}
-          </div>
-        </FeatureSection>
-      )}
-
-      {features.system_features?.recency_decay_v1 && (
-        <FeatureSection title={t("digests.whyShown.recencyDecay")} tooltipKey="tooltips.freshness">
-          <div className={styles.metaGrid}>
-            <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>{t("digests.whyShown.freshness")}</span>
-              <span className={styles.metaValue}>
-                {(features.system_features.recency_decay_v1.decay_factor * 100).toFixed(0)}%
-              </span>
-            </div>
-            <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>{t("digests.whyShown.age")}</span>
-              <span className={styles.metaValue}>
-                {features.system_features.recency_decay_v1.age_hours.toFixed(1)}h
-              </span>
-            </div>
-          </div>
-        </FeatureSection>
-      )}
-
-      {features.system_features?.source_weight_v1 && (
-        <FeatureSection
-          title={t("digests.whyShown.sourceWeight")}
-          tooltipKey="tooltips.sourceWeight"
+      {/* Advanced data toggle */}
+      {hasAdvancedData && (
+        <button
+          type="button"
+          className={styles.advancedToggle}
+          onClick={() => setShowAdvanced(!showAdvanced)}
         >
-          <div className={styles.metaGrid}>
-            {features.system_features.source_weight_v1.source_name && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.sourceName")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.source_weight_v1.source_name}
-                </span>
-              </div>
-            )}
-            {features.system_features.source_weight_v1.source_type && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.sourceType")}</span>
-                <span className={`${styles.metaValue} ${styles.sourceType}`}>
-                  {features.system_features.source_weight_v1.source_type}
-                </span>
-              </div>
-            )}
-            {typeof features.system_features.source_weight_v1.type_weight === "number" && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.typeWeight")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.source_weight_v1.type_weight.toFixed(1)}x
-                </span>
-              </div>
-            )}
-            {typeof features.system_features.source_weight_v1.source_weight === "number" && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.perSourceWeight")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.source_weight_v1.source_weight.toFixed(1)}x
-                </span>
-              </div>
-            )}
-            {typeof features.system_features.source_weight_v1.effective_weight === "number" && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.effectiveWeight")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.source_weight_v1.effective_weight.toFixed(1)}x
-                </span>
-              </div>
-            )}
-          </div>
-        </FeatureSection>
+          {showAdvanced ? t("digests.whyShown.hideAdvanced") : t("digests.whyShown.showAdvanced")}
+          <span className={`${styles.toggleChevron} ${showAdvanced ? styles.expanded : ""}`}>
+            <ChevronIcon />
+          </span>
+        </button>
       )}
 
-      {features.system_features?.signal_corroboration_v1?.matched && (
-        <FeatureSection title={t("digests.whyShown.corroboration")}>
-          {features.system_features.signal_corroboration_v1.matched_url && (
-            <div className={styles.urlSection}>
-              <span className={styles.metaLabel}>{t("digests.whyShown.corroboratingUrls")}</span>
-              <a
-                href={features.system_features.signal_corroboration_v1.matched_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.url}
-              >
-                {truncateUrl(features.system_features.signal_corroboration_v1.matched_url)}
-              </a>
-            </div>
-          )}
-        </FeatureSection>
-      )}
+      {/* Advanced section - hidden by default */}
+      {showAdvanced && hasAdvancedData && (
+        <div className={styles.advancedSection}>
+          <table className={styles.advancedTable}>
+            <tbody>
+              {/* Novelty */}
+              {features.system_features?.novelty_v1 && (
+                <tr>
+                  <th>{t("digests.whyShown.novelty")}</th>
+                  <td>
+                    {typeof features.system_features.novelty_v1.novelty01 === "number" &&
+                      `${(features.system_features.novelty_v1.novelty01 * 100).toFixed(0)}%`}
+                    {typeof features.system_features.novelty_v1.lookback_days === "number" &&
+                      ` (${features.system_features.novelty_v1.lookback_days}d lookback)`}
+                  </td>
+                </tr>
+              )}
 
-      {features.system_features?.user_preference_v1 && (
-        <FeatureSection
-          title={t("digests.whyShown.userPreference")}
-          tooltipKey="tooltips.userPreferences"
-        >
-          <div className={styles.metaGrid}>
-            {features.system_features.user_preference_v1.source_type && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.userPrefSourceType")}</span>
-                <span className={`${styles.metaValue} ${styles.sourceType}`}>
-                  {features.system_features.user_preference_v1.source_type}
-                </span>
-              </div>
-            )}
-            {typeof features.system_features.user_preference_v1.source_type_weight === "number" &&
-              features.system_features.user_preference_v1.source_type_weight !== 1.0 && (
-                <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>
-                    {t("digests.whyShown.userPrefSourceTypeWeight")}
-                  </span>
-                  <span className={styles.metaValue}>
-                    {features.system_features.user_preference_v1.source_type_weight.toFixed(1)}x
-                  </span>
-                </div>
+              {/* Freshness */}
+              {features.system_features?.recency_decay_v1 && (
+                <tr>
+                  <th>{t("digests.whyShown.freshness")}</th>
+                  <td>
+                    {(features.system_features.recency_decay_v1.decay_factor * 100).toFixed(0)}%
+                    {` (${features.system_features.recency_decay_v1.age_hours.toFixed(1)}h old)`}
+                  </td>
+                </tr>
               )}
-            {features.system_features.user_preference_v1.author && (
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>{t("digests.whyShown.userPrefAuthor")}</span>
-                <span className={styles.metaValue}>
-                  {features.system_features.user_preference_v1.author}
-                </span>
-              </div>
-            )}
-            {typeof features.system_features.user_preference_v1.author_weight === "number" &&
-              features.system_features.user_preference_v1.author_weight !== 1.0 && (
-                <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>
-                    {t("digests.whyShown.userPrefAuthorWeight")}
-                  </span>
-                  <span className={styles.metaValue}>
-                    {features.system_features.user_preference_v1.author_weight.toFixed(1)}x
-                  </span>
-                </div>
-              )}
-            {typeof features.system_features.user_preference_v1.effective_weight === "number" &&
-              features.system_features.user_preference_v1.effective_weight !== 1.0 && (
-                <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>
-                    {t("digests.whyShown.userPrefEffectiveWeight")}
-                  </span>
-                  <span className={styles.metaValue}>
-                    {features.system_features.user_preference_v1.effective_weight.toFixed(1)}x
-                  </span>
-                </div>
-              )}
-          </div>
-        </FeatureSection>
-      )}
 
-      {/* Categories from LLM triage */}
-      {features.categories && features.categories.length > 0 && (
-        <FeatureSection title={t("digests.whyShown.categories")} tooltipKey="tooltips.categories">
-          <div className={styles.tagList}>
-            {features.categories.map((cat) => (
-              <span key={cat} className={styles.tag}>
-                {cat}
-              </span>
-            ))}
-          </div>
-        </FeatureSection>
+              {/* Source Weight */}
+              {features.system_features?.source_weight_v1 && (
+                <tr>
+                  <th>{t("digests.whyShown.sourceWeight")}</th>
+                  <td>
+                    {features.system_features.source_weight_v1.source_name &&
+                      `${features.system_features.source_weight_v1.source_name} · `}
+                    {typeof features.system_features.source_weight_v1.effective_weight ===
+                      "number" &&
+                      `${features.system_features.source_weight_v1.effective_weight.toFixed(1)}x`}
+                  </td>
+                </tr>
+              )}
+
+              {/* User Preferences */}
+              {features.system_features?.user_preference_v1 &&
+                typeof features.system_features.user_preference_v1.effective_weight === "number" &&
+                features.system_features.user_preference_v1.effective_weight !== 1.0 && (
+                  <tr>
+                    <th>{t("digests.whyShown.userPreference")}</th>
+                    <td>
+                      {`${features.system_features.user_preference_v1.effective_weight.toFixed(1)}x boost`}
+                    </td>
+                  </tr>
+                )}
+
+              {/* Corroboration */}
+              {features.system_features?.signal_corroboration_v1?.matched && (
+                <tr>
+                  <th>{t("digests.whyShown.corroboration")}</th>
+                  <td>
+                    {features.system_features.signal_corroboration_v1.matched_url ? (
+                      <a
+                        href={features.system_features.signal_corroboration_v1.matched_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.url}
+                      >
+                        {truncateUrl(features.system_features.signal_corroboration_v1.matched_url)}
+                      </a>
+                    ) : (
+                      "Yes"
+                    )}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
-    </dl>
+    </div>
   );
 }
 
