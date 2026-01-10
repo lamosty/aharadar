@@ -8,7 +8,12 @@ import { useAdminLlmSettings, useAdminLlmSettingsUpdate } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
-const PROVIDERS: LlmProvider[] = ["openai", "anthropic", "claude-subscription"];
+const PROVIDERS: LlmProvider[] = [
+  "openai",
+  "anthropic",
+  "claude-subscription",
+  "codex-subscription",
+];
 
 export default function AdminLlmPage() {
   const { addToast } = useToast();
@@ -22,6 +27,8 @@ export default function AdminLlmPage() {
   const [claudeSubscriptionEnabled, setClaudeSubscriptionEnabled] = useState(false);
   const [claudeTriageThinking, setClaudeTriageThinking] = useState(false);
   const [claudeCallsPerHour, setClaudeCallsPerHour] = useState(100);
+  const [codexSubscriptionEnabled, setCodexSubscriptionEnabled] = useState(false);
+  const [codexCallsPerHour, setCodexCallsPerHour] = useState(50);
 
   // Sync form state when data loads
   useEffect(() => {
@@ -32,6 +39,8 @@ export default function AdminLlmPage() {
       setClaudeSubscriptionEnabled(settings.claudeSubscriptionEnabled);
       setClaudeTriageThinking(settings.claudeTriageThinking);
       setClaudeCallsPerHour(settings.claudeCallsPerHour);
+      setCodexSubscriptionEnabled(settings.codexSubscriptionEnabled);
+      setCodexCallsPerHour(settings.codexCallsPerHour);
     }
   }, [settings]);
 
@@ -53,6 +62,8 @@ export default function AdminLlmPage() {
       claudeSubscriptionEnabled,
       claudeTriageThinking,
       claudeCallsPerHour,
+      codexSubscriptionEnabled,
+      codexCallsPerHour,
     });
   };
 
@@ -64,7 +75,9 @@ export default function AdminLlmPage() {
       openaiModel !== settings.openaiModel ||
       claudeSubscriptionEnabled !== settings.claudeSubscriptionEnabled ||
       claudeTriageThinking !== settings.claudeTriageThinking ||
-      claudeCallsPerHour !== settings.claudeCallsPerHour);
+      claudeCallsPerHour !== settings.claudeCallsPerHour ||
+      codexSubscriptionEnabled !== settings.codexSubscriptionEnabled ||
+      codexCallsPerHour !== settings.codexCallsPerHour);
 
   if (isLoading) {
     return (
@@ -135,6 +148,12 @@ export default function AdminLlmPage() {
             <div className={styles.configItem}>
               <span className={styles.configLabel}>{t("admin.llm.claudeCallsPerHour")}</span>
               <span className={styles.configValue}>{settings.claudeCallsPerHour}/hr</span>
+            </div>
+          )}
+          {settings.codexSubscriptionEnabled && (
+            <div className={styles.configItem}>
+              <span className={styles.configLabel}>{t("admin.llm.codexCallsPerHour")}</span>
+              <span className={styles.configValue}>{settings.codexCallsPerHour}/hr</span>
             </div>
           )}
         </div>
@@ -253,6 +272,47 @@ export default function AdminLlmPage() {
                 disabled={isSaving}
               />
               <p className={styles.hint}>{t("admin.llm.claudeCallsPerHourDescription")}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Codex Subscription Settings (only for codex-subscription provider) */}
+        {provider === "codex-subscription" && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>{t("admin.llm.codexSubscription")}</h2>
+
+            <div className={styles.toggle}>
+              <label className={styles.toggleLabel}>
+                <input
+                  type="checkbox"
+                  checked={codexSubscriptionEnabled}
+                  onChange={(e) => setCodexSubscriptionEnabled(e.target.checked)}
+                  className={styles.toggleInput}
+                  disabled={isSaving}
+                />
+                <span className={styles.toggleSwitch} />
+                <span className={styles.toggleText}>{t("admin.llm.codexSubscriptionEnabled")}</span>
+              </label>
+              <p className={styles.toggleDescription}>
+                {t("admin.llm.codexSubscriptionDescription")}
+              </p>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="codexCallsPerHour" className={styles.label}>
+                {t("admin.llm.codexCallsPerHour")}
+              </label>
+              <input
+                id="codexCallsPerHour"
+                type="number"
+                min="1"
+                max="1000"
+                value={codexCallsPerHour}
+                onChange={(e) => setCodexCallsPerHour(Number(e.target.value))}
+                className={styles.input}
+                disabled={isSaving}
+              />
+              <p className={styles.hint}>{t("admin.llm.codexCallsPerHourDescription")}</p>
             </div>
           </div>
         )}

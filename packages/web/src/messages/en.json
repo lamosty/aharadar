@@ -367,12 +367,14 @@
       "providers": {
         "openai": "OpenAI",
         "anthropic": "Anthropic (API)",
-        "claude-subscription": "Claude Subscription"
+        "claude-subscription": "Claude Subscription",
+        "codex-subscription": "Codex Subscription"
       },
       "providerDescriptions": {
         "openai": "Use OpenAI API (GPT-4, etc.)",
         "anthropic": "Use Anthropic API (Claude)",
-        "claude-subscription": "Use Claude Code CLI subscription ($100/mo)"
+        "claude-subscription": "Use Claude Code CLI subscription ($100/mo)",
+        "codex-subscription": "Use Codex CLI with ChatGPT subscription (Plus/Pro/Team)"
       },
       "anthropicModel": "Anthropic Model",
       "openaiModel": "OpenAI Model",
@@ -383,6 +385,11 @@
       "claudeTriageThinkingDescription": "Use extended thinking for more thoughtful triage decisions",
       "claudeCallsPerHour": "Rate limit (calls/hour)",
       "claudeCallsPerHourDescription": "Maximum API calls per hour to stay within subscription limits",
+      "codexSubscription": "Codex Subscription",
+      "codexSubscriptionEnabled": "Use subscription for all LLM calls",
+      "codexSubscriptionDescription": "When enabled, uses your ChatGPT subscription via Codex CLI",
+      "codexCallsPerHour": "Rate limit (calls/hour)",
+      "codexCallsPerHourDescription": "Maximum calls per hour to stay within subscription limits",
       "save": "Save Settings",
       "saving": "Saving...",
       "saved": "Settings saved",

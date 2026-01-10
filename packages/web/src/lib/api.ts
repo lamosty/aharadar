@@ -246,7 +246,7 @@ export type RunMode = "low" | "normal" | "high";
 export type DigestMode = "low" | "normal" | "high";
 
 /** LLM provider types */
-export type LlmProvider = "openai" | "anthropic" | "claude-subscription";
+export type LlmProvider = "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
 
 /** Provider override for manual runs */
 export interface ProviderOverride {
@@ -787,6 +787,8 @@ export interface LlmSettings {
   claudeSubscriptionEnabled: boolean;
   claudeTriageThinking: boolean;
   claudeCallsPerHour: number;
+  codexSubscriptionEnabled: boolean;
+  codexCallsPerHour: number;
   updatedAt: string;
 }
 
@@ -804,6 +806,8 @@ export interface LlmSettingsUpdateRequest {
   claudeSubscriptionEnabled?: boolean;
   claudeTriageThinking?: boolean;
   claudeCallsPerHour?: number;
+  codexSubscriptionEnabled?: boolean;
+  codexCallsPerHour?: number;
 }
 
 /**
