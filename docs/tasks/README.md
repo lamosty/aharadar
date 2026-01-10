@@ -103,3 +103,7 @@ Task files (in recommended order):
 73. `task-125-pipeline-fair-candidate-selection.md` - Pipeline: fairness sampling + triage allocation + diversity
 74. `task-126-feed-sorting-best-latest-trending.md` - Feed: Best default; Latest/Trending explicit
 75. `task-127-web-topic-digest-settings-ui.md` - Web: topic digest cadence + depth settings UI
+76. `task-128-x-posts-batching-experiment.md` - X posts: batch multiple accounts per search + token controls
+77. `task-129-remove-signal-connector.md` - Remove signal connector and document deferral
+78. `task-130-unify-topic-frequency-and-decay.md` - Unify digest schedule + decay; remove viewing profile UI/API
+79. `task-131-highlights-idea-library.md` - Highlights/Idea Library view for liked/saved items
