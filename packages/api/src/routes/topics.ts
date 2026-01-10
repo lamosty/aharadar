@@ -1,9 +1,4 @@
-import {
-  type DigestMode,
-  PROFILE_DECAY_HOURS,
-  type Topic,
-  type ViewingProfile,
-} from "@aharadar/db";
+import type { DigestMode, Topic } from "@aharadar/db";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -33,16 +28,9 @@ function formatTopic(topic: Topic) {
   };
 }
 
-interface UpdateViewingProfileBody {
-  viewingProfile?: ViewingProfile;
-  decayHours?: number;
-}
-
 interface CreateTopicBody {
   name: string;
   description?: string;
-  viewingProfile?: ViewingProfile;
-  decayHours?: number;
 }
 
 interface UpdateTopicBody {
@@ -88,38 +76,6 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
     return {
       ok: true,
       topics: topics.map(formatTopic),
-      profileOptions: [
-        {
-          value: "power",
-          label: "Power User",
-          description: "For checking multiple times per day",
-          decayHours: PROFILE_DECAY_HOURS.power,
-        },
-        {
-          value: "daily",
-          label: "Daily",
-          description: "For checking once per day",
-          decayHours: PROFILE_DECAY_HOURS.daily,
-        },
-        {
-          value: "weekly",
-          label: "Weekly",
-          description: "For weekly catch-up sessions",
-          decayHours: PROFILE_DECAY_HOURS.weekly,
-        },
-        {
-          value: "research",
-          label: "Research",
-          description: "For monthly deep dives",
-          decayHours: PROFILE_DECAY_HOURS.research,
-        },
-        {
-          value: "custom",
-          label: "Custom",
-          description: "Set your own decay rate",
-          decayHours: null,
-        },
-      ],
     };
   });
 
@@ -192,144 +148,8 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
     return {
       ok: true,
       topic: formatTopic(topic),
-      profileOptions: [
-        {
-          value: "power",
-          label: "Power User",
-          description: "For checking multiple times per day",
-          decayHours: PROFILE_DECAY_HOURS.power,
-        },
-        {
-          value: "daily",
-          label: "Daily",
-          description: "For checking once per day",
-          decayHours: PROFILE_DECAY_HOURS.daily,
-        },
-        {
-          value: "weekly",
-          label: "Weekly",
-          description: "For weekly catch-up sessions",
-          decayHours: PROFILE_DECAY_HOURS.weekly,
-        },
-        {
-          value: "research",
-          label: "Research",
-          description: "For monthly deep dives",
-          decayHours: PROFILE_DECAY_HOURS.research,
-        },
-        {
-          value: "custom",
-          label: "Custom",
-          description: "Set your own decay rate",
-          decayHours: null,
-        },
-      ],
     };
   });
-
-  // PATCH /topics/:id/viewing-profile - Update topic viewing profile
-  fastify.patch<{ Params: { id: string }; Body: UpdateViewingProfileBody }>(
-    "/topics/:id/viewing-profile",
-    async (request, reply) => {
-      const ctx = await getSingletonContext();
-      if (!ctx) {
-        return reply.code(503).send({
-          ok: false,
-          error: {
-            code: "NOT_INITIALIZED",
-            message: "Database not initialized: no user or topic found",
-          },
-        });
-      }
-
-      const { id } = request.params;
-
-      if (!isValidUuid(id)) {
-        return reply.code(400).send({
-          ok: false,
-          error: {
-            code: "INVALID_PARAM",
-            message: "id must be a valid UUID",
-          },
-        });
-      }
-
-      const body = request.body as unknown;
-      if (!body || typeof body !== "object") {
-        return reply.code(400).send({
-          ok: false,
-          error: {
-            code: "INVALID_BODY",
-            message: "Request body must be a JSON object",
-          },
-        });
-      }
-
-      const { viewingProfile, decayHours } = body as Record<string, unknown>;
-
-      // Validate viewingProfile if provided
-      if (viewingProfile !== undefined) {
-        const validProfiles: ViewingProfile[] = ["power", "daily", "weekly", "research", "custom"];
-        if (!validProfiles.includes(viewingProfile as ViewingProfile)) {
-          return reply.code(400).send({
-            ok: false,
-            error: {
-              code: "INVALID_PARAM",
-              message: `Invalid viewingProfile: must be one of ${validProfiles.join(", ")}`,
-            },
-          });
-        }
-      }
-
-      // Validate decayHours if provided
-      if (decayHours !== undefined) {
-        if (typeof decayHours !== "number" || decayHours < 1 || decayHours > 720) {
-          return reply.code(400).send({
-            ok: false,
-            error: {
-              code: "INVALID_PARAM",
-              message: "Invalid decayHours: must be a number between 1 and 720",
-            },
-          });
-        }
-      }
-
-      // Verify topic exists and belongs to user
-      const db = getDb();
-      const existing = await db.topics.getById(id);
-
-      if (!existing) {
-        return reply.code(404).send({
-          ok: false,
-          error: {
-            code: "NOT_FOUND",
-            message: `Topic not found: ${id}`,
-          },
-        });
-      }
-
-      if (existing.user_id !== ctx.userId) {
-        return reply.code(403).send({
-          ok: false,
-          error: {
-            code: "FORBIDDEN",
-            message: "Topic does not belong to current user",
-          },
-        });
-      }
-
-      // Apply updates
-      const updated = await db.topics.updateViewingProfile(id, {
-        viewingProfile: viewingProfile as ViewingProfile | undefined,
-        decayHours: decayHours as number | undefined,
-      });
-
-      return {
-        ok: true,
-        topic: formatTopic(updated),
-      };
-    },
-  );
 
   // POST /topics/:id/mark-checked - Mark topic as "caught up"
   fastify.post<{ Params: { id: string } }>("/topics/:id/mark-checked", async (request, reply) => {
@@ -554,7 +374,7 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { name, description, viewingProfile, decayHours } = body as Record<string, unknown>;
+    const { name, description } = body as Record<string, unknown>;
 
     // Validate name
     if (typeof name !== "string" || name.trim().length === 0) {
@@ -578,33 +398,6 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    // Validate viewingProfile if provided
-    if (viewingProfile !== undefined) {
-      const validProfiles: ViewingProfile[] = ["power", "daily", "weekly", "research", "custom"];
-      if (!validProfiles.includes(viewingProfile as ViewingProfile)) {
-        return reply.code(400).send({
-          ok: false,
-          error: {
-            code: "INVALID_PARAM",
-            message: `Invalid viewingProfile: must be one of ${validProfiles.join(", ")}`,
-          },
-        });
-      }
-    }
-
-    // Validate decayHours if provided
-    if (decayHours !== undefined) {
-      if (typeof decayHours !== "number" || decayHours < 1 || decayHours > 720) {
-        return reply.code(400).send({
-          ok: false,
-          error: {
-            code: "INVALID_PARAM",
-            message: "Invalid decayHours: must be a number between 1 and 720",
-          },
-        });
-      }
-    }
-
     // Check if topic with this name already exists
     const db = getDb();
     const existing = await db.topics.getByName({ userId: ctx.userId, name: trimmedName });
@@ -623,8 +416,6 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       userId: ctx.userId,
       name: trimmedName,
       description: typeof description === "string" ? description.trim() : null,
-      viewingProfile: viewingProfile as ViewingProfile | undefined,
-      decayHours: decayHours as number | undefined,
     });
 
     return reply.code(201).send({
