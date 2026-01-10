@@ -624,6 +624,84 @@ export async function clearFeedback(
   });
 }
 
+// ============================================================================
+// Feedback Statistics (for dashboard analytics)
+// ============================================================================
+
+/** Daily feedback stats */
+export interface FeedbackDailyStats {
+  date: string;
+  likes: number;
+  dislikes: number;
+  saves: number;
+  skips: number;
+}
+
+/** Daily feedback stats response */
+export interface FeedbackDailyStatsResponse {
+  ok: true;
+  daily: FeedbackDailyStats[];
+}
+
+/** Feedback summary */
+export interface FeedbackSummary {
+  total: number;
+  byAction: {
+    like: number;
+    dislike: number;
+    save: number;
+    skip: number;
+  };
+  qualityRatio: number | null;
+}
+
+/** Feedback summary response */
+export interface FeedbackSummaryResponse {
+  ok: true;
+  summary: FeedbackSummary;
+}
+
+/** Feedback by topic */
+export interface FeedbackByTopic {
+  topicId: string;
+  topicName: string;
+  likes: number;
+  dislikes: number;
+  saves: number;
+  skips: number;
+}
+
+/** Feedback by topic response */
+export interface FeedbackByTopicResponse {
+  ok: true;
+  topics: FeedbackByTopic[];
+}
+
+/**
+ * Get daily feedback stats for charts.
+ */
+export async function getFeedbackDailyStats(
+  days?: number,
+  signal?: AbortSignal,
+): Promise<FeedbackDailyStatsResponse> {
+  const query = days ? `?days=${days}` : "";
+  return apiFetch<FeedbackDailyStatsResponse>(`/feedback/stats/daily${query}`, { signal });
+}
+
+/**
+ * Get feedback summary (totals and quality ratio).
+ */
+export async function getFeedbackSummary(signal?: AbortSignal): Promise<FeedbackSummaryResponse> {
+  return apiFetch<FeedbackSummaryResponse>("/feedback/stats/summary", { signal });
+}
+
+/**
+ * Get feedback breakdown by topic.
+ */
+export async function getFeedbackByTopic(signal?: AbortSignal): Promise<FeedbackByTopicResponse> {
+  return apiFetch<FeedbackByTopicResponse>("/feedback/stats/by-topic", { signal });
+}
+
 /**
  * Trigger a pipeline run.
  */

@@ -28,22 +28,31 @@ import {
   type CreateTopicResponse,
   clearFeedback,
   createTopic,
+  type DailyUsageResponse,
   type DeleteTopicResponse,
   type DigestDetailResponse,
   type DigestsListResponse,
   deleteAdminSource,
   deleteTopic,
   type FeedbackAction,
+  type FeedbackByTopicResponse,
+  type FeedbackDailyStatsResponse,
   type FeedbackRequest,
   type FeedbackResponse,
+  type FeedbackSummaryResponse,
   getAdminBudgets,
   getAdminLlmSettings,
   getAdminSources,
+  getDailyUsage,
   getDigest,
   getDigests,
+  getFeedbackByTopic,
+  getFeedbackDailyStats,
+  getFeedbackSummary,
   getHealth,
   getItem,
   getItems,
+  getMonthlyUsage,
   getOpsStatus,
   getPreferences,
   getQueueStatus,
@@ -55,6 +64,7 @@ import {
   type ItemsListResponse,
   type LlmSettingsResponse,
   type LlmSettingsUpdateRequest,
+  type MonthlyUsageResponse,
   type NetworkError,
   type OpsStatusResponse,
   type PreferencesGetResponse,
@@ -105,6 +115,15 @@ export const queryKeys = {
     all: ["items"] as const,
     list: (params?: Omit<ItemsListParams, "offset">) => ["items", "list", params] as const,
     detail: (id: string) => ["items", id] as const,
+  },
+  feedback: {
+    daily: (days?: number) => ["feedback", "stats", "daily", days] as const,
+    summary: ["feedback", "stats", "summary"] as const,
+    byTopic: ["feedback", "stats", "by-topic"] as const,
+  },
+  usage: {
+    monthly: ["usage", "monthly"] as const,
+    daily: (days?: number) => ["usage", "daily", days] as const,
   },
   admin: {
     sources: ["admin", "sources"] as const,
@@ -407,6 +426,101 @@ export function useClearFeedback(options?: UseClearFeedbackOptions) {
         });
       }
     },
+  });
+}
+
+// ============================================================================
+// Feedback Stats Queries (for dashboard)
+// ============================================================================
+
+/**
+ * Get daily feedback stats for charts.
+ */
+export function useFeedbackDailyStats(
+  days?: number,
+  options?: Omit<
+    UseQueryOptions<FeedbackDailyStatsResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.feedback.daily(days),
+    queryFn: ({ signal }) => getFeedbackDailyStats(days, signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Get feedback summary (totals and quality ratio).
+ */
+export function useFeedbackSummary(
+  options?: Omit<
+    UseQueryOptions<FeedbackSummaryResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.feedback.summary,
+    queryFn: ({ signal }) => getFeedbackSummary(signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Get feedback breakdown by topic.
+ */
+export function useFeedbackByTopic(
+  options?: Omit<
+    UseQueryOptions<FeedbackByTopicResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.feedback.byTopic,
+    queryFn: ({ signal }) => getFeedbackByTopic(signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+// ============================================================================
+// Usage Stats Queries (for dashboard)
+// ============================================================================
+
+/**
+ * Get monthly usage summary.
+ */
+export function useMonthlyUsage(
+  options?: Omit<
+    UseQueryOptions<MonthlyUsageResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.usage.monthly,
+    queryFn: ({ signal }) => getMonthlyUsage(signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
+  });
+}
+
+/**
+ * Get daily usage for charts.
+ */
+export function useDailyUsage(
+  days?: number,
+  options?: Omit<
+    UseQueryOptions<DailyUsageResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.usage.daily(days),
+    queryFn: ({ signal }) => getDailyUsage(days, signal),
+    staleTime: 60 * 1000, // 1 minute
+    ...options,
   });
 }
 
