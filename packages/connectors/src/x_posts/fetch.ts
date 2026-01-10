@@ -263,9 +263,20 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
   const rawItems: unknown[] = [];
   const providerCalls: ProviderCallDraft[] = [];
   let anySuccess = false;
+  let jobsExecuted = 0;
 
   for (const job of jobs) {
-    if (maxSearchCallsPerRun !== null && runSearchCallsUsed >= maxSearchCallsPerRun) break;
+    if (maxSearchCallsPerRun !== null && runSearchCallsUsed >= maxSearchCallsPerRun) {
+      // Log warning if we're truncating due to limit
+      const skipped = jobs.length - jobsExecuted;
+      if (skipped > 0) {
+        console.warn(
+          `[x_posts_fetch] Skipping ${skipped} of ${jobs.length} query jobs due to X_POSTS_MAX_SEARCH_CALLS_PER_RUN=${maxSearchCallsPerRun}`,
+        );
+      }
+      break;
+    }
+    jobsExecuted++;
     const startedAt = new Date().toISOString();
 
     // Calculate limit: perAccountLimit * groupSize, capped at 200 and maxItems
@@ -302,8 +313,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       providerCalls.push({
         userId: params.userId,
         purpose: "x_posts_fetch",
-        provider: "x_posts",
-        model: config.vendor,
+        provider: "xai",
+        model: result.model,
         inputTokens: result.inputTokens ?? 0,
         outputTokens: result.outputTokens ?? 0,
         costEstimateCredits: estimateCreditsPerCall(),
@@ -314,7 +325,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
           endpoint: result.endpoint,
-          provider_model: result.model,
+          vendor: config.vendor,
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
           maxSearchCallsPerRun,
@@ -356,8 +367,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       providerCalls.push({
         userId: params.userId,
         purpose: "x_posts_fetch",
-        provider: "x_posts",
-        model: config.vendor,
+        provider: "xai",
+        model: providerModel ?? "unknown",
         inputTokens: 0,
         outputTokens: 0,
         costEstimateCredits: estimateCreditsPerCall(),
@@ -368,7 +379,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
           endpoint,
-          provider_model: providerModel,
+          vendor: config.vendor,
           requestId,
           maxSearchCallsPerRun,
           // Batching experiment metadata
@@ -403,6 +414,9 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       providerCalls,
       anySuccess,
       queryCount: jobs.length,
+      queriesExecuted: jobsExecuted,
+      queriesSkipped: jobs.length - jobsExecuted,
+      maxSearchCallsPerRun,
       vendor: config.vendor,
     },
   };

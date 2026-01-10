@@ -148,6 +148,20 @@ export const MODEL_PRICING: ModelPricing[] = [
   { provider: "xai", model: "grok-2-vision-1212", inputPer1MTokens: 2.0, outputPer1MTokens: 10.0 },
   { provider: "xai", model: "grok-2-1212", inputPer1MTokens: 2.0, outputPer1MTokens: 10.0 },
   { provider: "xai", model: "grok-beta", inputPer1MTokens: 5.0, outputPer1MTokens: 15.0 },
+  // -latest aliases (resolve to same pricing as base models)
+  { provider: "xai", model: "grok-4-latest", inputPer1MTokens: 3.0, outputPer1MTokens: 15.0 },
+  {
+    provider: "xai",
+    model: "grok-4-1-fast-non-reasoning-latest",
+    inputPer1MTokens: 0.2,
+    outputPer1MTokens: 0.5,
+  },
+  {
+    provider: "xai",
+    model: "grok-4-1-fast-reasoning-latest",
+    inputPer1MTokens: 0.2,
+    outputPer1MTokens: 0.5,
+  },
 
   // Google (for future use)
   { provider: "google", model: "gemini-1.5-pro", inputPer1MTokens: 1.25, outputPer1MTokens: 5.0 },
