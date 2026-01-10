@@ -17,6 +17,9 @@ export type SourceType =
   | "producthunt"
   | "github_releases"
   | "telegram"
+  | "arxiv"
+  | "lobsters"
+  | "x_posts"
   | string;
 
 export type Cursor = Record<string, unknown>;
