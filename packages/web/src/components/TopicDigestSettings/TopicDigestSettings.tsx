@@ -6,13 +6,38 @@ import { useUpdateTopicDigestSettings } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./TopicDigestSettings.module.css";
 
-type CadencePreset = "daily" | "weekly" | "custom";
+type CadencePreset = "daily" | "weekly" | "monthly" | "custom";
 
 const CADENCE_PRESETS: Record<CadencePreset, number | null> = {
   daily: 1440, // 24 hours
   weekly: 10080, // 7 days
+  monthly: 43200, // 30 days
   custom: null,
 };
+
+type IntervalUnit = "hours" | "days";
+
+/**
+ * Convert interval minutes to a user-friendly value + unit
+ */
+function minutesToValueAndUnit(minutes: number): { value: number; unit: IntervalUnit } {
+  // Prefer days if it divides evenly and is >= 1 day
+  if (minutes >= 1440 && minutes % 1440 === 0) {
+    return { value: minutes / 1440, unit: "days" };
+  }
+  // Otherwise use hours (minimum 1 hour)
+  return { value: Math.max(1, Math.round(minutes / 60)), unit: "hours" };
+}
+
+/**
+ * Convert value + unit back to minutes
+ */
+function valueAndUnitToMinutes(value: number, unit: IntervalUnit): number {
+  if (unit === "days") {
+    return value * 1440;
+  }
+  return value * 60;
+}
 
 const MODE_OPTIONS: DigestMode[] = ["low", "normal", "high"];
 
@@ -58,11 +83,26 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
   const [depth, setDepth] = useState(topic.digestDepth);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Determine current cadence preset
-  const currentPreset = useMemo((): CadencePreset => {
+  // Track preset selection separately (needed because clicking "custom" shouldn't change interval)
+  const derivedPreset = useMemo((): CadencePreset => {
     if (intervalMinutes === 1440) return "daily";
     if (intervalMinutes === 10080) return "weekly";
+    if (intervalMinutes === 43200) return "monthly";
     return "custom";
+  }, [intervalMinutes]);
+
+  const [selectedPreset, setSelectedPreset] = useState<CadencePreset>(derivedPreset);
+
+  // Custom interval state (value + unit for user-friendly editing)
+  const initialCustom = useMemo(() => minutesToValueAndUnit(intervalMinutes), []);
+  const [customValue, setCustomValue] = useState(initialCustom.value);
+  const [customUnit, setCustomUnit] = useState<IntervalUnit>(initialCustom.unit);
+
+  // Sync selectedPreset when interval changes to a known preset value
+  useEffect(() => {
+    if (intervalMinutes === 1440) setSelectedPreset("daily");
+    else if (intervalMinutes === 10080) setSelectedPreset("weekly");
+    else if (intervalMinutes === 43200) setSelectedPreset("monthly");
   }, [intervalMinutes]);
 
   // Track changes
@@ -91,10 +131,26 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
   );
 
   const handlePresetChange = (preset: CadencePreset) => {
+    setSelectedPreset(preset);
     const minutes = CADENCE_PRESETS[preset];
     if (minutes !== null) {
       setIntervalMinutes(minutes);
+    } else {
+      // For "custom", initialize custom value/unit from current interval
+      const { value, unit } = minutesToValueAndUnit(intervalMinutes);
+      setCustomValue(value);
+      setCustomUnit(unit);
     }
+  };
+
+  const handleCustomValueChange = (value: number) => {
+    setCustomValue(value);
+    setIntervalMinutes(valueAndUnitToMinutes(value, customUnit));
+  };
+
+  const handleCustomUnitChange = (unit: IntervalUnit) => {
+    setCustomUnit(unit);
+    setIntervalMinutes(valueAndUnitToMinutes(customValue, unit));
   };
 
   const handleSave = async () => {
@@ -115,6 +171,15 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
     setIntervalMinutes(topic.digestIntervalMinutes);
     setMode(topic.digestMode);
     setDepth(topic.digestDepth);
+    // Reset preset to match the original interval
+    if (topic.digestIntervalMinutes === 1440) setSelectedPreset("daily");
+    else if (topic.digestIntervalMinutes === 10080) setSelectedPreset("weekly");
+    else if (topic.digestIntervalMinutes === 43200) setSelectedPreset("monthly");
+    else setSelectedPreset("custom");
+    // Reset custom value/unit
+    const { value, unit } = minutesToValueAndUnit(topic.digestIntervalMinutes);
+    setCustomValue(value);
+    setCustomUnit(unit);
   };
 
   const isPending = updateMutation.isPending;
@@ -145,11 +210,11 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
                 {t("topics.digestSettings.schedule.frequency")}
               </span>
               <div className={styles.presetButtons}>
-                {(["daily", "weekly", "custom"] as const).map((preset) => (
+                {(["daily", "weekly", "monthly", "custom"] as const).map((preset) => (
                   <button
                     key={preset}
                     type="button"
-                    className={`${styles.presetButton} ${currentPreset === preset ? styles.presetButtonActive : ""}`}
+                    className={`${styles.presetButton} ${selectedPreset === preset ? styles.presetButtonActive : ""}`}
                     onClick={() => handlePresetChange(preset)}
                     disabled={isPending}
                   >
@@ -159,21 +224,29 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
               </div>
             </div>
 
-            {currentPreset === "custom" && (
-              <div className={styles.fieldRow}>
-                <label className={styles.fieldLabel}>
-                  {t("topics.digestSettings.schedule.customInterval")}
-                </label>
+            {selectedPreset === "custom" && (
+              <div className={styles.customIntervalRow}>
+                <span className={styles.fieldLabel}>Every</span>
                 <input
                   type="number"
-                  min={15}
-                  max={43200}
-                  value={intervalMinutes}
-                  onChange={(e) => setIntervalMinutes(parseInt(e.target.value, 10) || 60)}
+                  min={1}
+                  max={customUnit === "hours" ? 720 : 30}
+                  value={customValue}
+                  onChange={(e) =>
+                    handleCustomValueChange(Math.max(1, parseInt(e.target.value, 10) || 1))
+                  }
                   disabled={isPending}
                   className={styles.numberInput}
                 />
-                <span className={styles.fieldUnit}>min</span>
+                <select
+                  value={customUnit}
+                  onChange={(e) => handleCustomUnitChange(e.target.value as IntervalUnit)}
+                  disabled={isPending}
+                  className={styles.unitSelect}
+                >
+                  <option value="hours">{customValue === 1 ? "hour" : "hours"}</option>
+                  <option value="days">{customValue === 1 ? "day" : "days"}</option>
+                </select>
               </div>
             )}
           </>
