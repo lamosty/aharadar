@@ -11,7 +11,6 @@ import {
 import { SOURCE_CATALOG, SourceTypePickerModal } from "@/components/SourcePicker";
 import { useToast } from "@/components/Toast";
 import { TopicDigestSettings } from "@/components/TopicDigestSettings";
-import { TopicViewingProfileSettings } from "@/components/TopicViewingProfile/TopicViewingProfileSettings";
 import type { Source, SourceConfig, SupportedSourceType, Topic } from "@/lib/api";
 import {
   useAdminSourceCreate,
@@ -453,10 +452,6 @@ export default function TopicsPage() {
                           <p className={styles.topicDescription}>{topic.description}</p>
                         )}
                         <div className={styles.topicMeta}>
-                          <span className={styles.profileBadge}>
-                            {t(`settings.viewing.profiles.${topic.viewingProfile}`)}
-                          </span>
-                          <span className={styles.decayInfo}>{topic.decayHours}h decay</span>
                           <span className={styles.sourceCount}>
                             {topicSources.length} {topicSources.length === 1 ? "source" : "sources"}
                           </span>
@@ -761,12 +756,6 @@ export default function TopicsPage() {
                         topic={topic}
                         enabledSourceCount={topicSources.filter((s) => s.isEnabled).length}
                       />
-                    </div>
-
-                    {/* Viewing profile section */}
-                    <div className={styles.viewingProfileSection}>
-                      <h4 className={styles.sectionTitle}>{t("topics.viewingProfile")}</h4>
-                      <TopicViewingProfileSettings topic={topic} />
                     </div>
                   </div>
                 )}

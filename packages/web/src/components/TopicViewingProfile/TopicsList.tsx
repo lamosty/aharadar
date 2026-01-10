@@ -30,7 +30,7 @@ export function TopicsList() {
     return <div className={styles.error}>{t("common.error")}</div>;
   }
 
-  const { topics, profileOptions } = data;
+  const { topics } = data;
 
   const toggleExpanded = (topicId: string) => {
     setExpandedTopicId((prev) => (prev === topicId ? null : topicId));
@@ -326,10 +326,7 @@ export function TopicsList() {
                     </div>
                     {isExpanded && (
                       <div className={styles.topicContent}>
-                        <TopicViewingProfileSettings
-                          topic={topic}
-                          profileOptions={profileOptions}
-                        />
+                        <TopicViewingProfileSettings topic={topic} />
                       </div>
                     )}
                   </>

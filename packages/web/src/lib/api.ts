@@ -834,16 +834,8 @@ export async function patchAdminLlmSettings(
 // Preferences API
 // ============================================================================
 
-/** Viewing profile options */
+/** Viewing profile options (kept for API backward compatibility) */
 export type ViewingProfile = "power" | "daily" | "weekly" | "research" | "custom";
-
-/** Profile option for UI */
-export interface ProfileOption {
-  value: ViewingProfile;
-  label: string;
-  description: string;
-  decayHours: number | null;
-}
 
 /** Preferences data */
 export interface PreferencesData {
@@ -858,7 +850,6 @@ export interface PreferencesData {
 export interface PreferencesGetResponse {
   ok: true;
   preferences: PreferencesData;
-  profileOptions: ProfileOption[];
 }
 
 /** Update preferences response */
@@ -937,24 +928,10 @@ export interface Topic {
 export interface TopicsListResponse {
   ok: true;
   topics: Topic[];
-  profileOptions: ProfileOption[];
 }
 
 /** Topic detail response */
 export interface TopicDetailResponse {
-  ok: true;
-  topic: Topic;
-  profileOptions: ProfileOption[];
-}
-
-/** Topic viewing profile update request */
-export interface TopicViewingProfileUpdateRequest {
-  viewingProfile?: ViewingProfile;
-  decayHours?: number;
-}
-
-/** Topic viewing profile update response */
-export interface TopicViewingProfileUpdateResponse {
   ok: true;
   topic: Topic;
 }
@@ -978,21 +955,6 @@ export async function getTopics(signal?: AbortSignal): Promise<TopicsListRespons
  */
 export async function getTopic(id: string, signal?: AbortSignal): Promise<TopicDetailResponse> {
   return apiFetch<TopicDetailResponse>(`/topics/${id}`, { signal });
-}
-
-/**
- * Update a topic's viewing profile.
- */
-export async function patchTopicViewingProfile(
-  id: string,
-  data: TopicViewingProfileUpdateRequest,
-  signal?: AbortSignal,
-): Promise<TopicViewingProfileUpdateResponse> {
-  return apiFetch<TopicViewingProfileUpdateResponse>(`/topics/${id}/viewing-profile`, {
-    method: "PATCH",
-    body: data,
-    signal,
-  });
 }
 
 /**

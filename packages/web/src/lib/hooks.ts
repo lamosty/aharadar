@@ -74,7 +74,6 @@ import {
   patchAdminSource,
   patchPreferences,
   patchTopicDigestSettings,
-  patchTopicViewingProfile,
   postAdminRun,
   postAdminSource,
   postFeedback,
@@ -92,8 +91,6 @@ import {
   type TopicDigestSettingsUpdateResponse,
   type TopicMarkCheckedResponse,
   type TopicsListResponse,
-  type TopicViewingProfileUpdateRequest,
-  type TopicViewingProfileUpdateResponse,
   type UpdateTopicRequest,
   type UpdateTopicResponse,
   updateTopic,
@@ -845,34 +842,6 @@ export function useTopic(
     queryFn: ({ signal }) => getTopic(id, signal),
     enabled: !!id,
     staleTime: 60 * 1000, // 1 minute
-    ...options,
-  });
-}
-
-/**
- * Mutation to update a topic's viewing profile.
- */
-export function useUpdateTopicViewingProfile(
-  topicId: string,
-  options?: Omit<
-    UseMutationOptions<
-      TopicViewingProfileUpdateResponse,
-      ApiError | NetworkError,
-      TopicViewingProfileUpdateRequest
-    >,
-    "mutationFn"
-  >,
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data) => patchTopicViewingProfile(topicId, data),
-    onSuccess: () => {
-      // Invalidate topic queries to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
-      // Also invalidate items since decay settings affect scores
-      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
-    },
     ...options,
   });
 }
