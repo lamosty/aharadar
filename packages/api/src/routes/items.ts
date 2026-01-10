@@ -1,4 +1,3 @@
-import { createUserPreferencesRepo } from "@aharadar/db";
 import type { FeedbackAction } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
@@ -188,11 +187,19 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
 
     const db = getDb();
 
-    // Load user preferences for decay calculation
-    const prefsRepo = createUserPreferencesRepo(db);
-    const userPrefs = await prefsRepo.getOrCreate(ctx.userId);
-    const decayHours = userPrefs.decayHours;
-    const lastCheckedAt = userPrefs.lastCheckedAt;
+    // Get decay settings from topic (or defaults for "all topics" mode)
+    // For single topic: use topic.decay_hours and topic.last_checked_at
+    // For all topics: use default 24h decay, no lastCheckedAt (can't have single "caught up" state)
+    let decayHours = 24; // Default
+    let lastCheckedAt: Date | null = null;
+
+    if (effectiveTopicId) {
+      const topic = await db.topics.getById(effectiveTopicId);
+      if (topic) {
+        decayHours = topic.decay_hours ?? 24;
+        lastCheckedAt = topic.last_checked_at ? new Date(topic.last_checked_at) : null;
+      }
+    }
 
     // Build filter conditions dynamically
     const filterConditions: string[] = [];
