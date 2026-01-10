@@ -327,7 +327,7 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
-            {/* View toggle: Inbox / Saved / All */}
+            {/* View toggle: Inbox / Saved / Highlights / All */}
             <div className={styles.viewToggle}>
               <button
                 type="button"
@@ -342,6 +342,13 @@ function FeedPageContent() {
                 onClick={() => handleViewChange("saved")}
               >
                 {t("feed.view.saved")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${view === "highlights" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("highlights")}
+              >
+                {t("feed.view.highlights")}
               </button>
               <button
                 type="button"

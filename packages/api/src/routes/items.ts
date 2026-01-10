@@ -67,7 +67,7 @@ interface ItemsListQuerystring {
   until?: string;
   sort?: string;
   topicId?: string;
-  view?: "inbox" | "saved" | "all";
+  view?: "inbox" | "saved" | "highlights" | "all";
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -236,12 +236,14 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       filterParamIdx++;
     }
 
-    // View filter: inbox (no feedback), saved (feedback = 'save'), all (no filter)
+    // View filter: inbox (no feedback), saved (feedback = 'save'), highlights (like or save), all (no filter)
     // Note: fe.action is from the LATERAL subquery, so we reference it directly
     if (view === "inbox") {
       filterConditions.push("fe.action IS NULL");
     } else if (view === "saved") {
       filterConditions.push("fe.action = 'save'");
+    } else if (view === "highlights") {
+      filterConditions.push("fe.action IN ('like', 'save')");
     }
     // view === 'all' -> no filter
 

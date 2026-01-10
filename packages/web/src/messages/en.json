@@ -613,6 +613,7 @@
     "view": {
       "inbox": "Inbox",
       "saved": "Saved",
+      "highlights": "Highlights",
       "all": "All"
     },
     "layout": {

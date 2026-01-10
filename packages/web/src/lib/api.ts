@@ -201,7 +201,7 @@ export interface PaginationInfo {
 }
 
 /** Feed view types */
-export type FeedView = "inbox" | "saved" | "all";
+export type FeedView = "inbox" | "saved" | "highlights" | "all";
 
 /** Items list params */
 export interface ItemsListParams {
