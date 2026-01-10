@@ -1,5 +1,5 @@
 .container {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4);
   min-height: 100vh;
@@ -31,6 +31,31 @@
   align-items: center;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.fastTriageBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fastTriageBtn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+}
+
+.fastTriageBtnActive {
+  color: var(--color-warning);
+  background: var(--color-warning-subtle, rgba(245, 158, 11, 0.1));
+  border-color: var(--color-warning);
 }
 
 /* View toggle (Inbox / Saved / All) */

@@ -253,6 +253,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     // - "best": raw score (no decay) - default, shows highest quality items first
     // - "latest": by publication date - shows newest items first
     // - "trending": decayed score - balances quality with recency
+    // - "ai_score": raw LLM triage score - useful for debugging ranking issues
     let orderBy: string;
     switch (sort) {
       case "latest":
@@ -261,6 +262,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       case "trending":
         // Order by decayed score (computed in SELECT)
         orderBy = "decayed_score DESC";
+        break;
+      case "ai_score":
+        // Order by raw LLM triage score (aha_score from triage_json)
+        orderBy = "(li.triage_json->>'aha_score')::numeric DESC NULLS LAST";
         break;
       default: // "best"
         // Order by raw score (no decay) - best quality items first

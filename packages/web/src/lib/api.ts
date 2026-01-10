@@ -212,7 +212,7 @@ export interface ItemsListParams {
   minScore?: number;
   since?: string;
   until?: string;
-  sort?: "best" | "latest" | "trending";
+  sort?: "best" | "latest" | "trending" | "ai_score";
   topicId?: string;
   view?: FeedView;
 }
@@ -297,9 +297,7 @@ export interface SourcePatchRequest {
   name?: string;
   isEnabled?: boolean;
   topicId?: string;
-  configPatch?: {
-    weight?: number | null;
-  };
+  configPatch?: Record<string, unknown>;
 }
 
 /** Source patch response */

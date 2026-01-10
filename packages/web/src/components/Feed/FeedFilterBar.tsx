@@ -4,7 +4,7 @@ import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType } from "@/lib/api";
 import type { Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
 
-export type SortOption = "best" | "latest" | "trending";
+export type SortOption = "best" | "latest" | "trending" | "ai_score";
 
 interface FeedFilterBarProps {
   selectedSources: string[];
@@ -41,6 +41,7 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "best", label: "Best" },
   { value: "latest", label: "Latest" },
   { value: "trending", label: "Trending" },
+  { value: "ai_score", label: "AI Score" },
 ];
 
 export function FeedFilterBar({

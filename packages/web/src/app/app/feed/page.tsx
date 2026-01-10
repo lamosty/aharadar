@@ -77,6 +77,10 @@ function FeedPageContent() {
   const [pageSize, setPageSize] = useLocalStorage<PageSize>("feedPageSize", DEFAULT_PAGE_SIZE);
   const [currentPage, setCurrentPage] = useState(pageParam ? parseInt(pageParam, 10) : 1);
 
+  // Fast triage mode - auto-expand next item after feedback
+  const [fastTriageMode, setFastTriageMode] = useLocalStorage<boolean>("feedFastTriage", false);
+  const [forceExpandedId, setForceExpandedId] = useState<string | null>(null);
+
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
 
@@ -236,14 +240,31 @@ function FeedPageContent() {
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
-      const item = data?.items.find((i) => i.id === contentItemId);
+      const items = data?.items ?? [];
+      const item = items.find((i) => i.id === contentItemId);
+      const currentIndex = items.findIndex((i) => i.id === contentItemId);
+
       await feedbackMutation.mutateAsync({
         contentItemId,
         digestId: item?.digestId,
         action,
       });
+
+      // In fast triage mode, expand the next item (which will shift up to current position)
+      if (
+        fastTriageMode &&
+        view === "inbox" &&
+        currentIndex >= 0 &&
+        currentIndex < items.length - 1
+      ) {
+        // The item at currentIndex+1 will move to currentIndex after the current item is removed
+        const nextItem = items[currentIndex + 1];
+        if (nextItem) {
+          setForceExpandedId(nextItem.id);
+        }
+      }
     },
-    [data, feedbackMutation],
+    [data, feedbackMutation, fastTriageMode, view],
   );
 
   const handleClearFeedback = useCallback(
@@ -365,6 +386,18 @@ function FeedPageContent() {
               onResetToGlobal={resetToGlobal}
               size="sm"
             />
+            {layout === "condensed" && (
+              <Tooltip content={fastTriageMode ? "Fast triage ON" : "Fast triage OFF"}>
+                <button
+                  type="button"
+                  className={`${styles.fastTriageBtn} ${fastTriageMode ? styles.fastTriageBtnActive : ""}`}
+                  onClick={() => setFastTriageMode(!fastTriageMode)}
+                  aria-pressed={fastTriageMode}
+                >
+                  <FastIcon />
+                </button>
+              </Tooltip>
+            )}
             <TopicSwitcher onTopicChange={handleTopicChange} />
             {isAllTopicsMode ? (
               <Tooltip content={t("feed.selectTopicForCaughtUp")}>
@@ -436,6 +469,13 @@ function FeedPageContent() {
                 onClear={handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode}
+                forceExpanded={fastTriageMode && forceExpandedId === item.id}
+                onHover={() => {
+                  // Clear force-expanded when hovering a different item
+                  if (forceExpandedId && forceExpandedId !== item.id) {
+                    setForceExpandedId(null);
+                  }
+                }}
               />
             ))}
           </div>
@@ -452,5 +492,23 @@ function FeedPageContent() {
         </>
       )}
     </div>
+  );
+}
+
+function FastIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
   );
 }
