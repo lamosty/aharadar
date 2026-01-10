@@ -66,10 +66,20 @@ create table topics (
   user_id uuid not null references users(id) on delete cascade,
   name text not null,
   description text,
+  viewing_profile text,                           -- @deprecated: kept for backward compat; decay derived from digest_interval_minutes
+  decay_hours integer,                            -- derived from digest_interval_minutes (formula: round(interval / 60))
+  last_checked_at timestamptz,                    -- when user marked topic "caught up" (for NEW badges)
+  digest_schedule_enabled boolean not null default true,
+  digest_interval_minutes integer not null default 1440,  -- 15 to 43200
+  digest_mode text not null default 'normal',     -- low | normal | high
+  digest_depth integer not null default 50,       -- 0-100 fine-tuning slider
+  digest_cursor_end timestamptz,                  -- scheduler cursor: end of last completed window
   created_at timestamptz not null default now()
 );
 create unique index topics_user_name_uniq on topics(user_id, name);
 create index topics_user_created_idx on topics(user_id, created_at desc);
+create index topics_user_last_checked_idx on topics(user_id, last_checked_at);
+create index topics_user_digest_cursor_idx on topics(user_id, digest_cursor_end);
 
 -- fetch_runs: per-source ingestion audit trail
 create table fetch_runs (

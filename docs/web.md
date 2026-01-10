@@ -21,6 +21,7 @@ Build a minimal, fast, and accessible web interface that lets users review perso
 | `/app/digests`       | List of recent digests                         |
 | `/app/digests/:id`   | Digest detail with ranked items                |
 | `/app/items/:id`     | Content item detail                            |
+| `/app/topics`        | Topics management (digest settings)            |
 | `/app/admin`         | Admin section home                             |
 | `/app/admin/run`     | Run now form                                   |
 | `/app/admin/sources` | Sources management                             |
@@ -99,6 +100,18 @@ Per-item expandable section showing `triageJson.system_features`:
   - Collapsed by default
   - Cap display depth/size to prevent layout blow-up
 - Back navigation to digest
+
+### Topics (`/app/topics`)
+
+- List user's topics with digest settings
+- Per-topic card showing:
+  - Name and description
+  - Digest frequency (interval selector)
+  - Mode (low/normal/high)
+  - Depth slider (0-100)
+  - Schedule toggle (enabled/disabled)
+  - "Mark as caught up" button (resets NEW badges)
+- **Note**: Viewing Profile section has been removed. Users now only configure Digest Settings. Decay (for recency scoring) is automatically derived from the digest interval.
 
 ### Admin: Run Now (`/app/admin/run`)
 

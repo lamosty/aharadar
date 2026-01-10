@@ -218,6 +218,36 @@ Errors:
 - 401 if not authenticated
 - 403 if not admin role
 
+## Topics API
+
+### `GET /api/topics`
+
+Returns list of topics for the authenticated user.
+
+### `POST /api/topics`
+
+Create a new topic.
+
+### `PATCH /api/topics/:id`
+
+Update topic name or description.
+
+### `DELETE /api/topics/:id`
+
+Delete a topic and all associated sources.
+
+### `PATCH /api/topics/:id/digest-settings`
+
+Update digest schedule settings (frequency, mode, depth).
+
+Note: `decay_hours` is automatically derived from `digest_interval_minutes` using the formula `round(interval / 60)`.
+
+### Deprecated / Removed
+
+- **`PATCH /api/topics/:id/viewing-profile`**: Removed. Decay is now derived from digest interval.
+- **`profileOptions`**: No longer returned in topic responses.
+- **`viewingProfile` / `decayHours`**: Still present in responses for backward compatibility, but not settable via API. Decay is auto-derived from `digest_interval_minutes`.
+
 ## Error responses (Proposed)
 
 All errors return:
