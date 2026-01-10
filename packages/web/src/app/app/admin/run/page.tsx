@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/components/Toast";
-import type { LlmProvider, RunMode } from "@/lib/api";
+import type { LlmProvider } from "@/lib/api";
 import { useAdminRun, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
@@ -29,11 +29,13 @@ export default function AdminRunPage() {
 
   const [windowStart, setWindowStart] = useState(getDefaultWindowStart);
   const [windowEnd, setWindowEnd] = useState(getDefaultWindowEnd);
-  const [mode, setMode] = useState<RunMode>("normal");
   const [topicId, setTopicId] = useState<string>("");
   const [providerOverride, setProviderOverride] = useState<LlmProvider | "">("");
   const [modelOverride, setModelOverride] = useState<string>("");
   const [jobId, setJobId] = useState<string | null>(null);
+
+  // Get the selected topic to show its mode
+  const selectedTopic = topics.find((t) => t.id === (topicId || topics[0]?.id));
 
   const runMutation = useAdminRun({
     onSuccess: (data) => {
@@ -55,7 +57,6 @@ export default function AdminRunPage() {
     runMutation.mutate({
       windowStart: startDate.toISOString(),
       windowEnd: endDate.toISOString(),
-      mode,
       topicId: topicId || undefined,
       providerOverride: providerOverride
         ? {
@@ -71,7 +72,6 @@ export default function AdminRunPage() {
     setJobId(null);
     setWindowStart(getDefaultWindowStart());
     setWindowEnd(getDefaultWindowEnd());
-    setMode("normal");
     setTopicId("");
     setProviderOverride("");
     setModelOverride("");
@@ -167,32 +167,17 @@ export default function AdminRunPage() {
             </div>
           )}
 
-          <fieldset className={styles.fieldset} disabled={isLoading}>
-            <legend className={styles.legend}>{t("admin.run.mode")}</legend>
-            <div className={styles.modeGrid}>
-              {(["low", "normal", "high"] as const).map((m) => (
-                <label
-                  key={m}
-                  className={`${styles.modeOption} ${mode === m ? styles.modeOptionSelected : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="mode"
-                    value={m}
-                    checked={mode === m}
-                    onChange={() => setMode(m)}
-                    className={styles.modeRadio}
-                  />
-                  <span className={styles.modeName}>
-                    {t(`admin.run.modes.${m}` as Parameters<typeof t>[0])}
-                  </span>
-                  <span className={styles.modeDescription}>
-                    {t(`admin.run.modeDescriptions.${m}` as Parameters<typeof t>[0])}
-                  </span>
-                </label>
-              ))}
+          {selectedTopic && (
+            <div className={styles.formGroup}>
+              <span className={styles.label}>{t("admin.run.mode")}</span>
+              <div className={styles.modeInfo}>
+                <span className={styles.modeInfoValue}>
+                  {t(`admin.run.modes.${selectedTopic.digestMode}` as Parameters<typeof t>[0])}
+                </span>
+                <span className={styles.modeInfoHint}>{t("admin.run.modeFromTopic")}</span>
+              </div>
             </div>
-          </fieldset>
+          )}
 
           <div className={styles.formGroup}>
             <label htmlFor="providerOverride" className={styles.label}>

@@ -273,8 +273,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const resolvedMode: RunMode = mode !== undefined && isValidMode(mode) ? mode : "normal";
-
+    // Validate mode if explicitly provided (but we'll default to topic's mode later)
     if (mode !== undefined && !isValidMode(mode)) {
       return reply.code(400).send({
         ok: false,
@@ -332,20 +331,22 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     // Resolve target topic: use provided topicId or fall back to context default
     const targetTopicId = typeof topicId === "string" ? topicId : ctx.topicId;
 
-    // Verify topic belongs to user if custom topicId provided
+    // Load topic to verify ownership and get default mode
     const db = getDb();
-    if (topicId !== undefined) {
-      const topic = await db.topics.getById(targetTopicId);
-      if (!topic || topic.user_id !== ctx.userId) {
-        return reply.code(403).send({
-          ok: false,
-          error: {
-            code: "FORBIDDEN",
-            message: "Topic does not belong to current user",
-          },
-        });
-      }
+    const topic = await db.topics.getById(targetTopicId);
+    if (!topic || topic.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Topic does not belong to current user",
+        },
+      });
     }
+
+    // Use provided mode or fall back to topic's configured digestMode
+    const resolvedMode: RunMode =
+      mode !== undefined && isValidMode(mode) ? mode : (topic.digest_mode as RunMode);
 
     const queue = getPipelineQueue();
 

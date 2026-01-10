@@ -175,6 +175,27 @@
   line-height: var(--line-height-snug);
 }
 
+.modeInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.modeInfoValue {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.modeInfoHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
 .error {
   display: flex;
   align-items: center;

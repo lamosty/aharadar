@@ -279,6 +279,7 @@
         "high": "Enhanced processing, higher cost",
         "catch_up": "Process backlog"
       },
+      "modeFromTopic": "Using topic settings",
       "submit": "Start Run",
       "submitting": "Starting...",
       "success": "Pipeline run started",
