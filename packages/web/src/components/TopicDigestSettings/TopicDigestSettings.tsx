@@ -47,7 +47,10 @@ interface TopicDigestSettingsProps {
   sources?: Source[]; // Optional: for Grok cost estimation
 }
 
-// Grok pricing (grok-4-1-fast-non-reasoning, as of 2026-01)
+// Grok pricing (as of 2026-01)
+// Search API: $5 per 1000 calls = $0.005 per call
+const GROK_SEARCH_COST_PER_CALL = 0.005;
+// Token costs (grok-4-1-fast-non-reasoning)
 const GROK_INPUT_PER_1M = 0.2; // $0.20 per 1M input tokens
 const GROK_OUTPUT_PER_1M = 0.5; // $0.50 per 1M output tokens
 const GROK_INPUT_TOKENS_PER_CALL = 700; // System prompt + query
@@ -94,11 +97,15 @@ function estimateGrokCalls(sources: Source[]): number {
 
 /**
  * Estimate Grok API cost per digest run.
+ * Includes both search API fee ($5/1000 calls) and token costs.
  */
 function estimateGrokCost(grokCalls: number): number {
+  // Search API fee: $0.005 per call
+  const searchCost = grokCalls * GROK_SEARCH_COST_PER_CALL;
+  // Token costs
   const inputCost = ((GROK_INPUT_TOKENS_PER_CALL * grokCalls) / 1_000_000) * GROK_INPUT_PER_1M;
   const outputCost = ((GROK_OUTPUT_TOKENS_PER_CALL * grokCalls) / 1_000_000) * GROK_OUTPUT_PER_1M;
-  return inputCost + outputCost;
+  return searchCost + inputCost + outputCost;
 }
 
 /**
