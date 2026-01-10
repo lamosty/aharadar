@@ -22,6 +22,10 @@ interface FeedItemProps {
   layout?: Layout;
   /** Whether to show topic badge (for "all topics" mode) */
   showTopicBadge?: boolean;
+  /** Force expand detail panel (for fast triage mode) */
+  forceExpanded?: boolean;
+  /** Called when item is hovered (for clearing force-expand on other items) */
+  onHover?: () => void;
 }
 
 interface DisplayDate {
@@ -124,14 +128,197 @@ function getDisplayTitle(item: FeedItemType): string {
   return "(Untitled)";
 }
 
+/**
+ * Calculate score tier for visual emphasis
+ * Uses score value directly (already represents quality 0-1)
+ */
+function getScoreTier(score: number): "top10" | "top25" | "rest" {
+  if (score >= 0.7) return "top10";
+  if (score >= 0.5) return "top25";
+  return "rest";
+}
+
+/**
+ * Source-specific secondary info for two-line source display
+ */
+interface SourceSecondaryInfo {
+  type: "reddit" | "hn" | "x";
+  /** Display text (subreddit name, @handle) */
+  text?: string;
+  /** Link to comments/discussion */
+  commentsLink?: string;
+  /** Comment count if available */
+  commentCount?: number;
+}
+
+/**
+ * Get source-specific secondary info for the second line of source display
+ */
+/**
+ * Get the primary link URL for an item.
+ * For Reddit/HN: link to comments (more useful than linking to random images/articles)
+ * For others: link to original URL
+ */
+function getPrimaryLinkUrl(
+  sourceType: string,
+  originalUrl: string | null | undefined,
+  metadata: Record<string, unknown> | null | undefined,
+  externalId: string | null | undefined,
+): string | null {
+  // Reddit: prefer permalink (comments) over original URL
+  if (sourceType === "reddit" && metadata?.permalink) {
+    const permalink = metadata.permalink as string;
+    return permalink.startsWith("http") ? permalink : `https://www.reddit.com${permalink}`;
+  }
+
+  // HN: prefer comments page over original URL
+  if (sourceType === "hn" && externalId) {
+    return `https://news.ycombinator.com/item?id=${externalId}`;
+  }
+
+  // All others: use original URL
+  return originalUrl || null;
+}
+
+function getSourceSecondaryInfo(
+  sourceType: string,
+  metadata: Record<string, unknown> | null | undefined,
+  externalId: string | null | undefined,
+  author: string | null | undefined,
+): SourceSecondaryInfo | null {
+  if (sourceType === "reddit" && metadata) {
+    const subreddit = metadata.subreddit as string | undefined;
+    const numComments = metadata.num_comments as number | undefined;
+    const permalink = metadata.permalink as string | undefined;
+
+    if (subreddit) {
+      // Build full Reddit URL from permalink
+      // Permalink may be full URL or just path
+      const commentsLink = permalink
+        ? permalink.startsWith("http")
+          ? permalink
+          : `https://www.reddit.com${permalink}`
+        : undefined;
+
+      return {
+        type: "reddit",
+        text: `r/${subreddit}`,
+        commentsLink,
+        commentCount: numComments ?? 0,
+      };
+    }
+  }
+
+  if (sourceType === "hn" && externalId) {
+    const descendants = metadata?.descendants as number | undefined;
+    return {
+      type: "hn",
+      commentsLink: `https://news.ycombinator.com/item?id=${externalId}`,
+      commentCount: descendants ?? 0,
+    };
+  }
+
+  if (sourceType === "x_posts" && author) {
+    // author is already in @handle format
+    return {
+      type: "x",
+      text: author,
+    };
+  }
+
+  return null;
+}
+
+interface SourceSectionProps {
+  sourceType: string;
+  metadata?: Record<string, unknown> | null;
+  externalId?: string | null;
+  author?: string | null;
+  /** Use compact styling for condensed layout */
+  compact?: boolean;
+}
+
+/**
+ * Two-line source display section
+ * Line 1: Source badge (HN, Reddit, X)
+ * Line 2: Context (subreddit + comments, HN comments, @handle)
+ */
+function SourceSection({
+  sourceType,
+  metadata,
+  externalId,
+  author,
+  compact = false,
+}: SourceSectionProps) {
+  const subreddit = metadata?.subreddit as string | undefined;
+  const secondary = getSourceSecondaryInfo(sourceType, metadata, externalId, author);
+
+  return (
+    <div className={compact ? styles.condensedSourceSection : styles.sourceSection}>
+      {/* Line 1: Source badge */}
+      <Tooltip content={getSourceTooltip(sourceType, subreddit)}>
+        <span
+          className={compact ? styles.condensedSource : styles.sourceTag}
+          style={{ "--source-color": getSourceColor(sourceType) } as React.CSSProperties}
+        >
+          {formatSourceType(sourceType)}
+        </span>
+      </Tooltip>
+
+      {/* Line 2: Source-specific context */}
+      {secondary && (
+        <div className={styles.sourceLine2}>
+          {secondary.type === "reddit" && (
+            <>
+              <span className={styles.sourceContext}>{secondary.text}</span>
+              {secondary.commentsLink && (
+                <a
+                  href={secondary.commentsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.commentsLinkInline}
+                  title={t("feed.redditComments")}
+                >
+                  <CommentIcon size={12} />
+                  <span>{secondary.commentCount}</span>
+                </a>
+              )}
+            </>
+          )}
+
+          {secondary.type === "hn" && secondary.commentsLink && (
+            <a
+              href={secondary.commentsLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.commentsLinkInline}
+              title={t("feed.hnComments")}
+            >
+              <CommentIcon size={12} />
+              <span>{secondary.commentCount}</span>
+            </a>
+          )}
+
+          {secondary.type === "x" && <span className={styles.sourceContext}>{secondary.text}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function FeedItem({
   item,
   onFeedback,
   onClear,
   layout = "reader",
   showTopicBadge = false,
+  forceExpanded = false,
+  onHover,
 }: FeedItemProps) {
-  const [whyShownOpen, setWhyShownOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // Force expanded state (for fast triage mode)
+  const isExpanded = forceExpanded || expanded;
 
   const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
     if (onFeedback) {
@@ -146,95 +333,136 @@ export function FeedItem({
   };
 
   const scorePercent = Math.round(item.score * 100);
+  const scoreTier = getScoreTier(item.score);
   const subreddit = item.item.metadata?.subreddit as string | undefined;
   const displayDate = getDisplayDate(item);
+  // For X posts: show display name only (handle is shown in source section)
+  // For other sources: show author as-is
   const author =
-    item.item.sourceType === "x_posts" && item.item.metadata?.user_display_name
-      ? `${item.item.metadata.user_display_name} (${item.item.author})`
+    item.item.sourceType === "x_posts"
+      ? (item.item.metadata?.user_display_name as string) || null
       : item.item.author;
 
   // Get preview text - only show if it adds new information
   // When there's no title, getDisplayTitle falls back to bodyText, so don't duplicate
   const hasRealTitle = Boolean(item.item.title);
   const previewText =
-    hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 100) : null;
+    hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 200) : null;
 
-  // For condensed layout, render a two-line row with expandable WhyShown
+  // Get primary link URL (comments for Reddit/HN, original for others)
+  const primaryLinkUrl = getPrimaryLinkUrl(
+    item.item.sourceType,
+    item.item.url,
+    item.item.metadata,
+    item.item.externalId,
+  );
+
+  // Get secondary info for expanded metadata
+  const secondaryInfo = getSourceSecondaryInfo(
+    item.item.sourceType,
+    item.item.metadata,
+    item.item.externalId,
+    item.item.author,
+  );
+
+  // Mobile tap handler
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't toggle if clicking on a link or button
+    const target = e.target as HTMLElement;
+    if (target.closest("a") || target.closest("button")) {
+      return;
+    }
+    setExpanded(!expanded);
+  };
+
+  // For condensed layout, render clean scannable row with floating detail panel on hover
   if (layout === "condensed") {
     return (
-      <article className={styles.condensedItem} data-testid={`feed-item-${item.id}`}>
-        {/* Row 1: Source, Title, Meta, Actions, Score */}
-        <div className={styles.condensedRow}>
-          <div className={styles.condensedSourceGroup}>
-            {showTopicBadge && item.topicName && (
-              <span className={styles.topicBadge}>{item.topicName}</span>
-            )}
-            <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
-              <span
-                className={styles.condensedSource}
-                style={
-                  { "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties
-                }
+      <article
+        className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""}`}
+        data-testid={`feed-item-${item.id}`}
+        data-tier={scoreTier}
+        onMouseEnter={onHover}
+      >
+        {/* Main row: title + trailing meta */}
+        <div className={styles.scanRow}>
+          {/* Topic badge if showing all topics */}
+          {showTopicBadge && item.topicName && (
+            <span className={styles.scanTopicBadge}>{item.topicName}</span>
+          )}
+
+          {/* Title */}
+          <span className={styles.scanTitle}>
+            {primaryLinkUrl ? (
+              <a
+                href={primaryLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.scanTitleLink}
               >
-                {formatSourceType(item.item.sourceType)}
-              </span>
-            </Tooltip>
-            {/* HN comments link */}
-            {item.item.sourceType === "hn" && item.item.externalId && (
-              <Tooltip content={t("feed.hnComments")}>
-                <a
-                  href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.condensedCommentsLink}
-                  aria-label={t("feed.hnComments")}
-                >
-                  <CommentIcon />
-                </a>
-              </Tooltip>
+                {getDisplayTitle(item)}
+              </a>
+            ) : (
+              getDisplayTitle(item)
             )}
-          </div>
+          </span>
 
-          <div className={styles.condensedContent}>
-            <span className={styles.condensedTitle}>
-              {item.item.url ? (
-                <a
-                  href={item.item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.condensedTitleLink}
-                >
-                  {getDisplayTitle(item)}
-                </a>
-              ) : (
-                getDisplayTitle(item)
-              )}
-            </span>
-            {/* Row 2: Preview text */}
-            {previewText && <span className={styles.condensedPreview}>{previewText}</span>}
-          </div>
-
-          <div className={styles.condensedMeta}>
-            {author && <span className={styles.condensedAuthor}>{author}</span>}
-            <time className={styles.condensedTime}>
+          {/* Trailing metadata */}
+          <span className={styles.scanMeta}>
+            <Tooltip content="Relevance score (0-100) based on your interests">
+              <span className={styles.scanScore}>{scorePercent}</span>
+            </Tooltip>
+            <time className={styles.scanTime}>
               {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
             </time>
+            <span className={styles.scanSourceLabel}>{formatSourceType(item.item.sourceType)}</span>
+          </span>
+        </div>
+
+        {/* Floating detail panel - appears on hover, doesn't shift layout */}
+        <div className={styles.detailPanel}>
+          {/* Preview text - clickable to open the same link as title */}
+          {previewText &&
+            (primaryLinkUrl ? (
+              <a
+                href={primaryLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.detailPreviewLink}
+              >
+                {previewText}
+              </a>
+            ) : (
+              <p className={styles.detailPreview}>{previewText}</p>
+            ))}
+
+          {/* Metadata line */}
+          <div className={styles.detailMeta}>
+            {author && <span className={styles.detailAuthor}>{author}</span>}
+            {secondaryInfo?.text && (
+              <>
+                {author && <span className={styles.detailSep}>·</span>}
+                <span>{secondaryInfo.text}</span>
+              </>
+            )}
+            {secondaryInfo?.commentsLink && (
+              <>
+                <span className={styles.detailSep}>·</span>
+                <a
+                  href={secondaryInfo.commentsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.detailCommentsLink}
+                >
+                  <CommentIcon size={12} />
+                  <span>{secondaryInfo.commentCount}</span>
+                </a>
+              </>
+            )}
           </div>
 
-          <div className={styles.condensedActions}>
-            {/* WhyShown toggle button - sparkles icon for AI insights */}
-            <Tooltip content={t("digests.whyShown.title")}>
-              <button
-                type="button"
-                className={`${styles.whyShownToggle} ${whyShownOpen ? styles.whyShownToggleActive : ""}`}
-                onClick={() => setWhyShownOpen(!whyShownOpen)}
-                aria-expanded={whyShownOpen}
-                aria-label={t("digests.whyShown.title")}
-              >
-                <SparklesIcon />
-              </button>
-            </Tooltip>
-
+          {/* Actions */}
+          <div className={styles.detailActions}>
             <FeedbackButtons
               contentItemId={item.id}
               digestId={item.digestId}
@@ -245,21 +473,15 @@ export function FeedItem({
             />
           </div>
 
-          <Tooltip content={t("tooltips.ahaScore")}>
-            <span className={styles.condensedScore}>{scorePercent}</span>
-          </Tooltip>
-        </div>
-
-        {/* Expandable WhyShown section - compact mode, shows directly */}
-        {whyShownOpen && (
-          <div className={styles.condensedWhyShown}>
+          {/* WhyShown */}
+          <div className={styles.detailWhyShown}>
             <WhyShown
               features={item.triageJson as TriageFeatures | undefined}
               clusterItems={item.clusterItems}
               compact={true}
             />
           </div>
-        )}
+        </div>
       </article>
     );
   }
@@ -268,48 +490,25 @@ export function FeedItem({
   return (
     <article className={styles.card} data-testid={`feed-item-${item.id}`}>
       <div className={styles.header}>
-        {/* Left section: badges + meta + actions */}
+        {/* Left section: badges + source + meta + actions */}
         <div className={styles.headerLeft}>
-          {/* Badge group: source badges, clusters, comments link */}
-          <div className={styles.badgeGroup}>
-            {showTopicBadge && item.topicName && (
-              <span className={styles.topicBadge}>{item.topicName}</span>
-            )}
-            {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
-            <Tooltip content={getSourceTooltip(item.item.sourceType, subreddit)}>
-              <span
-                className={styles.sourceTag}
-                style={
-                  { "--source-color": getSourceColor(item.item.sourceType) } as React.CSSProperties
-                }
-              >
-                {formatSourceType(item.item.sourceType)}
-              </span>
-            </Tooltip>
-            {item.item.sourceType === "reddit" && subreddit && (
-              <span className={styles.subreddit}>r/{subreddit}</span>
-            )}
-            {item.clusterMemberCount && item.clusterMemberCount > 1 && (
-              <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
-                <span className={styles.clusterBadge}>
-                  +{item.clusterMemberCount - 1}{" "}
-                  {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
-                </span>
-              </Tooltip>
-            )}
-            {item.item.sourceType === "hn" && item.item.externalId && (
-              <a
-                href={`https://news.ycombinator.com/item?id=${item.item.externalId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.commentsLink}
-                title={t("feed.hnComments")}
-              >
-                <CommentIcon />
-                <span>{t("feed.hnComments")}</span>
-              </a>
-            )}
-          </div>
+          {/* Top badges row: topic + new */}
+          {(showTopicBadge && item.topicName) || item.isNew ? (
+            <div className={styles.headerBadges}>
+              {showTopicBadge && item.topicName && (
+                <span className={styles.topicBadge}>{item.topicName}</span>
+              )}
+              {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
+            </div>
+          ) : null}
+
+          {/* Two-line source section */}
+          <SourceSection
+            sourceType={item.item.sourceType}
+            metadata={item.item.metadata}
+            externalId={item.item.externalId}
+            author={item.item.author}
+          />
 
           {/* Meta: author, date */}
           <span className={styles.meta}>
@@ -337,19 +536,29 @@ export function FeedItem({
           </div>
         </div>
 
-        {/* Right section: score (always on right) */}
-        <Tooltip content={t("tooltips.ahaScore")}>
-          <div className={styles.score}>
-            <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
-            <span className={styles.scoreText}>{scorePercent}</span>
-          </div>
-        </Tooltip>
+        {/* Right section: cluster badge + score */}
+        <div className={styles.headerRight}>
+          {item.clusterMemberCount && item.clusterMemberCount > 1 && (
+            <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
+              <span className={styles.clusterBadge}>
+                +{item.clusterMemberCount - 1}{" "}
+                {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
+              </span>
+            </Tooltip>
+          )}
+          <Tooltip content={t("tooltips.ahaScore")}>
+            <div className={styles.score}>
+              <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
+              <span className={styles.scoreText}>{scorePercent}</span>
+            </div>
+          </Tooltip>
+        </div>
       </div>
 
       <h3 className={styles.title}>
-        {item.item.url ? (
+        {primaryLinkUrl ? (
           <a
-            href={item.item.url}
+            href={primaryLinkUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.titleLink}
@@ -383,11 +592,11 @@ export function FeedItemSkeleton() {
   );
 }
 
-function CommentIcon() {
+function CommentIcon({ size = 14 }: { size?: number }) {
   return (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -416,6 +625,26 @@ function SparklesIcon() {
     >
       <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
       <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   );
 }

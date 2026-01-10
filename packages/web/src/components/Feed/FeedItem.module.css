@@ -120,6 +120,78 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+/* ==========================================
+   Two-Line Source Section
+   ========================================== */
+
+.sourceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sourceLine2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.sourceContext {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px; /* Fit within fixed-width source cell */
+  font-size: var(--font-size-xs);
+}
+
+.commentsLinkInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.commentsLinkInline:hover {
+  color: var(--color-primary);
+}
+
+.commentsLinkInline svg {
+  flex-shrink: 0;
+}
+
+/* Top badges row (topic + new badge) */
+.headerBadges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Right section: cluster badge + score */
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Condensed two-line source section - fits in fixed-width grid cell */
+.condensedSourceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* Allow shrinking for text truncation */
+  width: 100%; /* Fill the grid cell */
+}
+
 .clusterBadge {
   font-size: 0.7rem;
   font-weight: var(--font-weight-medium);
@@ -431,23 +503,28 @@
   background: var(--color-surface-elevated);
 }
 
-/* Use CSS Grid for precise alignment */
+/* Use CSS Grid for precise alignment - FIXED WIDTH source column */
 .condensedRow {
   display: grid;
-  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-columns:
+    100px /* source: FIXED width for title alignment */
+    1fr /* content: flexible */
+    minmax(70px, 110px) /* meta: author + time */
+    auto /* actions */
+    48px; /* score */
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   min-height: 52px;
 }
 
-/* Source group: badge + comments link - fixed width for alignment */
+/* Source group: FIXED WIDTH container for consistent title alignment */
 .condensedSourceGroup {
   display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex-shrink: 0;
-  min-width: 55px; /* Fixed width so titles align vertically */
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* Allow text truncation */
+  width: 100%; /* Fill the grid cell */
 }
 
 /* Source badge - unified with filter bar style (pill shape) */
@@ -621,7 +698,11 @@
 /* Expandable WhyShown section - no border-top to avoid double separator */
 .condensedWhyShown {
   padding: var(--space-2) var(--space-4);
-  padding-left: calc(var(--space-4) + 56px); /* Align with content column */
+  padding-left: calc(
+    var(--space-4) +
+    100px +
+    var(--space-3)
+  ); /* Align with content column (100px source + gap) */
   background: var(--color-surface);
 }
 
@@ -630,7 +711,11 @@
    ========================================== */
 @media (max-width: 768px) {
   .condensedRow {
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns:
+      90px /* source: slightly narrower */
+      1fr /* content */
+      auto /* actions */
+      44px; /* score */
     gap: var(--space-2);
     padding: var(--space-3);
   }
@@ -643,6 +728,11 @@
   .condensedScore {
     padding: 4px 10px;
     min-width: 36px;
+  }
+
+  /* WhyShown alignment */
+  .condensedWhyShown {
+    padding-left: calc(var(--space-3) + 90px + var(--space-2));
   }
 }
 
@@ -658,11 +748,31 @@
     min-height: auto;
   }
 
-  /* Row 1: Source + Time + Score */
-  .condensedSource {
+  /* Row 1: Source group + Time + Score */
+  .condensedSourceGroup {
     order: 1;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .condensedSource {
     font-size: 0.6rem;
     padding: 3px 8px;
+  }
+
+  /* Source context inline on mobile */
+  .condensedSourceSection {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .sourceLine2 {
+    /* Hide second line on mobile - too cramped */
+    display: none;
   }
 
   .condensedTime {
@@ -709,6 +819,273 @@
 
   .condensedWhyShown {
     padding: var(--space-3);
+  }
+}
+
+/* ==========================================
+   NEW: Title-Dominant Scannable Layout
+   Clean rows with floating detail panel on hover
+   ========================================== */
+
+.scanItem {
+  position: relative;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-left: 3px solid transparent;
+}
+
+.scanItem:hover {
+  background: var(--color-surface-elevated);
+  border-bottom-color: transparent; /* Hide bottom border when detail panel shows */
+}
+
+/* Score tier indicators via left border */
+.scanItem[data-tier="top10"] {
+  border-left-color: var(--color-warning);
+}
+
+.scanItem[data-tier="top25"] {
+  border-left-color: var(--color-primary);
+}
+
+.scanRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: 44px;
+}
+
+/* Topic badge for "all topics" mode */
+.scanTopicBadge {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-info) 12%, transparent);
+  color: var(--color-info);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Title text - takes all available space */
+.scanTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scanTitleLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.scanTitleLink:hover {
+  color: var(--color-primary);
+}
+
+.scanTitleLink:visited {
+  color: var(--color-text-secondary);
+}
+
+/* Trailing metadata */
+.scanMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.scanScore {
+  min-width: 28px;
+  text-align: right;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.scanTime {
+  min-width: 55px;
+  text-align: right;
+  color: var(--color-text-muted);
+}
+
+.scanSourceLabel {
+  min-width: 45px;
+  text-align: right;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* ==========================================
+   Floating Detail Panel
+   Appears on hover as overlay, no layout shift
+   ========================================== */
+
+.detailPanel {
+  position: absolute;
+  top: 100%;
+  left: -3px; /* Align with scanItem's left border */
+  right: 0;
+  z-index: 50;
+  padding: var(--space-3) var(--space-4);
+  padding-left: calc(var(--space-4) + 3px); /* Account for border offset */
+  background: var(--color-surface-elevated);
+  border-left: 3px solid transparent; /* Match scanItem border */
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    visibility 0.15s;
+}
+
+.scanItem:hover .detailPanel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  /* Delay before showing - prevents accidental triggers after layout shifts */
+  transition-delay: 200ms;
+}
+
+/* Force expanded state (fast triage mode) - no delay */
+.scanItemExpanded {
+  background: var(--color-surface-elevated);
+  border-bottom-color: transparent;
+}
+
+.scanItemExpanded .detailPanel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0ms;
+}
+
+/* Inherit tier indicator color on detail panel */
+.scanItem[data-tier="top10"] .detailPanel {
+  border-left-color: var(--color-warning);
+}
+
+.scanItem[data-tier="top25"] .detailPanel {
+  border-left-color: var(--color-primary);
+}
+
+.detailPreview {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.detailPreviewLink {
+  display: block;
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.detailPreviewLink:hover {
+  color: var(--color-text-primary);
+}
+
+.detailMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.detailAuthor {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.detailSep {
+  opacity: 0.5;
+}
+
+.detailCommentsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.detailCommentsLink:hover {
+  color: var(--color-primary);
+}
+
+.detailActions {
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.detailWhyShown {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ==========================================
+   Scan Layout - Mobile Responsive
+   ========================================== */
+
+@media (max-width: 768px) {
+  .scanRow {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .scanTitle {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* On mobile, show detail panel on tap instead of hover */
+  .detailPanel {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .scanRow {
+    flex-wrap: wrap;
+  }
+
+  .scanTitle {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .scanMeta {
+    order: 1;
+    flex-basis: 100%;
+    margin-bottom: var(--space-1);
   }
 }
 
