@@ -59,6 +59,24 @@ function asNumber(value: unknown, defaultValue: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : defaultValue;
 }
 
+function asBatchingConfig(
+  value: unknown,
+): { mode: "off" | "manual"; groups?: string[][] } | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const obj = value as Record<string, unknown>;
+  const mode = obj.mode;
+  if (mode !== "off" && mode !== "manual") return undefined;
+  const groups = obj.groups;
+  if (mode === "manual" && Array.isArray(groups)) {
+    const parsed = groups
+      .filter((g): g is unknown[] => Array.isArray(g))
+      .map((g) => g.filter((h): h is string => typeof h === "string" && h.trim().length > 0))
+      .filter((g) => g.length > 0);
+    return { mode, groups: parsed.length > 0 ? parsed : undefined };
+  }
+  return { mode };
+}
+
 function asConfig(value: Record<string, unknown>): XPostsSourceConfig {
   return {
     vendor: typeof value.vendor === "string" ? value.vendor : "grok",
@@ -68,9 +86,16 @@ function asConfig(value: Record<string, unknown>): XPostsSourceConfig {
     maxResultsPerQuery: asNumber(value.maxResultsPerQuery, 20),
     excludeReplies: asBool(value.excludeReplies, true),
     excludeRetweets: asBool(value.excludeRetweets, true),
+    batching: asBatchingConfig(value.batching),
+    maxOutputTokensPerAccount:
+      typeof value.maxOutputTokensPerAccount === "number" &&
+      Number.isFinite(value.maxOutputTokensPerAccount)
+        ? value.maxOutputTokensPerAccount
+        : undefined,
   };
 }
 
+/** Compile queries for a single account (used when batching is off) */
 function compileQueries(config: XPostsSourceConfig): string[] {
   if (config.queries && config.queries.length > 0) return config.queries;
 
@@ -90,6 +115,29 @@ function compileQueries(config: XPostsSourceConfig): string[] {
   if (out.length === 0 && kwExpr) out.push(kwExpr);
   return out;
 }
+
+/** Compile a single query for a group of accounts (batched) */
+function compileBatchedQuery(
+  handles: string[],
+  config: XPostsSourceConfig,
+): { query: string; handles: string[] } {
+  const filters: string[] = [];
+  if (config.excludeReplies) filters.push("-filter:replies");
+  if (config.excludeRetweets) filters.push("-filter:retweets");
+
+  const keywords = (config.keywords ?? []).filter((k) => k.trim().length > 0);
+  const kwExpr =
+    keywords.length > 0 ? keywords.map((k) => `"${k.replaceAll('"', '\\"')}"`).join(" OR ") : null;
+
+  const fromExpr = `(${handles.map((h) => `from:${h.trim()}`).join(" OR ")})`;
+  const filterExpr = filters.length > 0 ? ` ${filters.join(" ")}` : "";
+  const query = kwExpr ? `${fromExpr}${filterExpr} (${kwExpr})` : `${fromExpr}${filterExpr}`;
+
+  return { query, handles };
+}
+
+/** Cap for batched limit: perAccountLimit * groupSize, capped at 200 */
+const BATCHED_LIMIT_CAP = 200;
 
 function dayBucketFromIso(value: string | undefined): string | null {
   if (!value) return null;
@@ -158,13 +206,43 @@ function estimateCreditsPerCall(): number {
   return Number.isFinite(parsed) ? parsed : 50;
 }
 
+/** A query job: query string + handles in the batch + groupSize */
+interface QueryJob {
+  query: string;
+  handles: string[];
+  groupSize: number;
+}
+
+/** Build query jobs based on batching config */
+function buildQueryJobs(config: XPostsSourceConfig): QueryJob[] {
+  // If raw queries are provided, use them (no batching)
+  if (config.queries && config.queries.length > 0) {
+    return config.queries.map((q) => ({ query: q, handles: [], groupSize: 1 }));
+  }
+
+  // Check for batching
+  if (config.batching?.mode === "manual" && config.batching.groups) {
+    return config.batching.groups.map((group) => {
+      const { query, handles } = compileBatchedQuery(group, config);
+      return { query, handles, groupSize: handles.length };
+    });
+  }
+
+  // Default: per-account queries (groupSize=1)
+  const queries = compileQueries(config);
+  return queries.map((q) => {
+    const handle = extractHandleFromFromQuery(q);
+    return { query: q, handles: handle ? [handle] : [], groupSize: 1 };
+  });
+}
+
 export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
   resetRunBudgetIfNeeded(params);
   const maxSearchCallsPerRun = getMaxSearchCallsPerRun();
 
   const config = asConfig(params.config);
-  const queries = compileQueries(config);
-  if (queries.length === 0) return { rawItems: [], nextCursor: { ...params.cursor } };
+  const jobs = buildQueryJobs(config);
+  if (jobs.length === 0) return { rawItems: [], nextCursor: { ...params.cursor } };
 
   const sinceId =
     getCursorString(params.cursor, "since_id") ?? getCursorString(params.cursor, "sinceId");
@@ -179,27 +257,42 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
   const toDate = params.windowEnd;
   const dayBucket = (todayBucket ?? params.windowEnd.slice(0, 10)) || params.windowEnd.slice(0, 10);
 
-  const perQueryBudget = Math.max(1, Math.floor(params.limits.maxItems / queries.length));
-  const limit = Math.max(1, Math.min(config.maxResultsPerQuery ?? 20, perQueryBudget));
+  const perAccountLimit = config.maxResultsPerQuery ?? 20;
+  const batchMode = config.batching?.mode ?? "off";
 
   const rawItems: unknown[] = [];
   const providerCalls: ProviderCallDraft[] = [];
   let anySuccess = false;
 
-  for (const query of queries) {
+  for (const job of jobs) {
     if (maxSearchCallsPerRun !== null && runSearchCallsUsed >= maxSearchCallsPerRun) break;
     const startedAt = new Date().toISOString();
+
+    // Calculate limit: perAccountLimit * groupSize, capped at 200 and maxItems
+    const scaledLimit = Math.min(
+      perAccountLimit * job.groupSize,
+      params.limits.maxItems,
+      BATCHED_LIMIT_CAP,
+    );
+    const limit = Math.max(1, scaledLimit);
+
+    // Calculate max output tokens: maxOutputTokensPerAccount * groupSize if set
+    const maxOutputTokens =
+      config.maxOutputTokensPerAccount && job.groupSize > 0
+        ? config.maxOutputTokensPerAccount * job.groupSize
+        : undefined;
+
     try {
       runSearchCallsUsed += 1;
-      const handle = extractHandleFromFromQuery(query);
       const result = await grokXSearch({
-        query,
+        query: job.query,
         limit,
         sinceId,
         sinceTime,
-        allowedXHandles: handle ? [handle] : undefined,
+        allowedXHandles: job.handles.length > 0 ? job.handles : undefined,
         fromDate,
         toDate,
+        maxOutputTokens,
       });
 
       const endedAt = new Date().toISOString();
@@ -216,7 +309,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         costEstimateCredits: estimateCreditsPerCall(),
         meta: {
           sourceId: params.sourceId,
-          query,
+          query: job.query,
           limit,
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
@@ -225,6 +318,11 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
           maxSearchCallsPerRun,
+          // Batching experiment metadata
+          batch_mode: batchMode,
+          batch_size: job.groupSize,
+          batch_handles_count: job.handles.length,
+          max_output_tokens: maxOutputTokens,
         },
         startedAt,
         endedAt,
@@ -238,7 +336,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           ...extractPostRawItems({
             assistantJson: result.assistantJson,
             vendor: config.vendor,
-            query,
+            query: job.query,
             dayBucket,
             windowStart: params.windowStart,
             windowEnd: params.windowEnd,
@@ -265,7 +363,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         costEstimateCredits: estimateCreditsPerCall(),
         meta: {
           sourceId: params.sourceId,
-          query,
+          query: job.query,
           limit,
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
@@ -273,6 +371,11 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           provider_model: providerModel,
           requestId,
           maxSearchCallsPerRun,
+          // Batching experiment metadata
+          batch_mode: batchMode,
+          batch_size: job.groupSize,
+          batch_handles_count: job.handles.length,
+          max_output_tokens: maxOutputTokens,
         },
         startedAt,
         endedAt,
@@ -299,7 +402,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
     meta: {
       providerCalls,
       anySuccess,
-      queryCount: queries.length,
+      queryCount: jobs.length,
       vendor: config.vendor,
     },
   };

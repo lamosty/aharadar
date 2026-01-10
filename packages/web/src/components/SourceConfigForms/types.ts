@@ -30,6 +30,12 @@ export interface YoutubeConfig {
   includeTranscript?: boolean;
 }
 
+// X Posts Batching Config
+export interface XPostsBatchingConfig {
+  mode: "off" | "manual";
+  groups?: string[][];
+}
+
 // X Posts Source Config
 export interface XPostsConfig {
   vendor: "grok" | string;
@@ -39,6 +45,8 @@ export interface XPostsConfig {
   maxResultsPerQuery?: number;
   excludeReplies?: boolean;
   excludeRetweets?: boolean;
+  batching?: XPostsBatchingConfig;
+  maxOutputTokensPerAccount?: number;
 }
 
 // Signal Source Config

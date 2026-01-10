@@ -5,12 +5,32 @@ import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 import type { SourceConfigFormProps, XPostsConfig } from "./types";
 
+/** Serialize groups to textarea format (one line per group, comma-separated) */
+function serializeGroups(groups: string[][] | undefined): string {
+  if (!groups || groups.length === 0) return "";
+  return groups.map((g) => g.join(", ")).join("\n");
+}
+
+/** Parse textarea to groups array */
+function parseGroups(text: string): string[][] {
+  return text
+    .split("\n")
+    .map((line) =>
+      line
+        .split(",")
+        .map((h) => h.trim().replace(/^@/, ""))
+        .filter((h) => h.length > 0),
+    )
+    .filter((g) => g.length > 0);
+}
+
 export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormProps<XPostsConfig>) {
   const [accountInput, setAccountInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [queryInput, setQueryInput] = useState("");
   const [showPasteAccounts, setShowPasteAccounts] = useState(false);
   const [pasteAccountsValue, setPasteAccountsValue] = useState("");
+  const [groupsText, setGroupsText] = useState(() => serializeGroups(value.batching?.groups));
 
   const handleChange = <K extends keyof XPostsConfig>(key: K, val: XPostsConfig[K]) => {
     onChange({ ...value, [key]: val });
@@ -477,6 +497,144 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
               }
             />
           </label>
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h5 className={styles.sectionTitle}>
+          Batching (Experimental)
+          <HelpTooltip
+            title="Account Batching"
+            content={
+              <>
+                <p>Group multiple accounts into fewer API calls to reduce cost.</p>
+                <p>
+                  <strong>Off:</strong> Each account is queried separately (default)
+                </p>
+                <p>
+                  <strong>Manual:</strong> Define groups of accounts to query together
+                </p>
+                <p>
+                  <strong>Note:</strong> Per-call results are capped at 200 even when batching.
+                </p>
+              </>
+            }
+          />
+        </h5>
+
+        <div className={styles.field}>
+          <label htmlFor="x-batchMode" className={styles.label}>
+            Batching Mode
+          </label>
+          <select
+            id="x-batchMode"
+            value={value.batching?.mode ?? "off"}
+            onChange={(e) => {
+              const mode = e.target.value as "off" | "manual";
+              if (mode === "off") {
+                handleChange("batching", undefined);
+              } else {
+                handleChange("batching", {
+                  mode,
+                  groups: parseGroups(groupsText),
+                });
+              }
+            }}
+            className={styles.selectInput}
+          >
+            <option value="off">Off</option>
+            <option value="manual">Manual Groups</option>
+          </select>
+        </div>
+
+        {value.batching?.mode === "manual" && (
+          <div className={styles.field}>
+            <label htmlFor="x-batchGroups" className={styles.label}>
+              Account Groups
+              <HelpTooltip
+                title="Manual Batch Groups"
+                content={
+                  <>
+                    <p>Define groups of accounts to query together.</p>
+                    <p>
+                      <strong>Format:</strong> One group per line, comma-separated handles
+                    </p>
+                    <p>
+                      <strong>Example:</strong>
+                    </p>
+                    <pre style={{ fontSize: "12px", margin: "4px 0" }}>
+                      openai, anthropic{"\n"}
+                      elonmusk, sama{"\n"}
+                      ycombinator
+                    </pre>
+                    <p>This creates 3 API calls instead of 5.</p>
+                  </>
+                }
+              />
+            </label>
+            <textarea
+              id="x-batchGroups"
+              value={groupsText}
+              onChange={(e) => {
+                setGroupsText(e.target.value);
+                const groups = parseGroups(e.target.value);
+                handleChange("batching", {
+                  mode: "manual",
+                  groups: groups.length > 0 ? groups : undefined,
+                });
+              }}
+              placeholder="openai, anthropic&#10;elonmusk, sama"
+              className={styles.pasteTextarea}
+              rows={4}
+            />
+            {parseGroups(groupsText).some((g) => g.length > 5) && (
+              <p className={styles.hint} style={{ color: "var(--color-warning)" }}>
+                Large groups may hit the 200 result cap. Consider smaller groups for better
+                coverage.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className={styles.field}>
+          <label htmlFor="x-maxOutputTokens" className={styles.label}>
+            Max Output Tokens Per Account
+            <HelpTooltip
+              title="Output Token Budget"
+              content={
+                <>
+                  <p>Override the default output token limit per account.</p>
+                  <p>
+                    <strong>How it works:</strong> When batching, total tokens = this value × group
+                    size
+                  </p>
+                  <p>
+                    <strong>Default:</strong> Uses system default (~900 tokens)
+                  </p>
+                  <p>
+                    <strong>Example:</strong> Set to 500 for 2-account batches = 1000 tokens per
+                    call
+                  </p>
+                  <p>Higher values allow more results but cost more.</p>
+                </>
+              }
+            />
+          </label>
+          <input
+            type="number"
+            id="x-maxOutputTokens"
+            min={100}
+            max={4000}
+            value={value.maxOutputTokensPerAccount ?? ""}
+            onChange={(e) =>
+              handleChange(
+                "maxOutputTokensPerAccount",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
+            }
+            placeholder="Default"
+            className={styles.numberInput}
+          />
         </div>
       </div>
     </div>

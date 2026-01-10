@@ -19,6 +19,11 @@ export interface GrokXSearchParams {
   fromDate?: string;
   /** ISO timestamp */
   toDate?: string;
+  /**
+   * Override max output tokens for this call.
+   * Will be clamped to X_POSTS_MAX_OUTPUT_TOKENS_HARD_CAP if set.
+   */
+  maxOutputTokens?: number;
 }
 
 export interface GrokXSearchResult {
@@ -243,9 +248,18 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
 
   const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
   const maxTokensDefault = tier === "high" ? 2000 : 900;
-  const maxTokens =
+  const maxTokensEnv =
     parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ??
     maxTokensDefault;
+  const hardCap =
+    parseIntEnv(
+      "X_POSTS_MAX_OUTPUT_TOKENS_HARD_CAP",
+      process.env.X_POSTS_MAX_OUTPUT_TOKENS_HARD_CAP,
+    ) ?? 16000;
+  // Apply override if provided, clamped to hard cap
+  const maxTokens = params.maxOutputTokens
+    ? Math.min(params.maxOutputTokens, hardCap)
+    : maxTokensEnv;
 
   const fromDate = toYYYYMMDD(params.fromDate ?? params.sinceTime);
   const toDate = toYYYYMMDD(params.toDate);
