@@ -1,6 +1,6 @@
 import type { Queryable } from "../db";
 
-export type LlmProvider = "openai" | "anthropic" | "claude-subscription";
+export type LlmProvider = "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
 
 export interface LlmSettingsRow {
   id: number;
@@ -10,6 +10,8 @@ export interface LlmSettingsRow {
   claude_subscription_enabled: boolean;
   claude_triage_thinking: boolean;
   claude_calls_per_hour: number;
+  codex_subscription_enabled: boolean;
+  codex_calls_per_hour: number;
   updated_at: string;
 }
 
@@ -20,6 +22,8 @@ export interface LlmSettingsUpdate {
   claude_subscription_enabled?: boolean;
   claude_triage_thinking?: boolean;
   claude_calls_per_hour?: number;
+  codex_subscription_enabled?: boolean;
+  codex_calls_per_hour?: number;
 }
 
 export function createLlmSettingsRepo(db: Queryable) {
@@ -28,7 +32,8 @@ export function createLlmSettingsRepo(db: Queryable) {
       const result = await db.query<LlmSettingsRow>(
         `SELECT id, provider, anthropic_model, openai_model,
                 claude_subscription_enabled, claude_triage_thinking,
-                claude_calls_per_hour, updated_at
+                claude_calls_per_hour, codex_subscription_enabled,
+                codex_calls_per_hour, updated_at
          FROM llm_settings
          WHERE id = 1`,
       );
@@ -69,6 +74,14 @@ export function createLlmSettingsRepo(db: Queryable) {
         setClauses.push(`claude_calls_per_hour = $${paramIndex++}`);
         values.push(params.claude_calls_per_hour);
       }
+      if (params.codex_subscription_enabled !== undefined) {
+        setClauses.push(`codex_subscription_enabled = $${paramIndex++}`);
+        values.push(params.codex_subscription_enabled);
+      }
+      if (params.codex_calls_per_hour !== undefined) {
+        setClauses.push(`codex_calls_per_hour = $${paramIndex++}`);
+        values.push(params.codex_calls_per_hour);
+      }
 
       if (setClauses.length === 0) {
         // Nothing to update, just return current
@@ -81,7 +94,8 @@ export function createLlmSettingsRepo(db: Queryable) {
          WHERE id = 1
          RETURNING id, provider, anthropic_model, openai_model,
                    claude_subscription_enabled, claude_triage_thinking,
-                   claude_calls_per_hour, updated_at`,
+                   claude_calls_per_hour, codex_subscription_enabled,
+                   codex_calls_per_hour, updated_at`,
         values,
       );
 
