@@ -826,6 +826,7 @@ export async function persistDigestFromContentItems(params: {
       score: r.score,
       sourceType: baseCandidate?.sourceType ?? "unknown",
       sourceId: baseCandidate?.sourceId ?? "unknown",
+      author: baseCandidate?.author ?? null,
       // For clusters, member sources would be added here in a future enhancement
       // memberSources: undefined, // TODO: load cluster member sources for better diversity
       hasTriageData: r.triageJson !== null,
@@ -865,6 +866,7 @@ export async function persistDigestFromContentItems(params: {
         type: s.sourceType,
         count: s.count,
       })),
+      topAuthors: diversityResult.stats.outputByAuthor.slice(0, 5),
     },
     "Diversity selection completed",
   );

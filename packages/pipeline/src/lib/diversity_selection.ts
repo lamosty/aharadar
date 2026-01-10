@@ -21,6 +21,11 @@ export interface DiversityCandidate {
   /** Primary source ID */
   sourceId: string;
   /**
+   * Author handle (e.g., "@elonmusk" for x_posts).
+   * Used for per-author diversity within a source.
+   */
+  author?: string | null;
+  /**
    * For clusters: all member source IDs + types.
    * When a cluster is selected, all these sources count as "represented".
    */
@@ -36,6 +41,8 @@ export interface DiversitySelectionParams {
   alphaType?: number;
   /** Penalty factor for individual source (default 0.05) */
   alphaSource?: number;
+  /** Penalty factor for author within source (default 0.08) */
+  alphaAuthor?: number;
   /** If true, only select candidates with triage data */
   requireTriageData?: boolean;
 }
@@ -55,6 +62,8 @@ export interface DiversityStats {
   outputByType: Array<{ type: string; count: number }>;
   /** Distribution by source in output (top 5) */
   outputBySource: Array<{ sourceId: string; sourceType: string; count: number }>;
+  /** Distribution by author in output (top 5) */
+  outputByAuthor: Array<{ author: string; count: number }>;
   /** Whether output was limited by triage data availability */
   limitedByTriageData: boolean;
 }
@@ -65,6 +74,7 @@ export interface DiversityStats {
 
 const DEFAULT_ALPHA_TYPE = 0.15;
 const DEFAULT_ALPHA_SOURCE = 0.05;
+const DEFAULT_ALPHA_AUTHOR = 0.08;
 
 // ============================================================================
 // Implementation
@@ -76,13 +86,14 @@ const DEFAULT_ALPHA_SOURCE = 0.05;
  * Algorithm:
  * 1. Filter to triaged candidates (if required)
  * 2. Greedy select: pick highest adjusted score, update counts, repeat
- * 3. Adjusted score = score / (1 + alphaType * countType + alphaSource * countSource)
+ * 3. Adjusted score = score / (1 + alphaType * countType + alphaSource * countSource + alphaAuthor * countAuthor)
  * 4. For clusters, selecting adds all member sources to the counts
  */
 export function selectWithDiversity(params: DiversitySelectionParams): DiversitySelectionResult {
   const { candidates, maxItems } = params;
   const alphaType = params.alphaType ?? DEFAULT_ALPHA_TYPE;
   const alphaSource = params.alphaSource ?? DEFAULT_ALPHA_SOURCE;
+  const alphaAuthor = params.alphaAuthor ?? DEFAULT_ALPHA_AUTHOR;
   const requireTriageData = params.requireTriageData ?? false;
 
   // Filter by triage data if required
@@ -99,6 +110,7 @@ export function selectWithDiversity(params: DiversitySelectionParams): Diversity
         triagedInputCount,
         outputByType: [],
         outputBySource: [],
+        outputByAuthor: [],
         limitedByTriageData: requireTriageData && triagedInputCount < candidates.length,
       },
     };
@@ -107,6 +119,7 @@ export function selectWithDiversity(params: DiversitySelectionParams): Diversity
   // Track selection counts for penalty calculation
   const typeCount = new Map<string, number>();
   const sourceCount = new Map<string, number>();
+  const authorCount = new Map<string, number>();
 
   const selectedIds: string[] = [];
   const selectedSet = new Set<string>();
@@ -127,8 +140,13 @@ export function selectWithDiversity(params: DiversitySelectionParams): Diversity
       // Compute adjusted score with current counts
       const currentTypeCount = typeCount.get(candidate.sourceType) ?? 0;
       const currentSourceCount = sourceCount.get(candidate.sourceId) ?? 0;
+      const currentAuthorCount = candidate.author ? (authorCount.get(candidate.author) ?? 0) : 0;
 
-      const penalty = 1 + alphaType * currentTypeCount + alphaSource * currentSourceCount;
+      const penalty =
+        1 +
+        alphaType * currentTypeCount +
+        alphaSource * currentSourceCount +
+        alphaAuthor * currentAuthorCount;
       const adjusted = candidate.score / penalty;
 
       if (adjusted > bestAdjustedScore) {
@@ -149,6 +167,11 @@ export function selectWithDiversity(params: DiversitySelectionParams): Diversity
     // Add primary source
     typeCount.set(selected.sourceType, (typeCount.get(selected.sourceType) ?? 0) + 1);
     sourceCount.set(selected.sourceId, (sourceCount.get(selected.sourceId) ?? 0) + 1);
+
+    // Track author if present
+    if (selected.author) {
+      authorCount.set(selected.author, (authorCount.get(selected.author) ?? 0) + 1);
+    }
 
     // For clusters, also add all member sources
     if (selected.memberSources) {
@@ -174,6 +197,10 @@ export function selectWithDiversity(params: DiversitySelectionParams): Diversity
   }
   outputBySource.sort((a, b) => b.count - a.count);
 
+  const outputByAuthor = Array.from(authorCount.entries())
+    .map(([author, count]) => ({ author, count }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     selectedIds,
     stats: {
@@ -182,6 +209,7 @@ export function selectWithDiversity(params: DiversitySelectionParams): Diversity
       triagedInputCount,
       outputByType,
       outputBySource: outputBySource.slice(0, 5),
+      outputByAuthor: outputByAuthor.slice(0, 5),
       limitedByTriageData:
         requireTriageData && selectedIds.length < maxItems && triagedInputCount < candidates.length,
     },
