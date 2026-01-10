@@ -1,7 +1,13 @@
 "use client";
 
 import { useIsAdmin } from "@/components/AuthProvider";
-import { BudgetWidget, TopItemsWidget, TopicOverviewWidget } from "@/components/Dashboard";
+import {
+  BudgetWidget,
+  EngagementChart,
+  RecentDigestsWidget,
+  SpendingChart,
+  TopItemsGrid,
+} from "@/components/Dashboard";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -15,11 +21,26 @@ export default function DashboardPage() {
         <p className={styles.welcome}>{t("dashboard.welcome")}</p>
       </header>
 
-      <div className={styles.widgetGrid}>
-        <TopicOverviewWidget />
-        <TopItemsWidget />
-        {isAdmin && <BudgetWidget />}
-      </div>
+      {/* Row 1: Top Items per Topic (horizontal columns) */}
+      <section className={styles.section}>
+        <TopItemsGrid />
+      </section>
+
+      {/* Row 2: Charts (Engagement + Spending) */}
+      <section className={styles.section}>
+        <div className={styles.chartsRow}>
+          <EngagementChart />
+          {isAdmin && <SpendingChart />}
+        </div>
+      </section>
+
+      {/* Row 3: Status Widgets (Recent Digests + Budget) */}
+      <section className={styles.section}>
+        <div className={styles.statusRow}>
+          <RecentDigestsWidget />
+          {isAdmin && <BudgetWidget />}
+        </div>
+      </section>
     </div>
   );
 }

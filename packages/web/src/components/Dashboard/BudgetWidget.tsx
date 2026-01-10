@@ -38,6 +38,9 @@ export function BudgetWidget() {
   const dailyUsed = budgets.dailyUsed ?? 0;
   const dailyPercent = dailyLimit > 0 ? (dailyUsed / dailyLimit) * 100 : 0;
 
+  // Estimate days remaining based on current daily usage
+  const daysRemaining = estimateDaysRemaining(budgets.monthlyUsed, budgets.monthlyLimit, dailyUsed);
+
   const getBarColor = (percent: number) => {
     if (percent >= 90) return "var(--color-error)";
     if (percent >= 70) return "var(--color-warning)";
@@ -89,11 +92,40 @@ export function BudgetWidget() {
         </div>
       </div>
 
+      {daysRemaining !== null && (
+        <div className={styles.budgetEstimate}>
+          ~{daysRemaining} {daysRemaining === 1 ? "day" : "days"} remaining at current rate
+        </div>
+      )}
+
       {!budgets.paidCallsAllowed && (
         <div className={styles.degradedBanner}>{t("admin.budgets.degradedMode")}</div>
       )}
     </div>
   );
+}
+
+/**
+ * Estimate days until monthly budget is exhausted based on current daily usage.
+ * Returns null if we can't make a reasonable estimate.
+ */
+function estimateDaysRemaining(
+  monthlyUsed: number,
+  monthlyLimit: number,
+  dailyUsed: number,
+): number | null {
+  if (monthlyLimit <= 0 || dailyUsed <= 0) return null;
+
+  const remaining = monthlyLimit - monthlyUsed;
+  if (remaining <= 0) return 0;
+
+  // Use today's usage as the daily rate
+  const daysLeft = Math.floor(remaining / dailyUsed);
+
+  // Cap at reasonable number
+  if (daysLeft > 365) return null;
+
+  return daysLeft;
 }
 
 function Spinner() {

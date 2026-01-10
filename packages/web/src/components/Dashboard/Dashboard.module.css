@@ -322,9 +322,343 @@ a.itemTitle:hover {
   border-color: var(--color-primary);
 }
 
-/* Responsive */
+/* ============================================
+   TopItemsGrid - Horizontal Topic Columns
+   ============================================ */
+
+.topItemsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.gridLoading,
+.gridError,
+.gridEmpty {
+  grid-column: 1 / -1;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.gridLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.gridEmpty p {
+  margin: 0 0 var(--space-4) 0;
+}
+
+.topicColumn {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.topicColumnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.topicColumnTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.topicColumnTitle:hover {
+  color: var(--color-primary);
+}
+
+.topicColumnProfile {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+  padding: 2px var(--space-2);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.topicColumnLoading,
+.topicColumnError,
+.topicColumnEmpty {
+  padding: var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.topicColumnError {
+  color: var(--color-error);
+  background: var(--color-error-subtle);
+  border-radius: var(--radius-sm);
+}
+
+/* Compact item list for topic columns */
+.compactItemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.compactItemRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.compactItemScore {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  border-radius: var(--radius-full);
+}
+
+.compactItemContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compactItemTitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+a.compactItemTitle:hover {
+  color: var(--color-primary);
+}
+
+.compactItemSource {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* ============================================
+   Chart Widgets
+   ============================================ */
+
+.chartContainer {
+  margin-top: var(--space-3);
+}
+
+.chartLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+}
+
+.chartEmpty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.chartEmpty p {
+  margin: 0 0 var(--space-2) 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.chartEmptyHint {
+  font-size: var(--font-size-sm);
+}
+
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+/* ============================================
+   Spending Chart
+   ============================================ */
+
+.spendingSummary {
+  display: flex;
+  gap: var(--space-6);
+  margin-bottom: var(--space-2);
+}
+
+.spendingStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spendingLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.spendingValue {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+}
+
+/* ============================================
+   Recent Digests Widget
+   ============================================ */
+
+.digestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.digestItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.digestItem:hover {
+  background: var(--color-surface-hover);
+}
+
+.digestStatus {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+
+.digestStatus[data-status="complete"] {
+  color: var(--color-success);
+  background: var(--color-success-subtle);
+}
+
+.digestStatus[data-status="failed"] {
+  color: var(--color-error);
+  background: var(--color-error-subtle);
+}
+
+.digestInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.digestLink {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.digestLink:hover {
+  color: var(--color-primary);
+}
+
+.digestMeta {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.digestMode {
+  text-transform: capitalize;
+}
+
+.digestEmpty {
+  padding: var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ============================================
+   Budget Estimate
+   ============================================ */
+
+.budgetEstimate {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
 @media (max-width: 640px) {
   .topicGrid {
     grid-template-columns: 1fr;
+  }
+
+  .topItemsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .spendingSummary {
+    gap: var(--space-4);
+  }
+
+  .chartLegend {
+    gap: var(--space-3);
   }
 }
