@@ -326,6 +326,51 @@ a.itemTitle:hover {
    TopItemsGrid - Horizontal Topic Columns
    ============================================ */
 
+.gridHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.gridTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  background: var(--color-surface);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.viewToggleButton {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.viewToggleButton:hover {
+  color: var(--color-text-primary);
+}
+
+.viewToggleButton[data-active="true"] {
+  color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
 .topItemsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -595,7 +640,13 @@ a.compactItemTitle:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
+}
+
+.digestHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .digestLink {
@@ -607,6 +658,44 @@ a.compactItemTitle:hover {
 
 .digestLink:hover {
   color: var(--color-primary);
+}
+
+.digestModeBadge {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  text-transform: capitalize;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.digestModeBadge[data-mode="high"] {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.digestModeBadge[data-mode="normal"] {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.digestStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.digestStat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.digestStat svg {
+  opacity: 0.7;
 }
 
 .digestMeta {

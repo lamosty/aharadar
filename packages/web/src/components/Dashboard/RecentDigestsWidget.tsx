@@ -59,13 +59,30 @@ export function RecentDigestsWidget() {
                 {digest.status === "complete" ? <CheckIcon /> : <XIcon />}
               </span>
               <div className={styles.digestInfo}>
-                <Link href={`/app/digests/${digest.id}`} className={styles.digestLink}>
-                  {formatRelativeTime(digest.createdAt)}
-                </Link>
-                <span className={styles.digestMeta}>
-                  <span className={styles.digestMode}>{digest.mode}</span>
-                  <span className={styles.digestCount}>{digest.itemCount} items</span>
-                </span>
+                <div className={styles.digestHeader}>
+                  <Link href={`/app/digests/${digest.id}`} className={styles.digestLink}>
+                    {formatRelativeTime(digest.createdAt)}
+                  </Link>
+                  <span className={styles.digestModeBadge} data-mode={digest.mode}>
+                    {digest.mode}
+                  </span>
+                </div>
+                <div className={styles.digestStats}>
+                  <span className={styles.digestStat}>
+                    <ItemsIcon />
+                    {digest.itemCount} items
+                  </span>
+                  <span className={styles.digestStat}>
+                    <SourcesIcon />
+                    {digest.sourceCount.succeeded}/{digest.sourceCount.total} sources
+                  </span>
+                  {digest.creditsUsed > 0 && (
+                    <span className={styles.digestStat}>
+                      <CreditsIcon />
+                      {digest.creditsUsed.toLocaleString()} credits
+                    </span>
+                  )}
+                </div>
               </div>
             </li>
           ))}
@@ -143,6 +160,58 @@ function XIcon() {
     >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function ItemsIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <circle cx="4" cy="6" r="1" fill="currentColor" />
+      <circle cx="4" cy="12" r="1" fill="currentColor" />
+      <circle cx="4" cy="18" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SourcesIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+    </svg>
+  );
+}
+
+function CreditsIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v12m-4-8h8" />
     </svg>
   );
 }

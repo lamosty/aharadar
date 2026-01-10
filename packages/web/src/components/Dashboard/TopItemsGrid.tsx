@@ -1,16 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import type { Topic } from "@/lib/api";
+import { useState } from "react";
+import type { FeedItem, FeedView, Topic } from "@/lib/api";
 import { useItems, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./Dashboard.module.css";
 
+type ViewOption = "inbox" | "saved" | "all";
+
+const VIEW_OPTIONS: { value: ViewOption; label: string }[] = [
+  { value: "inbox", label: "Unprocessed" },
+  { value: "saved", label: "Saved" },
+  { value: "all", label: "All" },
+];
+
 /**
  * Horizontal grid of topic columns, each showing top items.
- * Replaces the vertical TopItemsWidget.
+ * Includes a view toggle for filtering items.
  */
 export function TopItemsGrid() {
+  const [view, setView] = useState<ViewOption>("inbox");
   const { data: topicsData, isLoading, error } = useTopics();
   const topics = topicsData?.topics ?? [];
 
@@ -47,26 +57,45 @@ export function TopItemsGrid() {
   }
 
   return (
-    <div className={styles.topItemsGrid}>
-      {topics.map((topic) => (
-        <TopicColumn key={topic.id} topic={topic} />
-      ))}
+    <div>
+      <div className={styles.gridHeader}>
+        <h3 className={styles.gridTitle}>Top Items</h3>
+        <div className={styles.viewToggle}>
+          {VIEW_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={styles.viewToggleButton}
+              data-active={view === opt.value}
+              onClick={() => setView(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className={styles.topItemsGrid}>
+        {topics.map((topic) => (
+          <TopicColumn key={topic.id} topic={topic} view={view} />
+        ))}
+      </div>
     </div>
   );
 }
 
 interface TopicColumnProps {
   topic: Topic;
+  view: FeedView;
 }
 
-function TopicColumn({ topic }: TopicColumnProps) {
-  const { data, isLoading, error } = useItems({ topicId: topic.id, limit: 5 });
+function TopicColumn({ topic, view }: TopicColumnProps) {
+  const { data, isLoading, error } = useItems({ topicId: topic.id, limit: 5, view });
   const items = data?.pages.flatMap((p) => p.items).slice(0, 5) ?? [];
 
   return (
     <div className={styles.topicColumn}>
       <div className={styles.topicColumnHeader}>
-        <Link href={`/app/feed?topic=${topic.id}`} className={styles.topicColumnTitle}>
+        <Link href={`/app/feed?topic=${topic.id}&view=${view}`} className={styles.topicColumnTitle}>
           {topic.name}
         </Link>
         <span className={styles.topicColumnProfile}>{topic.viewingProfile}</span>
@@ -79,7 +108,13 @@ function TopicColumn({ topic }: TopicColumnProps) {
       ) : error ? (
         <div className={styles.topicColumnError}>{t("common.error")}</div>
       ) : items.length === 0 ? (
-        <div className={styles.topicColumnEmpty}>No items yet</div>
+        <div className={styles.topicColumnEmpty}>
+          {view === "inbox"
+            ? "All caught up!"
+            : view === "saved"
+              ? "No saved items"
+              : "No items yet"}
+        </div>
       ) : (
         <ul className={styles.compactItemList}>
           {items.map((item) => (
@@ -100,9 +135,7 @@ function TopicColumn({ topic }: TopicColumnProps) {
                     {item.item.title || item.item.bodyText?.slice(0, 80) || "(Untitled)"}
                   </span>
                 )}
-                <span className={styles.compactItemSource}>
-                  {formatSourceType(item.item.sourceType)}
-                </span>
+                <span className={styles.compactItemSource}>{formatSource(item)}</span>
               </div>
             </li>
           ))}
@@ -112,7 +145,24 @@ function TopicColumn({ topic }: TopicColumnProps) {
   );
 }
 
-function formatSourceType(type: string): string {
+/**
+ * Format source label with additional context (e.g., subreddit for Reddit).
+ */
+function formatSource(item: FeedItem): string {
+  const type = item.item.sourceType;
+  const metadata = item.item.metadata;
+
+  // Reddit: show subreddit name
+  if (type === "reddit" && metadata?.subreddit) {
+    return `r/${metadata.subreddit}`;
+  }
+
+  // X posts: show author display name if available
+  if (type === "x_posts" && metadata?.user_display_name) {
+    return `X @${metadata.user_display_name}`;
+  }
+
+  // Fallback to type labels
   const labels: Record<string, string> = {
     hn: "HN",
     reddit: "Reddit",
