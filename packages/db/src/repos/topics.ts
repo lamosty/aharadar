@@ -1,7 +1,15 @@
 import type { Queryable } from "../db";
 import type { DigestMode } from "./digests";
 import type { ViewingProfile } from "./user_preferences";
-import { PROFILE_DECAY_HOURS } from "./user_preferences";
+
+/**
+ * Derive decay_hours from digest_interval_minutes.
+ * Formula: decay_hours = round(digest_interval_minutes / 60)
+ * This unifies digest frequency and feed decay into a single concept (task-130).
+ */
+function deriveDecayHours(digestIntervalMinutes: number): number {
+  return Math.round(digestIntervalMinutes / 60);
+}
 
 export interface TopicRow {
   id: string;
@@ -107,22 +115,11 @@ export function createTopicsRepo(db: Queryable) {
       userId: string;
       name: string;
       description?: string | null;
-      viewingProfile?: ViewingProfile | null;
-      decayHours?: number | null;
     }): Promise<Topic> {
-      // If viewingProfile is set but decayHours is not, derive from profile
-      let effectiveDecayHours = params.decayHours;
-      if (
-        params.viewingProfile &&
-        params.viewingProfile !== "custom" &&
-        effectiveDecayHours === undefined
-      ) {
-        effectiveDecayHours = PROFILE_DECAY_HOURS[params.viewingProfile];
-      }
-
+      // Derive decay_hours from default digest_interval_minutes (1440 = 24 hours)
       const res = await db.query<TopicRow>(
-        `INSERT INTO topics (user_id, name, description, viewing_profile, decay_hours)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO topics (user_id, name, description, decay_hours)
+         VALUES ($1, $2, $3, $4)
          RETURNING id, user_id, name, description,
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
@@ -132,8 +129,7 @@ export function createTopicsRepo(db: Queryable) {
           params.userId,
           params.name,
           params.description ?? null,
-          params.viewingProfile ?? null,
-          effectiveDecayHours ?? null,
+          deriveDecayHours(1440), // Default: 1440 minutes = 24 hours decay
         ],
       );
       const row = res.rows[0];
@@ -178,6 +174,9 @@ export function createTopicsRepo(db: Queryable) {
 
     /**
      * Update viewing profile settings for a topic.
+     * @deprecated (task-130) - Viewing profile is deprecated.
+     * Decay is now derived from digest_interval_minutes via updateDigestSettings().
+     * This function is kept for backward compatibility but should not be called.
      */
     async updateViewingProfile(
       id: string,
@@ -190,6 +189,15 @@ export function createTopicsRepo(db: Queryable) {
       const values: unknown[] = [];
       let paramIdx = 1;
 
+      // Deprecated decay lookup (kept for backward compatibility)
+      const LEGACY_DECAY_HOURS: Record<string, number> = {
+        power: 4,
+        daily: 24,
+        weekly: 168,
+        research: 720,
+        custom: 24,
+      };
+
       if (viewingProfile !== undefined) {
         setClauses.push(`viewing_profile = $${paramIdx}`);
         values.push(viewingProfile);
@@ -198,7 +206,7 @@ export function createTopicsRepo(db: Queryable) {
         // Auto-set decay_hours based on profile (unless custom or decayHours explicitly provided)
         if (viewingProfile !== "custom" && decayHours === undefined) {
           setClauses.push(`decay_hours = $${paramIdx}`);
-          values.push(PROFILE_DECAY_HOURS[viewingProfile]);
+          values.push(LEGACY_DECAY_HOURS[viewingProfile] ?? 24);
           paramIdx++;
         }
       }
@@ -309,6 +317,7 @@ export function createTopicsRepo(db: Queryable) {
     /**
      * Update digest schedule settings for a topic.
      * All fields are optional (patch semantics).
+     * When digestIntervalMinutes changes, decay_hours is automatically derived.
      */
     async updateDigestSettings(
       id: string,
@@ -335,6 +344,11 @@ export function createTopicsRepo(db: Queryable) {
         // DB constraint will enforce range [15, 43200]
         setClauses.push(`digest_interval_minutes = $${paramIdx}`);
         values.push(digestIntervalMinutes);
+        paramIdx++;
+
+        // Derive decay_hours from digest interval (task-130)
+        setClauses.push(`decay_hours = $${paramIdx}`);
+        values.push(deriveDecayHours(digestIntervalMinutes));
         paramIdx++;
       }
 
