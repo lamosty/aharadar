@@ -250,12 +250,27 @@
 
 .costEstimate {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px dashed var(--color-border);
   font-size: 0.75rem;
+}
+
+.costRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.costRowTotal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .costLabel {
@@ -269,6 +284,7 @@
 
 .costMonthly {
   color: var(--color-text-secondary);
+  margin-left: auto;
 }
 
 /* Actions */

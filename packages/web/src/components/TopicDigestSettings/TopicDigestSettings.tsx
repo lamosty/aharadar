@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DigestMode, Topic } from "@/lib/api";
+import type { DigestMode, Source, Topic } from "@/lib/api";
 import { useUpdateTopicDigestSettings } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./TopicDigestSettings.module.css";
@@ -44,6 +44,61 @@ const MODE_OPTIONS: DigestMode[] = ["low", "normal", "high"];
 interface TopicDigestSettingsProps {
   topic: Topic;
   enabledSourceCount: number;
+  sources?: Source[]; // Optional: for Grok cost estimation
+}
+
+// Grok pricing (grok-4-1-fast-non-reasoning, as of 2026-01)
+const GROK_INPUT_PER_1M = 0.2; // $0.20 per 1M input tokens
+const GROK_OUTPUT_PER_1M = 0.5; // $0.50 per 1M output tokens
+const GROK_INPUT_TOKENS_PER_CALL = 700; // System prompt + query
+const GROK_OUTPUT_TOKENS_PER_CALL = 1500; // Average between low (900) and high (2000) tier
+
+/**
+ * Estimate number of Grok API calls for x_posts sources.
+ * - Single mode (default): 1 call per account
+ * - Batch mode: 1 call per group
+ * - Raw queries: 1 call per query
+ */
+function estimateGrokCalls(sources: Source[]): number {
+  let totalCalls = 0;
+
+  for (const source of sources) {
+    if (source.type !== "x_posts" || !source.isEnabled) continue;
+
+    const config = source.config as Record<string, unknown> | undefined;
+    if (!config) continue;
+
+    // Check for raw queries first
+    const queries = config.queries as string[] | undefined;
+    if (queries && queries.length > 0) {
+      totalCalls += queries.length;
+      continue;
+    }
+
+    // Check for batch mode
+    const batching = config.batching as { mode?: string; groups?: string[][] } | undefined;
+    if (batching?.mode === "manual" && batching.groups) {
+      totalCalls += batching.groups.length;
+      continue;
+    }
+
+    // Default: single mode - 1 call per account
+    const accounts = config.accounts as string[] | undefined;
+    if (accounts && accounts.length > 0) {
+      totalCalls += accounts.length;
+    }
+  }
+
+  return totalCalls;
+}
+
+/**
+ * Estimate Grok API cost per digest run.
+ */
+function estimateGrokCost(grokCalls: number): number {
+  const inputCost = ((GROK_INPUT_TOKENS_PER_CALL * grokCalls) / 1_000_000) * GROK_INPUT_PER_1M;
+  const outputCost = ((GROK_OUTPUT_TOKENS_PER_CALL * grokCalls) / 1_000_000) * GROK_OUTPUT_PER_1M;
+  return inputCost + outputCost;
 }
 
 /**
@@ -110,8 +165,15 @@ function estimateMonthlyCost(
   return `~$${Math.round(monthlyCost)}`;
 }
 
-export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSettingsProps) {
+export function TopicDigestSettings({
+  topic,
+  enabledSourceCount,
+  sources = [],
+}: TopicDigestSettingsProps) {
   const updateMutation = useUpdateTopicDigestSettings(topic.id);
+
+  // Calculate Grok calls for x_posts sources
+  const grokCalls = useMemo(() => estimateGrokCalls(sources), [sources]);
 
   // Local state for form
   const [scheduleEnabled, setScheduleEnabled] = useState(topic.digestScheduleEnabled);
@@ -362,19 +424,44 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
 
         {/* Cost estimate */}
         <div className={styles.costEstimate}>
-          <span className={styles.costLabel}>
-            {t("topics.digestSettings.preview.estimatedCost")}
-          </span>
-          <span className={styles.costValue}>
-            {estimateCostPerRun(plan.triageMaxCalls, plan.deepSummaryMaxCalls)}/run
-          </span>
-          {scheduleEnabled && (
-            <span className={styles.costMonthly}>
-              ({estimateMonthlyRuns(intervalMinutes)} runs/mo ≈{" "}
-              {estimateMonthlyCost(plan.triageMaxCalls, plan.deepSummaryMaxCalls, intervalMinutes)}
-              /mo)
+          <div className={styles.costRow}>
+            <span className={styles.costLabel}>LLM processing:</span>
+            <span className={styles.costValue}>
+              {estimateCostPerRun(plan.triageMaxCalls, plan.deepSummaryMaxCalls)}/run
             </span>
+          </div>
+          {grokCalls > 0 && (
+            <div className={styles.costRow}>
+              <span className={styles.costLabel}>X/Grok ({grokCalls} calls):</span>
+              <span className={styles.costValue}>
+                ~${estimateGrokCost(grokCalls).toFixed(3)}/run
+              </span>
+            </div>
           )}
+          <div className={styles.costRowTotal}>
+            <span className={styles.costLabel}>Total:</span>
+            <span className={styles.costValue}>
+              ~$
+              {(
+                plan.triageMaxCalls * TRIAGE_COST +
+                plan.deepSummaryMaxCalls * SUMMARY_COST +
+                estimateGrokCost(grokCalls)
+              ).toFixed(2)}
+              /run
+            </span>
+            {scheduleEnabled && (
+              <span className={styles.costMonthly}>
+                ({estimateMonthlyRuns(intervalMinutes)} runs/mo ≈ ~$
+                {(
+                  estimateMonthlyRuns(intervalMinutes) *
+                  (plan.triageMaxCalls * TRIAGE_COST +
+                    plan.deepSummaryMaxCalls * SUMMARY_COST +
+                    estimateGrokCost(grokCalls))
+                ).toFixed(2)}
+                /mo)
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

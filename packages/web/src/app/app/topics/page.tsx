@@ -755,6 +755,7 @@ export default function TopicsPage() {
                       <TopicDigestSettings
                         topic={topic}
                         enabledSourceCount={topicSources.filter((s) => s.isEnabled).length}
+                        sources={topicSources}
                       />
                     </div>
                   </div>
