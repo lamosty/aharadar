@@ -591,11 +591,26 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     if (configPatch !== undefined && typeof configPatch === "object" && configPatch !== null) {
       const patch = configPatch as Record<string, unknown>;
 
-      // Apply weight update
-      if ("weight" in patch) {
+      // Check if it's just a weight update (backwards compatible)
+      const patchKeys = Object.keys(patch);
+      if (patchKeys.length === 1 && "weight" in patch) {
         await db.sources.updateConfigWeight({
           sourceId: id,
           weight: patch.weight as number | null,
+        });
+      } else {
+        // Full config update - merge with existing config
+        const existingConfig = existing.config_json ?? {};
+        const mergedConfig = { ...existingConfig, ...patch };
+
+        // Apply weight clamping if weight is being updated
+        if ("weight" in patch && patch.weight !== null) {
+          mergedConfig.weight = Math.max(0.1, Math.min(3.0, patch.weight as number));
+        }
+
+        await db.sources.updateConfig({
+          sourceId: id,
+          config: mergedConfig,
         });
       }
     }
@@ -714,6 +729,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         claudeSubscriptionEnabled: settings.claude_subscription_enabled,
         claudeTriageThinking: settings.claude_triage_thinking,
         claudeCallsPerHour: settings.claude_calls_per_hour,
+        codexSubscriptionEnabled: settings.codex_subscription_enabled,
+        codexCallsPerHour: settings.codex_calls_per_hour,
         updatedAt: settings.updated_at,
       },
     };
@@ -790,10 +807,17 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       claudeSubscriptionEnabled,
       claudeTriageThinking,
       claudeCallsPerHour,
+      codexSubscriptionEnabled,
+      codexCallsPerHour,
     } = body as Record<string, unknown>;
 
     // Validate provider if provided
-    const validProviders: LlmProvider[] = ["openai", "anthropic", "claude-subscription"];
+    const validProviders: LlmProvider[] = [
+      "openai",
+      "anthropic",
+      "claude-subscription",
+      "codex-subscription",
+    ];
     if (provider !== undefined && !validProviders.includes(provider as LlmProvider)) {
       return reply.code(400).send({
         ok: false,
@@ -863,6 +887,33 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       }
     }
 
+    // Validate Codex subscription fields
+    if (codexSubscriptionEnabled !== undefined && typeof codexSubscriptionEnabled !== "boolean") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "codexSubscriptionEnabled must be a boolean",
+        },
+      });
+    }
+
+    if (codexCallsPerHour !== undefined) {
+      if (
+        typeof codexCallsPerHour !== "number" ||
+        !Number.isInteger(codexCallsPerHour) ||
+        codexCallsPerHour < 1
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "codexCallsPerHour must be a positive integer",
+          },
+        });
+      }
+    }
+
     // Build update params
     const updateParams: LlmSettingsUpdate = {};
     if (provider !== undefined) updateParams.provider = provider as LlmProvider;
@@ -874,6 +925,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       updateParams.claude_triage_thinking = claudeTriageThinking as boolean;
     if (claudeCallsPerHour !== undefined)
       updateParams.claude_calls_per_hour = claudeCallsPerHour as number;
+    if (codexSubscriptionEnabled !== undefined)
+      updateParams.codex_subscription_enabled = codexSubscriptionEnabled as boolean;
+    if (codexCallsPerHour !== undefined)
+      updateParams.codex_calls_per_hour = codexCallsPerHour as number;
 
     const db = getDb();
     const settings = await db.llmSettings.update(updateParams);
@@ -887,6 +942,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         claudeSubscriptionEnabled: settings.claude_subscription_enabled,
         claudeTriageThinking: settings.claude_triage_thinking,
         claudeCallsPerHour: settings.claude_calls_per_hour,
+        codexSubscriptionEnabled: settings.codex_subscription_enabled,
+        codexCallsPerHour: settings.codex_calls_per_hour,
         updatedAt: settings.updated_at,
       },
     };
