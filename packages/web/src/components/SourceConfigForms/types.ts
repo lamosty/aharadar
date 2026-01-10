@@ -49,20 +49,6 @@ export interface XPostsConfig {
   maxOutputTokensPerAccount?: number;
 }
 
-// Signal Source Config
-export interface SignalConfig {
-  provider: "x_search" | string;
-  vendor: "grok" | string;
-  accounts?: string[];
-  keywords?: string[];
-  queries?: string[];
-  maxResultsPerQuery?: number;
-  extractUrls?: boolean;
-  extractEntities?: boolean;
-  excludeReplies?: boolean;
-  excludeRetweets?: boolean;
-}
-
 // SEC EDGAR Source Config
 export interface SecEdgarConfig {
   filing_types: ("form4" | "13f")[];
@@ -174,7 +160,6 @@ export type SourceTypeConfig =
   | HnConfig
   | YoutubeConfig
   | XPostsConfig
-  | SignalConfig
   | SecEdgarConfig
   | CongressTradingConfig
   | PolymarketConfig

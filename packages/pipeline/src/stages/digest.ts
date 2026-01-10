@@ -5,13 +5,7 @@ import {
   type TriageOutput,
   triageCandidate,
 } from "@aharadar/llm";
-import {
-  type BudgetTier,
-  canonicalizeUrl,
-  createLogger,
-  type SourceType,
-  sha256Hex,
-} from "@aharadar/shared";
+import { type BudgetTier, createLogger, type SourceType } from "@aharadar/shared";
 
 const log = createLogger({ component: "digest" });
 
@@ -29,7 +23,6 @@ import {
   computeEffectiveSourceWeight,
   parseSourceTypeWeights,
   rankCandidates,
-  type SignalCorroborationFeature,
   type UserPreferences,
 } from "./rank";
 
@@ -144,160 +137,6 @@ function getPrimaryUrl(params: {
     if (typeof first === "string" && first.length > 0) return first;
   }
   return null;
-}
-
-/**
- * Check if a URL is X-like (x.com, twitter.com, t.co).
- * Signal corroboration should boost external content, not X posts themselves.
- */
-function isXLikeUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    return (
-      host === "x.com" ||
-      host === "www.x.com" ||
-      host === "twitter.com" ||
-      host === "www.twitter.com" ||
-      host === "t.co"
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Safely canonicalize a URL, returning null if invalid.
- */
-function safeCanonicalizeUrl(url: string): string | null {
-  try {
-    return canonicalizeUrl(url);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extract all external URLs from a signal bundle's metadata.
- * Filters out X-like URLs since we want to boost external content corroboration.
- */
-function extractBundleExternalUrls(metadata: Record<string, unknown>): string[] {
-  const urls: string[] = [];
-  const seen = new Set<string>();
-
-  const addUrl = (url: unknown) => {
-    if (typeof url !== "string" || url.length === 0) return;
-    if (isXLikeUrl(url)) return;
-    const canon = safeCanonicalizeUrl(url);
-    if (!canon) return;
-    if (seen.has(canon)) return;
-    seen.add(canon);
-    urls.push(canon);
-  };
-
-  // primary_url
-  addUrl(metadata.primary_url);
-
-  // extracted_urls
-  const extracted = metadata.extracted_urls;
-  if (Array.isArray(extracted)) {
-    for (const u of extracted) addUrl(u);
-  }
-
-  // signal_results[].url
-  const results = metadata.signal_results;
-  if (Array.isArray(results)) {
-    for (const r of results) {
-      if (r && typeof r === "object" && !Array.isArray(r)) {
-        addUrl((r as Record<string, unknown>).url);
-      }
-    }
-  }
-
-  return urls;
-}
-
-type SignalBundleRow = {
-  id: string;
-  metadata_json: Record<string, unknown>;
-};
-
-/**
- * Load recent signal bundles for the topic/window and build a set of corroboration URL hashes.
- */
-async function loadSignalCorroborationSet(params: {
-  db: Db;
-  userId: string;
-  topicId: string;
-  windowStart: string;
-  windowEnd: string;
-}): Promise<{ urlHashes: Set<string>; sampleUrls: string[] }> {
-  const bundles = await params.db.query<SignalBundleRow>(
-    `select ci.id, ci.metadata_json
-     from content_items ci
-     join content_item_sources cis on cis.content_item_id = ci.id
-     join sources s on s.id = cis.source_id
-     where ci.user_id = $1
-       and ci.deleted_at is null
-       and ci.duplicate_of_content_item_id is null
-       and ci.source_type = 'signal'
-       and ci.canonical_url is null
-       and s.topic_id = $2::uuid
-       and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
-       and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
-     order by coalesce(ci.published_at, ci.fetched_at) desc
-     limit 100`,
-    [params.userId, params.topicId, params.windowStart, params.windowEnd],
-  );
-
-  const urlHashes = new Set<string>();
-  const sampleUrls: string[] = [];
-
-  for (const row of bundles.rows) {
-    const meta = asRecord(row.metadata_json);
-    const externalUrls = extractBundleExternalUrls(meta);
-    for (const url of externalUrls) {
-      const hash = sha256Hex(url);
-      if (!urlHashes.has(hash)) {
-        urlHashes.add(hash);
-        if (sampleUrls.length < 10) sampleUrls.push(url);
-      }
-    }
-  }
-
-  return { urlHashes, sampleUrls };
-}
-
-/**
- * Compute signal corroboration feature for a candidate.
- */
-function computeSignalCorroboration(params: {
-  candidatePrimaryUrl: string | null;
-  urlHashes: Set<string>;
-  sampleUrls: string[];
-}): SignalCorroborationFeature {
-  if (!params.candidatePrimaryUrl) {
-    return { matched: false, matchedUrl: null, signalUrlSample: params.sampleUrls.slice(0, 3) };
-  }
-
-  // Skip X-like URLs (they are not eligible for corroboration in MVP)
-  if (isXLikeUrl(params.candidatePrimaryUrl)) {
-    return { matched: false, matchedUrl: null, signalUrlSample: params.sampleUrls.slice(0, 3) };
-  }
-
-  const canon = safeCanonicalizeUrl(params.candidatePrimaryUrl);
-  if (!canon) {
-    return { matched: false, matchedUrl: null, signalUrlSample: params.sampleUrls.slice(0, 3) };
-  }
-
-  const hash = sha256Hex(canon);
-  const matched = params.urlHashes.has(hash);
-
-  return {
-    matched,
-    matchedUrl: matched ? canon : null,
-    signalUrlSample: params.sampleUrls.slice(0, 3),
-  };
 }
 
 /**
@@ -649,7 +488,6 @@ export async function persistDigestFromContentItems(params: {
        where ci.user_id = $1
          and ci.deleted_at is null
          and ci.duplicate_of_content_item_id is null
-         and not (ci.source_type = 'signal' and ci.canonical_url is null)
          and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
          and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
      ),
@@ -918,19 +756,6 @@ export async function persistDigestFromContentItems(params: {
     llmConfig: params.llmConfig,
   });
 
-  // Load signal corroboration URL set from recent signal bundles
-  // Disabled by default (ENABLE_SIGNAL_CORROBORATION=1 to enable)
-  const enableSignalCorroboration = (process.env.ENABLE_SIGNAL_CORROBORATION ?? "0") === "1";
-  const signalCorr = enableSignalCorroboration
-    ? await loadSignalCorroborationSet({
-        db: params.db,
-        userId: params.userId,
-        topicId: params.topicId,
-        windowStart: params.windowStart,
-        windowEnd: params.windowEnd,
-      })
-    : { urlHashes: new Set<string>(), sampleUrls: [] };
-
   // Compute novelty for candidates (topic-scoped, embedding-based)
   const noveltyLookbackDays = getNoveltyLookbackDays();
   const noveltyMap = await computeNoveltyForCandidates({
@@ -963,14 +788,6 @@ export async function persistDigestFromContentItems(params: {
     userPreferences,
     decayHours: topicDecayHours,
     candidates: scored.map((c) => {
-      // Compute candidate primary URL for corroboration matching
-      const primaryUrl = getPrimaryUrl({ canonicalUrl: c.canonicalUrl, metadata: c.metadata });
-      const signalCorroboration = computeSignalCorroboration({
-        candidatePrimaryUrl: primaryUrl,
-        urlHashes: signalCorr.urlHashes,
-        sampleUrls: signalCorr.sampleUrls,
-      });
-
       // Compute source weight (from source config and env type weights)
       const perSourceWeight = asFiniteNumber(c.sourceConfigJson?.weight);
       const sourceWeight = computeEffectiveSourceWeight({
@@ -989,7 +806,7 @@ export async function persistDigestFromContentItems(params: {
         positiveSim: c.positiveSim,
         negativeSim: c.negativeSim,
         triage: triageMap.get(c.candidateId) ?? null,
-        signalCorroboration,
+        signalCorroboration: null,
         novelty: noveltyMap.get(c.candidateId) ?? null,
         sourceWeight,
         sourceType: c.sourceType as SourceType,

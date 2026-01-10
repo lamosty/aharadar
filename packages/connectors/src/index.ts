@@ -13,7 +13,6 @@ export * from "./reddit";
 export * from "./registry";
 export * from "./rss";
 export * from "./sec_edgar";
-export * from "./signal";
 export * from "./substack";
 export * from "./telegram";
 export * from "./types";

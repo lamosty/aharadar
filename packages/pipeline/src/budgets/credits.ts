@@ -24,7 +24,7 @@ export interface CreditsStatus {
  * Connectors that require paid provider calls.
  * When credits are exhausted, these should be skipped during ingest.
  */
-export const PAID_CONNECTOR_TYPES = new Set(["signal", "x_posts"]);
+export const PAID_CONNECTOR_TYPES = new Set(["x_posts"]);
 
 /**
  * Compute the current credits status for a user.

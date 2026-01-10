@@ -9,7 +9,6 @@ import { PolymarketConfigForm } from "./PolymarketConfigForm";
 import { RedditConfigForm } from "./RedditConfigForm";
 import { RssConfigForm } from "./RssConfigForm";
 import { SecEdgarConfigForm } from "./SecEdgarConfigForm";
-import { SignalConfigForm } from "./SignalConfigForm";
 import type {
   CongressTradingConfig,
   HnConfig,
@@ -19,7 +18,6 @@ import type {
   RedditConfig,
   RssConfig,
   SecEdgarConfig,
-  SignalConfig,
   SourceTypeConfig,
   XPostsConfig,
   YoutubeConfig,
@@ -72,15 +70,6 @@ export function SourceConfigForm({ sourceType, config, onChange, errors }: Sourc
       return (
         <XPostsConfigForm
           value={config as Partial<XPostsConfig>}
-          onChange={onChange}
-          errors={errors}
-        />
-      );
-
-    case "signal":
-      return (
-        <SignalConfigForm
-          value={config as Partial<SignalConfig>}
           onChange={onChange}
           errors={errors}
         />
@@ -325,17 +314,6 @@ export function validateSourceConfig(
       break;
     }
 
-    case "signal": {
-      const sigConfig = config as Partial<SignalConfig>;
-      if (!sigConfig.provider?.trim()) {
-        errors.provider = "Provider is required";
-      }
-      if (!sigConfig.vendor?.trim()) {
-        errors.vendor = "Vendor is required";
-      }
-      break;
-    }
-
     case "sec_edgar": {
       const secConfig = config as Partial<SecEdgarConfig>;
       if (!secConfig.filing_types || secConfig.filing_types.length === 0) {
@@ -460,19 +438,6 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
         excludeReplies: true,
         excludeRetweets: true,
       } as Partial<XPostsConfig>;
-
-    case "signal":
-      return {
-        provider: "x_search",
-        vendor: "grok",
-        accounts: [],
-        keywords: [],
-        queries: [],
-        extractUrls: true,
-        extractEntities: false,
-        excludeReplies: true,
-        excludeRetweets: true,
-      } as Partial<SignalConfig>;
 
     case "sec_edgar":
       return {

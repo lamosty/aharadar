@@ -6,7 +6,6 @@ export { PolymarketConfigForm } from "./PolymarketConfigForm";
 export { RedditConfigForm } from "./RedditConfigForm";
 export { RssConfigForm } from "./RssConfigForm";
 export { SecEdgarConfigForm } from "./SecEdgarConfigForm";
-export { SignalConfigForm } from "./SignalConfigForm";
 export { getDefaultConfig, SourceConfigForm, validateSourceConfig } from "./SourceConfigForm";
 export type * from "./types";
 export { XPostsConfigForm } from "./XPostsConfigForm";

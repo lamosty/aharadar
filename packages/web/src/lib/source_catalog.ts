@@ -101,18 +101,6 @@ export const SOURCE_CATALOG: Record<SupportedSourceType, SourceCatalogEntry> = {
     costHint: "Uses Grok/xAI credits",
     requiresKeyProviders: ["xai"],
   },
-  signal: {
-    sourceType: "signal",
-    name: "Signal Search (X)",
-    description: "AI-powered search of X/Twitter via Grok for signal detection.",
-    category: "social",
-    tags: ["twitter", "x", "search", "grok", "signal"],
-    isPaid: false,
-    isExperimental: false,
-    isBudgetSensitive: true,
-    costHint: "Uses Grok/xAI credits",
-    requiresKeyProviders: ["xai"],
-  },
   sec_edgar: {
     sourceType: "sec_edgar",
     name: "SEC EDGAR Filings",

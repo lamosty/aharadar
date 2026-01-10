@@ -177,7 +177,7 @@ function draftToUpsert(draft: ContentItemDraft, source: SourceRow, userId: strin
  * Connectors that require paid provider calls.
  * When credits are exhausted, these should be skipped during ingest.
  */
-const PAID_CONNECTOR_TYPES = new Set(["signal", "x_posts"]);
+const PAID_CONNECTOR_TYPES = new Set(["x_posts"]);
 
 export async function ingestEnabledSources(params: {
   db: Db;
@@ -187,7 +187,7 @@ export async function ingestEnabledSources(params: {
   windowEnd: string;
   limits: IngestLimits;
   filter?: IngestSourceFilter;
-  /** If false, skip paid connectors (signal, x_posts) */
+  /** If false, skip paid connectors (x_posts) */
   paidCallsAllowed?: boolean;
 }): Promise<IngestRunResult> {
   const paidCallsAllowed = params.paidCallsAllowed ?? true;

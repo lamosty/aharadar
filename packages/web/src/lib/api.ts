@@ -313,7 +313,6 @@ export const SUPPORTED_SOURCE_TYPES = [
   "reddit",
   "hn",
   "rss",
-  "signal",
   "x_posts",
   "youtube",
   "sec_edgar",

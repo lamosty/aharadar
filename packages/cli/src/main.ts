@@ -4,9 +4,6 @@ import {
   adminDigestNowCommand,
   adminEmbedNowCommand,
   adminRunNowCommand,
-  adminSignalDebugCommand,
-  adminSignalExplodeBundlesCommand,
-  adminSignalResetCursorCommand,
   adminSourcesAddCommand,
   adminSourcesListCommand,
   adminSourcesSetEnabledCommand,
@@ -51,9 +48,6 @@ function printHelp(): void {
   console.log(
     "  admin:sources-set-enabled (--source-id <uuid> | --topic <name> --source-type <type>) --enabled <true|false> [--dry-run]",
   );
-  console.log("  admin:signal-debug [--kind bundle] [--limit N] [--verbose] [--json] [--raw]");
-  console.log("  admin:signal-explode-bundles [--limit N] [--dry-run] [--delete-bundles]");
-  console.log("  admin:signal-reset-cursor [--clear] [--since-time <ISO>]");
 }
 
 async function main(): Promise<void> {
@@ -90,15 +84,6 @@ async function main(): Promise<void> {
       break;
     case "admin:budgets":
       result = adminBudgetsCommand();
-      break;
-    case "admin:signal-debug":
-      result = adminSignalDebugCommand(rest);
-      break;
-    case "admin:signal-explode-bundles":
-      result = adminSignalExplodeBundlesCommand(rest);
-      break;
-    case "admin:signal-reset-cursor":
-      result = adminSignalResetCursorCommand(rest);
       break;
     case "admin:topics-list":
       result = adminTopicsListCommand();

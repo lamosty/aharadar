@@ -82,7 +82,6 @@ function asVectorLiteral(vector: number[]): string {
  * Cluster topic-scoped content items into user-level story clusters.
  *
  * Current behavior:
- * - Excludes all signal items (signal connector is bundle-only; see docs/connectors.md).
  * - Requires embeddings (pgvector) to assign items to clusters.
  * - Each content item is assigned to at most one cluster (idempotent across topics).
  */
@@ -134,7 +133,6 @@ export async function clusterTopicContentItems(params: {
      where ci.user_id = $1
        and ci.deleted_at is null
        and ci.duplicate_of_content_item_id is null
-       and ci.source_type <> 'signal'
        and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
        and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
        and not exists (

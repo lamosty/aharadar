@@ -49,7 +49,7 @@ interface AdminRunRequestBody {
 }
 
 /** Supported source types */
-const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "signal", "x_posts", "youtube"] as const;
+const SUPPORTED_SOURCE_TYPES = ["reddit", "hn", "rss", "x_posts", "youtube"] as const;
 type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
 
 function isSupportedSourceType(value: unknown): value is SupportedSourceType {

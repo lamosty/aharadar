@@ -21,7 +21,6 @@ const SOURCE_LABELS: Record<SupportedSourceType, string> = {
   rss: "RSS",
   youtube: "YouTube",
   x_posts: "X",
-  signal: "Signal",
   sec_edgar: "SEC",
   congress_trading: "Congress",
   polymarket: "Polymarket",

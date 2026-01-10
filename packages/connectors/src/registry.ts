@@ -12,7 +12,6 @@ import { producthuntConnector } from "./producthunt";
 import { redditConnector } from "./reddit";
 import { rssConnector } from "./rss";
 import { secEdgarConnector } from "./sec_edgar";
-import { signalConnector } from "./signal";
 import { substackConnector } from "./substack";
 import { telegramConnector } from "./telegram";
 import type { Connector } from "./types";
@@ -34,7 +33,6 @@ export const CONNECTORS: Connector[] = [
   optionsFlowConnector,
   marketSentimentConnector,
   youtubeConnector,
-  signalConnector,
   xPostsConnector,
   producthuntConnector,
   githubReleasesConnector,

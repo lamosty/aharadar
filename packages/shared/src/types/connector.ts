@@ -8,7 +8,6 @@ export type SourceType =
   | "substack"
   | "medium"
   | "youtube"
-  | "signal"
   | "sec_edgar"
   | "congress_trading"
   | "polymarket"

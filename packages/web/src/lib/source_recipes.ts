@@ -75,26 +75,6 @@ export const SOURCE_RECIPES: SourceRecipe[] = [
     userFillFields: ["queries"],
     badge: "budget-sensitive",
   },
-  {
-    id: "signal-bundle",
-    title: "Signal Bundle (Advanced)",
-    description:
-      "Extract trends and URLs from X searches. Signals are for corroboration, not shown as feed items.",
-    sourceType: "signal",
-    defaultName: "Signal: X Trends",
-    defaultConfig: {
-      provider: "x_search",
-      vendor: "grok",
-      keywords: [],
-      maxResultsPerQuery: 5,
-      extractUrls: true,
-      extractEntities: false,
-      excludeReplies: true,
-      excludeRetweets: true,
-    },
-    userFillFields: ["keywords", "accounts"],
-    badge: "budget-sensitive",
-  },
 ];
 
 /**
@@ -108,5 +88,5 @@ export function getRecipeById(id: string): SourceRecipe | undefined {
  * Get all X-related recipes
  */
 export function getXRecipes(): SourceRecipe[] {
-  return SOURCE_RECIPES.filter((r) => r.sourceType === "x_posts" || r.sourceType === "signal");
+  return SOURCE_RECIPES.filter((r) => r.sourceType === "x_posts");
 }
