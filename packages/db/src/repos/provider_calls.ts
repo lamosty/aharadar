@@ -1,4 +1,4 @@
-import type { ProviderCallDraft } from "@aharadar/shared";
+import { calculateCostUsd, type ProviderCallDraft } from "@aharadar/shared";
 
 import type { Queryable } from "../db";
 
@@ -33,6 +33,11 @@ export interface DailyUsage {
 export function createProviderCallsRepo(db: Queryable) {
   return {
     async insert(draft: ProviderCallDraft): Promise<{ id: string }> {
+      // Calculate USD cost if not provided - centralizes cost calculation
+      const costUsd =
+        draft.costEstimateUsd ??
+        calculateCostUsd(draft.provider, draft.model, draft.inputTokens, draft.outputTokens);
+
       const res = await db.query<{ id: string }>(
         `insert into provider_calls (
            user_id,
@@ -66,7 +71,7 @@ export function createProviderCallsRepo(db: Queryable) {
           draft.inputTokens,
           draft.outputTokens,
           draft.costEstimateCredits,
-          draft.costEstimateUsd ?? 0,
+          costUsd,
           JSON.stringify(draft.meta ?? {}),
           draft.startedAt,
           draft.endedAt ?? null,
