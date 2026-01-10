@@ -1,4 +1,9 @@
-import type { FeedbackAction } from "@aharadar/shared";
+import type {
+  FeedbackAction,
+  FeedbackByTopicResponse,
+  FeedbackDailyStatsResponse,
+  FeedbackSummaryResponse,
+} from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -204,4 +209,81 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       return { ok: true, deleted: deletedCount };
     },
   );
+
+  // ============================================================
+  // Feedback Statistics Endpoints (for dashboard analytics)
+  // ============================================================
+
+  // GET /feedback/stats/daily - Daily feedback breakdown for charts
+  fastify.get<{ Querystring: { days?: string } }>(
+    "/feedback/stats/daily",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const daysParam = request.query.days;
+      const days = daysParam ? parseInt(daysParam, 10) : 30;
+
+      if (isNaN(days) || days < 1 || days > 365) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "days must be a number between 1 and 365",
+          },
+        });
+      }
+
+      const db = getDb();
+      const daily = await db.feedbackEvents.getDailyStats({ userId: ctx.userId, days });
+
+      return { ok: true, daily } as FeedbackDailyStatsResponse;
+    },
+  );
+
+  // GET /feedback/stats/summary - Total feedback counts and quality ratio
+  fastify.get("/feedback/stats/summary", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const db = getDb();
+    const summary = await db.feedbackEvents.getSummary({ userId: ctx.userId });
+
+    return { ok: true, summary } as FeedbackSummaryResponse;
+  });
+
+  // GET /feedback/stats/by-topic - Feedback breakdown per topic
+  fastify.get("/feedback/stats/by-topic", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const db = getDb();
+    const topics = await db.feedbackEvents.getByTopic({ userId: ctx.userId });
+
+    return { ok: true, topics } as FeedbackByTopicResponse;
+  });
 }

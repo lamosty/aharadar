@@ -1,4 +1,10 @@
-import type { FeedbackAction, SourceType } from "@aharadar/shared";
+import type {
+  FeedbackAction,
+  FeedbackByTopic,
+  FeedbackDailyStats,
+  FeedbackSummary,
+  SourceType,
+} from "@aharadar/shared";
 
 import type { Queryable } from "../db";
 
@@ -155,6 +161,152 @@ export function createFeedbackEventsRepo(db: Queryable) {
       }
 
       return { sourceTypeWeights, authorWeights };
+    },
+
+    /**
+     * Get daily feedback statistics for charts.
+     * Returns one row per day with counts for each action type.
+     *
+     * @param userId - The user to get stats for
+     * @param days - Number of days to look back (default: 30)
+     */
+    async getDailyStats(params: { userId: string; days?: number }): Promise<FeedbackDailyStats[]> {
+      const { userId, days = 30 } = params;
+
+      const res = await db.query<{
+        date: string;
+        likes: string;
+        dislikes: string;
+        saves: string;
+        skips: string;
+      }>(
+        `with date_series as (
+           select generate_series(
+             current_date - interval '1 day' * ($2 - 1),
+             current_date,
+             interval '1 day'
+           )::date as date
+         ),
+         daily_counts as (
+           select
+             date(created_at) as date,
+             count(*) filter (where action = 'like') as likes,
+             count(*) filter (where action = 'dislike') as dislikes,
+             count(*) filter (where action = 'save') as saves,
+             count(*) filter (where action = 'skip') as skips
+           from feedback_events
+           where user_id = $1
+             and created_at >= current_date - interval '1 day' * $2
+           group by date(created_at)
+         )
+         select
+           ds.date::text as date,
+           coalesce(dc.likes, 0)::text as likes,
+           coalesce(dc.dislikes, 0)::text as dislikes,
+           coalesce(dc.saves, 0)::text as saves,
+           coalesce(dc.skips, 0)::text as skips
+         from date_series ds
+         left join daily_counts dc on dc.date = ds.date
+         order by ds.date asc`,
+        [userId, days],
+      );
+
+      return res.rows.map((row) => ({
+        date: row.date,
+        likes: parseInt(row.likes, 10),
+        dislikes: parseInt(row.dislikes, 10),
+        saves: parseInt(row.saves, 10),
+        skips: parseInt(row.skips, 10),
+      }));
+    },
+
+    /**
+     * Get summary statistics for all feedback.
+     * Includes total counts and quality ratio.
+     */
+    async getSummary(params: { userId: string }): Promise<FeedbackSummary> {
+      const res = await db.query<{
+        total: string;
+        likes: string;
+        dislikes: string;
+        saves: string;
+        skips: string;
+      }>(
+        `select
+           count(*)::text as total,
+           count(*) filter (where action = 'like')::text as likes,
+           count(*) filter (where action = 'dislike')::text as dislikes,
+           count(*) filter (where action = 'save')::text as saves,
+           count(*) filter (where action = 'skip')::text as skips
+         from feedback_events
+         where user_id = $1`,
+        [params.userId],
+      );
+
+      const row = res.rows[0];
+      if (!row) {
+        return {
+          total: 0,
+          byAction: { like: 0, dislike: 0, save: 0, skip: 0 },
+          qualityRatio: null,
+        };
+      }
+
+      const likes = parseInt(row.likes, 10);
+      const dislikes = parseInt(row.dislikes, 10);
+      const saves = parseInt(row.saves, 10);
+      const skips = parseInt(row.skips, 10);
+
+      // Quality ratio = (likes + saves) / dislikes
+      const positive = likes + saves;
+      const qualityRatio = dislikes > 0 ? positive / dislikes : null;
+
+      return {
+        total: parseInt(row.total, 10),
+        byAction: { like: likes, dislike: dislikes, save: saves, skip: skips },
+        qualityRatio,
+      };
+    },
+
+    /**
+     * Get feedback breakdown by topic.
+     * Joins through content_item_sources → sources → topics.
+     */
+    async getByTopic(params: { userId: string }): Promise<FeedbackByTopic[]> {
+      const res = await db.query<{
+        topic_id: string;
+        topic_name: string;
+        likes: string;
+        dislikes: string;
+        saves: string;
+        skips: string;
+      }>(
+        `select
+           t.id::text as topic_id,
+           t.name as topic_name,
+           count(*) filter (where fe.action = 'like')::text as likes,
+           count(*) filter (where fe.action = 'dislike')::text as dislikes,
+           count(*) filter (where fe.action = 'save')::text as saves,
+           count(*) filter (where fe.action = 'skip')::text as skips
+         from feedback_events fe
+         join content_items ci on ci.id = fe.content_item_id
+         join content_item_sources cis on cis.content_item_id = ci.id
+         join sources s on s.id = cis.source_id
+         join topics t on t.id = s.topic_id
+         where fe.user_id = $1
+         group by t.id, t.name
+         order by t.name asc`,
+        [params.userId],
+      );
+
+      return res.rows.map((row) => ({
+        topicId: row.topic_id,
+        topicName: row.topic_name,
+        likes: parseInt(row.likes, 10),
+        dislikes: parseInt(row.dislikes, 10),
+        saves: parseInt(row.saves, 10),
+        skips: parseInt(row.skips, 10),
+      }));
     },
   };
 }
