@@ -112,26 +112,60 @@ function estimateGrokCost(grokCalls: number): number {
  * Compute digest plan values (must stay in sync with pipeline/lib/digest_plan.ts)
  */
 function computeDigestPlan(mode: DigestMode, depth: number, sourceCount: number) {
-  // Base values per mode
-  const baseByMode: Record<DigestMode, { items: number; triage: number; summary: number }> = {
-    low: { items: 10, triage: 15, summary: 3 },
-    normal: { items: 25, triage: 40, summary: 8 },
-    high: { items: 100, triage: 150, summary: 25 },
+  // Mode coefficients - must match backend digest_plan.ts
+  const coeffByMode = {
+    low: {
+      base: 10,
+      perSource: 1,
+      min: 20,
+      max: 80,
+      triageMultiplier: 2,
+      deepSummaryRatio: 0,
+      deepSummaryMax: 0,
+    },
+    normal: {
+      base: 20,
+      perSource: 2,
+      min: 40,
+      max: 150,
+      triageMultiplier: 3,
+      deepSummaryRatio: 0.15,
+      deepSummaryMax: 20,
+    },
+    high: {
+      base: 50,
+      perSource: 5,
+      min: 100,
+      max: 300,
+      triageMultiplier: 5,
+      deepSummaryRatio: 0.3,
+      deepSummaryMax: 60,
+    },
   };
 
-  const base = baseByMode[mode];
-  const depthMultiplier = 0.5 + depth / 100; // 0.5 to 1.5
+  const coeff = coeffByMode[mode];
+  const depthFactor = 0.5 + depth / 100; // 0.5 to 1.5
 
-  // Apply depth scaling
-  const digestMaxItems = Math.round(base.items * depthMultiplier);
-  const triageMaxCalls = Math.round(base.triage * depthMultiplier);
-  const deepSummaryMaxCalls = Math.round(base.summary * depthMultiplier);
+  // Calculate digest max items with per-source scaling and min/max clamping
+  const rawMaxItems = Math.round((coeff.base + coeff.perSource * sourceCount) * depthFactor);
+  const digestMaxItems = Math.max(coeff.min, Math.min(coeff.max, rawMaxItems));
+
+  // Calculate triage max calls
+  const rawTriageCalls = digestMaxItems * coeff.triageMultiplier;
+  const triageMaxCalls = Math.max(digestMaxItems, Math.min(5000, rawTriageCalls));
+
+  // Calculate deep summary max calls
+  const rawDeepSummary = Math.round(digestMaxItems * coeff.deepSummaryRatio);
+  const deepSummaryMaxCalls = Math.min(coeff.deepSummaryMax, rawDeepSummary);
+
+  // Calculate candidate pool max
+  const candidatePoolMax = Math.min(5000, Math.max(500, digestMaxItems * 20));
 
   return {
     digestMaxItems,
     triageMaxCalls,
     deepSummaryMaxCalls,
-    candidatePoolMax: triageMaxCalls * 3,
+    candidatePoolMax,
   };
 }
 
