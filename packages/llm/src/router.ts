@@ -2,11 +2,13 @@ import type { BudgetTier } from "@aharadar/shared";
 
 import { callAnthropicApi } from "./anthropic";
 import { callClaudeSubscription } from "./claude_subscription";
+import { callCodexSubscription } from "./codex_subscription";
+import { canUseCodexSubscription, getCodexUsageLimitsFromEnv } from "./codex_usage_tracker";
 import { callOpenAiCompat } from "./openai_compat";
 import type { LlmCallResult, LlmRequest, LlmRouter, ModelRef, TaskType } from "./types";
 import { canUseClaudeSubscription, getUsageLimitsFromEnv } from "./usage_tracker";
 
-type Provider = "openai" | "anthropic" | "claude-subscription";
+type Provider = "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
 
 /**
  * Runtime configuration for LLM router.
@@ -19,6 +21,8 @@ export interface LlmRuntimeConfig {
   claudeSubscriptionEnabled?: boolean;
   claudeTriageThinking?: boolean;
   claudeCallsPerHour?: number;
+  codexSubscriptionEnabled?: boolean;
+  codexCallsPerHour?: number;
 }
 
 function firstEnv(env: NodeJS.ProcessEnv, names: string[]): string | undefined {
@@ -122,6 +126,24 @@ function resolveClaudeSubscriptionModel(
   return resolveAnthropicModel(env, task, tier);
 }
 
+// Codex subscription model resolution (uses same model names as OpenAI API)
+function resolveCodexSubscriptionModel(
+  env: NodeJS.ProcessEnv,
+  task: TaskType,
+  tier: BudgetTier,
+): string {
+  // Check for codex-specific model override
+  const codexKey = `CODEX_${task.toUpperCase()}_MODEL`;
+  const byTask = env[codexKey];
+  if (byTask && byTask.trim().length > 0) return byTask.trim();
+
+  const globalCodex = env.CODEX_MODEL;
+  if (globalCodex && globalCodex.trim().length > 0) return globalCodex.trim();
+
+  // Fall back to OpenAI model resolution
+  return resolveOpenAiModel(env, task, tier);
+}
+
 // Provider resolution with subscription priority
 function resolveProvider(
   env: NodeJS.ProcessEnv,
@@ -129,13 +151,22 @@ function resolveProvider(
   openaiApiKey: string | undefined,
   anthropicApiKey: string | undefined,
 ): Provider {
-  // Check if subscription mode is enabled and available
+  // Check if Claude subscription mode is enabled and available
   if (env.CLAUDE_USE_SUBSCRIPTION === "true") {
     const limits = getUsageLimitsFromEnv(env);
     if (canUseClaudeSubscription(limits)) {
       return "claude-subscription";
     }
     console.warn("[llm] Claude subscription quota exceeded, falling back to API");
+  }
+
+  // Check if Codex subscription mode is enabled and available
+  if (env.CODEX_USE_SUBSCRIPTION === "true") {
+    const limits = getCodexUsageLimitsFromEnv(env);
+    if (canUseCodexSubscription(limits)) {
+      return "codex-subscription";
+    }
+    console.warn("[llm] Codex subscription quota exceeded, falling back to API");
   }
 
   // Check for task-specific provider override
@@ -168,13 +199,19 @@ function resolveProvider(
 export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRouter {
   const openaiApiKey = firstEnv(env, ["OPENAI_API_KEY"]);
   const anthropicApiKey = firstEnv(env, ["ANTHROPIC_API_KEY"]);
-  const subscriptionEnabled = env.CLAUDE_USE_SUBSCRIPTION === "true";
+  const claudeSubscriptionEnabled = env.CLAUDE_USE_SUBSCRIPTION === "true";
+  const codexSubscriptionEnabled = env.CODEX_USE_SUBSCRIPTION === "true";
   const enableThinking = env.CLAUDE_TRIAGE_THINKING === "true";
 
   // Validate at least one provider is configured
-  if (!openaiApiKey && !anthropicApiKey && !subscriptionEnabled) {
+  if (
+    !openaiApiKey &&
+    !anthropicApiKey &&
+    !claudeSubscriptionEnabled &&
+    !codexSubscriptionEnabled
+  ) {
     throw new Error(
-      "Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION)",
+      "Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION or CODEX_USE_SUBSCRIPTION)",
     );
   }
 
@@ -187,6 +224,14 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
           provider: "claude-subscription",
           model: resolveClaudeSubscriptionModel(env, task, tier),
           endpoint: "claude-subscription",
+        };
+      }
+
+      if (provider === "codex-subscription") {
+        return {
+          provider: "codex-subscription",
+          model: resolveCodexSubscriptionModel(env, task, tier),
+          endpoint: "codex-subscription",
         };
       }
 
@@ -216,7 +261,12 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
       if (ref.provider === "claude-subscription") {
         return callClaudeSubscription(ref, request, {
           enableThinking: task === "triage" && enableThinking,
+          jsonSchema: request.jsonSchema,
         });
+      }
+
+      if (ref.provider === "codex-subscription") {
+        return callCodexSubscription(ref, request);
       }
 
       if (ref.provider === "anthropic") {
@@ -272,6 +322,12 @@ export function createConfiguredLlmRouter(
   }
   if (config.openaiModel !== undefined) {
     effectiveEnv.OPENAI_MODEL = config.openaiModel;
+  }
+  if (config.codexSubscriptionEnabled !== undefined) {
+    effectiveEnv.CODEX_USE_SUBSCRIPTION = config.codexSubscriptionEnabled ? "true" : "false";
+  }
+  if (config.codexCallsPerHour !== undefined) {
+    effectiveEnv.CODEX_CALLS_PER_HOUR = String(config.codexCallsPerHour);
   }
 
   return createEnvLlmRouter(effectiveEnv);

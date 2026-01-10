@@ -7,7 +7,8 @@
   "dependencies": {
     "@aharadar/shared": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "^0.2.1",
-    "@anthropic-ai/sdk": "^0.71.2"
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@openai/codex-sdk": "^0.80.0"
   },
   "scripts": {
     "build": "tsc -b",

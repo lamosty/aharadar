@@ -118,6 +118,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.71.2
         version: 0.71.2(zod@4.3.5)
+      '@openai/codex-sdk':
+        specifier: ^0.80.0
+        version: 0.80.0
 
   packages/pipeline:
     dependencies:
@@ -835,6 +838,10 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@openai/codex-sdk@0.80.0':
+    resolution: {integrity: sha512-4+/bZOSjJAPsuM6yceQoVbNUK7UTS03QMKxCrFClObxD1j6n5oh7OSJniyff2MmF0DI7yHnf9omzfFL7RoLWnQ==}
+    engines: {node: '>=18'}
 
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
@@ -3314,6 +3321,8 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@16.1.1':
     optional: true
+
+  '@openai/codex-sdk@0.80.0': {}
 
   '@opentelemetry/api@1.9.0': {}
 
