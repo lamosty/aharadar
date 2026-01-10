@@ -594,6 +594,7 @@
         "digestItems": "Digest items",
         "triageCalls": "Triage calls",
         "deepSummaries": "Deep summaries",
+        "estimatedCost": "Est. cost:",
         "enabledSources": "Enabled sources"
       },
       "updateSuccess": "Digest settings updated",

@@ -172,7 +172,8 @@ export default function AdminRunPage() {
               <span className={styles.label}>{t("admin.run.mode")}</span>
               <div className={styles.modeInfo}>
                 <span className={styles.modeInfoValue}>
-                  {t(`admin.run.modes.${selectedTopic.digestMode}` as Parameters<typeof t>[0])}
+                  {t(`admin.run.modes.${selectedTopic.digestMode}` as Parameters<typeof t>[0])} @{" "}
+                  {selectedTopic.digestDepth}%
                 </span>
                 <span className={styles.modeInfoHint}>{t("admin.run.modeFromTopic")}</span>
               </div>

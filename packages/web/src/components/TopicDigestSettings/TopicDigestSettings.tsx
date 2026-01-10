@@ -73,6 +73,43 @@ function computeDigestPlan(mode: DigestMode, depth: number, sourceCount: number)
   };
 }
 
+// Cost estimation constants (USD, assuming Haiku/GPT-4-mini tier)
+const TRIAGE_COST = 0.002; // ~500 in + 200 out tokens
+const SUMMARY_COST = 0.008; // ~2000 in + 500 out tokens
+const MINUTES_PER_MONTH = 43200; // 30 days
+
+/**
+ * Estimate cost per digest run based on LLM calls.
+ */
+function estimateCostPerRun(triageCalls: number, summaryCalls: number): string {
+  const totalCost = triageCalls * TRIAGE_COST + summaryCalls * SUMMARY_COST;
+  if (totalCost < 0.01) return "<$0.01";
+  return `~$${totalCost.toFixed(2)}`;
+}
+
+/**
+ * Estimate number of runs per month based on interval.
+ */
+function estimateMonthlyRuns(intervalMinutes: number): number {
+  return Math.round(MINUTES_PER_MONTH / intervalMinutes);
+}
+
+/**
+ * Estimate monthly cost based on runs per month.
+ */
+function estimateMonthlyCost(
+  triageCalls: number,
+  summaryCalls: number,
+  intervalMinutes: number,
+): string {
+  const runsPerMonth = estimateMonthlyRuns(intervalMinutes);
+  const costPerRun = triageCalls * TRIAGE_COST + summaryCalls * SUMMARY_COST;
+  const monthlyCost = runsPerMonth * costPerRun;
+  if (monthlyCost < 0.1) return "<$0.10";
+  if (monthlyCost < 1) return `~$${monthlyCost.toFixed(2)}`;
+  return `~$${Math.round(monthlyCost)}`;
+}
+
 export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSettingsProps) {
   const updateMutation = useUpdateTopicDigestSettings(topic.id);
 
@@ -321,6 +358,23 @@ export function TopicDigestSettings({ topic, enabledSourceCount }: TopicDigestSe
               {t("topics.digestSettings.preview.enabledSources")}
             </span>
           </div>
+        </div>
+
+        {/* Cost estimate */}
+        <div className={styles.costEstimate}>
+          <span className={styles.costLabel}>
+            {t("topics.digestSettings.preview.estimatedCost")}
+          </span>
+          <span className={styles.costValue}>
+            {estimateCostPerRun(plan.triageMaxCalls, plan.deepSummaryMaxCalls)}/run
+          </span>
+          {scheduleEnabled && (
+            <span className={styles.costMonthly}>
+              ({estimateMonthlyRuns(intervalMinutes)} runs/mo ≈{" "}
+              {estimateMonthlyCost(plan.triageMaxCalls, plan.deepSummaryMaxCalls, intervalMinutes)}
+              /mo)
+            </span>
+          )}
         </div>
       </div>
 

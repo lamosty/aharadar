@@ -248,6 +248,29 @@
   line-height: 1.2;
 }
 
+.costEstimate {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--color-border);
+  font-size: 0.75rem;
+}
+
+.costLabel {
+  color: var(--color-text-secondary);
+}
+
+.costValue {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.costMonthly {
+  color: var(--color-text-secondary);
+}
+
 /* Actions */
 .actions {
   display: flex;
