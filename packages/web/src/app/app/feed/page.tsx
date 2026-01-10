@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
@@ -80,6 +80,7 @@ function FeedPageContent() {
   // Fast triage mode - auto-expand next item after feedback
   const [fastTriageMode, setFastTriageMode] = useLocalStorage<boolean>("feedFastTriage", false);
   const [forceExpandedId, setForceExpandedId] = useState<string | null>(null);
+  const hoverClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
@@ -103,6 +104,15 @@ function FeedPageContent() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
+  }, []);
+
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverClearTimeoutRef.current) {
+        clearTimeout(hoverClearTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Determine if we're in "all topics" mode
@@ -471,9 +481,23 @@ function FeedPageContent() {
                 showTopicBadge={isAllTopicsMode}
                 forceExpanded={fastTriageMode && forceExpandedId === item.id}
                 onHover={() => {
-                  // Clear force-expanded when hovering a different item
-                  if (forceExpandedId && forceExpandedId !== item.id) {
-                    setForceExpandedId(null);
+                  // Clear any pending timeout
+                  if (hoverClearTimeoutRef.current) {
+                    clearTimeout(hoverClearTimeoutRef.current);
+                    hoverClearTimeoutRef.current = null;
+                  }
+
+                  // If hovering the force-expanded item, don't clear
+                  if (forceExpandedId === item.id) {
+                    return;
+                  }
+
+                  // Clear force-expanded after a delay when hovering a different item
+                  // This gives leeway for small mouse movements
+                  if (forceExpandedId) {
+                    hoverClearTimeoutRef.current = setTimeout(() => {
+                      setForceExpandedId(null);
+                    }, 300);
                   }
                 }}
               />
