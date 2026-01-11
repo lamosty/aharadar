@@ -1,6 +1,8 @@
 import type { LlmProvider, LlmSettingsUpdate, SourceRow } from "@aharadar/db";
-import { computeCreditsStatus } from "@aharadar/pipeline";
+import { checkQuotaForRun } from "@aharadar/llm";
+import { compileDigestPlan, computeCreditsStatus } from "@aharadar/pipeline";
 import { type ProviderOverride, RUN_WINDOW_JOB_NAME } from "@aharadar/queues";
+import type { BudgetTier } from "@aharadar/shared";
 import { loadRuntimeEnv, type OpsLinks } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getUserId } from "../auth/session.js";
@@ -347,6 +349,46 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     // Use provided mode or fall back to topic's configured digestMode
     const resolvedMode: RunMode =
       mode !== undefined && isValidMode(mode) ? mode : (topic.digest_mode as RunMode);
+
+    // Pre-flight quota check for subscription providers
+    const llmSettings = await db.llmSettings.get();
+    const effectiveProvider = resolvedProviderOverride?.provider ?? llmSettings.provider;
+
+    if (effectiveProvider === "claude-subscription" || effectiveProvider === "codex-subscription") {
+      // Count enabled sources for this topic
+      const sources = await db.sources.listByUserAndTopic({
+        userId: ctx.userId,
+        topicId: targetTopicId,
+      });
+      const enabledSourceCount = sources.filter((s) => s.is_enabled).length;
+
+      // Compile digest plan to get expected triage calls
+      const digestPlan = compileDigestPlan({
+        mode: resolvedMode as BudgetTier,
+        digestDepth: topic.digest_depth ?? 50,
+        enabledSourceCount,
+      });
+
+      // Check quota
+      const quotaCheck = checkQuotaForRun({
+        provider: effectiveProvider,
+        expectedCalls: digestPlan.triageMaxCalls,
+        claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+        codexCallsPerHour: llmSettings.codex_calls_per_hour,
+      });
+
+      if (!quotaCheck.ok) {
+        return reply.code(429).send({
+          ok: false,
+          error: {
+            code: "QUOTA_EXCEEDED",
+            message: quotaCheck.error,
+            remainingQuota: quotaCheck.remainingQuota,
+            expectedCalls: quotaCheck.expectedCalls,
+          },
+        });
+      }
+    }
 
     const queue = getPipelineQueue();
 
@@ -996,6 +1038,78 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           waiting: waitingJobs.length,
         },
       },
+    };
+  });
+
+  // GET /admin/env-config - Get important non-secret environment variables
+  fastify.get("/admin/env-config", async (request, reply) => {
+    const db = getDb();
+
+    // Verify admin role
+    try {
+      const userId = getUserId(request);
+      const user = await db.users.getById(userId);
+      if (!user || user.role !== "admin") {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Admin access required",
+          },
+        });
+      }
+    } catch {
+      return reply.code(401).send({
+        ok: false,
+        error: {
+          code: "NOT_AUTHENTICATED",
+          message: "Authentication required",
+        },
+      });
+    }
+
+    // Collect important env vars (non-secrets only)
+    const parseIntOrNull = (val: string | undefined): number | null => {
+      if (!val) return null;
+      const parsed = Number.parseInt(val, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const envConfig = {
+      // Budget limits
+      monthlyCredits: parseIntOrNull(process.env.MONTHLY_CREDITS) ?? 10000,
+      dailyThrottleCredits: parseIntOrNull(process.env.DAILY_THROTTLE_CREDITS),
+      defaultTier: process.env.DEFAULT_TIER ?? "normal",
+
+      // X/Twitter fetch limits
+      xPostsMaxSearchCallsPerRun:
+        parseIntOrNull(process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN) ??
+        parseIntOrNull(process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN),
+
+      // LLM config
+      openaiTriageModel: process.env.OPENAI_TRIAGE_MODEL ?? null,
+      signalGrokModel: process.env.SIGNAL_GROK_MODEL ?? null,
+
+      // App config
+      appEnv: process.env.APP_ENV ?? "production",
+      appTimezone: process.env.APP_TIMEZONE ?? "UTC",
+    };
+
+    // Generate warnings for problematic configurations
+    const warnings: string[] = [];
+
+    if (envConfig.xPostsMaxSearchCallsPerRun !== null) {
+      warnings.push(
+        `X_POSTS_MAX_SEARCH_CALLS_PER_RUN is set to ${envConfig.xPostsMaxSearchCallsPerRun}. ` +
+          `This limits how many Twitter accounts are queried per fetch. ` +
+          `Set higher or unset to fetch from all accounts.`,
+      );
+    }
+
+    return {
+      ok: true,
+      config: envConfig,
+      warnings,
     };
   });
 

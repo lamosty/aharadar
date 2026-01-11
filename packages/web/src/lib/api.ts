@@ -817,6 +817,36 @@ export async function getAdminLlmSettings(signal?: AbortSignal): Promise<LlmSett
   return apiFetch<LlmSettingsResponse>("/admin/llm-settings", { signal });
 }
 
+// ============================================================================
+// Admin Env Config API
+// ============================================================================
+
+/** Environment configuration data */
+export interface EnvConfig {
+  monthlyCredits: number;
+  dailyThrottleCredits: number | null;
+  defaultTier: string;
+  xPostsMaxSearchCallsPerRun: number | null;
+  openaiTriageModel: string | null;
+  signalGrokModel: string | null;
+  appEnv: string;
+  appTimezone: string;
+}
+
+/** Env config response */
+export interface EnvConfigResponse {
+  ok: true;
+  config: EnvConfig;
+  warnings: string[];
+}
+
+/**
+ * Get environment configuration (admin only).
+ */
+export async function getAdminEnvConfig(signal?: AbortSignal): Promise<EnvConfigResponse> {
+  return apiFetch<EnvConfigResponse>("/admin/env-config", { signal });
+}
+
 /**
  * Update LLM settings.
  */

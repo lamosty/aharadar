@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { EnvConfigWarnings } from "@/components/EnvConfigWarnings";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -14,6 +15,8 @@ export default function AdminPage() {
         <h1 className={styles.title}>{t("admin.title")}</h1>
         <p className={styles.description}>{t("admin.description")}</p>
       </header>
+
+      <EnvConfigWarnings showFullConfig />
 
       <div className={styles.cards}>
         <Link href="/app/admin/run" className={styles.card}>

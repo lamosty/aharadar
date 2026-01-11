@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { EnvConfigWarnings } from "@/components/EnvConfigWarnings";
 import { useToast } from "@/components/Toast";
 import type { LlmProvider } from "@/lib/api";
 import { useAdminRun, useTopics } from "@/lib/hooks";
@@ -90,6 +91,8 @@ export default function AdminRunPage() {
         </Link>
         <h1 className={styles.title}>{t("admin.run.title")}</h1>
       </header>
+
+      <EnvConfigWarnings />
 
       {isSuccess ? (
         <div className={styles.successCard}>
