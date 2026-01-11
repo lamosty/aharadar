@@ -17,3 +17,4 @@ export * from "./repos/topics";
 export * from "./repos/user_api_keys";
 export * from "./repos/user_preferences";
 export * from "./repos/users";
+export * from "./repos/x_account_policies";

@@ -3,10 +3,15 @@ import type { Db, SourceRow } from "@aharadar/db";
 import {
   type ContentItemDraft,
   canonicalizeUrl,
+  computePolicyView,
   createLogger,
+  deterministicSample,
   type FetchParams,
+  MIN_SAMPLE_SIZE,
+  normalizeHandle,
   type ProviderCallDraft,
   sha256Hex,
+  type XAccountPolicyRow,
 } from "@aharadar/shared";
 
 const log = createLogger({ component: "ingest" });
@@ -53,6 +58,168 @@ function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value))
     return value as Record<string, unknown>;
   return {};
+}
+
+/**
+ * Extract handles from x_posts config (accounts + batching.groups).
+ */
+function extractXPostsHandles(config: Record<string, unknown>): string[] {
+  const handles = new Set<string>();
+
+  // Extract from 'accounts' array
+  if (Array.isArray(config.accounts)) {
+    for (const acc of config.accounts) {
+      if (typeof acc === "string" && acc.trim()) {
+        handles.add(normalizeHandle(acc.trim()));
+      }
+    }
+  }
+
+  // Extract from 'batching.groups' (array of arrays)
+  const batching = config.batching as { groups?: unknown[] } | undefined;
+  if (batching && Array.isArray(batching.groups)) {
+    for (const group of batching.groups) {
+      if (Array.isArray(group)) {
+        for (const acc of group) {
+          if (typeof acc === "string" && acc.trim()) {
+            handles.add(normalizeHandle(acc.trim()));
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(handles);
+}
+
+interface XPostsAccountGatingResult {
+  gatedConfig: Record<string, unknown>;
+  included: string[];
+  excluded: string[];
+  skippedGating: boolean;
+}
+
+/**
+ * Apply account-level gating for x_posts sources based on feedback-driven policies.
+ * Returns a modified config with filtered accounts and batching groups.
+ */
+async function applyXPostsAccountGating(params: {
+  db: Db;
+  sourceId: string;
+  config: Record<string, unknown>;
+  windowEnd: string;
+}): Promise<XPostsAccountGatingResult> {
+  const { db, sourceId, config, windowEnd } = params;
+  const now = new Date();
+
+  // If queries are present, skip gating (explicit queries are not account-scoped)
+  if (Array.isArray(config.queries) && config.queries.length > 0) {
+    return {
+      gatedConfig: config,
+      included: [],
+      excluded: [],
+      skippedGating: true,
+    };
+  }
+
+  // Extract all handles from config
+  const allHandles = extractXPostsHandles(config);
+
+  if (allHandles.length === 0) {
+    return {
+      gatedConfig: config,
+      included: [],
+      excluded: [],
+      skippedGating: false,
+    };
+  }
+
+  // Fetch policy rows (upsert defaults for any missing)
+  const policyRows = await db.xAccountPolicies.upsertDefaults({
+    sourceId,
+    handles: allHandles,
+  });
+
+  // Build a map of handle -> policy row
+  const policyMap = new Map<string, XAccountPolicyRow>();
+  for (const row of policyRows) {
+    policyMap.set(row.handle, row);
+  }
+
+  // Decide inclusion per handle
+  const included: string[] = [];
+  const excluded: string[] = [];
+
+  for (const handle of allHandles) {
+    const row = policyMap.get(handle);
+    if (!row) {
+      // No policy row = include (shouldn't happen after upsert, but safety)
+      included.push(handle);
+      continue;
+    }
+
+    const view = computePolicyView(row, now);
+
+    if (row.mode === "always") {
+      included.push(handle);
+    } else if (row.mode === "mute") {
+      excluded.push(handle);
+    } else {
+      // Auto mode
+      if (view.sample < MIN_SAMPLE_SIZE) {
+        // Not enough samples yet - include to gather data
+        included.push(handle);
+      } else {
+        // Use deterministic sampling
+        const key = `${sourceId}|${handle}|${windowEnd}`;
+        if (deterministicSample(key, view.throttle)) {
+          included.push(handle);
+        } else {
+          excluded.push(handle);
+        }
+      }
+    }
+  }
+
+  // Build gated config
+  const includedSet = new Set(included);
+  const gatedConfig = { ...config };
+
+  // Filter accounts array
+  if (Array.isArray(config.accounts)) {
+    gatedConfig.accounts = config.accounts.filter((acc: unknown) => {
+      if (typeof acc !== "string") return false;
+      return includedSet.has(normalizeHandle(acc.trim()));
+    });
+  }
+
+  // Filter batching.groups
+  if (config.batching && typeof config.batching === "object") {
+    const batching = config.batching as { groups?: unknown[]; mode?: string };
+    if (Array.isArray(batching.groups)) {
+      const filteredGroups = batching.groups
+        .map((group: unknown) => {
+          if (!Array.isArray(group)) return [];
+          return group.filter((acc: unknown) => {
+            if (typeof acc !== "string") return false;
+            return includedSet.has(normalizeHandle(acc.trim()));
+          });
+        })
+        .filter((group) => group.length > 0);
+
+      gatedConfig.batching = {
+        ...batching,
+        groups: filteredGroups,
+      };
+    }
+  }
+
+  return {
+    gatedConfig,
+    included,
+    excluded,
+    skippedGating: false,
+  };
 }
 
 function extractProviderCalls(meta: unknown): ProviderCallDraft[] {
@@ -252,6 +419,47 @@ export async function ingestEnabledSources(params: {
       continue;
     }
 
+    // X account policy gating: filter accounts based on feedback-driven throttling
+    let effectiveFetchParams = fetchParams;
+    if (source.type === "x_posts") {
+      try {
+        const gatingResult = await applyXPostsAccountGating({
+          db: params.db,
+          sourceId: source.id,
+          config: fetchParams.config,
+          windowEnd: params.windowEnd,
+        });
+
+        if (!gatingResult.skippedGating) {
+          // Log included/excluded counts for transparency
+          if (gatingResult.excluded.length > 0) {
+            log.info(
+              {
+                sourceId: source.id,
+                sourceName: source.name,
+                included: gatingResult.included.length,
+                excluded: gatingResult.excluded.length,
+                excludedHandles: gatingResult.excluded,
+              },
+              "x_posts account gating applied",
+            );
+          }
+
+          // Use gated config
+          effectiveFetchParams = {
+            ...fetchParams,
+            config: gatingResult.gatedConfig,
+          };
+        }
+      } catch (err) {
+        // Log but don't fail - account gating is non-critical
+        log.warn(
+          { err, sourceId: source.id },
+          "Failed to apply X account gating, proceeding with full config",
+        );
+      }
+    }
+
     const fetchRun = await params.db.fetchRuns.start(source.id, asRecord(source.cursor_json));
 
     try {
@@ -259,7 +467,7 @@ export async function ingestEnabledSources(params: {
         throw new Error(`No connector registered for source.type="${source.type}"`);
       }
 
-      const fetchResult = await connector.fetch(fetchParams);
+      const fetchResult = await connector.fetch(effectiveFetchParams);
       baseResult.fetched = fetchResult.rawItems.length;
       totals.fetched += baseResult.fetched;
 
@@ -283,7 +491,7 @@ export async function ingestEnabledSources(params: {
 
       for (const raw of fetchResult.rawItems) {
         try {
-          const draft = await connector.normalize(raw, fetchParams);
+          const draft = await connector.normalize(raw, effectiveFetchParams);
           baseResult.normalized += 1;
           totals.normalized += 1;
 

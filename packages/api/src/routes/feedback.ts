@@ -3,7 +3,9 @@ import type {
   FeedbackByTopicResponse,
   FeedbackDailyStatsResponse,
   FeedbackSummaryResponse,
+  XAccountFeedbackAction,
 } from "@aharadar/shared";
+import { normalizeHandle } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -123,6 +125,48 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       }
     }
 
+    // Update X account policy if this is an x_posts item
+    try {
+      // Get content item to check source_type and author
+      const itemRes = await db.query<{
+        source_type: string;
+        author: string | null;
+      }>(`SELECT source_type, author FROM content_items WHERE id = $1::uuid`, [contentItemId]);
+      const item = itemRes.rows[0];
+
+      if (item && item.source_type === "x_posts" && item.author) {
+        // Extract handle from author (e.g., "@elonmusk" -> "elonmusk")
+        const handle = normalizeHandle(item.author);
+
+        if (handle) {
+          // Get all x_posts source_ids for this content item
+          const sourceRes = await db.query<{ source_id: string }>(
+            `SELECT cis.source_id::text as source_id
+             FROM content_item_sources cis
+             JOIN sources s ON s.id = cis.source_id
+             WHERE cis.content_item_id = $1::uuid
+               AND s.type = 'x_posts'`,
+            [contentItemId],
+          );
+
+          const occurredAt = new Date();
+
+          // Apply feedback to each source's policy
+          for (const row of sourceRes.rows) {
+            await db.xAccountPolicies.applyFeedback({
+              sourceId: row.source_id,
+              handle,
+              action: action as XAccountFeedbackAction,
+              occurredAt,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // Log but don't fail - policy update is non-critical
+      fastify.log.warn({ err, contentItemId, action }, "Failed to update X account policy");
+    }
+
     return { ok: true };
   });
 
@@ -203,6 +247,48 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
         fastify.log.warn(
           { err, contentItemId },
           "Failed to rebuild preference profile after feedback clear",
+        );
+      }
+
+      // Recompute X account policy if this was an x_posts item
+      try {
+        const itemRes = await db.query<{
+          source_type: string;
+          author: string | null;
+        }>(`SELECT source_type, author FROM content_items WHERE id = $1::uuid`, [contentItemId]);
+        const item = itemRes.rows[0];
+
+        if (item && item.source_type === "x_posts" && item.author) {
+          const handle = normalizeHandle(item.author);
+
+          if (handle) {
+            // Get all x_posts source_ids for this content item
+            const sourceRes = await db.query<{ source_id: string }>(
+              `SELECT cis.source_id::text as source_id
+               FROM content_item_sources cis
+               JOIN sources s ON s.id = cis.source_id
+               WHERE cis.content_item_id = $1::uuid
+                 AND s.type = 'x_posts'`,
+              [contentItemId],
+            );
+
+            const now = new Date();
+
+            // Recompute policy from remaining feedback for each source
+            for (const row of sourceRes.rows) {
+              await db.xAccountPolicies.recomputeFromFeedback({
+                sourceId: row.source_id,
+                handle,
+                now,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        // Log but don't fail - policy recompute is non-critical
+        fastify.log.warn(
+          { err, contentItemId },
+          "Failed to recompute X account policy after feedback clear",
         );
       }
 

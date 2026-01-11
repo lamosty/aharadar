@@ -874,6 +874,8 @@ This makes `x_posts` a viable **free alternative to some paid data APIs** when i
 
 **Budget consideration**: Uses Grok/xAI credits. Control spend by limiting accounts, keywords, and `maxResultsPerQuery`. This is budget-sensitive but not paid (no separate subscription required beyond xAI API access).
 
+**Feedback-driven throttling**: User feedback (like/dislike) on posts from an account accumulates into a policy score. Accounts with poor feedback are gradually throttled (fetched less often) using deterministic sampling with an exploration floor (15%). Users can override per-account via mode controls: `auto` (feedback-driven), `always` (always fetch), `mute` (never fetch). Throttling is gradual (smoothstep mapping, 45-day decay half-life) to avoid abrupt changes. See `x_account_policies` table in data-model.md.
+
 **config_json**
 
 ```json

@@ -11,8 +11,13 @@ import {
   RUN_WINDOW_JOB_NAME,
   setEmergencyStop,
 } from "@aharadar/queues";
-import type { BudgetTier } from "@aharadar/shared";
-import { loadRuntimeEnv, type OpsLinks } from "@aharadar/shared";
+import type { BudgetTier, XAccountPolicyMode } from "@aharadar/shared";
+import {
+  computePolicyView,
+  loadRuntimeEnv,
+  normalizeHandle,
+  type OpsLinks,
+} from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getUserId } from "../auth/session.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
@@ -1941,4 +1946,378 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       })),
     };
   });
+
+  // =========================================================================
+  // X Account Policy Endpoints
+  // =========================================================================
+
+  // Valid modes for X account policies
+  const VALID_POLICY_MODES: XAccountPolicyMode[] = ["auto", "always", "mute"];
+
+  function isValidPolicyMode(value: unknown): value is XAccountPolicyMode {
+    return typeof value === "string" && VALID_POLICY_MODES.includes(value as XAccountPolicyMode);
+  }
+
+  /**
+   * Extract account handles from x_posts source config.
+   * Gets handles from both 'accounts' array and 'batching.groups'.
+   */
+  function extractHandlesFromXPostsConfig(config: Record<string, unknown>): string[] {
+    const handles = new Set<string>();
+
+    // Extract from 'accounts' array
+    if (Array.isArray(config.accounts)) {
+      for (const acc of config.accounts) {
+        if (typeof acc === "string" && acc.trim()) {
+          handles.add(normalizeHandle(acc.trim()));
+        }
+      }
+    }
+
+    // Extract from 'batching.groups' (array of arrays)
+    const batching = config.batching as { groups?: unknown[] } | undefined;
+    if (batching && Array.isArray(batching.groups)) {
+      for (const group of batching.groups) {
+        if (Array.isArray(group)) {
+          for (const acc of group) {
+            if (typeof acc === "string" && acc.trim()) {
+              handles.add(normalizeHandle(acc.trim()));
+            }
+          }
+        }
+      }
+    }
+
+    return Array.from(handles).sort();
+  }
+
+  // GET /admin/sources/:id/x-account-policies - List X account policies for a source
+  fastify.get<{ Params: { id: string } }>(
+    "/admin/sources/:id/x-account-policies",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const db = getDb();
+      const source = await db.sources.getById(id);
+
+      if (!source) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Source not found: ${id}`,
+          },
+        });
+      }
+
+      // Verify ownership
+      if (source.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Source does not belong to current user",
+          },
+        });
+      }
+
+      // Only x_posts sources have account policies
+      if (source.type !== "x_posts") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_SOURCE_TYPE",
+            message: "X account policies are only available for x_posts sources",
+          },
+        });
+      }
+
+      // Extract handles from config
+      const config = (source.config_json ?? {}) as Record<string, unknown>;
+      const handles = extractHandlesFromXPostsConfig(config);
+
+      if (handles.length === 0) {
+        return {
+          ok: true,
+          policies: [],
+          reason: "No accounts configured in source",
+        };
+      }
+
+      // Upsert defaults to ensure all handles have a row
+      const rows = await db.xAccountPolicies.upsertDefaults({
+        sourceId: id,
+        handles,
+      });
+
+      // Compute views
+      const now = new Date();
+      const policies = rows.map((row) => computePolicyView(row, now));
+
+      return {
+        ok: true,
+        policies,
+      };
+    },
+  );
+
+  // PATCH /admin/sources/:id/x-account-policies/mode - Update policy mode for an account
+  fastify.patch<{ Params: { id: string }; Body: { handle: string; mode: XAccountPolicyMode } }>(
+    "/admin/sources/:id/x-account-policies/mode",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
+          },
+        });
+      }
+
+      const { handle, mode } = body as Record<string, unknown>;
+
+      if (typeof handle !== "string" || !handle.trim()) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "handle is required and must be a non-empty string",
+          },
+        });
+      }
+
+      if (!isValidPolicyMode(mode)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `mode must be one of: ${VALID_POLICY_MODES.join(", ")}`,
+          },
+        });
+      }
+
+      const db = getDb();
+      const source = await db.sources.getById(id);
+
+      if (!source) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Source not found: ${id}`,
+          },
+        });
+      }
+
+      if (source.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Source does not belong to current user",
+          },
+        });
+      }
+
+      if (source.type !== "x_posts") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_SOURCE_TYPE",
+            message: "X account policies are only available for x_posts sources",
+          },
+        });
+      }
+
+      const normalizedHandle = normalizeHandle(handle);
+
+      // Ensure policy row exists
+      await db.xAccountPolicies.upsertDefaults({
+        sourceId: id,
+        handles: [normalizedHandle],
+      });
+
+      // Update mode
+      const updated = await db.xAccountPolicies.updateMode({
+        sourceId: id,
+        handle: normalizedHandle,
+        mode,
+      });
+
+      if (!updated) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Policy not found for handle: ${handle}`,
+          },
+        });
+      }
+
+      const now = new Date();
+      const view = computePolicyView(updated, now);
+
+      return {
+        ok: true,
+        policy: view,
+      };
+    },
+  );
+
+  // POST /admin/sources/:id/x-account-policies/reset - Reset policy stats for an account
+  fastify.post<{ Params: { id: string }; Body: { handle: string } }>(
+    "/admin/sources/:id/x-account-policies/reset",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
+          },
+        });
+      }
+
+      const { handle } = body as Record<string, unknown>;
+
+      if (typeof handle !== "string" || !handle.trim()) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "handle is required and must be a non-empty string",
+          },
+        });
+      }
+
+      const db = getDb();
+      const source = await db.sources.getById(id);
+
+      if (!source) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Source not found: ${id}`,
+          },
+        });
+      }
+
+      if (source.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Source does not belong to current user",
+          },
+        });
+      }
+
+      if (source.type !== "x_posts") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_SOURCE_TYPE",
+            message: "X account policies are only available for x_posts sources",
+          },
+        });
+      }
+
+      const normalizedHandle = normalizeHandle(handle);
+
+      // Reset policy stats (zeros pos/neg scores, clears last_feedback_at)
+      const reset = await db.xAccountPolicies.resetPolicy({
+        sourceId: id,
+        handle: normalizedHandle,
+      });
+
+      if (!reset) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Policy not found for handle: ${handle}`,
+          },
+        });
+      }
+
+      const now = new Date();
+      const view = computePolicyView(reset, now);
+
+      return {
+        ok: true,
+        policy: view,
+      };
+    },
+  );
 }

@@ -17,6 +17,7 @@ import { createTopicPreferenceProfilesRepo } from "./repos/topic_preference_prof
 import { createTopicsRepo } from "./repos/topics";
 import { createUserApiKeysRepo } from "./repos/user_api_keys";
 import { createUsersRepo } from "./repos/users";
+import { createXAccountPoliciesRepo } from "./repos/x_account_policies";
 
 export interface Queryable {
   query<T extends QueryResultRow = QueryResultRow>(
@@ -43,6 +44,7 @@ export type DbContext = Queryable & {
   userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
   llmSettings: ReturnType<typeof createLlmSettingsRepo>;
   abtests: ReturnType<typeof createAbtestsRepo>;
+  xAccountPolicies: ReturnType<typeof createXAccountPoliciesRepo>;
 };
 
 export interface Db extends DbContext {
@@ -70,6 +72,7 @@ function createContext(db: Queryable): DbContext {
     userApiKeys: createUserApiKeysRepo(db),
     llmSettings: createLlmSettingsRepo(db),
     abtests: createAbtestsRepo(db),
+    xAccountPolicies: createXAccountPoliciesRepo(db),
   };
 }
 

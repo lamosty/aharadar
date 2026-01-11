@@ -322,6 +322,25 @@ create table abtest_results (
 );
 create unique index abtest_results_item_variant_uniq on abtest_results(abtest_item_id, variant_id);
 create index abtest_results_variant_idx on abtest_results(variant_id);
+
+-- x_account_policies: per-account throttling for x_posts based on feedback
+-- Tracks feedback-derived scores and mode overrides for X accounts.
+-- Used to gradually reduce fetch frequency for accounts with negative feedback.
+create table x_account_policies (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references sources(id) on delete cascade,
+  handle text not null, -- lowercase, without @
+  mode text not null default 'auto', -- auto|always|mute
+  pos_score double precision not null default 0, -- decayed positive feedback weight
+  neg_score double precision not null default 0, -- decayed negative feedback weight
+  last_feedback_at timestamptz, -- when last feedback was applied
+  last_updated_at timestamptz, -- when decay was last applied
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (mode in ('auto', 'always', 'mute'))
+);
+create unique index x_account_policies_source_handle_uniq on x_account_policies(source_id, handle);
+create index x_account_policies_source_idx on x_account_policies(source_id);
 ```
 
 ## Notes & constraints
