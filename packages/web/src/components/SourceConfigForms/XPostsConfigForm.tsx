@@ -442,6 +442,50 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
           />
         </div>
 
+        <div className={styles.field}>
+          <label htmlFor="x-promptProfile" className={styles.label}>
+            Prompt Detail Level
+            <HelpTooltip
+              title="Text Capture Detail"
+              content={
+                <>
+                  <p>
+                    <strong>How much text to capture per post.</strong>
+                  </p>
+                  <p>
+                    <strong>Light (default):</strong> ~500 characters per post. Cheaper, good for
+                    most use cases.
+                  </p>
+                  <p>
+                    <strong>Heavy:</strong> ~1500 characters per post. More detail for long-form
+                    content, costs more tokens.
+                  </p>
+                  <p>
+                    <em>Tip:</em> Use &quot;Light&quot; unless you need full thread context or
+                    detailed analysis.
+                  </p>
+                </>
+              }
+            />
+          </label>
+          <select
+            id="x-promptProfile"
+            value={value.promptProfile ?? "light"}
+            onChange={(e) =>
+              handleChange("promptProfile", e.target.value as "light" | "heavy" | undefined)
+            }
+            className={styles.selectInput}
+          >
+            <option value="light">Light (cheaper, ~500 chars)</option>
+            <option value="heavy">Heavy (more detail, ~1500 chars)</option>
+          </select>
+          {value.promptProfile === "heavy" && (
+            <p className={styles.hint} style={{ color: "var(--color-warning)" }}>
+              Heavy mode uses more tokens. Consider reducing Max Results Per Query to control costs.
+            </p>
+          )}
+        </div>
+
         <div className={styles.checkboxField}>
           <input
             type="checkbox"

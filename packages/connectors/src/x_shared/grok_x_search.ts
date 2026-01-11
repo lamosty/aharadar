@@ -24,6 +24,11 @@ export interface GrokXSearchParams {
    * Will be clamped to X_POSTS_MAX_OUTPUT_TOKENS_HARD_CAP if set.
    */
   maxOutputTokens?: number;
+  /**
+   * Override max text chars per post in the prompt.
+   * If not provided, uses tier-based default (480 for normal, 1000 for high).
+   */
+  maxTextChars?: number;
 }
 
 export interface GrokXSearchResult {
@@ -244,7 +249,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   }
 
   const tier = readDefaultTier();
-  const maxTextChars = tier === "high" ? 1000 : 480;
+  // Use provided maxTextChars or fall back to tier-based default
+  const maxTextChars = params.maxTextChars ?? (tier === "high" ? 1000 : 480);
 
   const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
   const maxTokensDefault = tier === "high" ? 2000 : 900;

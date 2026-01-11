@@ -77,6 +77,22 @@ function asBatchingConfig(
   return { mode };
 }
 
+function asPromptProfile(value: unknown): "light" | "heavy" | undefined {
+  if (value === "light" || value === "heavy") return value;
+  return undefined;
+}
+
+/**
+ * Convert promptProfile to maxTextChars for Grok prompt.
+ * - light (default): ~500 chars - shorter, cheaper
+ * - heavy: ~1500 chars - more detail, costs more tokens
+ */
+function getMaxTextCharsFromProfile(profile: "light" | "heavy" | undefined): number | undefined {
+  if (profile === "heavy") return 1500;
+  if (profile === "light") return 500;
+  return undefined; // Use grokXSearch's tier-based default
+}
+
 function asConfig(value: Record<string, unknown>): XPostsSourceConfig {
   return {
     vendor: typeof value.vendor === "string" ? value.vendor : "grok",
@@ -92,6 +108,7 @@ function asConfig(value: Record<string, unknown>): XPostsSourceConfig {
       Number.isFinite(value.maxOutputTokensPerAccount)
         ? value.maxOutputTokensPerAccount
         : undefined,
+    promptProfile: asPromptProfile(value.promptProfile),
   };
 }
 
@@ -293,6 +310,9 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         ? config.maxOutputTokensPerAccount * job.groupSize
         : undefined;
 
+    // Calculate max text chars based on promptProfile
+    const maxTextChars = getMaxTextCharsFromProfile(config.promptProfile);
+
     try {
       runSearchCallsUsed += 1;
       const result = await grokXSearch({
@@ -304,6 +324,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         fromDate,
         toDate,
         maxOutputTokens,
+        maxTextChars,
       });
 
       const endedAt = new Date().toISOString();
