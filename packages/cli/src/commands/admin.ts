@@ -1,4 +1,4 @@
-import { createDb } from "@aharadar/db";
+import { createDb, type LlmSettingsRow } from "@aharadar/db";
 import {
   clusterTopicContentItems,
   dedupeTopicContentItems,
@@ -23,6 +23,22 @@ function asString(value: unknown): string | null {
 function truncate(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value;
   return `${value.slice(0, maxChars)}…`;
+}
+
+function buildLlmRuntimeConfig(settings: LlmSettingsRow) {
+  return {
+    provider: settings.provider,
+    anthropicModel: settings.anthropic_model,
+    openaiModel: settings.openai_model,
+    claudeSubscriptionEnabled: settings.claude_subscription_enabled,
+    claudeTriageThinking: settings.claude_triage_thinking,
+    claudeCallsPerHour: settings.claude_calls_per_hour,
+    codexSubscriptionEnabled: settings.codex_subscription_enabled,
+    codexCallsPerHour: settings.codex_calls_per_hour,
+    reasoningEffort: settings.reasoning_effort,
+    triageBatchEnabled: settings.triage_batch_enabled,
+    triageBatchSize: settings.triage_batch_size,
+  };
 }
 
 type RunNowOptions = {
@@ -324,6 +340,9 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
     const digestMaxItemsDefault = Math.min(500, Math.max(20, ingest.totals.upserted));
     const digestMaxItems = opts.maxDigestItems ?? digestMaxItemsDefault;
 
+    const llmSettings = await db.llmSettings.get();
+    const llmConfig = buildLlmRuntimeConfig(llmSettings);
+
     const digest = await persistDigestFromContentItems({
       db,
       userId: user.id,
@@ -333,6 +352,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       mode: env.defaultTier,
       limits: { maxItems: digestMaxItems },
       filter: ingestFilter,
+      llmConfig,
     });
 
     console.log("");
@@ -592,6 +612,9 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
       windowEnd,
     });
 
+    const llmSettings = await db.llmSettings.get();
+    const llmConfig = buildLlmRuntimeConfig(llmSettings);
+
     const digest = await persistDigestFromContentItems({
       db,
       userId: user.id,
@@ -607,6 +630,7 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
               onlySourceIds: opts.sourceIds.length > 0 ? opts.sourceIds : undefined,
             }
           : undefined,
+      llmConfig,
     });
 
     console.log("");

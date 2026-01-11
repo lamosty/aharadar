@@ -65,7 +65,7 @@ For now we use **OpenAI-compatible Responses API** settings (OpenAI only in conf
   - `OPENAI_TRIAGE_MAX_INPUT_CHARS` (default 4000)
   - `OPENAI_TRIAGE_MAX_TITLE_CHARS` (default 240)
   - `OPENAI_TRIAGE_MAX_CALLS_PER_RUN` (optional cap on triage calls)
-  - `OPENAI_TRIAGE_REASONING_EFFORT` (`low|medium|high`, optional; applies to all tiers for now)
+  - `OPENAI_TRIAGE_REASONING_EFFORT` (`none|low|medium|high`, optional; `none` disables reasoning; applies to all tiers for now)
 - Embeddings (OpenAI-compatible):
   - Required (to enable embed stage + semantic search):
     - `OPENAI_API_KEY`

@@ -238,9 +238,8 @@ async function runDeepSummaryOnce(params: {
   const envTokenOverride = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_OUTPUT_TOKENS);
   const maxOutputTokens = getMaxOutputTokensForReasoning(reasoningEffort, envTokenOverride);
 
-  // When effort is "none", omit reasoning param to disable reasoning entirely
-  const effectiveReasoningEffort =
-    reasoningEffort === "none" || reasoningEffort === null ? undefined : reasoningEffort;
+  // Pass through "none" explicitly so models that default to reasoning can disable it.
+  const effectiveReasoningEffort = reasoningEffort ?? undefined;
 
   const call = await params.router.call("deep_summary", ref, {
     system: buildSystemPrompt(ref, params.isRetry),
@@ -267,9 +266,14 @@ export async function deepSummarizeCandidate(params: {
   router: LlmRouter;
   tier: BudgetTier;
   candidate: DeepSummaryCandidateInput;
+  reasoningEffortOverride?: ReasoningEffort | null;
 }): Promise<DeepSummaryCallResult> {
   try {
-    const result = await runDeepSummaryOnce({ ...params, isRetry: false });
+    const result = await runDeepSummaryOnce({
+      ...params,
+      isRetry: false,
+      reasoningEffortOverride: params.reasoningEffortOverride,
+    });
     return {
       output: result.output,
       inputTokens: result.inputTokens,
@@ -280,7 +284,11 @@ export async function deepSummarizeCandidate(params: {
       endpoint: result.endpoint,
     };
   } catch {
-    const retry = await runDeepSummaryOnce({ ...params, isRetry: true });
+    const retry = await runDeepSummaryOnce({
+      ...params,
+      isRetry: true,
+      reasoningEffortOverride: params.reasoningEffortOverride,
+    });
     return {
       output: retry.output,
       inputTokens: retry.inputTokens,

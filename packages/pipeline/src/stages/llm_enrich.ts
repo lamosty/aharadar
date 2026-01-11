@@ -166,6 +166,7 @@ export async function enrichTopCandidates(params: {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
         },
+        reasoningEffortOverride: params.llmConfig?.reasoningEffort,
       });
 
       summaries.set(candidate.candidateId, result.output);

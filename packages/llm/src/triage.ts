@@ -361,9 +361,8 @@ async function runTriageOnce(params: {
     props.model = { type: "string", const: ref.model };
   }
 
-  // When effort is "none", omit reasoning param to disable reasoning entirely
-  const effectiveReasoningEffort =
-    reasoningEffort === "none" || reasoningEffort === null ? undefined : reasoningEffort;
+  // Pass through "none" explicitly so models that default to reasoning can disable it.
+  const effectiveReasoningEffort = reasoningEffort ?? undefined;
 
   const call = await params.router.call("triage", ref, {
     system: buildSystemPrompt(ref, params.isRetry),
@@ -777,9 +776,8 @@ async function runBatchTriageOnce(params: {
 
   const expectedIds = new Set(params.candidates.map((c) => c.id));
 
-  // When effort is "none", omit reasoning param to disable reasoning entirely
-  const effectiveReasoningEffort =
-    reasoningEffort === "none" || reasoningEffort === null ? undefined : reasoningEffort;
+  // Pass through "none" explicitly so models that default to reasoning can disable it.
+  const effectiveReasoningEffort = reasoningEffort ?? undefined;
 
   const call = await params.router.call("triage", ref, {
     system: buildBatchSystemPrompt(ref, params.isRetry),
