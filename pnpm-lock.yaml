@@ -45,6 +45,9 @@ importers:
       '@aharadar/db':
         specifier: workspace:*
         version: link:../db
+      '@aharadar/llm':
+        specifier: workspace:*
+        version: link:../llm
       '@aharadar/pipeline':
         specifier: workspace:*
         version: link:../pipeline
