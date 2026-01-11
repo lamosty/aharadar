@@ -8,7 +8,7 @@
 
 Add a second‑stage “Deep Dive” flow where users paste full content for a liked item, generate an AI summary, and then **Promote** or **Drop** it. Raw pasted content is never stored; summaries are stored only when promoted.
 
-This also simplifies the **web** Stage‑1 review actions to **like / dislike / skip only** (remove Save button + Saved tab in web).
+This task also **removes Save entirely across the app** (web + API + CLI + shared types + docs).
 
 ## Read first (required)
 
@@ -28,6 +28,8 @@ This also simplifies the **web** Stage‑1 review actions to **like / dislike / 
   - `packages/web/src/components/AppShell/nav-model.ts`
   - `packages/web/src/lib/api.ts`
   - `packages/web/src/lib/hooks.ts`
+  - `packages/cli/src/commands/review.ts`
+  - `packages/cli/src/ui/keymap.ts`
   - `packages/llm/src/deep_summary.ts`
   - `packages/pipeline/src/stages/llm_enrich.ts`
 
@@ -41,17 +43,19 @@ This also simplifies the **web** Stage‑1 review actions to **like / dislike / 
 - `packages/web/src/components/*`
 - `packages/web/src/lib/*`
 - `packages/web/src/messages/en.json`
+- `packages/cli/src/*`
 - `packages/shared/src/types/*`
 - `docs/spec.md`
 - `docs/data-model.md`
 - `docs/llm.md`
 - `docs/web.md`
+- `docs/cli.md`
 
 If anything else seems required, stop and ask before changing.
 
 ## Decisions (locked)
 
-- **Stage‑1 web feedback actions**: **like / dislike / skip only**. Remove the Save button in web UI and remove the Saved tab from web feed. (API still accepts save; CLI behavior is out‑of‑scope for this task.)
+- **Feedback actions everywhere**: **like / dislike / skip only**. Remove Save from web, API, CLI, shared types, and docs. Convert any existing `save` feedback rows to `like` via migration.
 - **Deep Dive source**: items with latest feedback action = **like** only.
 - **Page name**: use **“Deep Dive”** in nav and URLs (rename later if desired).
 - **Storage**: never store raw pasted text; store summary JSON **only when promoted**.
@@ -69,6 +73,7 @@ If anything else seems required, stop and ask before changing.
      - `summary_json` (nullable; **only for promoted**)
      - `created_at`, `updated_at`
    - Add indexes: `(user_id, status)` and unique `(user_id, content_item_id)`.
+   - Add a migration to **convert existing `feedback_events.action = 'save'` to `'like'`**.
    - Update `docs/data-model.md` with the new table contract.
 
 2. **LLM task**
@@ -94,7 +99,14 @@ If anything else seems required, stop and ask before changing.
        - Return items with deep‑review `status = promoted` + summary JSON.
    - Return item metadata needed for UI: title, url, author, publishedAt, sourceType, topic, triageJson.
 
-4. **Web UI**
+4. **Remove Save globally**
+   - Update shared types: `FeedbackAction = "like" | "dislike" | "skip"` only.
+   - Update API validation (`/feedback`) to reject `save`.
+   - Remove Saved view/filter in `/items` and any UI hooks or view enums relying on it.
+   - Update CLI review UX: remove save keybinding, labels, and handling.
+   - Update analytics summaries and any code that counts `save`.
+
+5. **Web UI**
    - Add new page: `packages/web/src/app/app/deep-dive/page.tsx` (route `/app/deep-dive`).
    - Add nav item “Deep Dive”.
    - UI structure:
@@ -107,20 +119,21 @@ If anything else seems required, stop and ask before changing.
      - Promoted tab shows the summary layout (not the fast Feed card layout).
      - Warning banner: “Paste only content you have the right to share with a third‑party AI. Raw content is not stored.”
 
-5. **Web feed simplification**
-   - Remove the **Save** button from `FeedbackButtons` (web only).
+6. **Web feed simplification**
+   - Remove the **Save** button from `FeedbackButtons`.
    - Remove the **Saved** tab from `/app/feed` and any i18n text for it.
 
-6. **Docs**
+7. **Docs**
    - Update `docs/spec.md` (Stage‑2 manual summary flow).
    - Update `docs/web.md` (new page surface + warning).
+   - Update `docs/cli.md` and any docs mentioning save as a feedback action.
 
 ## Acceptance criteria
 
 - [ ] “Deep Dive” page exists with **To Review** + **Promoted** tabs.
 - [ ] User can paste content, run summary, and choose **Promote** or **Drop**.
 - [ ] Raw pasted text is **not stored**; promoted summaries are stored and visible.
-- [ ] Web Stage‑1 feedback shows **like / dislike / skip only**; Saved tab removed.
+- [ ] Feedback actions are **like / dislike / skip only** across web/API/CLI; Saved view removed.
 - [ ] Budget gating blocks preview when credits are exhausted (matches `ask.ts`).
 - [ ] `pnpm -r typecheck` passes.
 
