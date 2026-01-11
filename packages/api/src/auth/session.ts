@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { getDb } from "../lib/db.js";
+import { getDb, getSingletonContext } from "../lib/db.js";
 import { hashToken } from "./crypto.js";
 
 export interface AuthenticatedRequest extends FastifyRequest {
@@ -12,6 +12,20 @@ export interface AuthenticatedRequest extends FastifyRequest {
  * Validates the session cookie and attaches userId to request
  */
 export async function sessionAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  // Dev mode auth bypass for testing
+  if (process.env.NODE_ENV !== "production") {
+    const bypassCookie = request.cookies?.BYPASS_AUTH;
+    if (bypassCookie === "admin" || bypassCookie === "user") {
+      const ctx = await getSingletonContext();
+      if (ctx) {
+        (request as AuthenticatedRequest).userId = ctx.userId;
+        (request as AuthenticatedRequest).sessionId = "dev-bypass-session";
+        console.log("[DEV] Auth bypassed", { userId: ctx.userId, role: bypassCookie });
+        return;
+      }
+    }
+  }
+
   const sessionToken = request.cookies?.session;
 
   if (!sessionToken) {
