@@ -80,11 +80,35 @@ function parseIntEnv(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseReasoningEffort(value: string | undefined): "low" | "medium" | "high" | null {
+type ReasoningEffort = "none" | "low" | "medium" | "high";
+
+function parseReasoningEffort(value: string | undefined): ReasoningEffort | null {
   if (!value) return null;
   const raw = value.trim().toLowerCase();
-  if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  if (raw === "none" || raw === "low" || raw === "medium" || raw === "high") return raw;
   return null;
+}
+
+/**
+ * Calculate max output tokens based on reasoning effort.
+ * Reasoning models need more tokens to include both reasoning and output.
+ */
+function getMaxOutputTokensForReasoning(
+  effort: ReasoningEffort | null,
+  envOverride: number | null,
+): number {
+  // Explicit env override always wins
+  if (envOverride !== null) return envOverride;
+
+  // Token budgets based on reasoning effort
+  const budgets: Record<ReasoningEffort, number> = {
+    none: 350, // No reasoning overhead
+    low: 800, // Light reasoning
+    medium: 2000, // Standard reasoning
+    high: 4000, // Deep reasoning
+  };
+
+  return budgets[effort ?? "none"];
 }
 
 function parseFloatEnv(value: string | undefined): number | null {
@@ -314,10 +338,19 @@ async function runTriageOnce(params: {
   tier: BudgetTier;
   candidate: TriageCandidateInput;
   isRetry: boolean;
+  reasoningEffortOverride?: ReasoningEffort | null;
 }): Promise<{ output: TriageOutput; inputTokens: number; outputTokens: number; endpoint: string }> {
   const ref = params.router.chooseModel("triage", params.tier);
-  const reasoningEffort = parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
-  const maxOutputTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
+
+  // Determine reasoning effort: override > env > default (none)
+  const reasoningEffort =
+    params.reasoningEffortOverride !== undefined
+      ? params.reasoningEffortOverride
+      : parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
+
+  // Calculate max output tokens based on reasoning effort
+  const envTokenOverride = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS);
+  const maxOutputTokens = getMaxOutputTokensForReasoning(reasoningEffort, envTokenOverride);
 
   // Build JSON schema for the request (provider-specific, but Claude subscription uses it)
   const jsonSchema = { ...TRIAGE_JSON_SCHEMA };
@@ -328,11 +361,15 @@ async function runTriageOnce(params: {
     props.model = { type: "string", const: ref.model };
   }
 
+  // When effort is "none", omit reasoning param to disable reasoning entirely
+  const effectiveReasoningEffort =
+    reasoningEffort === "none" || reasoningEffort === null ? undefined : reasoningEffort;
+
   const call = await params.router.call("triage", ref, {
     system: buildSystemPrompt(ref, params.isRetry),
     user: buildUserPrompt(params.candidate, params.tier),
     maxOutputTokens,
-    reasoningEffort: reasoningEffort ?? undefined,
+    reasoningEffort: effectiveReasoningEffort,
     jsonSchema,
   });
 
@@ -708,6 +745,7 @@ async function runBatchTriageOnce(params: {
   candidates: TriageCandidateInput[];
   batchId: string;
   isRetry: boolean;
+  reasoningEffortOverride?: ReasoningEffort | null;
 }): Promise<{
   outputs: Map<string, TriageOutput>;
   inputTokens: number;
@@ -715,18 +753,30 @@ async function runBatchTriageOnce(params: {
   endpoint: string;
 }> {
   const ref = params.router.chooseModel("triage", params.tier);
-  const reasoningEffort = parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
-  // Batch needs more output tokens - estimate ~50 tokens per item
-  const baseMaxTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
-  const maxOutputTokens = Math.max(baseMaxTokens, params.candidates.length * 80);
+
+  // Determine reasoning effort: override > env > default (none)
+  const reasoningEffort =
+    params.reasoningEffortOverride !== undefined
+      ? params.reasoningEffortOverride
+      : parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
+
+  // Batch needs more output tokens - scale by item count
+  const envTokenOverride = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS);
+  const baseTokens = getMaxOutputTokensForReasoning(reasoningEffort, envTokenOverride);
+  const tokensPerItem = reasoningEffort && reasoningEffort !== "none" ? 250 : 120;
+  const maxOutputTokens = Math.max(baseTokens, params.candidates.length * tokensPerItem);
 
   const expectedIds = new Set(params.candidates.map((c) => c.id));
+
+  // When effort is "none", omit reasoning param to disable reasoning entirely
+  const effectiveReasoningEffort =
+    reasoningEffort === "none" || reasoningEffort === null ? undefined : reasoningEffort;
 
   const call = await params.router.call("triage", ref, {
     system: buildBatchSystemPrompt(ref, params.isRetry),
     user: buildBatchUserPrompt(params.candidates, params.batchId, params.tier),
     maxOutputTokens,
-    reasoningEffort: reasoningEffort ?? undefined,
+    reasoningEffort: effectiveReasoningEffort,
     jsonSchema: TRIAGE_BATCH_JSON_SCHEMA,
   });
 
