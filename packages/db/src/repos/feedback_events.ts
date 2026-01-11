@@ -83,18 +83,20 @@ export function createFeedbackEventsRepo(db: Queryable) {
 
     /**
      * Compute user preference weights from feedback history.
-     * Like/save → +0.1 weight, dislike → -0.1 weight.
+     * Like/save → +weightDelta weight, dislike → -weightDelta weight.
      * Weights are clamped to [0.5, 2.0].
      *
      * @param userId - The user to compute preferences for
-     * @param maxFeedbackAge - Optional max age in days (default: no limit)
+     * @param maxFeedbackAgeDays - Optional max age in days (default: no limit)
+     * @param weightDelta - Weight change per feedback (default: 0.1)
      * @returns UserPreferences with sourceTypeWeights and authorWeights
      */
     async computeUserPreferences(params: {
       userId: string;
       maxFeedbackAgeDays?: number;
+      weightDelta?: number;
     }): Promise<UserPreferences> {
-      const { userId, maxFeedbackAgeDays } = params;
+      const { userId, maxFeedbackAgeDays, weightDelta } = params;
 
       // Query feedback with joined content_items for source_type and author
       const ageFilter = maxFeedbackAgeDays
@@ -123,16 +125,16 @@ export function createFeedbackEventsRepo(db: Queryable) {
       const sourceTypeScores: Record<string, number> = {};
       const authorScores: Record<string, number> = {};
 
-      const WEIGHT_DELTA = 0.1;
+      const effectiveWeightDelta = weightDelta ?? 0.1;
       const MIN_WEIGHT = 0.5;
       const MAX_WEIGHT = 2.0;
 
       for (const row of res.rows) {
         const delta =
           row.action === "like" || row.action === "save"
-            ? WEIGHT_DELTA
+            ? effectiveWeightDelta
             : row.action === "dislike"
-              ? -WEIGHT_DELTA
+              ? -effectiveWeightDelta
               : 0; // skip has no effect
 
         if (delta !== 0) {

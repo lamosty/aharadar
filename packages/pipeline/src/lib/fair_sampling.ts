@@ -21,6 +21,8 @@ export interface SamplingCandidate {
   candidateAtMs: number;
   /** Pre-computed heuristic score for sorting within groups */
   heuristicScore: number;
+  /** Preference score from embedding similarity (-1 to 1) */
+  preferenceScore?: number;
 }
 
 export interface StratifiedSampleParams {
@@ -28,6 +30,8 @@ export interface StratifiedSampleParams {
   windowStartMs: number;
   windowEndMs: number;
   maxPoolSize: number;
+  /** Weight for preference bias in sorting (0 = no bias, higher = more bias) */
+  preferenceBiasWeight?: number;
 }
 
 export interface StratifiedSampleResult {
@@ -113,7 +117,11 @@ function buildGroupKey(sourceType: string, sourceId: string, bucketIndex: number
  * even if some sources are extremely prolific.
  */
 export function stratifiedSample(params: StratifiedSampleParams): StratifiedSampleResult {
-  const { candidates, windowStartMs, windowEndMs, maxPoolSize } = params;
+  const { candidates, windowStartMs, windowEndMs, maxPoolSize, preferenceBiasWeight } = params;
+
+  // Combined score formula: heuristic + preferenceBias * preferenceScore
+  const combinedScore = (c: SamplingCandidate): number =>
+    c.heuristicScore + (preferenceBiasWeight ?? 0) * (c.preferenceScore ?? 0);
 
   if (candidates.length === 0) {
     return {
@@ -177,8 +185,8 @@ export function stratifiedSample(params: StratifiedSampleParams): StratifiedSamp
   const sampledIds = new Set<string>();
 
   for (const group of groups.values()) {
-    // Sort by heuristic score descending
-    group.sort((a, b) => b.heuristicScore - a.heuristicScore);
+    // Sort by combined score (heuristic + preference bias) descending
+    group.sort((a, b) => combinedScore(b) - combinedScore(a));
 
     // Take top k
     const toTake = Math.min(kPerGroup, group.length);
@@ -188,10 +196,10 @@ export function stratifiedSample(params: StratifiedSampleParams): StratifiedSamp
   }
 
   // If we've exceeded maxPoolSize (rare, due to rounding), we need to trim
-  // In this case, convert back to array, sort by heuristic, and take top maxPoolSize
+  // In this case, convert back to array, sort by combined score, and take top maxPoolSize
   if (sampledIds.size > maxPoolSize) {
     const sampledCandidates = candidates.filter((c) => sampledIds.has(c.candidateId));
-    sampledCandidates.sort((a, b) => b.heuristicScore - a.heuristicScore);
+    sampledCandidates.sort((a, b) => combinedScore(b) - combinedScore(a));
 
     sampledIds.clear();
     for (let i = 0; i < maxPoolSize && i < sampledCandidates.length; i++) {

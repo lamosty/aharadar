@@ -18,6 +18,8 @@ export interface TriageCandidate {
   sourceId: string;
   /** Pre-computed heuristic score for prioritization */
   heuristicScore: number;
+  /** Preference score from embedding similarity (-1 to 1) */
+  preferenceScore?: number;
 }
 
 export interface TriageAllocationParams {
@@ -25,6 +27,8 @@ export interface TriageAllocationParams {
   maxTriageCalls: number;
   /** Fraction of budget for exploration (default 0.3) */
   explorationFraction?: number;
+  /** Weight for preference bias in sorting (0 = no bias, higher = more bias) */
+  preferenceBiasWeight?: number;
 }
 
 export interface TriageAllocationResult {
@@ -69,8 +73,12 @@ const MIN_EXPLORATION_PER_SOURCE = 1;
  * - Remaining triage calls go to globally top candidates (excluding exploration picks)
  */
 export function allocateTriageCalls(params: TriageAllocationParams): TriageAllocationResult {
-  const { candidates, maxTriageCalls } = params;
+  const { candidates, maxTriageCalls, preferenceBiasWeight } = params;
   const explorationFraction = params.explorationFraction ?? DEFAULT_EXPLORATION_FRACTION;
+
+  // Combined score formula: heuristic + preferenceBias * preferenceScore
+  const combinedScore = (c: TriageCandidate): number =>
+    c.heuristicScore + (preferenceBiasWeight ?? 0) * (c.preferenceScore ?? 0);
 
   if (candidates.length === 0 || maxTriageCalls <= 0) {
     return {
@@ -86,9 +94,9 @@ export function allocateTriageCalls(params: TriageAllocationParams): TriageAlloc
     };
   }
 
-  // If we can triage all candidates, just sort by heuristic and return
+  // If we can triage all candidates, just sort by combined score and return
   if (candidates.length <= maxTriageCalls) {
-    const sorted = [...candidates].sort((a, b) => b.heuristicScore - a.heuristicScore);
+    const sorted = [...candidates].sort((a, b) => combinedScore(b) - combinedScore(a));
     return {
       triageOrder: sorted.map((c) => c.candidateId),
       stats: {
@@ -148,8 +156,8 @@ export function allocateTriageCalls(params: TriageAllocationParams): TriageAlloc
 
     let typePickCount = 0;
     for (const [_sourceId, sourceCandidates] of bySource) {
-      // Sort by heuristic within source
-      sourceCandidates.sort((a, b) => b.heuristicScore - a.heuristicScore);
+      // Sort by combined score within source
+      sourceCandidates.sort((a, b) => combinedScore(b) - combinedScore(a));
 
       // Take up to basePerSource, but don't exceed remaining type budget
       const remaining = slotsForThisType - typePickCount;
@@ -166,9 +174,9 @@ export function allocateTriageCalls(params: TriageAllocationParams): TriageAlloc
   }
 
   // Phase B: Exploitation
-  // Pick globally top candidates by heuristic, excluding exploration picks
+  // Pick globally top candidates by combined score, excluding exploration picks
   const remaining = candidates.filter((c) => !explorationPicks.has(c.candidateId));
-  remaining.sort((a, b) => b.heuristicScore - a.heuristicScore);
+  remaining.sort((a, b) => combinedScore(b) - combinedScore(a));
 
   const exploitationPicks: string[] = [];
   for (let i = 0; i < exploitationBudget && i < remaining.length; i++) {
@@ -176,10 +184,10 @@ export function allocateTriageCalls(params: TriageAllocationParams): TriageAlloc
   }
 
   // Combine: exploration first, then exploitation
-  // Sort exploration picks by heuristic for determinism
+  // Sort exploration picks by combined score for determinism
   const explorationList = candidates
     .filter((c) => explorationPicks.has(c.candidateId))
-    .sort((a, b) => b.heuristicScore - a.heuristicScore)
+    .sort((a, b) => combinedScore(b) - combinedScore(a))
     .map((c) => c.candidateId);
 
   const triageOrder = [...explorationList, ...exploitationPicks];

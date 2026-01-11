@@ -7,7 +7,12 @@ import {
   triageBatch,
   triageCandidate,
 } from "@aharadar/llm";
-import { type BudgetTier, createLogger, type SourceType } from "@aharadar/shared";
+import {
+  type BudgetTier,
+  createLogger,
+  parsePersonalizationTuning,
+  type SourceType,
+} from "@aharadar/shared";
 
 const log = createLogger({ component: "digest" });
 
@@ -924,6 +929,32 @@ export async function persistDigestFromContentItems(params: {
   }
 
   // =========================================================================
+  // Load topic and parse personalization tuning settings
+  // =========================================================================
+  const topic = await params.db.topics.getById(params.topicId);
+  const tuning = parsePersonalizationTuning(topic?.custom_settings?.personalization_tuning_v1);
+
+  log.debug(
+    {
+      prefBiasSampling: tuning.prefBiasSamplingWeight,
+      prefBiasTriage: tuning.prefBiasTriageWeight,
+      rankPrefWeight: tuning.rankPrefWeight,
+      feedbackDelta: tuning.feedbackWeightDelta,
+    },
+    "Effective personalization tuning",
+  );
+
+  // Helper to compute preference score from embedding similarity
+  // preferenceScore = clamp(-1, 1, positiveSim - negativeSim)
+  const computePreferenceScore = (
+    positiveSim: number | null,
+    negativeSim: number | null,
+  ): number => {
+    const raw = (positiveSim ?? 0) - (negativeSim ?? 0);
+    return Math.max(-1, Math.min(1, raw));
+  };
+
+  // =========================================================================
   // Step 1: Stratified sampling for fair coverage across sources and time
   // =========================================================================
   const samplingCandidates: SamplingCandidate[] = scored.map((c) => ({
@@ -932,6 +963,7 @@ export async function persistDigestFromContentItems(params: {
     sourceId: c.sourceId,
     candidateAtMs: c.candidateAtMs,
     heuristicScore: c.heuristicScore,
+    preferenceScore: computePreferenceScore(c.positiveSim, c.negativeSim),
   }));
 
   const samplingResult = stratifiedSample({
@@ -939,6 +971,7 @@ export async function persistDigestFromContentItems(params: {
     windowStartMs,
     windowEndMs,
     maxPoolSize: candidatePoolSize,
+    preferenceBiasWeight: tuning.prefBiasSamplingWeight,
   });
 
   // Filter to only sampled candidates
@@ -971,11 +1004,13 @@ export async function persistDigestFromContentItems(params: {
     sourceType: c.sourceType,
     sourceId: c.sourceId,
     heuristicScore: c.heuristicScore,
+    preferenceScore: computePreferenceScore(c.positiveSim, c.negativeSim),
   }));
 
   const triageAllocation = allocateTriageCalls({
     candidates: triageCandidatesForAlloc,
     maxTriageCalls: triageLimit,
+    preferenceBiasWeight: tuning.prefBiasTriageWeight,
   });
 
   log.info(
@@ -1026,19 +1061,20 @@ export async function persistDigestFromContentItems(params: {
   const feedbackPrefs = await params.db.feedbackEvents.computeUserPreferences({
     userId: params.userId,
     maxFeedbackAgeDays: 90, // Use last 90 days of feedback
+    weightDelta: tuning.feedbackWeightDelta,
   });
   const userPreferences: UserPreferences = {
     sourceTypeWeights: feedbackPrefs.sourceTypeWeights,
     authorWeights: feedbackPrefs.authorWeights,
   };
 
-  // Get topic's decay hours for recency-based score adjustment
-  const topic = await params.db.topics.getById(params.topicId);
+  // Topic is already fetched earlier for tuning settings
   const topicDecayHours = topic?.decay_hours ?? null;
 
   const ranked = rankCandidates({
     userPreferences,
     decayHours: topicDecayHours,
+    weights: { wPref: tuning.rankPrefWeight },
     candidates: scored.map((c) => {
       // Compute source weight (from source config and env type weights)
       const perSourceWeight = asFiniteNumber(c.sourceConfigJson?.weight);

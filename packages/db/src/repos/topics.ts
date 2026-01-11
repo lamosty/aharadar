@@ -26,6 +26,8 @@ export interface TopicRow {
   digest_mode: DigestMode;
   digest_depth: number;
   digest_cursor_end: string | null;
+  // Custom settings (per-topic configuration)
+  custom_settings: Record<string, unknown>;
 }
 
 export interface Topic {
@@ -43,6 +45,8 @@ export interface Topic {
   digestMode: DigestMode;
   digestDepth: number;
   digestCursorEnd: Date | null;
+  // Custom settings (per-topic configuration)
+  customSettings: Record<string, unknown>;
 }
 
 function rowToTopic(row: TopicRow): Topic {
@@ -61,6 +65,8 @@ function rowToTopic(row: TopicRow): Topic {
     digestMode: row.digest_mode,
     digestDepth: row.digest_depth,
     digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
+    // Custom settings
+    customSettings: row.custom_settings ?? {},
   };
 }
 
@@ -72,7 +78,8 @@ export function createTopicsRepo(db: Queryable) {
                 viewing_profile, decay_hours, last_checked_at::text,
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
-                digest_mode, digest_depth, digest_cursor_end::text
+                digest_mode, digest_depth, digest_cursor_end::text,
+                custom_settings
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC`,
@@ -87,7 +94,8 @@ export function createTopicsRepo(db: Queryable) {
                 viewing_profile, decay_hours, last_checked_at::text,
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
-                digest_mode, digest_depth, digest_cursor_end::text
+                digest_mode, digest_depth, digest_cursor_end::text,
+                custom_settings
          FROM topics
          WHERE id = $1
          LIMIT 1`,
@@ -102,7 +110,8 @@ export function createTopicsRepo(db: Queryable) {
                 viewing_profile, decay_hours, last_checked_at::text,
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
-                digest_mode, digest_depth, digest_cursor_end::text
+                digest_mode, digest_depth, digest_cursor_end::text,
+                custom_settings
          FROM topics
          WHERE user_id = $1 AND name = $2
          LIMIT 1`,
@@ -124,7 +133,8 @@ export function createTopicsRepo(db: Queryable) {
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
-                   digest_mode, digest_depth, digest_cursor_end::text`,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
         [
           params.userId,
           params.name,
@@ -161,7 +171,8 @@ export function createTopicsRepo(db: Queryable) {
                 viewing_profile, decay_hours, last_checked_at::text,
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
-                digest_mode, digest_depth, digest_cursor_end::text
+                digest_mode, digest_depth, digest_cursor_end::text,
+                custom_settings
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC
@@ -234,7 +245,8 @@ export function createTopicsRepo(db: Queryable) {
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
-                   digest_mode, digest_depth, digest_cursor_end::text`,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
         values,
       );
 
@@ -255,7 +267,8 @@ export function createTopicsRepo(db: Queryable) {
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
-                   digest_mode, digest_depth, digest_cursor_end::text`,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
         [id],
       );
 
@@ -305,7 +318,8 @@ export function createTopicsRepo(db: Queryable) {
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
-                   digest_mode, digest_depth, digest_cursor_end::text`,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
         values,
       );
 
@@ -382,7 +396,8 @@ export function createTopicsRepo(db: Queryable) {
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
-                   digest_mode, digest_depth, digest_cursor_end::text`,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
         values,
       );
 
@@ -405,12 +420,39 @@ export function createTopicsRepo(db: Queryable) {
                    viewing_profile, decay_hours, last_checked_at::text,
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
-                   digest_mode, digest_depth, digest_cursor_end::text`,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
         [id, cursorEndIso],
       );
 
       const row = res.rows[0];
       if (!row) throw new Error("topics.updateDigestCursorEnd: topic not found");
+      return rowToTopic(row);
+    },
+
+    /**
+     * Update custom_settings for a topic.
+     * Replaces the entire custom_settings object.
+     */
+    async updateCustomSettings(
+      id: string,
+      customSettings: Record<string, unknown>,
+    ): Promise<Topic> {
+      const res = await db.query<TopicRow>(
+        `UPDATE topics
+         SET custom_settings = $2
+         WHERE id = $1
+         RETURNING id, user_id, name, description,
+                   viewing_profile, decay_hours, last_checked_at::text,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings`,
+        [id, JSON.stringify(customSettings)],
+      );
+
+      const row = res.rows[0];
+      if (!row) throw new Error("topics.updateCustomSettings: topic not found");
       return rowToTopic(row);
     },
 

@@ -285,6 +285,97 @@ describe("persistDigestFromContentItems integration", () => {
 });
 
 /**
+ * Unit tests for parsePersonalizationTuning
+ */
+describe("parsePersonalizationTuning", () => {
+  const {
+    parsePersonalizationTuning,
+    PERSONALIZATION_TUNING_DEFAULTS,
+  } = require("@aharadar/shared");
+
+  it("returns defaults for null/undefined", () => {
+    expect(parsePersonalizationTuning(null)).toEqual(PERSONALIZATION_TUNING_DEFAULTS);
+    expect(parsePersonalizationTuning(undefined)).toEqual(PERSONALIZATION_TUNING_DEFAULTS);
+  });
+
+  it("returns defaults for non-object types", () => {
+    expect(parsePersonalizationTuning("string")).toEqual(PERSONALIZATION_TUNING_DEFAULTS);
+    expect(parsePersonalizationTuning(123)).toEqual(PERSONALIZATION_TUNING_DEFAULTS);
+    expect(parsePersonalizationTuning([1, 2])).toEqual(PERSONALIZATION_TUNING_DEFAULTS);
+  });
+
+  it("preserves valid values within range", () => {
+    const input = {
+      prefBiasSamplingWeight: 0.3,
+      prefBiasTriageWeight: 0.25,
+      rankPrefWeight: 0.4,
+      feedbackWeightDelta: 0.15,
+    };
+    const result = parsePersonalizationTuning(input);
+    expect(result.prefBiasSamplingWeight).toBe(0.3);
+    expect(result.prefBiasTriageWeight).toBe(0.25);
+    expect(result.rankPrefWeight).toBe(0.4);
+    expect(result.feedbackWeightDelta).toBe(0.15);
+  });
+
+  it("clamps values above max", () => {
+    const input = {
+      prefBiasSamplingWeight: 0.9, // Max is 0.5
+      prefBiasTriageWeight: 1.0,
+      rankPrefWeight: 2.0,
+      feedbackWeightDelta: 0.5, // Max is 0.2
+    };
+    const result = parsePersonalizationTuning(input);
+    expect(result.prefBiasSamplingWeight).toBe(0.5);
+    expect(result.prefBiasTriageWeight).toBe(0.5);
+    expect(result.rankPrefWeight).toBe(0.5);
+    expect(result.feedbackWeightDelta).toBe(0.2);
+  });
+
+  it("clamps values below min", () => {
+    const input = {
+      prefBiasSamplingWeight: -0.5, // Min is 0
+      prefBiasTriageWeight: -1.0,
+      rankPrefWeight: -0.1,
+      feedbackWeightDelta: -0.05,
+    };
+    const result = parsePersonalizationTuning(input);
+    expect(result.prefBiasSamplingWeight).toBe(0.0);
+    expect(result.prefBiasTriageWeight).toBe(0.0);
+    expect(result.rankPrefWeight).toBe(0.0);
+    expect(result.feedbackWeightDelta).toBe(0.0);
+  });
+
+  it("uses defaults for missing or invalid fields", () => {
+    const input = {
+      prefBiasSamplingWeight: 0.3,
+      prefBiasTriageWeight: "invalid", // Invalid type
+      // rankPrefWeight: missing
+      feedbackWeightDelta: NaN, // Invalid
+    };
+    const result = parsePersonalizationTuning(input);
+    expect(result.prefBiasSamplingWeight).toBe(0.3); // Preserved
+    expect(result.prefBiasTriageWeight).toBe(PERSONALIZATION_TUNING_DEFAULTS.prefBiasTriageWeight);
+    expect(result.rankPrefWeight).toBe(PERSONALIZATION_TUNING_DEFAULTS.rankPrefWeight);
+    expect(result.feedbackWeightDelta).toBe(PERSONALIZATION_TUNING_DEFAULTS.feedbackWeightDelta);
+  });
+
+  it("ignores Infinity and NaN", () => {
+    const input = {
+      prefBiasSamplingWeight: Infinity,
+      prefBiasTriageWeight: -Infinity,
+      rankPrefWeight: NaN,
+    };
+    const result = parsePersonalizationTuning(input);
+    expect(result.prefBiasSamplingWeight).toBe(
+      PERSONALIZATION_TUNING_DEFAULTS.prefBiasSamplingWeight,
+    );
+    expect(result.prefBiasTriageWeight).toBe(PERSONALIZATION_TUNING_DEFAULTS.prefBiasTriageWeight);
+    expect(result.rankPrefWeight).toBe(PERSONALIZATION_TUNING_DEFAULTS.rankPrefWeight);
+  });
+});
+
+/**
  * Unit tests for fair sampling helpers
  */
 describe("fair sampling helpers", () => {
@@ -322,6 +413,82 @@ describe("fair sampling helpers", () => {
       expect(result.sampledIds.size).toBe(2);
       expect(result.sampledIds.has("1")).toBe(true);
       expect(result.sampledIds.has("2")).toBe(true);
+    });
+
+    it("applies preference bias to ordering within groups", () => {
+      // Candidate 'a' has lower heuristic but higher preference
+      // Candidate 'b' has higher heuristic but lower preference
+      const candidates = [
+        {
+          candidateId: "a",
+          sourceType: "rss",
+          sourceId: "s1",
+          candidateAtMs: 1000,
+          heuristicScore: 0.5,
+          preferenceScore: 0.8,
+        },
+        {
+          candidateId: "b",
+          sourceType: "rss",
+          sourceId: "s1",
+          candidateAtMs: 1000,
+          heuristicScore: 0.6,
+          preferenceScore: -0.5,
+        },
+      ];
+
+      // With no preference bias, 'b' should win (higher heuristic)
+      const resultNoBias = stratifiedSample({
+        candidates,
+        windowStartMs: 0,
+        windowEndMs: 3000,
+        maxPoolSize: 1,
+        preferenceBiasWeight: 0,
+      });
+      expect([...resultNoBias.sampledIds][0]).toBe("b");
+
+      // With high preference bias, 'a' should win
+      // a: 0.5 + 0.5 * 0.8 = 0.9
+      // b: 0.6 + 0.5 * -0.5 = 0.35
+      const resultWithBias = stratifiedSample({
+        candidates,
+        windowStartMs: 0,
+        windowEndMs: 3000,
+        maxPoolSize: 1,
+        preferenceBiasWeight: 0.5,
+      });
+      expect([...resultWithBias.sampledIds][0]).toBe("a");
+    });
+
+    it("treats missing preferenceScore as 0", () => {
+      const candidates = [
+        {
+          candidateId: "a",
+          sourceType: "rss",
+          sourceId: "s1",
+          candidateAtMs: 1000,
+          heuristicScore: 0.6,
+          // No preferenceScore
+        },
+        {
+          candidateId: "b",
+          sourceType: "rss",
+          sourceId: "s1",
+          candidateAtMs: 1000,
+          heuristicScore: 0.5,
+          preferenceScore: 0.5,
+        },
+      ];
+
+      // With bias, 'b' should win: 0.5 + 0.5 * 0.5 = 0.75 vs 'a': 0.6 + 0 = 0.6
+      const result = stratifiedSample({
+        candidates,
+        windowStartMs: 0,
+        windowEndMs: 3000,
+        maxPoolSize: 1,
+        preferenceBiasWeight: 0.5,
+      });
+      expect([...result.sampledIds][0]).toBe("b");
     });
 
     it("samples fairly across sources when pool is limited", () => {
@@ -401,6 +568,85 @@ describe("fair sampling helpers", () => {
       });
 
       expect(result.triageOrder.length).toBe(2);
+    });
+
+    it("applies preference bias to ordering", () => {
+      // Candidate 'a' has lower heuristic but higher preference
+      // Candidate 'b' has higher heuristic but lower preference
+      const candidates = [
+        {
+          candidateId: "a",
+          sourceType: "rss",
+          sourceId: "s1",
+          heuristicScore: 0.5,
+          preferenceScore: 0.8,
+        },
+        {
+          candidateId: "b",
+          sourceType: "rss",
+          sourceId: "s1",
+          heuristicScore: 0.6,
+          preferenceScore: -0.5,
+        },
+      ];
+
+      // With no bias, 'b' comes first (higher heuristic)
+      const resultNoBias = allocateTriageCalls({
+        candidates,
+        maxTriageCalls: 2,
+        preferenceBiasWeight: 0,
+      });
+      expect(resultNoBias.triageOrder[0]).toBe("b");
+
+      // With high preference bias, 'a' comes first
+      // a: 0.5 + 0.5 * 0.8 = 0.9
+      // b: 0.6 + 0.5 * -0.5 = 0.35
+      const resultWithBias = allocateTriageCalls({
+        candidates,
+        maxTriageCalls: 2,
+        preferenceBiasWeight: 0.5,
+      });
+      expect(resultWithBias.triageOrder[0]).toBe("a");
+    });
+
+    it("preserves exploration guarantees with preference bias", () => {
+      // Source A: many items with low preference
+      // Source B: fewer items with high preference
+      const candidates = [
+        ...Array.from({ length: 5 }, (_, i) => ({
+          candidateId: `a${i}`,
+          sourceType: "rss",
+          sourceId: "srcA",
+          heuristicScore: 0.5,
+          preferenceScore: -0.8, // Negative preference
+        })),
+        {
+          candidateId: "b1",
+          sourceType: "reddit",
+          sourceId: "srcB",
+          heuristicScore: 0.5,
+          preferenceScore: 0.9,
+        },
+        {
+          candidateId: "b2",
+          sourceType: "reddit",
+          sourceId: "srcB",
+          heuristicScore: 0.5,
+          preferenceScore: 0.9,
+        },
+      ];
+
+      const result = allocateTriageCalls({
+        candidates,
+        maxTriageCalls: 4,
+        preferenceBiasWeight: 0.5,
+      });
+
+      // Both sources should get exploration slots (minimum guarantee)
+      const srcACount = result.triageOrder.filter((id: string) => id.startsWith("a")).length;
+      const srcBCount = result.triageOrder.filter((id: string) => id.startsWith("b")).length;
+      expect(srcACount).toBeGreaterThan(0);
+      expect(srcBCount).toBeGreaterThan(0);
     });
   });
 

@@ -563,6 +563,54 @@ describe("rankCandidates", () => {
       // pref = 0 - 0 = 0, no contribution
       expect(result.score).toBeCloseTo(0.5, 5);
     });
+
+    it("uses overridden wPref when provided", () => {
+      const candidates = [
+        makeCandidate({
+          heuristicScore: 0.5,
+          triage: null,
+          positiveSim: 0.8,
+          negativeSim: 0.2,
+        }),
+      ];
+
+      // With higher wPref (0.25), preference should have more impact
+      const [result] = rankCandidates({ candidates, weights: { wPref: 0.25 } });
+
+      // baseScore = 0.5 + 0.25 * (0.8 - 0.2) = 0.5 + 0.15 = 0.65
+      expect(result.score).toBeCloseTo(0.65, 5);
+    });
+
+    it("wPref override changes relative ranking", () => {
+      const candidates = [
+        makeCandidate({
+          candidateId: "high-pref",
+          heuristicScore: 0.4,
+          triage: null,
+          positiveSim: 0.9,
+          negativeSim: 0.0,
+        }),
+        makeCandidate({
+          candidateId: "low-pref",
+          heuristicScore: 0.5,
+          triage: null,
+          positiveSim: 0.2,
+          negativeSim: 0.5,
+        }),
+      ];
+
+      // With default wPref=0.15:
+      // high-pref: 0.4 + 0.15 * 0.9 = 0.535
+      // low-pref: 0.5 + 0.15 * -0.3 = 0.455
+      const defaultResult = rankCandidates({ candidates });
+      expect(defaultResult[0].candidateId).toBe("high-pref");
+
+      // With wPref=0, only heuristic matters:
+      // high-pref: 0.4
+      // low-pref: 0.5
+      const noPrefResult = rankCandidates({ candidates, weights: { wPref: 0 } });
+      expect(noPrefResult[0].candidateId).toBe("low-pref");
+    });
   });
 
   describe("sorting", () => {
