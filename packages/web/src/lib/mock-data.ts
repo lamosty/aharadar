@@ -5,11 +5,14 @@
 
 export interface DigestSummary {
   id: string;
+  topicId: string;
+  topicName: string;
   windowStart: string;
   windowEnd: string;
   mode: "low" | "normal" | "high";
   status: "complete" | "failed";
   creditsUsed: number;
+  topScore: number | null;
   itemCount: number;
   sourceCount: {
     total: number;
@@ -114,55 +117,70 @@ export interface DigestDetail {
 const mockDigests: DigestSummary[] = [
   {
     id: "d1-uuid-mock",
+    topicId: "topic-1-mock",
+    topicName: "Tech News",
     windowStart: "2025-01-06T08:00:00Z",
     windowEnd: "2025-01-06T14:00:00Z",
     mode: "normal",
     status: "complete",
     creditsUsed: 0.05,
+    topScore: 0.85,
     itemCount: 12,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-06T14:05:00Z",
   },
   {
     id: "d2-uuid-mock",
+    topicId: "topic-1-mock",
+    topicName: "Tech News",
     windowStart: "2025-01-06T00:00:00Z",
     windowEnd: "2025-01-06T08:00:00Z",
     mode: "normal",
     status: "complete",
     creditsUsed: 0.04,
+    topScore: 0.72,
     itemCount: 8,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-06T08:03:00Z",
   },
   {
     id: "d3-uuid-mock",
+    topicId: "topic-2-mock",
+    topicName: "Finance",
     windowStart: "2025-01-05T16:00:00Z",
     windowEnd: "2025-01-06T00:00:00Z",
     mode: "high",
     status: "complete",
     creditsUsed: 0.08,
+    topScore: 0.91,
     itemCount: 15,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-06T00:04:00Z",
   },
   {
     id: "d4-uuid-mock",
+    topicId: "topic-1-mock",
+    topicName: "Tech News",
     windowStart: "2025-01-05T08:00:00Z",
     windowEnd: "2025-01-05T16:00:00Z",
     mode: "low",
     status: "failed",
     creditsUsed: 0.01,
+    topScore: null,
     itemCount: 5,
     sourceCount: { total: 4, succeeded: 3, skipped: 1 },
     createdAt: "2025-01-05T16:02:00Z",
   },
   {
     id: "d5-uuid-mock",
+    topicId: "topic-2-mock",
+    topicName: "Finance",
     windowStart: "2025-01-05T00:00:00Z",
     windowEnd: "2025-01-05T08:00:00Z",
     mode: "normal",
     status: "complete",
     creditsUsed: 0.06,
+    topScore: 0.68,
     itemCount: 22,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
     createdAt: "2025-01-05T08:10:00Z",
@@ -461,11 +479,14 @@ import { useDigest, useDigests, useFeedback } from "./hooks";
 function adaptDigestSummary(item: DigestListItem): DigestSummary {
   return {
     id: item.id,
+    topicId: item.topicId,
+    topicName: item.topicName,
     windowStart: item.windowStart,
     windowEnd: item.windowEnd,
     mode: item.mode as DigestSummary["mode"],
     status: item.status,
     creditsUsed: item.creditsUsed,
+    topScore: item.topScore,
     itemCount: item.itemCount,
     sourceCount: item.sourceCount,
     createdAt: item.createdAt,

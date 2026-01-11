@@ -57,9 +57,12 @@ export interface DigestSourceResult {
 /** Digest list item */
 export interface DigestListItem {
   id: string;
+  topicId: string;
+  topicName: string;
   mode: string;
   status: "complete" | "failed";
   creditsUsed: number;
+  topScore: number | null;
   windowStart: string;
   windowEnd: string;
   createdAt: string;
@@ -75,6 +78,38 @@ export interface DigestListItem {
 export interface DigestsListResponse {
   ok: true;
   digests: DigestListItem[];
+}
+
+/** Digest stats response */
+export interface DigestStatsResponse {
+  ok: true;
+  stats: {
+    totalItems: number;
+    digestCount: number;
+    avgItemsPerDigest: number;
+    avgTopScore: number;
+    triageBreakdown: {
+      high: number;
+      medium: number;
+      low: number;
+      skip: number;
+    };
+    totalCredits: number;
+    avgCreditsPerDigest: number;
+    creditsByMode: {
+      low: number;
+      normal: number;
+      high: number;
+    };
+  };
+  previousPeriod: {
+    totalItems: number;
+    digestCount: number;
+    avgItemsPerDigest: number;
+    avgTopScore: number;
+    totalCredits: number;
+    avgCreditsPerDigest: number;
+  };
 }
 
 /** Content item brief (embedded in digest items) */
@@ -546,20 +581,36 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
 }
 
 /**
- * List digests within a date range.
+ * List digests with optional topic filter and date range.
  */
 export async function getDigests(
-  params?: { from?: string; to?: string },
+  params?: { from?: string; to?: string; topic?: string },
   signal?: AbortSignal,
 ): Promise<DigestsListResponse> {
   const searchParams = new URLSearchParams();
   if (params?.from) searchParams.set("from", params.from);
   if (params?.to) searchParams.set("to", params.to);
+  if (params?.topic) searchParams.set("topic", params.topic);
 
   const query = searchParams.toString();
   const path = query ? `/digests?${query}` : "/digests";
 
   return apiFetch<DigestsListResponse>(path, { signal });
+}
+
+/**
+ * Get aggregated digest stats for analytics.
+ */
+export async function getDigestStats(
+  params: { from: string; to: string; topic?: string },
+  signal?: AbortSignal,
+): Promise<DigestStatsResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("from", params.from);
+  searchParams.set("to", params.to);
+  if (params.topic) searchParams.set("topic", params.topic);
+
+  return apiFetch<DigestStatsResponse>(`/digests/stats?${searchParams.toString()}`, { signal });
 }
 
 /**

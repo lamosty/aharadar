@@ -38,6 +38,7 @@ import {
   type DailyUsageResponse,
   type DeleteTopicResponse,
   type DigestDetailResponse,
+  type DigestStatsResponse,
   type DigestsListResponse,
   deleteAdminSource,
   deleteTopic,
@@ -58,6 +59,7 @@ import {
   getAdminSources,
   getDailyUsage,
   getDigest,
+  getDigestStats,
   getDigests,
   getEmergencyStopStatus,
   getFeedbackByTopic,
@@ -136,7 +138,10 @@ export const queryKeys = {
   health: ["health"] as const,
   digests: {
     all: ["digests"] as const,
-    list: (params?: { from?: string; to?: string }) => ["digests", "list", params] as const,
+    list: (params?: { from?: string; to?: string; topic?: string }) =>
+      ["digests", "list", params] as const,
+    stats: (params: { from: string; to: string; topic?: string }) =>
+      ["digests", "stats", params] as const,
     detail: (id: string) => ["digests", id] as const,
   },
   items: {
@@ -194,7 +199,7 @@ export function useHealth(
 // ============================================================================
 
 export function useDigests(
-  params?: { from?: string; to?: string },
+  params?: { from?: string; to?: string; topic?: string },
   options?: Omit<
     UseQueryOptions<DigestsListResponse, ApiError | NetworkError>,
     "queryKey" | "queryFn"
@@ -203,6 +208,20 @@ export function useDigests(
   return useQuery({
     queryKey: queryKeys.digests.list(params),
     queryFn: ({ signal }) => getDigests(params, signal),
+    ...options,
+  });
+}
+
+export function useDigestStats(
+  params: { from: string; to: string; topic?: string },
+  options?: Omit<
+    UseQueryOptions<DigestStatsResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.digests.stats(params),
+    queryFn: ({ signal }) => getDigestStats(params, signal),
     ...options,
   });
 }
