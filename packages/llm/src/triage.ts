@@ -427,3 +427,409 @@ export async function triageCandidate(params: {
     };
   }
 }
+
+// ============================================================================
+// BATCH TRIAGE PROCESSING
+// ============================================================================
+
+const BATCH_SCHEMA_VERSION = "triage_batch_v1";
+
+export const TRIAGE_BATCH_JSON_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    schema_version: { type: "string", const: "triage_batch_v1" },
+    batch_id: { type: "string" },
+    results: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          aha_score: { type: "number", minimum: 0, maximum: 100 },
+          reason: { type: "string" },
+          is_relevant: { type: "boolean" },
+          is_novel: { type: "boolean" },
+          categories: { type: "array", items: { type: "string" } },
+          should_deep_summarize: { type: "boolean" },
+        },
+        required: [
+          "id",
+          "aha_score",
+          "reason",
+          "is_relevant",
+          "is_novel",
+          "categories",
+          "should_deep_summarize",
+        ],
+      },
+    },
+  },
+  required: ["schema_version", "batch_id", "results"],
+  additionalProperties: false,
+};
+
+export interface TriageBatchItem {
+  id: string;
+  aha_score: number;
+  reason: string;
+  is_relevant: boolean;
+  is_novel: boolean;
+  categories: string[];
+  should_deep_summarize: boolean;
+}
+
+export interface TriageBatchOutput {
+  schema_version: "triage_batch_v1";
+  batch_id: string;
+  results: TriageBatchItem[];
+}
+
+export interface TriageBatchCallResult {
+  outputs: Map<string, TriageOutput>;
+  inputTokens: number;
+  outputTokens: number;
+  costEstimateCredits: number;
+  provider: string;
+  model: string;
+  endpoint: string;
+  itemCount: number;
+  successCount: number;
+}
+
+function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean): string {
+  const retryNote = isRetry
+    ? "The previous response was invalid. Fix it and return ONLY the JSON object."
+    : "Return ONLY the JSON object.";
+  return (
+    "You are a strict JSON generator for content triage.\n" +
+    "You will receive multiple items in a batch. Evaluate EACH item independently.\n" +
+    `${retryNote}\n` +
+    "Output must match this schema (no extra keys, no markdown, no code fences):\n" +
+    "{\n" +
+    '  "schema_version": "triage_batch_v1",\n' +
+    '  "batch_id": "<same as input batch_id>",\n' +
+    '  "results": [\n' +
+    "    {\n" +
+    '      "id": "<item id from input>",\n' +
+    '      "aha_score": 0-100,\n' +
+    '      "reason": "Short explanation of signal level",\n' +
+    '      "is_relevant": true/false,\n' +
+    '      "is_novel": true/false,\n' +
+    '      "categories": ["topic1", "topic2"],\n' +
+    '      "should_deep_summarize": true/false\n' +
+    "    }\n" +
+    "  ]\n" +
+    "}\n\n" +
+    "Rules:\n" +
+    "- Return ONE result for EACH input item, in the same order\n" +
+    "- Each result.id MUST match an input item id exactly\n" +
+    "- aha_score range: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
+    "- Keep reason concise and topic-agnostic\n" +
+    "- Categories should be short, generic labels\n" +
+    "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
+  );
+}
+
+function buildBatchUserPrompt(
+  candidates: TriageCandidateInput[],
+  batchId: string,
+  tier: BudgetTier,
+): string {
+  const maxBody = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
+  const maxTitle = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_TITLE_CHARS) ?? 240;
+
+  const items = candidates.map((c) => ({
+    id: c.id,
+    source_type: c.sourceType,
+    source_name: c.sourceName ?? null,
+    title: clampText(c.title, maxTitle),
+    body_text: clampText(c.bodyText, maxBody),
+    primary_url: c.primaryUrl ?? null,
+    author: c.author ?? null,
+    published_at: c.publishedAt ?? null,
+  }));
+
+  const payload = {
+    batch_id: batchId,
+    budget_tier: tier,
+    window_start: candidates[0]?.windowStart ?? "",
+    window_end: candidates[0]?.windowEnd ?? "",
+    items,
+  };
+
+  return `Input JSON:\n${JSON.stringify(payload)}`;
+}
+
+function normalizeBatchOutput(
+  value: Record<string, unknown>,
+  ref: ModelRef,
+  expectedIds: Set<string>,
+): Map<string, TriageOutput> | null {
+  const schemaVersion = asString(value.schema_version);
+  if (schemaVersion !== BATCH_SCHEMA_VERSION) {
+    console.warn(`[triage-batch] Unexpected schema_version: ${schemaVersion}`);
+  }
+
+  const results = value.results;
+  if (!Array.isArray(results)) {
+    console.error("[triage-batch] results is not an array");
+    return null;
+  }
+
+  const outputMap = new Map<string, TriageOutput>();
+
+  for (const item of results) {
+    if (!item || typeof item !== "object") continue;
+
+    const itemObj = item as Record<string, unknown>;
+    const id = asString(itemObj.id);
+    if (!id) {
+      console.warn("[triage-batch] Item missing id, skipping");
+      continue;
+    }
+
+    if (!expectedIds.has(id)) {
+      console.warn(`[triage-batch] Unexpected item id: ${id}`);
+      continue;
+    }
+
+    const ahaScore = asNumber(itemObj.aha_score);
+    if (ahaScore === null || ahaScore < 0 || ahaScore > 100) {
+      console.warn(`[triage-batch] Invalid aha_score for ${id}`);
+      continue;
+    }
+
+    const reason = asString(itemObj.reason);
+    if (!reason) {
+      console.warn(`[triage-batch] Missing reason for ${id}`);
+      continue;
+    }
+
+    const isRelevant = asBoolean(itemObj.is_relevant);
+    const isNovel = asBoolean(itemObj.is_novel);
+    const shouldDeepSummarize = asBoolean(itemObj.should_deep_summarize);
+
+    if (isRelevant === null || isNovel === null || shouldDeepSummarize === null) {
+      console.warn(`[triage-batch] Missing boolean fields for ${id}`);
+      continue;
+    }
+
+    outputMap.set(id, {
+      schema_version: SCHEMA_VERSION,
+      prompt_id: PROMPT_ID,
+      provider: ref.provider,
+      model: ref.model,
+      aha_score: ahaScore,
+      reason,
+      is_relevant: isRelevant,
+      is_novel: isNovel,
+      categories: normalizeCategories(itemObj.categories),
+      should_deep_summarize: shouldDeepSummarize,
+    });
+  }
+
+  return outputMap.size > 0 ? outputMap : null;
+}
+
+function extractBatchJsonFromText(text: string): Record<string, unknown> | null {
+  // Same pattern as extractJsonFromText but looks for batch structure
+  const trimmed = text.trim();
+
+  // Try direct JSON parse first
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "results" in parsed) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Not valid JSON, continue
+    }
+  }
+
+  // Extract from markdown code blocks
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/g;
+  let lastMatch: string | null = null;
+
+  for (const match of trimmed.matchAll(codeBlockRegex)) {
+    const content = match[1].trim();
+    if (content.startsWith("{") && content.includes("results")) {
+      lastMatch = content;
+    }
+  }
+
+  if (lastMatch) {
+    try {
+      const parsed = JSON.parse(lastMatch);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Invalid JSON
+    }
+  }
+
+  // Last resort: find batch JSON object
+  const jsonObjectRegex = /\{[\s\S]*?"results"[\s\S]*?\]/g;
+  for (const match of trimmed.matchAll(jsonObjectRegex)) {
+    // Find the complete object by counting braces
+    const startIdx = trimmed.indexOf(match[0]);
+    let depth = 0;
+    let endIdx = startIdx;
+    for (let i = startIdx; i < trimmed.length; i++) {
+      if (trimmed[i] === "{") depth++;
+      else if (trimmed[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (endIdx > startIdx) {
+      try {
+        const parsed = JSON.parse(trimmed.slice(startIdx, endIdx));
+        if (parsed && typeof parsed === "object" && "results" in parsed) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {
+        // Continue
+      }
+    }
+  }
+
+  return null;
+}
+
+async function runBatchTriageOnce(params: {
+  router: LlmRouter;
+  tier: BudgetTier;
+  candidates: TriageCandidateInput[];
+  batchId: string;
+  isRetry: boolean;
+}): Promise<{
+  outputs: Map<string, TriageOutput>;
+  inputTokens: number;
+  outputTokens: number;
+  endpoint: string;
+}> {
+  const ref = params.router.chooseModel("triage", params.tier);
+  const reasoningEffort = parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
+  // Batch needs more output tokens - estimate ~50 tokens per item
+  const baseMaxTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
+  const maxOutputTokens = Math.max(baseMaxTokens, params.candidates.length * 80);
+
+  const expectedIds = new Set(params.candidates.map((c) => c.id));
+
+  const call = await params.router.call("triage", ref, {
+    system: buildBatchSystemPrompt(ref, params.isRetry),
+    user: buildBatchUserPrompt(params.candidates, params.batchId, params.tier),
+    maxOutputTokens,
+    reasoningEffort: reasoningEffort ?? undefined,
+    jsonSchema: TRIAGE_BATCH_JSON_SCHEMA,
+  });
+
+  // Try structured output first
+  let parsed: Record<string, unknown> | null = null;
+
+  if (call.structuredOutput && typeof call.structuredOutput === "object") {
+    parsed = call.structuredOutput as Record<string, unknown>;
+  }
+
+  // Fall back to text extraction
+  if (!parsed) {
+    parsed = extractBatchJsonFromText(call.outputText);
+  }
+
+  if (!parsed) {
+    const preview = call.outputText.substring(0, 300);
+    console.error(
+      `[triage-batch] Failed to parse batch JSON (${call.outputText.length} chars): ${preview}...`,
+    );
+    throw new Error("Batch triage output is not valid JSON");
+  }
+
+  const outputs = normalizeBatchOutput(parsed, ref, expectedIds);
+  if (!outputs) {
+    console.error(
+      `[triage-batch] Batch normalization failed: ${JSON.stringify(parsed).substring(0, 300)}`,
+    );
+    throw new Error("Batch triage output failed normalization");
+  }
+
+  return {
+    outputs,
+    inputTokens: call.inputTokens,
+    outputTokens: call.outputTokens,
+    endpoint: call.endpoint,
+  };
+}
+
+/**
+ * Triage a batch of candidates in a single LLM call.
+ * Returns a map of candidateId -> TriageOutput.
+ * If batch fails completely, throws error. Partial results are returned if some items fail normalization.
+ */
+export async function triageBatch(params: {
+  router: LlmRouter;
+  tier: BudgetTier;
+  candidates: TriageCandidateInput[];
+  batchId: string;
+}): Promise<TriageBatchCallResult> {
+  if (params.candidates.length === 0) {
+    return {
+      outputs: new Map(),
+      inputTokens: 0,
+      outputTokens: 0,
+      costEstimateCredits: 0,
+      provider: "none",
+      model: "none",
+      endpoint: "none",
+      itemCount: 0,
+      successCount: 0,
+    };
+  }
+
+  const ref = params.router.chooseModel("triage", params.tier);
+
+  try {
+    const result = await runBatchTriageOnce({ ...params, isRetry: false });
+    return {
+      outputs: result.outputs,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      costEstimateCredits: estimateCredits(result),
+      provider: ref.provider,
+      model: ref.model,
+      endpoint: result.endpoint,
+      itemCount: params.candidates.length,
+      successCount: result.outputs.size,
+    };
+  } catch (firstError) {
+    // Don't retry quota/rate limit errors
+    if (isQuotaError(firstError)) {
+      throw firstError;
+    }
+
+    const errMsg = firstError instanceof Error ? firstError.message : String(firstError);
+    console.warn(`[triage-batch] First attempt failed: ${errMsg}, retrying...`);
+
+    // Backoff before retry
+    const backoffMs = 1500 + Math.random() * 1000;
+    await delay(backoffMs);
+
+    const retry = await runBatchTriageOnce({ ...params, isRetry: true });
+    return {
+      outputs: retry.outputs,
+      inputTokens: retry.inputTokens,
+      outputTokens: retry.outputTokens,
+      costEstimateCredits: estimateCredits(retry),
+      provider: ref.provider,
+      model: ref.model,
+      endpoint: retry.endpoint,
+      itemCount: params.candidates.length,
+      successCount: retry.outputs.size,
+    };
+  }
+}
