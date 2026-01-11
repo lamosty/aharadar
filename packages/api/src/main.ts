@@ -1,3 +1,5 @@
+import { initRedisQuota } from "@aharadar/llm";
+import { createRedisClient } from "@aharadar/queues";
 import { createLogger, loadDotEnvIfPresent } from "@aharadar/shared";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -21,6 +23,16 @@ import { userUsageRoutes } from "./routes/user-usage.js";
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
+
+// Initialize Redis quota tracking for shared state between API and worker
+const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
+try {
+  const redisClient = createRedisClient(REDIS_URL);
+  initRedisQuota(redisClient);
+} catch (err) {
+  // Redis quota tracking will fall back to in-memory if this fails
+  console.warn("Failed to initialize Redis quota tracking, falling back to in-memory:", err);
+}
 
 const log = createLogger({ component: "api" });
 

@@ -1,5 +1,5 @@
 import { createDb } from "@aharadar/db";
-import { checkQuotaForRun } from "@aharadar/llm";
+import { checkQuotaForRun, initRedisQuota } from "@aharadar/llm";
 import {
   compileDigestPlan,
   generateDueWindows,
@@ -162,8 +162,12 @@ async function main(): Promise<void> {
   // Create worker to process jobs
   const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
 
-  // Create Redis client for emergency stop checks
+  // Create Redis client for emergency stop checks and quota tracking
   const emergencyStopRedis = createRedisClient(env.redisUrl);
+
+  // Initialize Redis quota tracking for shared state between API and worker
+  initRedisQuota(emergencyStopRedis);
+  log.info("Redis quota tracking initialized");
 
   // Clear any stale emergency stop flag on startup
   await clearEmergencyStop(emergencyStopRedis);

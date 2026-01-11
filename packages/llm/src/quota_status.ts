@@ -8,9 +8,18 @@
 import {
   type CodexUsageLimits,
   getCodexRemainingQuota,
+  getCodexRemainingQuotaAsync,
   getCodexUsageState,
+  getCodexUsageStateAsync,
 } from "./codex_usage_tracker";
-import { type ClaudeUsageLimits, getRemainingQuota, getUsageState } from "./usage_tracker";
+import { getHourResetTime, isRedisQuotaEnabled } from "./redis_quota";
+import {
+  type ClaudeUsageLimits,
+  getRemainingQuota,
+  getRemainingQuotaAsync,
+  getUsageState,
+  getUsageStateAsync,
+} from "./usage_tracker";
 
 export interface ProviderQuotaStatus {
   /** Calls used this hour */
@@ -29,7 +38,8 @@ export interface QuotaStatusResponse {
 }
 
 /**
- * Get current quota status for all subscription providers.
+ * Get current quota status for all subscription providers (sync version).
+ * Uses cached state if Redis is enabled.
  *
  * @param limits - Configured limits from DB settings
  * @returns Quota status for each subscription provider
@@ -54,22 +64,71 @@ export function getQuotaStatus(limits: {
   const codexState = getCodexUsageState();
   const codexRemaining = getCodexRemainingQuota(codexLimits);
 
-  // Calculate reset time (hour from last reset)
-  const claudeResetAt = new Date(claudeState.lastResetAt.getTime() + 60 * 60 * 1000);
-  const codexResetAt = new Date(codexState.lastResetAt.getTime() + 60 * 60 * 1000);
+  // Calculate reset time
+  const resetAt = isRedisQuotaEnabled()
+    ? getHourResetTime()
+    : new Date(claudeState.lastResetAt.getTime() + 60 * 60 * 1000);
 
   return {
     claude: {
       used: claudeState.callsThisHour,
       limit: limits.claudeCallsPerHour,
       remaining: claudeRemaining.calls,
-      resetAt: claudeResetAt.toISOString(),
+      resetAt: resetAt.toISOString(),
     },
     codex: {
       used: codexState.callsThisHour,
       limit: limits.codexCallsPerHour,
       remaining: codexRemaining.calls,
-      resetAt: codexResetAt.toISOString(),
+      resetAt: resetAt.toISOString(),
+    },
+  };
+}
+
+/**
+ * Get current quota status for all subscription providers (async version).
+ * Reads fresh state from Redis if enabled.
+ *
+ * @param limits - Configured limits from DB settings
+ * @returns Quota status for each subscription provider
+ */
+export async function getQuotaStatusAsync(limits: {
+  claudeCallsPerHour: number;
+  codexCallsPerHour: number;
+}): Promise<QuotaStatusResponse> {
+  // Claude subscription status
+  const claudeLimits: ClaudeUsageLimits = {
+    callsPerHour: limits.claudeCallsPerHour,
+    searchesPerHour: 20,
+    thinkingTokensPerHour: 50000,
+  };
+  const claudeState = await getUsageStateAsync();
+  const claudeRemaining = await getRemainingQuotaAsync(claudeLimits);
+
+  // Codex subscription status
+  const codexLimits: CodexUsageLimits = {
+    callsPerHour: limits.codexCallsPerHour,
+  };
+  const codexState = await getCodexUsageStateAsync();
+  const codexRemaining = await getCodexRemainingQuotaAsync(codexLimits);
+
+  // Calculate reset time
+  const resetAt = isRedisQuotaEnabled()
+    ? getHourResetTime()
+    : new Date(claudeState.lastResetAt.getTime() + 60 * 60 * 1000);
+
+  return {
+    claude: {
+      used: claudeState.callsThisHour,
+      limit: limits.claudeCallsPerHour,
+      remaining: claudeRemaining.calls,
+      resetAt: resetAt.toISOString(),
+    },
+    codex: {
+      used: codexState.callsThisHour,
+      limit: limits.codexCallsPerHour,
+      remaining: codexRemaining.calls,
+      resetAt: resetAt.toISOString(),
     },
   };
 }
