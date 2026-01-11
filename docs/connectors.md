@@ -394,7 +394,7 @@ Required only when `vendor = "quiver"`. Quiver API access typically requires a p
 ### Polymarket (`type = "polymarket"`)
 
 **Purpose**
-Ingest prediction market data including market questions, probabilities, volume, and price movements from the free public Polymarket Gamma API.
+Ingest prediction market data including market questions, probabilities, volume, and price movements from the free public Polymarket Gamma API. Supports **daily digest** mode with new interesting markets and spike detection.
 
 **config_json**
 
@@ -403,20 +403,48 @@ Ingest prediction market data including market questions, probabilities, volume,
   "categories": ["politics", "economics", "crypto"],
   "min_volume": 10000,
   "min_liquidity": 5000,
-  "probability_change_threshold": 5,
+  "min_volume_24h": 2000,
+  "include_restricted": true,
   "include_resolved": false,
-  "max_markets_per_fetch": 50
+  "max_markets_per_fetch": 50,
+
+  "include_new_markets": true,
+  "include_spike_markets": true,
+
+  "spike_probability_change_threshold": 10,
+  "spike_volume_change_threshold": 100,
+  "spike_min_volume_24h": 10000,
+  "spike_min_liquidity": 5000
 }
 ```
 
 **Fields:**
 
+Baseline filters (apply to all markets):
+
 - `categories` (optional): Filter by market categories
 - `min_volume` (default: 0): Minimum total volume in USD
 - `min_liquidity` (default: 0): Minimum current liquidity
-- `probability_change_threshold` (default: 0): Only include markets with probability change >= this percentage points since last check
+- `min_volume_24h` (default: 0): Minimum 24-hour volume in USD
+- `include_restricted` (default: true): Include restricted markets (labeled in UI)
 - `include_resolved` (default: false): Include resolved markets
 - `max_markets_per_fetch` (default: 50, clamped 1-200): Max markets per fetch
+
+Inclusion toggles:
+
+- `include_new_markets` (default: true): Emit markets created within the digest window
+- `include_spike_markets` (default: true): Emit markets with significant probability/volume spikes
+
+Spike thresholds (for `include_spike_markets`):
+
+- `spike_probability_change_threshold` (default: 10): Probability change threshold in percentage points since last fetch
+- `spike_volume_change_threshold` (default: 100): Volume change threshold as % change in 24h volume since last fetch
+- `spike_min_volume_24h` (default: 0): Minimum 24h volume required before spike qualifies
+- `spike_min_liquidity` (default: 0): Minimum liquidity required before spike qualifies
+
+Backward compatibility:
+
+- `probability_change_threshold` acts as alias for `spike_probability_change_threshold` if the new field is absent
 
 **cursor_json**
 
@@ -427,34 +455,54 @@ Ingest prediction market data including market questions, probabilities, volume,
   "last_prices": {
     "condition_id_1": 0.65,
     "condition_id_2": 0.42
+  },
+  "last_volume_24h": {
+    "condition_id_1": 12345,
+    "condition_id_2": 67890
   }
 }
 ```
 
-Note: `last_prices` tracks previous probabilities to calculate change since last fetch.
+Notes:
+
+- `last_prices` tracks previous probabilities for change detection
+- `last_volume_24h` tracks previous 24h volume for spike detection
+- Keep last 500 entries per map to bound cursor size
 
 **Fetch**
 
 - Calls Polymarket Gamma API (`https://gamma-api.polymarket.com/markets`)
 - No authentication required (free public API)
-- Applies local filters (volume, liquidity, probability change threshold)
-- Tracks seen markets and previous prices for change detection
+- Applies baseline filters (volume, liquidity, min_volume_24h)
+- If `include_restricted` is false and `market.restricted === true`, skip
+- Determines **new** markets: `createdAt` within window AND not in `seen_condition_ids`
+- Determines **spike** markets (only if `include_spike_markets`):
+  - Requires `spike_min_volume_24h` / `spike_min_liquidity` baseline if set
+  - Probability spike: `abs(probChangePP) >= spike_probability_change_threshold`
+  - Volume spike: `abs(volume24hChangePct) >= spike_volume_change_threshold`
+- Emits if `(isNew AND include_new_markets) OR (isSpike AND include_spike_markets)` AND baseline filters pass
+- Prioritizes spikes (sorted by max change magnitude desc), then new markets (sorted by createdAt desc)
+- Caps output at `max_markets_per_fetch`
+- Updates cursor with latest prices/volumes (keep last 500 entries)
 - Conservative rate limiting with exponential backoff on 429
 
 **Normalize**
 
 - `external_id`: `pm_{condition_id}`
-- `canonical_url`: `https://polymarket.com/event/{slug}` or `https://polymarket.com/market/{condition_id}`
-- `title`: `{Question} - {X}%` or `{Question} - {X}% ({change}pp)` if significant movement
+- `canonical_url`: `https://polymarket.com/event/{event_slug}` when event slug present, else `https://polymarket.com/market/{condition_id}`
+- `title`:
+  - New market: `{Question} - {X}%`
+  - Spike market: `{Question} - {X}% ({+/-N}pp)` or `{Question} - {X}% (vol +N%)`
 - `body_text`: Market description, probability, volume stats, resolution info
-- `published_at`: Market creation date
+- `published_at`:
+  - New market: `market.createdAt`
+  - Spike market: spike observation time (`windowEnd` or fetch time)
 - `author`: `"Polymarket"`
 - `metadata`:
   - `condition_id`: Market condition ID
   - `question`: Full market question
   - `probability`: Current probability (decimal 0-1)
   - `probability_percent`: Current probability as percentage
-  - `probability_change`: Change in percentage points since last check (if available)
   - `volume`: Total volume in USD
   - `volume_24h`: 24-hour volume
   - `liquidity`: Current liquidity
@@ -467,22 +515,63 @@ Note: `last_prices` tracks previous probabilities to calculate change since last
   - `end_date`: Market resolution date
   - `days_to_resolution`: Days until resolution
   - `resolution_source`: Data authority for resolution
+  - **New/spike detection:**
+    - `is_new`: Boolean, true if market is newly created within window
+    - `is_spike`: Boolean, true if market triggered spike detection
+    - `spike_reason`: `"probability"` | `"volume"` | `"both"` | null
+    - `probability_change_pp`: Change in percentage points since last fetch
+    - `volume_24h_change_pct`: Percentage change in 24h volume
+    - `volume_24h_change_abs`: Absolute change in 24h volume (USD)
+    - `market_created_at`: Original market creation timestamp
+    - `market_updated_at`: Market last updated timestamp
+    - `is_restricted`: Boolean, true if market is restricted (requires UI badge)
+
+**UI requirement**
+
+`is_restricted` must be displayed in the feed/digest detail UI as a badge/label (neutral color).
 
 **Use Cases**
 
-1. **All active markets with volume filter:**
+1. **Daily interesting + spikes (low noise):**
 
    ```json
-   { "min_volume": 10000 }
+   {
+     "min_volume": 10000,
+     "min_liquidity": 5000,
+     "min_volume_24h": 2000,
+     "include_new_markets": true,
+     "include_spike_markets": true,
+     "spike_probability_change_threshold": 10,
+     "spike_volume_change_threshold": 100,
+     "spike_min_volume_24h": 10000,
+     "spike_min_liquidity": 5000
+   }
    ```
 
-2. **Alert on significant probability movements:**
+2. **Spikes only (alerts):**
 
    ```json
-   { "probability_change_threshold": 5, "min_volume": 50000 }
+   {
+     "include_new_markets": false,
+     "include_spike_markets": true,
+     "spike_probability_change_threshold": 15,
+     "spike_volume_change_threshold": 150,
+     "spike_min_volume_24h": 25000
+   }
    ```
 
-3. **High-liquidity markets only:**
+3. **New markets only:**
+
+   ```json
+   {
+     "include_new_markets": true,
+     "include_spike_markets": false,
+     "min_volume": 5000,
+     "min_liquidity": 2000
+   }
+   ```
+
+4. **High-liquidity markets only:**
    ```json
    { "min_volume": 100000, "min_liquidity": 25000 }
    ```
