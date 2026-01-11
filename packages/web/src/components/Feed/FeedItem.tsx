@@ -122,9 +122,10 @@ function truncateText(text: string, maxLength: number): string {
 }
 
 function getDisplayTitle(item: FeedItemType): string {
-  // Prefer title, fall back to truncated body text
+  // Prefer title, fall back to body text
+  // For items without title (e.g. X posts), show more text since body is the primary content
   if (item.item.title) return item.item.title;
-  if (item.item.bodyText) return truncateText(item.item.bodyText, 200);
+  if (item.item.bodyText) return truncateText(item.item.bodyText, 600);
   return "(Untitled)";
 }
 
@@ -343,11 +344,15 @@ export function FeedItem({
       ? (item.item.metadata?.user_display_name as string) || null
       : item.item.author;
 
-  // Get preview text - only show if it adds new information
-  // When there's no title, getDisplayTitle falls back to bodyText, so don't duplicate
+  // Get preview text for expanded view
+  // For items with title: show bodyText as additional context
+  // For items without title (e.g. X posts): show full bodyText since title is already truncated version
   const hasRealTitle = Boolean(item.item.title);
-  const previewText =
-    hasRealTitle && item.item.bodyText ? truncateText(item.item.bodyText, 200) : null;
+  const bodyText = item.item.bodyText || null;
+
+  // Expanded view shows more text (4-5 lines on desktop, ~600 chars)
+  // For items without title, this is the full content they couldn't see in the truncated title
+  const expandedBodyText = bodyText ? truncateText(bodyText, 600) : null;
 
   // Get primary link URL (comments for Reddit/HN, original for others)
   const primaryLinkUrl = getPrimaryLinkUrl(
@@ -421,8 +426,8 @@ export function FeedItem({
 
         {/* Floating detail panel - appears on hover, doesn't shift layout */}
         <div className={styles.detailPanel}>
-          {/* Preview text - clickable to open the same link as title */}
-          {previewText &&
+          {/* Body text - shows full/expanded content, clickable to open the same link as title */}
+          {expandedBodyText &&
             (primaryLinkUrl ? (
               <a
                 href={primaryLinkUrl}
@@ -430,10 +435,10 @@ export function FeedItem({
                 rel="noopener noreferrer"
                 className={styles.detailPreviewLink}
               >
-                {previewText}
+                {expandedBodyText}
               </a>
             ) : (
-              <p className={styles.detailPreview}>{previewText}</p>
+              <p className={styles.detailPreview}>{expandedBodyText}</p>
             ))}
 
           {/* Metadata line */}
@@ -569,6 +574,10 @@ export function FeedItem({
           <span>{getDisplayTitle(item)}</span>
         )}
       </h3>
+
+      {/* Body text preview - shows body as additional context for items with title */}
+      {/* For items without title (X posts): title already shows full content, no need for body */}
+      {hasRealTitle && expandedBodyText && <p className={styles.bodyPreview}>{expandedBodyText}</p>}
 
       <WhyShown
         features={item.triageJson as TriageFeatures | undefined}

@@ -331,6 +331,26 @@
   color: var(--color-text-secondary);
 }
 
+/* Body text preview - shows expanded content below title */
+.bodyPreview {
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: var(--space-2) 0 0 0;
+  /* Allow 4-5 lines on desktop */
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* On mobile, show fewer lines */
+@media (max-width: 640px) {
+  .bodyPreview {
+    -webkit-line-clamp: 3;
+  }
+}
+
 .footer {
   display: flex;
   align-items: center;
