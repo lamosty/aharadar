@@ -2,12 +2,19 @@ import type { Db } from "@aharadar/db";
 import {
   createConfiguredLlmRouter,
   type LlmRuntimeConfig,
+  type TriageCandidateInput,
   type TriageOutput,
+  triageBatch,
   triageCandidate,
 } from "@aharadar/llm";
 import { type BudgetTier, createLogger, type SourceType } from "@aharadar/shared";
 
 const log = createLogger({ component: "digest" });
+
+/** Default batch size for triage calls (items per LLM request) */
+const TRIAGE_BATCH_SIZE = 15;
+/** Maximum total input characters per batch (safety limit) */
+const TRIAGE_BATCH_MAX_CHARS = 60000;
 
 import { type DiversityCandidate, selectWithDiversity } from "../lib/diversity_selection";
 import { type SamplingCandidate, stratifiedSample } from "../lib/fair_sampling";
@@ -278,23 +285,59 @@ function applyCandidateFilterSql(params: { filter?: IngestSourceFilter; args: un
   return { whereSql, args };
 }
 
+interface TriageableCandidate {
+  candidateId: string;
+  kind: "cluster" | "item";
+  representativeContentItemId: string;
+  sourceId: string;
+  sourceType: string;
+  sourceName: string | null;
+  title: string | null;
+  bodyText: string | null;
+  canonicalUrl: string | null;
+  author: string | null;
+  publishedAt: string | null;
+  metadata: Record<string, unknown>;
+}
+
+function chunkCandidatesIntoBatches(
+  candidates: TriageableCandidate[],
+  batchSize: number,
+  maxChars: number,
+): TriageableCandidate[][] {
+  const batches: TriageableCandidate[][] = [];
+  let currentBatch: TriageableCandidate[] = [];
+  let currentChars = 0;
+
+  for (const candidate of candidates) {
+    const itemChars = (candidate.title?.length ?? 0) + (candidate.bodyText?.length ?? 0);
+
+    // Start new batch if current would exceed limits
+    if (
+      currentBatch.length >= batchSize ||
+      (currentChars + itemChars > maxChars && currentBatch.length > 0)
+    ) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentChars = 0;
+    }
+
+    currentBatch.push(candidate);
+    currentChars += itemChars;
+  }
+
+  // Push final batch if not empty
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
 async function triageCandidates(params: {
   db: Db;
   userId: string;
-  candidates: Array<{
-    candidateId: string;
-    kind: "cluster" | "item";
-    representativeContentItemId: string;
-    sourceId: string;
-    sourceType: string;
-    sourceName: string | null;
-    title: string | null;
-    bodyText: string | null;
-    canonicalUrl: string | null;
-    author: string | null;
-    publishedAt: string | null;
-    metadata: Record<string, unknown>;
-  }>;
+  candidates: TriageableCandidate[];
   windowStart: string;
   windowEnd: string;
   mode: DigestMode;
@@ -316,13 +359,217 @@ async function triageCandidates(params: {
   const tier = resolveBudgetTier(params.mode);
   const triageMap = new Map<string, TriageOutput>();
 
-  for (const candidate of params.candidates.slice(0, params.maxCalls)) {
+  // Take only up to maxCalls candidates (this is the allocation limit)
+  const candidatesToTriage = params.candidates.slice(0, params.maxCalls);
+
+  // Check if batching is enabled (default: true)
+  const batchEnabled = process.env.TRIAGE_BATCH_ENABLED !== "false";
+  const batchSize = parseInt(process.env.TRIAGE_BATCH_SIZE ?? "", 10) || TRIAGE_BATCH_SIZE;
+  const maxChars = parseInt(process.env.TRIAGE_BATCH_MAX_CHARS ?? "", 10) || TRIAGE_BATCH_MAX_CHARS;
+
+  if (!batchEnabled) {
+    // Fall back to individual triage (original behavior)
+    return triageCandidatesIndividually({
+      ...params,
+      candidates: candidatesToTriage,
+      router,
+      tier,
+      triageMap,
+    });
+  }
+
+  // Chunk candidates into batches
+  const batches = chunkCandidatesIntoBatches(candidatesToTriage, batchSize, maxChars);
+  log.info(
+    { totalCandidates: candidatesToTriage.length, batchCount: batches.length, batchSize },
+    "Starting batch triage",
+  );
+
+  for (const [batchIndex, batch] of batches.entries()) {
+    const batchId = `batch-${batchIndex}`;
     const ref = router.chooseModel("triage", tier);
+    const startedAt = new Date().toISOString();
+
+    // Convert to TriageCandidateInput format
+    const batchInputs: TriageCandidateInput[] = batch.map((c) => ({
+      id: c.candidateId,
+      title: c.title,
+      bodyText: c.bodyText,
+      sourceType: c.sourceType,
+      sourceName: c.sourceName,
+      primaryUrl: getPrimaryUrl({ canonicalUrl: c.canonicalUrl, metadata: c.metadata }),
+      author: c.author,
+      publishedAt: c.publishedAt,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+    }));
+
+    try {
+      const result = await triageBatch({
+        router,
+        tier,
+        candidates: batchInputs,
+        batchId,
+      });
+
+      // Merge results into triageMap
+      for (const [id, output] of result.outputs) {
+        triageMap.set(id, output);
+      }
+
+      const endedAt = new Date().toISOString();
+
+      // Record batch call in provider_calls
+      try {
+        await params.db.providerCalls.insert({
+          userId: params.userId,
+          purpose: "triage_batch",
+          provider: result.provider,
+          model: result.model,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costEstimateCredits: result.costEstimateCredits,
+          meta: {
+            batchId,
+            batchIndex,
+            itemCount: result.itemCount,
+            successCount: result.successCount,
+            candidateIds: batch.map((c) => c.candidateId),
+            windowStart: params.windowStart,
+            windowEnd: params.windowEnd,
+            endpoint: result.endpoint,
+          },
+          startedAt,
+          endedAt,
+          status: "ok",
+        });
+      } catch (err) {
+        log.warn({ err }, "provider_calls insert failed (triage_batch)");
+      }
+
+      // Check for partial failures - items in batch but not in results
+      const missingIds = batch.map((c) => c.candidateId).filter((id) => !result.outputs.has(id));
+
+      if (missingIds.length > 0) {
+        log.warn(
+          { batchId, missingCount: missingIds.length, missingIds },
+          "Batch had missing results, retrying individually",
+        );
+
+        // Retry missing items individually
+        const missingCandidates = batch.filter((c) => missingIds.includes(c.candidateId));
+        const individualResults = await triageCandidatesIndividually({
+          db: params.db,
+          userId: params.userId,
+          candidates: missingCandidates,
+          windowStart: params.windowStart,
+          windowEnd: params.windowEnd,
+          mode: params.mode,
+          maxCalls: missingCandidates.length,
+          llmConfig: params.llmConfig,
+          router,
+          tier,
+          triageMap: new Map(),
+        });
+
+        for (const [id, output] of individualResults) {
+          triageMap.set(id, output);
+        }
+      }
+
+      log.info(
+        { batchId, inputCount: batch.length, outputCount: result.outputs.size },
+        "Batch triage complete",
+      );
+    } catch (err) {
+      const endedAt = new Date().toISOString();
+
+      // Record failed batch
+      try {
+        await params.db.providerCalls.insert({
+          userId: params.userId,
+          purpose: "triage_batch",
+          provider: ref.provider,
+          model: ref.model,
+          inputTokens: 0,
+          outputTokens: 0,
+          costEstimateCredits: 0,
+          meta: {
+            batchId,
+            batchIndex,
+            itemCount: batch.length,
+            candidateIds: batch.map((c) => c.candidateId),
+            windowStart: params.windowStart,
+            windowEnd: params.windowEnd,
+            endpoint: ref.endpoint,
+          },
+          startedAt,
+          endedAt,
+          status: "error",
+          error: {
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
+      } catch (insertErr) {
+        log.warn({ err: insertErr }, "provider_calls insert failed (triage_batch error)");
+      }
+
+      log.warn(
+        { batchId, err: err instanceof Error ? err.message : String(err) },
+        "Batch triage failed, falling back to individual",
+      );
+
+      // Fall back to individual triage for this batch
+      const individualResults = await triageCandidatesIndividually({
+        db: params.db,
+        userId: params.userId,
+        candidates: batch,
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+        mode: params.mode,
+        maxCalls: batch.length,
+        llmConfig: params.llmConfig,
+        router,
+        tier,
+        triageMap: new Map(),
+      });
+
+      for (const [id, output] of individualResults) {
+        triageMap.set(id, output);
+      }
+    }
+  }
+
+  log.info(
+    { totalTriaged: triageMap.size, totalCandidates: candidatesToTriage.length },
+    "Batch triage processing complete",
+  );
+
+  return triageMap;
+}
+
+async function triageCandidatesIndividually(params: {
+  db: Db;
+  userId: string;
+  candidates: TriageableCandidate[];
+  windowStart: string;
+  windowEnd: string;
+  mode: DigestMode;
+  maxCalls: number;
+  llmConfig?: LlmRuntimeConfig;
+  router: ReturnType<typeof createConfiguredLlmRouter>;
+  tier: BudgetTier;
+  triageMap: Map<string, TriageOutput>;
+}): Promise<Map<string, TriageOutput>> {
+  const triageMap = params.triageMap;
+
+  for (const candidate of params.candidates.slice(0, params.maxCalls)) {
+    const ref = params.router.chooseModel("triage", params.tier);
     const startedAt = new Date().toISOString();
     try {
       const result = await triageCandidate({
-        router,
-        tier,
+        router: params.router,
+        tier: params.tier,
         candidate: {
           id: candidate.candidateId,
           title: candidate.title,
@@ -402,8 +649,8 @@ async function triageCandidates(params: {
             responseSnippet: errObj.responseSnippet,
           },
         });
-      } catch (err) {
-        log.warn({ err }, "provider_calls insert failed (triage error)");
+      } catch (insertErr) {
+        log.warn({ err: insertErr }, "provider_calls insert failed (triage error)");
       }
 
       log.warn(
