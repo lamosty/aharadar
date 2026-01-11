@@ -13,6 +13,11 @@ export const PIPELINE_QUEUE_NAME = "pipeline";
 export const RUN_WINDOW_JOB_NAME = "run_window";
 
 /**
+ * Job name for AB test jobs.
+ */
+export const RUN_ABTEST_JOB_NAME = "run_abtest";
+
+/**
  * Per-run LLM provider override for manual runs.
  */
 export interface ProviderOverride {
@@ -34,6 +39,31 @@ export interface RunWindowJobData {
   trigger?: "scheduled" | "manual";
   /** Optional per-run provider override (for manual runs) */
   providerOverride?: ProviderOverride;
+}
+
+/**
+ * AB test variant configuration.
+ */
+export interface AbtestVariantConfig {
+  name: string;
+  provider: "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
+  model: string;
+  reasoningEffort?: "low" | "medium" | "high" | null;
+  maxOutputTokens?: number;
+}
+
+/**
+ * Job payload for AB test runs.
+ */
+export interface RunAbtestJobData {
+  runId: string;
+  userId: string;
+  topicId: string;
+  windowStart: string;
+  windowEnd: string;
+  variants: AbtestVariantConfig[];
+  /** Max items to sample for testing */
+  maxItems?: number;
 }
 
 /**

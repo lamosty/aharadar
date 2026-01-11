@@ -1,7 +1,12 @@
 import type { LlmProvider, LlmSettingsUpdate, SourceRow } from "@aharadar/db";
 import { checkQuotaForRun } from "@aharadar/llm";
 import { compileDigestPlan, computeCreditsStatus } from "@aharadar/pipeline";
-import { type ProviderOverride, RUN_WINDOW_JOB_NAME } from "@aharadar/queues";
+import {
+  type AbtestVariantConfig,
+  type ProviderOverride,
+  RUN_ABTEST_JOB_NAME,
+  RUN_WINDOW_JOB_NAME,
+} from "@aharadar/queues";
 import type { BudgetTier } from "@aharadar/shared";
 import { loadRuntimeEnv, type OpsLinks } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
@@ -1020,7 +1025,9 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         topicId: job.data.topicId,
         windowStart: job.data.windowStart,
         windowEnd: job.data.windowEnd,
-        mode: job.data.mode,
+        // mode only exists on RunWindowJobData, runId only on RunAbtestJobData
+        mode: "mode" in job.data ? job.data.mode : undefined,
+        runId: "runId" in job.data ? job.data.runId : undefined,
       },
       progress: job.progress,
       attemptsMade: job.attemptsMade,
@@ -1187,6 +1194,427 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         waiting: counts.waiting,
       },
       links,
+    };
+  });
+
+  // =========================================================================
+  // AB Test Endpoints
+  // =========================================================================
+
+  /**
+   * Check if AB tests are enabled via environment variable.
+   */
+  function isAbtestsEnabled(): boolean {
+    const value = process.env.ENABLE_ABTESTS;
+    return value === "true" || value === "1";
+  }
+
+  // Valid providers for AB test variants
+  const ABTEST_VALID_PROVIDERS = [
+    "openai",
+    "anthropic",
+    "claude-subscription",
+    "codex-subscription",
+  ] as const;
+  type AbtestProvider = (typeof ABTEST_VALID_PROVIDERS)[number];
+
+  function isValidAbtestProvider(value: unknown): value is AbtestProvider {
+    return typeof value === "string" && ABTEST_VALID_PROVIDERS.includes(value as AbtestProvider);
+  }
+
+  // POST /admin/abtests - Create and enqueue an AB test run
+  fastify.post("/admin/abtests", async (request, reply) => {
+    // Check if feature is enabled
+    if (!isAbtestsEnabled()) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FEATURE_DISABLED",
+          message: "AB tests are disabled. Set ENABLE_ABTESTS=true to enable.",
+        },
+      });
+    }
+
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const body = request.body as unknown;
+    if (!body || typeof body !== "object") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_BODY",
+          message: "Request body must be a JSON object",
+        },
+      });
+    }
+
+    const { topicId, windowStart, windowEnd, variants, maxItems } = body as Record<string, unknown>;
+
+    // Validate topicId
+    if (!isValidUuid(topicId)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "topicId must be a valid UUID",
+        },
+      });
+    }
+
+    // Validate window dates
+    if (!isValidIsoDate(windowStart)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "windowStart must be a valid ISO date string",
+        },
+      });
+    }
+
+    if (!isValidIsoDate(windowEnd)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "windowEnd must be a valid ISO date string",
+        },
+      });
+    }
+
+    if (new Date(windowStart as string) >= new Date(windowEnd as string)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "windowStart must be before windowEnd",
+        },
+      });
+    }
+
+    // Validate variants array
+    if (!Array.isArray(variants) || variants.length < 2) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "variants must be an array with at least 2 configurations",
+        },
+      });
+    }
+
+    // Validate each variant
+    const validatedVariants: AbtestVariantConfig[] = [];
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i] as Record<string, unknown>;
+      if (!v || typeof v !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `variants[${i}] must be an object`,
+          },
+        });
+      }
+
+      if (typeof v.name !== "string" || v.name.trim().length === 0) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `variants[${i}].name must be a non-empty string`,
+          },
+        });
+      }
+
+      if (!isValidAbtestProvider(v.provider)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `variants[${i}].provider must be one of: ${ABTEST_VALID_PROVIDERS.join(", ")}`,
+          },
+        });
+      }
+
+      if (typeof v.model !== "string" || v.model.trim().length === 0) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `variants[${i}].model must be a non-empty string`,
+          },
+        });
+      }
+
+      // Validate optional reasoningEffort
+      const validReasoningEfforts = ["low", "medium", "high", null, undefined];
+      if (
+        v.reasoningEffort !== undefined &&
+        !validReasoningEfforts.includes(v.reasoningEffort as string | null)
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: `variants[${i}].reasoningEffort must be one of: low, medium, high, or null`,
+          },
+        });
+      }
+
+      // Validate optional maxOutputTokens
+      if (v.maxOutputTokens !== undefined) {
+        if (
+          typeof v.maxOutputTokens !== "number" ||
+          !Number.isInteger(v.maxOutputTokens) ||
+          v.maxOutputTokens < 1
+        ) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: `variants[${i}].maxOutputTokens must be a positive integer`,
+            },
+          });
+        }
+      }
+
+      validatedVariants.push({
+        name: (v.name as string).trim(),
+        provider: v.provider as AbtestProvider,
+        model: (v.model as string).trim(),
+        reasoningEffort: (v.reasoningEffort as "low" | "medium" | "high" | null) ?? null,
+        maxOutputTokens: v.maxOutputTokens as number | undefined,
+      });
+    }
+
+    // Validate optional maxItems
+    let resolvedMaxItems = 50; // Default
+    if (maxItems !== undefined) {
+      if (typeof maxItems !== "number" || !Number.isInteger(maxItems) || maxItems < 1) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "maxItems must be a positive integer",
+          },
+        });
+      }
+      resolvedMaxItems = Math.min(maxItems, 200); // Cap at 200
+    }
+
+    // Verify topic belongs to user
+    const db = getDb();
+    const topic = await db.topics.getById(topicId as string);
+    if (!topic || topic.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Topic does not belong to current user",
+        },
+      });
+    }
+
+    // Create the AB test run in the database
+    const run = await db.abtests.createRun({
+      userId: ctx.userId,
+      topicId: topicId as string,
+      windowStart: windowStart as string,
+      windowEnd: windowEnd as string,
+      configJson: {
+        maxItems: resolvedMaxItems,
+        variantCount: validatedVariants.length,
+      },
+    });
+
+    // Enqueue the job
+    const queue = getPipelineQueue();
+    const jobId = `${RUN_ABTEST_JOB_NAME}_${run.id}`;
+
+    await queue.add(
+      RUN_ABTEST_JOB_NAME,
+      {
+        runId: run.id,
+        userId: ctx.userId,
+        topicId: topicId as string,
+        windowStart: windowStart as string,
+        windowEnd: windowEnd as string,
+        variants: validatedVariants,
+        maxItems: resolvedMaxItems,
+      },
+      {
+        jobId,
+        removeOnComplete: 50,
+        removeOnFail: 20,
+      },
+    );
+
+    return reply.code(201).send({
+      ok: true,
+      runId: run.id,
+      jobId,
+    });
+  });
+
+  // GET /admin/abtests - List recent AB test runs
+  fastify.get("/admin/abtests", async (_request, reply) => {
+    // Check if feature is enabled
+    if (!isAbtestsEnabled()) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FEATURE_DISABLED",
+          message: "AB tests are disabled. Set ENABLE_ABTESTS=true to enable.",
+        },
+      });
+    }
+
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const db = getDb();
+    const runs = await db.abtests.listRuns({ userId: ctx.userId, limit: 20 });
+
+    return {
+      ok: true,
+      runs: runs.map((r) => ({
+        id: r.id,
+        topicId: r.topic_id,
+        windowStart: r.window_start,
+        windowEnd: r.window_end,
+        status: r.status,
+        config: r.config_json,
+        createdAt: r.created_at,
+        startedAt: r.started_at,
+        completedAt: r.completed_at,
+      })),
+    };
+  });
+
+  // GET /admin/abtests/:id - Get AB test run details
+  fastify.get<{ Params: { id: string } }>("/admin/abtests/:id", async (request, reply) => {
+    // Check if feature is enabled
+    if (!isAbtestsEnabled()) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FEATURE_DISABLED",
+          message: "AB tests are disabled. Set ENABLE_ABTESTS=true to enable.",
+        },
+      });
+    }
+
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "id must be a valid UUID",
+        },
+      });
+    }
+
+    const db = getDb();
+    const detail = await db.abtests.getRunDetail(id);
+
+    if (!detail) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "AB test run not found",
+        },
+      });
+    }
+
+    // Verify ownership
+    if (detail.run.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "AB test run does not belong to current user",
+        },
+      });
+    }
+
+    return {
+      ok: true,
+      run: {
+        id: detail.run.id,
+        topicId: detail.run.topic_id,
+        windowStart: detail.run.window_start,
+        windowEnd: detail.run.window_end,
+        status: detail.run.status,
+        config: detail.run.config_json,
+        createdAt: detail.run.created_at,
+        startedAt: detail.run.started_at,
+        completedAt: detail.run.completed_at,
+      },
+      variants: detail.variants.map((v) => ({
+        id: v.id,
+        name: v.name,
+        provider: v.provider,
+        model: v.model,
+        reasoningEffort: v.reasoning_effort,
+        maxOutputTokens: v.max_output_tokens,
+        order: v.order,
+      })),
+      items: detail.items.map((item) => ({
+        id: item.id,
+        candidateId: item.candidate_id,
+        clusterId: item.cluster_id,
+        contentItemId: item.content_item_id,
+        representativeContentItemId: item.representative_content_item_id,
+        sourceId: item.source_id,
+        sourceType: item.source_type,
+        title: item.title,
+        url: item.url,
+        author: item.author,
+        publishedAt: item.published_at,
+      })),
+      results: detail.results.map((r) => ({
+        id: r.id,
+        abtestItemId: r.abtest_item_id,
+        variantId: r.variant_id,
+        triage: r.triage_json,
+        inputTokens: r.input_tokens,
+        outputTokens: r.output_tokens,
+        status: r.status,
+        error: r.error_json,
+        createdAt: r.created_at,
+      })),
     };
   });
 }
