@@ -19,13 +19,18 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
+# Start infra only (app containers require --profile apps)
+# This is safe even if someone runs bare 'docker compose up' - profiles protect us
 docker compose up -d postgres redis prometheus grafana
 
 echo ""
-echo "Services started:"
+echo "Infrastructure started:"
 echo "  - Postgres:   localhost:5432"
 echo "  - Redis:      localhost:6379"
 echo "  - Prometheus: localhost:9090"
 echo "  - Grafana:    localhost:3002 (admin/admin)"
+echo ""
+echo "Run apps locally with: pnpm dev:stack"
+echo "Or in Docker with:     docker compose --profile apps up -d"
 
 

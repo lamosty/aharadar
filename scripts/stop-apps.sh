@@ -12,8 +12,23 @@ kill_port() {
   local pids
   pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
   if [[ -n "$pids" ]]; then
-    echo "Killing $name on port $port (PIDs: $pids)..."
-    echo "$pids" | xargs kill -9 2>/dev/null || true
+    # Filter out Docker processes - killing com.docker.backend crashes Docker Desktop
+    local safe_pids=""
+    for pid in $pids; do
+      local cmd
+      cmd=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+      if [[ "$cmd" == *docker* || "$cmd" == *Docker* || "$cmd" == com.docker* ]]; then
+        echo "Skipping Docker process on port $port (PID: $pid, $cmd) - use 'docker compose stop' instead."
+      else
+        safe_pids="$safe_pids $pid"
+      fi
+    done
+    if [[ -n "$safe_pids" ]]; then
+      echo "Killing $name on port $port (PIDs:$safe_pids)..."
+      echo "$safe_pids" | xargs kill -9 2>/dev/null || true
+    else
+      echo "No non-Docker process on port $port ($name)."
+    fi
   else
     echo "No process on port $port ($name)."
   fi
