@@ -828,7 +828,28 @@
   "editSource": {
     "title": "Edit Source",
     "subtitle": "Editing {type} source",
-    "configTitle": "Source Configuration"
+    "configTitle": "Source Configuration",
+    "xAccountHealth": {
+      "title": "Account Health",
+      "description": "Feedback-driven throttling for X accounts",
+      "loadError": "Failed to load account policies",
+      "noAccounts": "No accounts configured",
+      "mode": "Mode",
+      "modeAuto": "Auto",
+      "modeAlways": "Always fetch",
+      "modeMute": "Mute",
+      "stateNormal": "Normal",
+      "stateReduced": "Reduced",
+      "stateMuted": "Muted",
+      "score": "Score",
+      "sample": "Samples",
+      "throttle": "Fetch rate",
+      "throttleTooltip": "How often this account is fetched",
+      "nextEffects": "Next feedback effects:",
+      "nextLike": "Like",
+      "nextDislike": "Dislike",
+      "reset": "Reset stats"
+    }
   },
   "sourcePicker": {
     "title": "Choose Source Type",

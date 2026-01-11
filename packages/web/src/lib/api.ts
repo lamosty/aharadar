@@ -811,6 +811,90 @@ export async function deleteAdminSource(
 }
 
 // ============================================================================
+// X Account Policy API (for x_posts sources)
+// ============================================================================
+
+/** Policy mode for X accounts */
+export type XAccountPolicyMode = "auto" | "always" | "mute";
+
+/** Computed state based on mode and throttle */
+export type XAccountPolicyState = "normal" | "reduced" | "muted";
+
+/** X account policy view with derived fields */
+export interface XAccountPolicyView {
+  handle: string;
+  mode: XAccountPolicyMode;
+  /** Smoothed score 0-1 (higher = better) */
+  score: number;
+  /** Total sample size (pos + neg) */
+  sample: number;
+  /** Throttle probability 0-1 */
+  throttle: number;
+  /** Computed state based on mode and throttle */
+  state: XAccountPolicyState;
+  /** Preview of throttle after a like/save */
+  nextLike: { score: number; throttle: number };
+  /** Preview of throttle after a dislike */
+  nextDislike: { score: number; throttle: number };
+}
+
+/** X account policies list response */
+export interface XAccountPoliciesResponse {
+  ok: true;
+  policies: XAccountPolicyView[];
+  reason?: string;
+}
+
+/** X account policy update response */
+export interface XAccountPolicyResponse {
+  ok: true;
+  policy: XAccountPolicyView;
+}
+
+/**
+ * Get X account policies for a source.
+ */
+export async function getXAccountPolicies(
+  sourceId: string,
+  signal?: AbortSignal,
+): Promise<XAccountPoliciesResponse> {
+  return apiFetch<XAccountPoliciesResponse>(`/admin/sources/${sourceId}/x-account-policies`, {
+    signal,
+  });
+}
+
+/**
+ * Update the mode for an X account policy.
+ */
+export async function updateXAccountPolicyMode(
+  sourceId: string,
+  handle: string,
+  mode: XAccountPolicyMode,
+  signal?: AbortSignal,
+): Promise<XAccountPolicyResponse> {
+  return apiFetch<XAccountPolicyResponse>(`/admin/sources/${sourceId}/x-account-policies/mode`, {
+    method: "PATCH",
+    body: JSON.stringify({ handle, mode }),
+    signal,
+  });
+}
+
+/**
+ * Reset X account policy stats.
+ */
+export async function resetXAccountPolicy(
+  sourceId: string,
+  handle: string,
+  signal?: AbortSignal,
+): Promise<XAccountPolicyResponse> {
+  return apiFetch<XAccountPolicyResponse>(`/admin/sources/${sourceId}/x-account-policies/reset`, {
+    method: "POST",
+    body: JSON.stringify({ handle }),
+    signal,
+  });
+}
+
+// ============================================================================
 // LLM Settings API
 // ============================================================================
 

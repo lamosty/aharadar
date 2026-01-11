@@ -72,6 +72,7 @@ import {
   getQueueStatus,
   getTopic,
   getTopics,
+  getXAccountPolicies,
   type HealthResponse,
   type ItemDetailResponse,
   type ItemsListParams,
@@ -102,6 +103,7 @@ import {
   type QuotaStatusResponse,
   removeQueueJob,
   resetAdminBudget,
+  resetXAccountPolicy,
   resumeQueue,
   type SourceCreateRequest,
   type SourceCreateResponse,
@@ -119,7 +121,11 @@ import {
   type UpdateTopicRequest,
   type UpdateTopicResponse,
   updateTopic,
+  updateXAccountPolicyMode,
   type ViewingProfile,
+  type XAccountPoliciesResponse,
+  type XAccountPolicyMode,
+  type XAccountPolicyResponse,
 } from "./api";
 
 // ============================================================================
@@ -149,6 +155,7 @@ export const queryKeys = {
   },
   admin: {
     sources: ["admin", "sources"] as const,
+    xAccountPolicies: (sourceId: string) => ["admin", "x-account-policies", sourceId] as const,
     budgets: ["admin", "budgets"] as const,
     llmSettings: ["admin", "llm-settings"] as const,
     llmQuota: ["admin", "llm-quota"] as const,
@@ -635,6 +642,75 @@ export function useAdminSourceDelete(
     onSuccess: () => {
       // Invalidate sources list to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.sources });
+    },
+    ...options,
+  });
+}
+
+// ============================================================================
+// X Account Policies Hooks
+// ============================================================================
+
+/**
+ * Query for X account policies for a source.
+ */
+export function useXAccountPolicies(
+  sourceId: string,
+  options?: Omit<
+    UseQueryOptions<XAccountPoliciesResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.xAccountPolicies(sourceId),
+    queryFn: ({ signal }) => getXAccountPolicies(sourceId, signal),
+    enabled: !!sourceId,
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update X account policy mode.
+ */
+export function useXAccountPolicyModeUpdate(
+  sourceId: string,
+  options?: Omit<
+    UseMutationOptions<
+      XAccountPolicyResponse,
+      ApiError | NetworkError,
+      { handle: string; mode: XAccountPolicyMode }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ handle, mode }) => updateXAccountPolicyMode(sourceId, handle, mode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.xAccountPolicies(sourceId) });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to reset X account policy stats.
+ */
+export function useXAccountPolicyReset(
+  sourceId: string,
+  options?: Omit<
+    UseMutationOptions<XAccountPolicyResponse, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (handle: string) => resetXAccountPolicy(sourceId, handle),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.xAccountPolicies(sourceId) });
     },
     ...options,
   });

@@ -9,6 +9,7 @@ import {
 import type { Source, SourcePatchRequest, SupportedSourceType } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import styles from "./EditSourceModal.module.css";
+import { XAccountHealth } from "./XAccountHealth";
 
 interface EditSourceModalProps {
   isOpen: boolean;
@@ -155,6 +156,13 @@ export function EditSourceModal({
               errors={errors}
             />
           </div>
+
+          {/* X Account Health (only for x_posts sources) */}
+          {source.type === "x_posts" && (
+            <div className={styles.configSection}>
+              <XAccountHealth sourceId={source.id} />
+            </div>
+          )}
         </div>
 
         {/* Footer */}

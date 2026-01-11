@@ -1,0 +1,225 @@
+.container {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.loading,
+.error,
+.empty {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.header {
+  margin-bottom: var(--space-3);
+}
+
+.title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0 0 var(--space-1) 0;
+}
+
+.description {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.accountList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.accountItem {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.accountHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  background: var(--color-background);
+  transition: background 0.15s ease;
+}
+
+.accountHeader:hover {
+  background: var(--color-background-hover);
+}
+
+.accountInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.handle {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.state {
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.stateNormal {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.stateReduced {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.stateMuted {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.accountMetrics {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.metric {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.expandIcon {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  width: 20px;
+  text-align: center;
+}
+
+.accountDetails {
+  padding: var(--space-3);
+  background: var(--color-background-subtle);
+  border-top: 1px solid var(--color-border);
+}
+
+.modeSelector {
+  margin-bottom: var(--space-3);
+}
+
+.modeLabel {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.modeButtons {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.modeButton {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modeButton:hover:not(:disabled) {
+  background: var(--color-background-hover);
+}
+
+.modeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modeActive {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-color: var(--color-primary);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.nextEffects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.nextLabel {
+  width: 100%;
+  margin-bottom: var(--space-1);
+}
+
+.nextItem {
+  padding: 2px 6px;
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.resetButton {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.resetButton:hover:not(:disabled) {
+  background: var(--color-background-hover);
+  color: var(--color-text);
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
