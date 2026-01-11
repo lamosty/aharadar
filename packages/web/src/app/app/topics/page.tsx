@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { EditSourceModal } from "@/components/EditSourceModal";
 import {
   getDefaultConfig,
   SourceConfigForm,
@@ -67,9 +68,8 @@ export default function TopicsPage() {
   );
   const [newSourceErrors, setNewSourceErrors] = useState<Record<string, string>>({});
 
-  // State for editing source
-  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
-  const [editSourceWeight, setEditSourceWeight] = useState(1.0);
+  // State for editing source (full modal)
+  const [editingSource, setEditingSource] = useState<Source | null>(null);
 
   // State for deleting source
   const [confirmDeleteSourceId, setConfirmDeleteSourceId] = useState<string | null>(null);
@@ -192,21 +192,20 @@ export default function TopicsPage() {
   };
 
   const handleStartEditSource = (source: Source) => {
-    setEditingSourceId(source.id);
-    setEditSourceWeight(source.config.weight ?? 1.0);
+    setEditingSource(source);
   };
 
-  const handleSaveEditSource = async (source: Source) => {
+  const handleSaveEditSource = async (patch: {
+    name?: string;
+    configPatch?: Record<string, unknown>;
+  }) => {
+    if (!editingSource) return;
     try {
       await patchSourceMutation.mutateAsync({
-        id: source.id,
-        patch: {
-          configPatch: {
-            weight: editSourceWeight,
-          },
-        },
+        id: editingSource.id,
+        patch,
       });
-      setEditingSourceId(null);
+      setEditingSource(null);
       addToast(t("toast.sourceUpdated"), "success");
     } catch {
       addToast(t("toast.sourceUpdateFailed"), "error");
@@ -626,7 +625,6 @@ export default function TopicsPage() {
                       ) : (
                         <div className={styles.sourcesList}>
                           {topicSources.map((source) => {
-                            const isEditingSource = editingSourceId === source.id;
                             const isDeletingSource = confirmDeleteSourceId === source.id;
 
                             return (
@@ -634,46 +632,7 @@ export default function TopicsPage() {
                                 key={source.id}
                                 className={`${styles.sourceItem} ${!source.isEnabled ? styles.sourceDisabled : ""}`}
                               >
-                                {isEditingSource ? (
-                                  <div className={styles.editSourceForm}>
-                                    <div className={styles.editSourceRow}>
-                                      <label className={styles.formLabel}>
-                                        {t("admin.sources.weight")}
-                                      </label>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={10}
-                                        step={0.1}
-                                        value={editSourceWeight}
-                                        onChange={(e) =>
-                                          setEditSourceWeight(parseFloat(e.target.value) || 1.0)
-                                        }
-                                        className={styles.numberInput}
-                                      />
-                                    </div>
-                                    <div className={styles.editSourceActions}>
-                                      <button
-                                        type="button"
-                                        className={styles.saveButton}
-                                        onClick={() => handleSaveEditSource(source)}
-                                        disabled={patchSourceMutation.isPending}
-                                      >
-                                        {patchSourceMutation.isPending
-                                          ? t("common.saving")
-                                          : t("common.save")}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className={styles.cancelButton}
-                                        onClick={() => setEditingSourceId(null)}
-                                        disabled={patchSourceMutation.isPending}
-                                      >
-                                        {t("common.cancel")}
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : isDeletingSource ? (
+                                {isDeletingSource ? (
                                   <div className={styles.deleteSourceConfirm}>
                                     <p>{t("admin.sources.confirmDelete")}</p>
                                     <div className={styles.deleteSourceActions}>
@@ -765,6 +724,15 @@ export default function TopicsPage() {
           })}
         </div>
       )}
+
+      {/* Edit Source Modal */}
+      <EditSourceModal
+        isOpen={editingSource !== null}
+        source={editingSource}
+        onClose={() => setEditingSource(null)}
+        onSave={handleSaveEditSource}
+        isPending={patchSourceMutation.isPending}
+      />
     </div>
   );
 }
