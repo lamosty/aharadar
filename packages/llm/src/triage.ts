@@ -100,9 +100,12 @@ function getMaxOutputTokensForReasoning(
   // Explicit env override always wins
   if (envOverride !== null) return envOverride;
 
-  // Token budgets based on reasoning effort
+  // Token budgets based on reasoning effort.
+  // Note: For models that don't support "none" (like gpt-5-mini), we map
+  // "none" to "minimal" in openai_compat.ts. Use 600 tokens for "none" to
+  // accommodate "minimal" reasoning overhead.
   const budgets: Record<ReasoningEffort, number> = {
-    none: 350, // No reasoning overhead
+    none: 600, // Minimal/no reasoning (600 for models using "minimal")
     low: 800, // Light reasoning
     medium: 2000, // Standard reasoning
     high: 4000, // Deep reasoning

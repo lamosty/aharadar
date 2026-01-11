@@ -1,5 +1,34 @@
 import type { LlmCallResult, LlmRequest } from "./types";
 
+/**
+ * Check if a model supports reasoning_effort: "none".
+ * gpt-5.1, gpt-5.2 and their variants support "none".
+ * gpt-5-mini, gpt-5, o1, o3 series only support minimal/low/medium/high.
+ */
+function modelSupportsReasoningNone(model: string): boolean {
+  const m = model.toLowerCase();
+  // gpt-5.1.x and gpt-5.2.x support "none"
+  if (m.includes("gpt-5.1") || m.includes("gpt-5.2")) return true;
+  // gpt-5-mini, gpt-5-nano, plain gpt-5 do NOT support "none"
+  return false;
+}
+
+/**
+ * Get effective reasoning effort for models that don't support "none".
+ * Maps "none" to "minimal" (lowest supported level) for those models.
+ */
+function getEffectiveReasoningEffort(
+  model: string,
+  effort: string | undefined,
+): string | undefined {
+  if (!effort) return undefined;
+  if (effort === "none" && !modelSupportsReasoningNone(model)) {
+    // Use "minimal" as the closest to "none" for models that don't support it
+    return "minimal";
+  }
+  return effort;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value))
     return value as Record<string, unknown>;
@@ -149,6 +178,13 @@ export async function callOpenAiCompat(params: {
   model: string;
   request: LlmRequest;
 }): Promise<LlmCallResult> {
+  // Determine effective reasoning effort for the request.
+  // When user wants "none" but model doesn't support it, use "minimal" instead.
+  const effectiveReasoning = getEffectiveReasoningEffort(
+    params.model,
+    params.request.reasoningEffort,
+  );
+
   const body = {
     model: params.model,
     input: [
@@ -162,9 +198,7 @@ export async function callOpenAiCompat(params: {
     ...(params.request.maxOutputTokens
       ? { max_output_tokens: params.request.maxOutputTokens }
       : {}),
-    ...(params.request.reasoningEffort
-      ? { reasoning: { effort: params.request.reasoningEffort } }
-      : {}),
+    ...(effectiveReasoning ? { reasoning: { effort: effectiveReasoning } } : {}),
   };
 
   const res = await fetch(params.endpoint, {
