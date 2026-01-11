@@ -84,6 +84,12 @@ export const mainNavItems: NavItem[] = [
         icon: "admin",
       },
       {
+        id: "admin-abtests",
+        href: "/app/admin/abtests",
+        labelKey: "admin.nav.abtests",
+        icon: "admin",
+      },
+      {
         id: "admin-users",
         href: "/app/admin/users",
         labelKey: "admin.nav.users",

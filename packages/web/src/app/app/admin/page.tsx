@@ -50,6 +50,14 @@ export default function AdminPage() {
           <h2 className={styles.cardTitle}>{t("admin.cards.ops.title")}</h2>
           <p className={styles.cardDescription}>{t("admin.cards.ops.description")}</p>
         </Link>
+
+        <Link href="/app/admin/abtests" className={styles.card}>
+          <div className={styles.cardIcon}>
+            <AbtestIcon />
+          </div>
+          <h2 className={styles.cardTitle}>{t("admin.cards.abtests.title")}</h2>
+          <p className={styles.cardDescription}>{t("admin.cards.abtests.description")}</p>
+        </Link>
       </div>
     </div>
   );
@@ -131,6 +139,34 @@ function OpsIcon() {
       <path d="M6 8h.01" />
       <path d="M10 8h.01" />
       <path d="M14 8h.01" />
+    </svg>
+  );
+}
+
+function AbtestIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 2v4" />
+      <path d="M12 18v4" />
+      <path d="M4 12H2" />
+      <path d="M22 12h-2" />
+      <path d="M6 6L4.5 4.5" />
+      <path d="M19.5 4.5L18 6" />
+      <path d="M6 18l-1.5 1.5" />
+      <path d="M19.5 19.5L18 18" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 8v8" />
+      <path d="M8 12h8" />
     </svg>
   );
 }

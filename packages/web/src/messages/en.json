@@ -228,6 +228,7 @@
       "run": "Run Now",
       "sources": "Sources",
       "budgets": "Budgets",
+      "abtests": "AB Tests",
       "users": "Users"
     },
     "users": {
@@ -260,6 +261,10 @@
       "ops": {
         "title": "Operations",
         "description": "Worker status and ops tools"
+      },
+      "abtests": {
+        "title": "AB Tests",
+        "description": "Compare LLM configurations"
       }
     },
     "run": {
@@ -365,31 +370,34 @@
       "provider": "Provider",
       "providerDescription": "Select your LLM provider",
       "providers": {
-        "openai": "OpenAI",
+        "openai": "OpenAI (API)",
         "anthropic": "Anthropic (API)",
-        "claude-subscription": "Claude Subscription",
-        "codex-subscription": "Codex Subscription"
+        "claude-subscription": "Claude Code Subscription",
+        "codex-subscription": "Codex CLI Subscription"
       },
       "providerDescriptions": {
-        "openai": "Use OpenAI API (GPT-4, etc.)",
-        "anthropic": "Use Anthropic API (Claude)",
-        "claude-subscription": "Use Claude Code CLI subscription ($100/mo)",
-        "codex-subscription": "Use Codex CLI with ChatGPT subscription (Plus/Pro/Team)"
+        "openai": "Uses your OpenAI API key from .env. No rate limiting needed.",
+        "anthropic": "Uses your Anthropic API key from .env. No rate limiting needed.",
+        "claude-subscription": "Uses Claude Code CLI with your $100/mo Max subscription. Requires terminal login.",
+        "codex-subscription": "Uses Codex CLI with your ChatGPT subscription (Plus $20, Pro $200). Requires terminal login."
       },
-      "anthropicModel": "Anthropic Model",
       "openaiModel": "OpenAI Model",
-      "claudeSubscription": "Claude Subscription",
-      "claudeSubscriptionEnabled": "Use subscription for all LLM calls",
-      "claudeSubscriptionDescription": "When enabled, uses your Claude Code subscription instead of API calls",
-      "claudeTriageThinking": "Enable thinking for triage",
-      "claudeTriageThinkingDescription": "Use extended thinking for more thoughtful triage decisions",
-      "claudeCallsPerHour": "Rate limit (calls/hour)",
-      "claudeCallsPerHourDescription": "Maximum API calls per hour to stay within subscription limits",
-      "codexSubscription": "Codex Subscription",
-      "codexSubscriptionEnabled": "Use subscription for all LLM calls",
-      "codexSubscriptionDescription": "When enabled, uses your ChatGPT subscription via Codex CLI",
-      "codexCallsPerHour": "Rate limit (calls/hour)",
-      "codexCallsPerHourDescription": "Maximum calls per hour to stay within subscription limits",
+      "openaiModelDescription": "Specify the OpenAI model to use (e.g., gpt-4o, gpt-4-turbo)",
+      "claudeModel": "Claude Model",
+      "claudeModelDescription": "Specify the Claude model to use (e.g., claude-sonnet-4-5)",
+      "rateLimit": "Rate Limit",
+      "rateLimitLabel": "Rate limit (calls/hour)",
+      "claudeSubscriptionSettings": "Claude Subscription Settings",
+      "codexSubscriptionSettings": "Codex Subscription Settings",
+      "subscriptionRequirements": "Requirements",
+      "claudeLoginRequired": "You must be logged into Claude Code CLI in your terminal (run 'claude' to verify)",
+      "codexLoginRequired": "You must be logged into Codex CLI in your terminal (run 'codex' to verify)",
+      "subscriptionLocalOnly": "Only works when running locally - not for deployed/cloud environments",
+      "subscriptionPersonalUse": "For personal use only - shared usage not supported",
+      "claudeRateLimitHint": "Default: 100/hr. Claude Code Max allows sustained usage. Reduce if you hit rate limits.",
+      "codexRateLimitHint": "ChatGPT Plus: ~6-30 calls/hr (very limited). Pro: ~60-300/hr. Increase if you have Pro.",
+      "claudeRateLimitWarning": "Pipeline runs blocked if expected triage calls exceed remaining quota. Quota resets hourly.",
+      "codexRateLimitWarning": "Pipeline runs blocked if expected triage calls exceed remaining quota. Quota resets hourly.",
       "save": "Save Settings",
       "saving": "Saving...",
       "saved": "Settings saved",
@@ -422,6 +430,78 @@
         "queue": "Queue Dashboard",
         "logs": "Logs",
         "notConfigured": "Not configured"
+      }
+    },
+    "abtests": {
+      "title": "AB Tests",
+      "description": "Compare LLM configurations side by side",
+      "disabled": "AB tests are disabled. Set ENABLE_ABTESTS=true in your environment to enable this feature.",
+      "createNew": "New AB Test",
+      "noRuns": "No AB test runs yet",
+      "noRunsDescription": "Create an AB test to compare how different LLM models triage the same content.",
+      "list": {
+        "title": "AB Test Runs",
+        "status": "Status",
+        "window": "Window",
+        "variants": "Variants",
+        "items": "Items",
+        "created": "Created"
+      },
+      "status": {
+        "pending": "Pending",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "new": {
+        "title": "Create AB Test",
+        "topic": "Topic",
+        "topicHint": "Select the topic to sample content items from",
+        "windowStart": "Window Start",
+        "windowEnd": "Window End",
+        "maxItems": "Max Items",
+        "maxItemsHint": "Maximum number of content items to test (default: 120, max: 200)",
+        "variants": "Variants",
+        "variantsHint": "Configure at least 2 LLM variants to compare",
+        "addVariant": "Add Variant",
+        "removeVariant": "Remove",
+        "variantName": "Name",
+        "variantProvider": "Provider",
+        "variantModel": "Model",
+        "variantReasoning": "Reasoning",
+        "submit": "Create AB Test",
+        "submitting": "Creating...",
+        "success": "AB test created",
+        "successJobId": "Run ID: {runId}"
+      },
+      "detail": {
+        "title": "AB Test Results",
+        "runInfo": "Run Info",
+        "status": "Status",
+        "window": "Window",
+        "created": "Created",
+        "started": "Started",
+        "completed": "Completed",
+        "variants": "Variants",
+        "results": "Results",
+        "noResults": "No results yet. The test may still be running.",
+        "item": "Item",
+        "score": "Score",
+        "reason": "Reason",
+        "relevant": "Relevant",
+        "novel": "Novel",
+        "deepSummarize": "Deep",
+        "categories": "Categories",
+        "copyJson": "Copy JSON",
+        "jsonCopied": "JSON copied to clipboard",
+        "tokens": "tokens",
+        "error": "Error"
+      },
+      "reasoning": {
+        "none": "None",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
       }
     }
   },

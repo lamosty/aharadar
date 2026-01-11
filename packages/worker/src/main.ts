@@ -1,5 +1,12 @@
 import { createDb } from "@aharadar/db";
-import { generateDueWindows, getSchedulableTopics, parseSchedulerConfig } from "@aharadar/pipeline";
+import { checkQuotaForRun } from "@aharadar/llm";
+import {
+  compileDigestPlan,
+  generateDueWindows,
+  getSchedulableTopics,
+  parseSchedulerConfig,
+} from "@aharadar/pipeline";
+import type { BudgetTier } from "@aharadar/shared";
 import { createLogger, loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
 
 import { startMetricsServer, updateHealthStatus, updateQueueDepth } from "./metrics";
@@ -41,6 +48,11 @@ async function runSchedulerTick(
     return;
   }
 
+  // Pre-load LLM settings once per tick for quota checking
+  const llmSettings = await db.llmSettings.get();
+  const isSubscriptionProvider =
+    llmSettings.provider === "claude-subscription" || llmSettings.provider === "codex-subscription";
+
   for (const { userId, topicId } of topics) {
     const windows = await generateDueWindows({
       db,
@@ -48,6 +60,46 @@ async function runSchedulerTick(
       topicId,
       config,
     });
+
+    // Pre-flight quota check for subscription providers
+    if (isSubscriptionProvider && windows.length > 0) {
+      // Load topic for digest settings
+      const topic = await db.topics.getById(topicId);
+      if (topic) {
+        // Count enabled sources for this topic
+        const sources = await db.sources.listByUserAndTopic({ userId, topicId });
+        const enabledSourceCount = sources.filter(
+          (s: { is_enabled: boolean }) => s.is_enabled,
+        ).length;
+
+        // Use the first window's mode (they should all be the same)
+        const digestPlan = compileDigestPlan({
+          mode: windows[0].mode as BudgetTier,
+          digestDepth: topic.digest_depth ?? 50,
+          enabledSourceCount,
+        });
+
+        const quotaCheck = checkQuotaForRun({
+          provider: llmSettings.provider,
+          expectedCalls: digestPlan.triageMaxCalls,
+          claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+          codexCallsPerHour: llmSettings.codex_calls_per_hour,
+        });
+
+        if (!quotaCheck.ok) {
+          schedulerLog.warn(
+            {
+              topicId: topicId.slice(0, 8),
+              provider: llmSettings.provider,
+              remainingQuota: quotaCheck.remainingQuota,
+              expectedCalls: quotaCheck.expectedCalls,
+            },
+            "Skipping scheduled windows: insufficient quota",
+          );
+          continue; // Skip this topic entirely, try again next tick
+        }
+      }
+    }
 
     for (const window of windows) {
       // Use a deterministic job ID to prevent duplicate jobs

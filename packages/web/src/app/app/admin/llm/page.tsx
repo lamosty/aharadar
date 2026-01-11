@@ -15,20 +15,27 @@ const PROVIDERS: LlmProvider[] = [
   "codex-subscription",
 ];
 
+// Helper to determine if provider uses OpenAI-style models
+function usesOpenAiModels(provider: LlmProvider): boolean {
+  return provider === "openai" || provider === "codex-subscription";
+}
+
+// Helper to determine if provider is a subscription type
+function isSubscriptionProvider(provider: LlmProvider): boolean {
+  return provider === "claude-subscription" || provider === "codex-subscription";
+}
+
 export default function AdminLlmPage() {
   const { addToast } = useToast();
   const { data, isLoading, isError, error } = useAdminLlmSettings();
   const settings = data?.settings ?? null;
 
   // Form state
-  const [provider, setProvider] = useState<LlmProvider>("anthropic");
+  const [provider, setProvider] = useState<LlmProvider>("openai");
   const [anthropicModel, setAnthropicModel] = useState("");
   const [openaiModel, setOpenaiModel] = useState("");
-  const [claudeSubscriptionEnabled, setClaudeSubscriptionEnabled] = useState(false);
-  const [claudeTriageThinking, setClaudeTriageThinking] = useState(false);
   const [claudeCallsPerHour, setClaudeCallsPerHour] = useState(100);
-  const [codexSubscriptionEnabled, setCodexSubscriptionEnabled] = useState(false);
-  const [codexCallsPerHour, setCodexCallsPerHour] = useState(50);
+  const [codexCallsPerHour, setCodexCallsPerHour] = useState(25);
 
   // Sync form state when data loads
   useEffect(() => {
@@ -36,10 +43,7 @@ export default function AdminLlmPage() {
       setProvider(settings.provider);
       setAnthropicModel(settings.anthropicModel);
       setOpenaiModel(settings.openaiModel);
-      setClaudeSubscriptionEnabled(settings.claudeSubscriptionEnabled);
-      setClaudeTriageThinking(settings.claudeTriageThinking);
       setClaudeCallsPerHour(settings.claudeCallsPerHour);
-      setCodexSubscriptionEnabled(settings.codexSubscriptionEnabled);
       setCodexCallsPerHour(settings.codexCallsPerHour);
     }
   }, [settings]);
@@ -59,10 +63,11 @@ export default function AdminLlmPage() {
       provider,
       anthropicModel,
       openaiModel,
-      claudeSubscriptionEnabled,
-      claudeTriageThinking,
+      // Enable subscription flags based on provider selection
+      claudeSubscriptionEnabled: provider === "claude-subscription",
+      claudeTriageThinking: false,
       claudeCallsPerHour,
-      codexSubscriptionEnabled,
+      codexSubscriptionEnabled: provider === "codex-subscription",
       codexCallsPerHour,
     });
   };
@@ -73,10 +78,7 @@ export default function AdminLlmPage() {
     (provider !== settings.provider ||
       anthropicModel !== settings.anthropicModel ||
       openaiModel !== settings.openaiModel ||
-      claudeSubscriptionEnabled !== settings.claudeSubscriptionEnabled ||
-      claudeTriageThinking !== settings.claudeTriageThinking ||
       claudeCallsPerHour !== settings.claudeCallsPerHour ||
-      codexSubscriptionEnabled !== settings.codexSubscriptionEnabled ||
       codexCallsPerHour !== settings.codexCallsPerHour);
 
   if (isLoading) {
@@ -115,7 +117,17 @@ export default function AdminLlmPage() {
   }
 
   // Determine active model based on provider
-  const _activeModel = provider === "openai" ? openaiModel : anthropicModel;
+  const activeModel = usesOpenAiModels(settings.provider)
+    ? settings.openaiModel
+    : settings.anthropicModel;
+
+  // Get rate limit for subscription providers
+  const activeRateLimit =
+    settings.provider === "claude-subscription"
+      ? settings.claudeCallsPerHour
+      : settings.provider === "codex-subscription"
+        ? settings.codexCallsPerHour
+        : null;
 
   return (
     <div className={styles.page}>
@@ -140,20 +152,12 @@ export default function AdminLlmPage() {
           </div>
           <div className={styles.configItem}>
             <span className={styles.configLabel}>{t("admin.llm.activeModel")}</span>
-            <span className={styles.configValue}>
-              {settings.provider === "openai" ? settings.openaiModel : settings.anthropicModel}
-            </span>
+            <span className={styles.configValue}>{activeModel || "Default"}</span>
           </div>
-          {settings.claudeSubscriptionEnabled && (
+          {activeRateLimit !== null && (
             <div className={styles.configItem}>
-              <span className={styles.configLabel}>{t("admin.llm.claudeCallsPerHour")}</span>
-              <span className={styles.configValue}>{settings.claudeCallsPerHour}/hr</span>
-            </div>
-          )}
-          {settings.codexSubscriptionEnabled && (
-            <div className={styles.configItem}>
-              <span className={styles.configLabel}>{t("admin.llm.codexCallsPerHour")}</span>
-              <span className={styles.configValue}>{settings.codexCallsPerHour}/hr</span>
+              <span className={styles.configLabel}>{t("admin.llm.rateLimit")}</span>
+              <span className={styles.configValue}>{activeRateLimit}/hr</span>
             </div>
           )}
         </div>
@@ -190,18 +194,23 @@ export default function AdminLlmPage() {
           </div>
         </div>
 
-        {/* Model Configuration */}
+        {/* Model Configuration - label changes based on provider */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>
-            {provider === "openai" ? t("admin.llm.openaiModel") : t("admin.llm.anthropicModel")}
+            {usesOpenAiModels(provider) ? t("admin.llm.openaiModel") : t("admin.llm.claudeModel")}
           </h2>
-          {provider === "openai" ? (
+          <p className={styles.sectionDescription}>
+            {usesOpenAiModels(provider)
+              ? t("admin.llm.openaiModelDescription")
+              : t("admin.llm.claudeModelDescription")}
+          </p>
+          {usesOpenAiModels(provider) ? (
             <input
               type="text"
               value={openaiModel}
               onChange={(e) => setOpenaiModel(e.target.value)}
               className={styles.input}
-              placeholder="gpt-4o"
+              placeholder="gpt-5.1"
               disabled={isSaving}
             />
           ) : (
@@ -210,109 +219,72 @@ export default function AdminLlmPage() {
               value={anthropicModel}
               onChange={(e) => setAnthropicModel(e.target.value)}
               className={styles.input}
-              placeholder="claude-sonnet-4-20250514"
+              placeholder="claude-sonnet-4-5"
               disabled={isSaving}
             />
           )}
         </div>
 
-        {/* Claude Subscription Settings (only for claude-subscription provider) */}
-        {provider === "claude-subscription" && (
+        {/* Subscription Info & Rate Limit - only for subscription providers */}
+        {isSubscriptionProvider(provider) && (
           <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("admin.llm.claudeSubscription")}</h2>
+            <h2 className={styles.sectionTitle}>
+              {provider === "claude-subscription"
+                ? t("admin.llm.claudeSubscriptionSettings")
+                : t("admin.llm.codexSubscriptionSettings")}
+            </h2>
 
-            <div className={styles.toggle}>
-              <label className={styles.toggleLabel}>
-                <input
-                  type="checkbox"
-                  checked={claudeSubscriptionEnabled}
-                  onChange={(e) => setClaudeSubscriptionEnabled(e.target.checked)}
-                  className={styles.toggleInput}
-                  disabled={isSaving}
-                />
-                <span className={styles.toggleSwitch} />
-                <span className={styles.toggleText}>
-                  {t("admin.llm.claudeSubscriptionEnabled")}
-                </span>
-              </label>
-              <p className={styles.toggleDescription}>
-                {t("admin.llm.claudeSubscriptionDescription")}
-              </p>
+            {/* Info box about requirements */}
+            <div className={styles.infoBox}>
+              <InfoIcon />
+              <div className={styles.infoContent}>
+                <strong>{t("admin.llm.subscriptionRequirements")}</strong>
+                <ul className={styles.infoList}>
+                  <li>
+                    {provider === "claude-subscription"
+                      ? t("admin.llm.claudeLoginRequired")
+                      : t("admin.llm.codexLoginRequired")}
+                  </li>
+                  <li>{t("admin.llm.subscriptionLocalOnly")}</li>
+                  <li>{t("admin.llm.subscriptionPersonalUse")}</li>
+                </ul>
+              </div>
             </div>
 
-            <div className={styles.toggle}>
-              <label className={styles.toggleLabel}>
-                <input
-                  type="checkbox"
-                  checked={claudeTriageThinking}
-                  onChange={(e) => setClaudeTriageThinking(e.target.checked)}
-                  className={styles.toggleInput}
-                  disabled={isSaving}
-                />
-                <span className={styles.toggleSwitch} />
-                <span className={styles.toggleText}>{t("admin.llm.claudeTriageThinking")}</span>
-              </label>
-              <p className={styles.toggleDescription}>
-                {t("admin.llm.claudeTriageThinkingDescription")}
-              </p>
-            </div>
-
+            {/* Rate Limit */}
             <div className={styles.formGroup}>
-              <label htmlFor="callsPerHour" className={styles.label}>
-                {t("admin.llm.claudeCallsPerHour")}
+              <label htmlFor="rateLimit" className={styles.label}>
+                {t("admin.llm.rateLimitLabel")}
               </label>
               <input
-                id="callsPerHour"
+                id="rateLimit"
                 type="number"
                 min="1"
-                max="1000"
-                value={claudeCallsPerHour}
-                onChange={(e) => setClaudeCallsPerHour(Number(e.target.value))}
+                max="500"
+                value={provider === "claude-subscription" ? claudeCallsPerHour : codexCallsPerHour}
+                onChange={(e) =>
+                  provider === "claude-subscription"
+                    ? setClaudeCallsPerHour(Number(e.target.value))
+                    : setCodexCallsPerHour(Number(e.target.value))
+                }
                 className={styles.input}
                 disabled={isSaving}
               />
-              <p className={styles.hint}>{t("admin.llm.claudeCallsPerHourDescription")}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Codex Subscription Settings (only for codex-subscription provider) */}
-        {provider === "codex-subscription" && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("admin.llm.codexSubscription")}</h2>
-
-            <div className={styles.toggle}>
-              <label className={styles.toggleLabel}>
-                <input
-                  type="checkbox"
-                  checked={codexSubscriptionEnabled}
-                  onChange={(e) => setCodexSubscriptionEnabled(e.target.checked)}
-                  className={styles.toggleInput}
-                  disabled={isSaving}
-                />
-                <span className={styles.toggleSwitch} />
-                <span className={styles.toggleText}>{t("admin.llm.codexSubscriptionEnabled")}</span>
-              </label>
-              <p className={styles.toggleDescription}>
-                {t("admin.llm.codexSubscriptionDescription")}
+              <p className={styles.hint}>
+                {provider === "claude-subscription"
+                  ? t("admin.llm.claudeRateLimitHint")
+                  : t("admin.llm.codexRateLimitHint")}
               </p>
             </div>
 
-            <div className={styles.formGroup}>
-              <label htmlFor="codexCallsPerHour" className={styles.label}>
-                {t("admin.llm.codexCallsPerHour")}
-              </label>
-              <input
-                id="codexCallsPerHour"
-                type="number"
-                min="1"
-                max="1000"
-                value={codexCallsPerHour}
-                onChange={(e) => setCodexCallsPerHour(Number(e.target.value))}
-                className={styles.input}
-                disabled={isSaving}
-              />
-              <p className={styles.hint}>{t("admin.llm.codexCallsPerHourDescription")}</p>
+            {/* Warning about rate limits */}
+            <div className={styles.warningBox}>
+              <WarningIcon />
+              <p>
+                {provider === "claude-subscription"
+                  ? t("admin.llm.claudeRateLimitWarning")
+                  : t("admin.llm.codexRateLimitWarning")}
+              </p>
             </div>
           </div>
         )}
@@ -374,6 +346,48 @@ function LoadingSpinner() {
       aria-hidden="true"
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={styles.infoIcon}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={styles.warningIcon}
+    >
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   );
 }

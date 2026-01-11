@@ -16,7 +16,7 @@ export interface CodexUsageState {
 }
 
 const DEFAULT_LIMITS: CodexUsageLimits = {
-  callsPerHour: 50, // Conservative default for Codex
+  callsPerHour: 25, // Conservative default for ChatGPT Plus (~6-30/hr). Pro users can increase.
 };
 
 // In-memory state

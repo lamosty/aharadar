@@ -5,6 +5,7 @@ export * from "./codex_usage_tracker";
 export * from "./costs";
 export * from "./deep_summary";
 export * from "./embeddings";
+export * from "./quota_check";
 export * from "./router";
 export * from "./triage";
 export * from "./types";

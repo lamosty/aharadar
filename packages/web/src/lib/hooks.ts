@@ -18,6 +18,10 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
+  type AbtestCreateRequest,
+  type AbtestCreateResponse,
+  type AbtestDetailResponse,
+  type AbtestsListResponse,
   type AdminRunRequest,
   type AdminRunResponse,
   type ApiError,
@@ -40,6 +44,8 @@ import {
   type FeedbackRequest,
   type FeedbackResponse,
   type FeedbackSummaryResponse,
+  getAdminAbtest,
+  getAdminAbtests,
   getAdminBudgets,
   getAdminLlmSettings,
   getAdminSources,
@@ -74,6 +80,7 @@ import {
   patchAdminSource,
   patchPreferences,
   patchTopicDigestSettings,
+  postAdminAbtest,
   postAdminRun,
   postAdminSource,
   postFeedback,
@@ -128,6 +135,11 @@ export const queryKeys = {
     llmSettings: ["admin", "llm-settings"] as const,
     queueStatus: ["admin", "queue-status"] as const,
     opsStatus: ["admin", "ops-status"] as const,
+    abtests: {
+      all: ["admin", "abtests"] as const,
+      list: () => ["admin", "abtests", "list"] as const,
+      detail: (id: string) => ["admin", "abtests", id] as const,
+    },
   },
   preferences: ["preferences"] as const,
   topics: {
@@ -957,6 +969,66 @@ export function useDeleteTopic(
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
       // Also invalidate sources since they may have moved
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.sources });
+    },
+    ...options,
+  });
+}
+
+// ============================================================================
+// AB Tests Queries & Mutations
+// ============================================================================
+
+/**
+ * Query for AB test runs list.
+ */
+export function useAdminAbtests(
+  options?: Omit<
+    UseQueryOptions<AbtestsListResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.abtests.list(),
+    queryFn: ({ signal }) => getAdminAbtests(signal),
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Query for AB test run detail.
+ */
+export function useAdminAbtest(
+  id: string,
+  options?: Omit<
+    UseQueryOptions<AbtestDetailResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.abtests.detail(id),
+    queryFn: ({ signal }) => getAdminAbtest(id, signal),
+    enabled: !!id,
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Mutation to create an AB test run.
+ */
+export function useAdminAbtestCreate(
+  options?: Omit<
+    UseMutationOptions<AbtestCreateResponse, ApiError | NetworkError, AbtestCreateRequest>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request) => postAdminAbtest(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.abtests.all });
     },
     ...options,
   });
