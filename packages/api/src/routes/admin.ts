@@ -1083,6 +1083,12 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     };
 
     const envConfig = {
+      // App config
+      appEnv: process.env.APP_ENV ?? "production",
+      appTimezone: process.env.APP_TIMEZONE ?? "UTC",
+      appUrl: process.env.APP_URL ?? null,
+      qaEnabled: process.env.QA_ENABLED === "true",
+
       // Budget limits
       monthlyCredits: parseIntOrNull(process.env.MONTHLY_CREDITS) ?? 10000,
       dailyThrottleCredits: parseIntOrNull(process.env.DAILY_THROTTLE_CREDITS),
@@ -1093,13 +1099,15 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         parseIntOrNull(process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN) ??
         parseIntOrNull(process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN),
 
-      // LLM config
+      // LLM config - OpenAI
+      openaiBaseUrl: process.env.OPENAI_BASE_URL ?? null,
       openaiTriageModel: process.env.OPENAI_TRIAGE_MODEL ?? null,
-      signalGrokModel: process.env.SIGNAL_GROK_MODEL ?? null,
+      openaiTriageMaxTokens: parseIntOrNull(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS),
+      openaiEmbedModel: process.env.OPENAI_EMBED_MODEL ?? null,
 
-      // App config
-      appEnv: process.env.APP_ENV ?? "production",
-      appTimezone: process.env.APP_TIMEZONE ?? "UTC",
+      // LLM config - Grok
+      grokBaseUrl: process.env.GROK_BASE_URL ?? null,
+      signalGrokModel: process.env.SIGNAL_GROK_MODEL ?? null,
     };
 
     // Generate warnings for problematic configurations

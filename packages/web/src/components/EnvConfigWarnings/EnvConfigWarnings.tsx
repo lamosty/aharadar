@@ -65,26 +65,37 @@ export function EnvConfigWarnings({ showFullConfig = false }: EnvConfigWarningsP
       {showFullConfig && config && (
         <div className={styles.configSection}>
           <span className={styles.configTitle}>Environment Configuration</span>
+          {/* App */}
           <ConfigItem
-            label="App Environment"
+            label="Environment"
             value={config.appEnv}
             highlight={config.appEnv !== "production"}
           />
           <ConfigItem label="Timezone" value={config.appTimezone} />
+          <ConfigItem label="QA Mode" value={config.qaEnabled ? "Enabled" : "Disabled"} />
+          {/* Budgets */}
           <ConfigItem label="Monthly Credits" value={config.monthlyCredits.toLocaleString()} />
           <ConfigItem
             label="Daily Throttle"
             value={config.dailyThrottleCredits?.toLocaleString() ?? "Unlimited"}
           />
           <ConfigItem label="Default Tier" value={config.defaultTier} />
+          {/* X/Twitter */}
           <ConfigItem
-            label="X Posts Max Calls/Run"
+            label="X Max Calls/Run"
             value={config.xPostsMaxSearchCallsPerRun?.toString() ?? "Unlimited"}
             highlight={config.xPostsMaxSearchCallsPerRun !== null}
             warning={config.xPostsMaxSearchCallsPerRun !== null}
           />
-          <ConfigItem label="OpenAI Triage Model" value={config.openaiTriageModel ?? "Not set"} />
-          <ConfigItem label="Grok Model" value={config.signalGrokModel ?? "Not set"} />
+          {/* OpenAI */}
+          <ConfigItem label="OpenAI Triage" value={config.openaiTriageModel ?? "—"} />
+          <ConfigItem
+            label="Triage Max Tokens"
+            value={config.openaiTriageMaxTokens?.toString() ?? "Default"}
+          />
+          <ConfigItem label="Embed Model" value={config.openaiEmbedModel ?? "—"} />
+          {/* Grok */}
+          <ConfigItem label="Grok Model" value={config.signalGrokModel ?? "—"} />
         </div>
       )}
     </div>

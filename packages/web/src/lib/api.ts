@@ -823,14 +823,29 @@ export async function getAdminLlmSettings(signal?: AbortSignal): Promise<LlmSett
 
 /** Environment configuration data */
 export interface EnvConfig {
+  // App config
+  appEnv: string;
+  appTimezone: string;
+  appUrl: string | null;
+  qaEnabled: boolean;
+
+  // Budget limits
   monthlyCredits: number;
   dailyThrottleCredits: number | null;
   defaultTier: string;
+
+  // X/Twitter fetch limits
   xPostsMaxSearchCallsPerRun: number | null;
+
+  // LLM config - OpenAI
+  openaiBaseUrl: string | null;
   openaiTriageModel: string | null;
+  openaiTriageMaxTokens: number | null;
+  openaiEmbedModel: string | null;
+
+  // LLM config - Grok
+  grokBaseUrl: string | null;
   signalGrokModel: string | null;
-  appEnv: string;
-  appTimezone: string;
 }
 
 /** Env config response */
@@ -1333,4 +1348,151 @@ export interface OpsStatusResponse {
  */
 export async function getOpsStatus(signal?: AbortSignal): Promise<OpsStatusResponse> {
   return apiFetch<OpsStatusResponse>("/admin/ops-status", { signal });
+}
+
+// ============================================================================
+// AB Tests API
+// ============================================================================
+
+/** AB test run status */
+export type AbtestRunStatus = "pending" | "running" | "completed" | "failed";
+
+/** AB test reasoning effort */
+export type AbtestReasoningEffort = "low" | "medium" | "high" | null;
+
+/** AB test variant configuration (for creating runs) */
+export interface AbtestVariantConfig {
+  name: string;
+  provider: LlmProvider;
+  model: string;
+  reasoningEffort?: AbtestReasoningEffort;
+  maxOutputTokens?: number;
+}
+
+/** AB test run config (stored in DB) */
+export interface AbtestRunConfig {
+  maxItems: number;
+  variantCount: number;
+}
+
+/** AB test run list item */
+export interface AbtestRunListItem {
+  id: string;
+  topicId: string;
+  windowStart: string;
+  windowEnd: string;
+  status: AbtestRunStatus;
+  config: AbtestRunConfig;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+/** AB test runs list response */
+export interface AbtestsListResponse {
+  ok: true;
+  runs: AbtestRunListItem[];
+}
+
+/** AB test create request */
+export interface AbtestCreateRequest {
+  topicId: string;
+  windowStart: string;
+  windowEnd: string;
+  variants: AbtestVariantConfig[];
+  maxItems?: number;
+}
+
+/** AB test create response */
+export interface AbtestCreateResponse {
+  ok: true;
+  runId: string;
+  jobId: string;
+}
+
+/** AB test variant detail */
+export interface AbtestVariant {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  reasoningEffort: AbtestReasoningEffort;
+  maxOutputTokens: number | null;
+  order: number;
+}
+
+/** AB test item (content being tested) */
+export interface AbtestItem {
+  id: string;
+  candidateId: string | null;
+  clusterId: string | null;
+  contentItemId: string | null;
+  representativeContentItemId: string | null;
+  sourceId: string | null;
+  sourceType: string | null;
+  title: string | null;
+  url: string | null;
+  author: string | null;
+  publishedAt: string | null;
+}
+
+/** AB test result (per-item, per-variant) */
+export interface AbtestResult {
+  id: string;
+  abtestItemId: string;
+  variantId: string;
+  triage: {
+    aha_score?: number;
+    reasoning?: string;
+    is_relevant?: boolean;
+    is_novel?: boolean;
+    should_deep_summarize?: boolean;
+    categories?: string[];
+    [key: string]: unknown;
+  } | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  status: "ok" | "error";
+  error: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/** AB test run detail response */
+export interface AbtestDetailResponse {
+  ok: true;
+  run: AbtestRunListItem;
+  variants: AbtestVariant[];
+  items: AbtestItem[];
+  results: AbtestResult[];
+}
+
+/**
+ * List AB test runs.
+ */
+export async function getAdminAbtests(signal?: AbortSignal): Promise<AbtestsListResponse> {
+  return apiFetch<AbtestsListResponse>("/admin/abtests", { signal });
+}
+
+/**
+ * Create an AB test run.
+ */
+export async function postAdminAbtest(
+  request: AbtestCreateRequest,
+  signal?: AbortSignal,
+): Promise<AbtestCreateResponse> {
+  return apiFetch<AbtestCreateResponse>("/admin/abtests", {
+    method: "POST",
+    body: request,
+    signal,
+  });
+}
+
+/**
+ * Get AB test run detail.
+ */
+export async function getAdminAbtest(
+  id: string,
+  signal?: AbortSignal,
+): Promise<AbtestDetailResponse> {
+  return apiFetch<AbtestDetailResponse>(`/admin/abtests/${id}`, { signal });
 }
