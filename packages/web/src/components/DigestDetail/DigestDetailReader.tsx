@@ -102,6 +102,7 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
   const displayTitle = getDisplayTitle(item);
   const displayAuthor = getDisplayAuthor(item);
   const displayDate = getDisplayDate(item);
+  const isRestricted = item.contentItem.metadata?.is_restricted === true;
 
   return (
     <article className={styles.card} data-testid={`digest-item-${item.id}`}>
@@ -109,6 +110,7 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
         <div className={styles.rankBadge}>#{item.rank}</div>
         <div className={styles.meta}>
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
+          {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
           {displayDate && (
             <>
               <span className={styles.metaSeparator} aria-hidden="true">

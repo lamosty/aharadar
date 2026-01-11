@@ -80,8 +80,16 @@ export interface PolymarketConfig {
   categories?: string[];
   min_volume?: number;
   min_liquidity?: number;
+  min_volume_24h?: number;
   probability_change_threshold?: number;
   include_resolved?: boolean;
+  include_restricted?: boolean;
+  include_new_markets?: boolean;
+  include_spike_markets?: boolean;
+  spike_probability_change_threshold?: number;
+  spike_volume_change_threshold?: number;
+  spike_min_volume_24h?: number;
+  spike_min_liquidity?: number;
   max_markets_per_fetch?: number;
 }
 

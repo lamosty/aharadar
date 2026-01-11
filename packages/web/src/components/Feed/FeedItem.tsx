@@ -336,6 +336,7 @@ export function FeedItem({
   const scorePercent = Math.round(item.score * 100);
   const scoreTier = getScoreTier(item.score);
   const subreddit = item.item.metadata?.subreddit as string | undefined;
+  const isRestricted = item.item.metadata?.is_restricted === true;
   const displayDate = getDisplayDate(item);
   // For X posts: show display name only (handle is shown in source section)
   // For other sources: show author as-is
@@ -414,6 +415,7 @@ export function FeedItem({
 
           {/* Trailing metadata */}
           <span className={styles.scanMeta}>
+            {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
             <Tooltip content="Relevance score (0-100) based on your interests">
               <span className={styles.scanScore}>{scorePercent}</span>
             </Tooltip>
@@ -497,13 +499,14 @@ export function FeedItem({
       <div className={styles.header}>
         {/* Left section: badges + source + meta + actions */}
         <div className={styles.headerLeft}>
-          {/* Top badges row: topic + new */}
-          {(showTopicBadge && item.topicName) || item.isNew ? (
+          {/* Top badges row: topic + new + restricted */}
+          {(showTopicBadge && item.topicName) || item.isNew || isRestricted ? (
             <div className={styles.headerBadges}>
               {showTopicBadge && item.topicName && (
                 <span className={styles.topicBadge}>{item.topicName}</span>
               )}
               {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
+              {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
             </div>
           ) : null}
 

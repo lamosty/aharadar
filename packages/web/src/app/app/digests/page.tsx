@@ -1,49 +1,205 @@
 "use client";
 
-import {
-  DigestsListCondensed,
-  DigestsListCondensedSkeleton,
-  DigestsListReader,
-  DigestsListReaderSkeleton,
-  DigestsListTimeline,
-  DigestsListTimelineSkeleton,
-} from "@/components/DigestsList";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DigestStatsCards } from "@/components/DigestStatsCards";
+import { DigestsListCondensed, DigestsListCondensedSkeleton } from "@/components/DigestsList";
 import { QueueStatus } from "@/components/QueueStatus";
-import { useTheme } from "@/components/ThemeProvider";
+import { useDigestStats, useDigests, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
-import { useRealDigests } from "@/lib/mock-data";
+import type { DigestSummary } from "@/lib/mock-data";
 import styles from "./page.module.css";
 
-export default function DigestsPage() {
-  const { layout } = useTheme();
-  // Using real API with adapter hooks
-  const { data: digests, isLoading, isError, refetch } = useRealDigests();
+// Default to last 7 days
+function getDefaultDateRange() {
+  const now = new Date();
+  const to = now.toISOString().split("T")[0];
+  const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  return { from, to };
+}
 
+export default function DigestsPage() {
+  return (
+    <Suspense fallback={<DigestsPageSkeleton />}>
+      <DigestsPageContent />
+    </Suspense>
+  );
+}
+
+function DigestsPageSkeleton() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>{t("digests.title")}</h1>
       </header>
+      <DigestsListCondensedSkeleton />
+    </div>
+  );
+}
+
+function DigestsPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Parse URL params
+  const topicParam = searchParams.get("topic");
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+
+  // Default date range
+  const defaultRange = useMemo(() => getDefaultDateRange(), []);
+  const [dateFrom, setDateFrom] = useState(fromParam || defaultRange.from);
+  const [dateTo, setDateTo] = useState(toParam || defaultRange.to);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(topicParam);
+
+  // Fetch topics for the switcher
+  const { data: topicsData } = useTopics();
+  const topics = topicsData?.topics ?? [];
+
+  // Convert dates to ISO for API
+  const fromIso = `${dateFrom}T00:00:00.000Z`;
+  const toIso = `${dateTo}T23:59:59.999Z`;
+
+  // Fetch digests with filters
+  const {
+    data: digestsData,
+    isLoading: digestsLoading,
+    isError: digestsError,
+    refetch: refetchDigests,
+  } = useDigests({
+    from: fromIso,
+    to: toIso,
+    topic: selectedTopic ?? undefined,
+  });
+
+  // Fetch stats with same filters
+  const { data: statsData, isLoading: statsLoading } = useDigestStats({
+    from: fromIso,
+    to: toIso,
+    topic: selectedTopic ?? undefined,
+  });
+
+  // Adapt digests to component format
+  const digests: DigestSummary[] = useMemo(() => {
+    if (!digestsData?.digests) return [];
+    return digestsData.digests.map((d) => ({
+      id: d.id,
+      topicId: d.topicId,
+      topicName: d.topicName,
+      windowStart: d.windowStart,
+      windowEnd: d.windowEnd,
+      mode: d.mode as DigestSummary["mode"],
+      status: d.status,
+      creditsUsed: d.creditsUsed,
+      topScore: d.topScore,
+      itemCount: d.itemCount,
+      sourceCount: d.sourceCount,
+      createdAt: d.createdAt,
+    }));
+  }, [digestsData]);
+
+  // Update URL when filters change
+  const updateUrl = (newTopic: string | null, newFrom: string, newTo: string) => {
+    const params = new URLSearchParams();
+    if (newTopic) params.set("topic", newTopic);
+    if (newFrom !== defaultRange.from) params.set("from", newFrom);
+    if (newTo !== defaultRange.to) params.set("to", newTo);
+    const query = params.toString();
+    router.replace(query ? `/app/digests?${query}` : "/app/digests");
+  };
+
+  const handleTopicChange = (topicId: string | null) => {
+    setSelectedTopic(topicId);
+    updateUrl(topicId, dateFrom, dateTo);
+  };
+
+  const handleDateChange = (from: string, to: string) => {
+    setDateFrom(from);
+    setDateTo(to);
+    updateUrl(selectedTopic, from, to);
+  };
+
+  // Show topic column only when viewing all topics
+  const showTopicColumn = !selectedTopic;
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div className={styles.headerTop}>
+          <h1 className={styles.title}>{t("digests.title")}</h1>
+        </div>
+        <div className={styles.filters}>
+          <select
+            className={styles.topicSelect}
+            value={selectedTopic ?? ""}
+            onChange={(e) => handleTopicChange(e.target.value === "" ? null : e.target.value)}
+          >
+            <option value="">All Topics</option>
+            {topics.map((topic) => (
+              <option key={topic.id} value={topic.id}>
+                {topic.name}
+              </option>
+            ))}
+          </select>
+          <DateRangePicker from={dateFrom} to={dateTo} onChange={handleDateChange} />
+        </div>
+      </header>
 
       <QueueStatus />
 
-      {isLoading && <DigestsListSkeleton layout={layout} />}
+      {/* Stats Cards */}
+      {statsData && (
+        <div className={styles.statsSection}>
+          <DigestStatsCards
+            stats={statsData.stats}
+            previousPeriod={statsData.previousPeriod}
+            isLoading={statsLoading}
+          />
+        </div>
+      )}
+      {statsLoading && !statsData && (
+        <div className={styles.statsSection}>
+          <DigestStatsCards
+            stats={{
+              totalItems: 0,
+              digestCount: 0,
+              avgItemsPerDigest: 0,
+              avgTopScore: 0,
+              triageBreakdown: { high: 0, medium: 0, low: 0, skip: 0 },
+              totalCredits: 0,
+              avgCreditsPerDigest: 0,
+              creditsByMode: { low: 0, normal: 0, high: 0 },
+            }}
+            previousPeriod={{
+              totalItems: 0,
+              digestCount: 0,
+              avgTopScore: 0,
+              totalCredits: 0,
+            }}
+            isLoading={true}
+          />
+        </div>
+      )}
 
-      {isError && (
+      {/* Digests List */}
+      {digestsLoading && <DigestsListCondensedSkeleton showTopic={showTopicColumn} />}
+
+      {digestsError && (
         <div className={styles.errorState}>
           <ErrorIcon />
           <h2 className={styles.errorTitle}>{t("digests.list.error")}</h2>
           <button
             type="button"
             className={`btn btn-primary ${styles.retryButton}`}
-            onClick={refetch}
+            onClick={() => refetchDigests()}
           >
             {t("digests.list.retry")}
           </button>
         </div>
       )}
 
-      {!isLoading && !isError && digests && digests.length === 0 && (
+      {!digestsLoading && !digestsError && digests.length === 0 && (
         <div className={styles.emptyState}>
           <EmptyIcon />
           <h2 className={styles.emptyTitle}>{t("digests.list.empty")}</h2>
@@ -51,42 +207,11 @@ export default function DigestsPage() {
         </div>
       )}
 
-      {!isLoading && !isError && digests && digests.length > 0 && (
-        <DigestsList layout={layout} digests={digests} />
+      {!digestsLoading && !digestsError && digests.length > 0 && (
+        <DigestsListCondensed digests={digests} showTopic={showTopicColumn} />
       )}
     </div>
   );
-}
-
-interface DigestsListProps {
-  layout: "condensed" | "reader" | "timeline";
-  digests: NonNullable<ReturnType<typeof useRealDigests>["data"]>;
-}
-
-function DigestsList({ layout, digests }: DigestsListProps) {
-  switch (layout) {
-    case "condensed":
-      return <DigestsListCondensed digests={digests} />;
-    case "reader":
-      return <DigestsListReader digests={digests} />;
-    case "timeline":
-      return <DigestsListTimeline digests={digests} />;
-  }
-}
-
-interface DigestsListSkeletonProps {
-  layout: "condensed" | "reader" | "timeline";
-}
-
-function DigestsListSkeleton({ layout }: DigestsListSkeletonProps) {
-  switch (layout) {
-    case "condensed":
-      return <DigestsListCondensedSkeleton />;
-    case "reader":
-      return <DigestsListReaderSkeleton />;
-    case "timeline":
-      return <DigestsListTimelineSkeleton />;
-  }
 }
 
 function EmptyIcon() {

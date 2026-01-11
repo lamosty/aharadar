@@ -98,6 +98,18 @@
   animation: newPulse 2s ease-in-out infinite;
 }
 
+/* Restricted badge - neutral color, not alarming */
+.restrictedBadge {
+  font-size: 0.6rem;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+  white-space: nowrap;
+}
+
 @keyframes newPulse {
   0%,
   100% {

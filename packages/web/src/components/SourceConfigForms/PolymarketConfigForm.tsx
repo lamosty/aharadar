@@ -32,8 +32,9 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
         </p>
       </div>
 
+      {/* Section 1: Baseline Filters */}
       <div className={styles.formSection}>
-        <h5 className={styles.sectionTitle}>Filters</h5>
+        <h5 className={styles.sectionTitle}>Baseline Filters</h5>
 
         <div className={styles.inlineFields}>
           <div className={styles.inlineField}>
@@ -62,7 +63,7 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
                     e.target.value ? parseInt(e.target.value, 10) : undefined,
                   )
                 }
-                placeholder="0"
+                placeholder="10000"
                 className={styles.numberInput}
               />
             </div>
@@ -92,54 +93,79 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
                     e.target.value ? parseInt(e.target.value, 10) : undefined,
                   )
                 }
-                placeholder="0"
+                placeholder="5000"
+                className={styles.numberInput}
+              />
+            </div>
+          </div>
+          <div className={styles.inlineField}>
+            <div className={styles.field}>
+              <label htmlFor="pm-minVolume24h" className={styles.label}>
+                Min 24h Volume ($)
+                <HelpTooltip
+                  title="Minimum 24h Volume"
+                  content={
+                    <>
+                      <p>Filter markets by minimum trading volume in the last 24 hours.</p>
+                      <p>Useful for finding actively traded markets.</p>
+                    </>
+                  }
+                />
+              </label>
+              <input
+                type="number"
+                id="pm-minVolume24h"
+                min={0}
+                value={value.min_volume_24h ?? ""}
+                onChange={(e) =>
+                  handleChange(
+                    "min_volume_24h",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
+                }
+                placeholder="2000"
                 className={styles.numberInput}
               />
             </div>
           </div>
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor="pm-probChangeThreshold" className={styles.label}>
-            Probability Change Threshold (%)
-            <HelpTooltip
-              title="Movement Alert Threshold"
-              content={
-                <>
-                  <p>
-                    Only include markets where probability has moved by at least this many
-                    percentage points.
-                  </p>
-                  <p>Set to 5 to only see markets with significant movements (5%+ change).</p>
-                  <p>
-                    Leave at 0 to see all markets. This is useful for creating a "prediction market
-                    movers" alert feed.
-                  </p>
-                </>
-              }
-            />
-          </label>
-          <input
-            type="number"
-            id="pm-probChangeThreshold"
-            min={0}
-            max={100}
-            value={value.probability_change_threshold ?? ""}
-            onChange={(e) =>
-              handleChange(
-                "probability_change_threshold",
-                e.target.value ? parseInt(e.target.value, 10) : undefined,
-              )
-            }
-            placeholder="0"
-            className={styles.numberInput}
-          />
-          <p className={styles.hint}>
-            0 = include all markets, 5 = only markets with 5%+ probability movement
-          </p>
-        </div>
-
         <div className={styles.inlineFields}>
+          <div className={styles.inlineField}>
+            <div className={styles.field}>
+              <label htmlFor="pm-probChangeThreshold" className={styles.label}>
+                Prob Change (%)
+                <HelpTooltip
+                  title="Movement Alert Threshold"
+                  content={
+                    <>
+                      <p>
+                        Only include markets where probability has moved by at least this many
+                        percentage points.
+                      </p>
+                      <p>Set to 5 to only see markets with significant movements (5%+ change).</p>
+                      <p>Leave at 0 to see all markets.</p>
+                    </>
+                  }
+                />
+              </label>
+              <input
+                type="number"
+                id="pm-probChangeThreshold"
+                min={0}
+                max={100}
+                value={value.probability_change_threshold ?? ""}
+                onChange={(e) =>
+                  handleChange(
+                    "probability_change_threshold",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
+                }
+                placeholder="0"
+                className={styles.numberInput}
+              />
+            </div>
+          </div>
           <div className={styles.inlineField}>
             <div className={styles.field}>
               <label htmlFor="pm-maxMarkets" className={styles.label}>
@@ -172,6 +198,77 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Section 2: Inclusion Toggles */}
+      <div className={styles.formSection}>
+        <h5 className={styles.sectionTitle}>Inclusion Toggles</h5>
+
+        <div className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            id="pm-includeNewMarkets"
+            checked={value.include_new_markets ?? true}
+            onChange={(e) => handleChange("include_new_markets", e.target.checked)}
+            className={styles.checkbox}
+          />
+          <label htmlFor="pm-includeNewMarkets" className={styles.checkboxLabel}>
+            Include new markets
+            <HelpTooltip
+              title="New Markets"
+              content={
+                <p>
+                  Include newly created markets that may not have much volume yet but could be
+                  interesting early signals.
+                </p>
+              }
+            />
+          </label>
+        </div>
+
+        <div className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            id="pm-includeSpikeMarkets"
+            checked={value.include_spike_markets ?? true}
+            onChange={(e) => handleChange("include_spike_markets", e.target.checked)}
+            className={styles.checkbox}
+          />
+          <label htmlFor="pm-includeSpikeMarkets" className={styles.checkboxLabel}>
+            Include spike markets
+            <HelpTooltip
+              title="Spike Markets"
+              content={
+                <p>
+                  Include markets with sudden probability or volume spikes in the last 24 hours.
+                  Useful for catching breaking news.
+                </p>
+              }
+            />
+          </label>
+        </div>
+
+        <div className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            id="pm-includeRestricted"
+            checked={value.include_restricted ?? true}
+            onChange={(e) => handleChange("include_restricted", e.target.checked)}
+            className={styles.checkbox}
+          />
+          <label htmlFor="pm-includeRestricted" className={styles.checkboxLabel}>
+            Include restricted markets
+            <HelpTooltip
+              title="Restricted Markets"
+              content={
+                <p>
+                  Include markets that are restricted in certain jurisdictions. These may cover
+                  sensitive topics.
+                </p>
+              }
+            />
+          </label>
+        </div>
 
         <div className={styles.checkboxField}>
           <input
@@ -193,6 +290,144 @@ export function PolymarketConfigForm({ value, onChange }: SourceConfigFormProps<
               }
             />
           </label>
+        </div>
+      </div>
+
+      {/* Section 3: Spike Thresholds */}
+      <div className={styles.formSection}>
+        <h5 className={styles.sectionTitle}>Spike Thresholds</h5>
+        <p className={styles.hint} style={{ marginBottom: "var(--space-3)" }}>
+          Configure thresholds for detecting market spikes (only applies when spike markets are
+          enabled).
+        </p>
+
+        <div className={styles.inlineFields}>
+          <div className={styles.inlineField}>
+            <div className={styles.field}>
+              <label htmlFor="pm-spikeProbThreshold" className={styles.label}>
+                Prob Change (%)
+                <HelpTooltip
+                  title="Spike Probability Threshold"
+                  content={
+                    <>
+                      <p>
+                        Minimum probability change (in percentage points) to qualify as a spike.
+                      </p>
+                      <p>Example: 10 means 10%+ probability movement in 24h.</p>
+                    </>
+                  }
+                />
+              </label>
+              <input
+                type="number"
+                id="pm-spikeProbThreshold"
+                min={0}
+                max={100}
+                value={value.spike_probability_change_threshold ?? ""}
+                onChange={(e) =>
+                  handleChange(
+                    "spike_probability_change_threshold",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
+                }
+                placeholder="10"
+                className={styles.numberInput}
+              />
+            </div>
+          </div>
+          <div className={styles.inlineField}>
+            <div className={styles.field}>
+              <label htmlFor="pm-spikeVolumeThreshold" className={styles.label}>
+                Volume Change (%)
+                <HelpTooltip
+                  title="Spike Volume Threshold"
+                  content={
+                    <>
+                      <p>Minimum volume increase (as percentage) to qualify as a spike.</p>
+                      <p>Example: 100 means 100%+ volume increase (2x) in 24h.</p>
+                    </>
+                  }
+                />
+              </label>
+              <input
+                type="number"
+                id="pm-spikeVolumeThreshold"
+                min={0}
+                value={value.spike_volume_change_threshold ?? ""}
+                onChange={(e) =>
+                  handleChange(
+                    "spike_volume_change_threshold",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
+                }
+                placeholder="100"
+                className={styles.numberInput}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.inlineFields}>
+          <div className={styles.inlineField}>
+            <div className={styles.field}>
+              <label htmlFor="pm-spikeMinVolume24h" className={styles.label}>
+                Min 24h Volume ($)
+                <HelpTooltip
+                  title="Spike Minimum 24h Volume"
+                  content={
+                    <>
+                      <p>Minimum 24h volume for a market to be considered as a spike.</p>
+                      <p>Filters out low-volume noise spikes.</p>
+                    </>
+                  }
+                />
+              </label>
+              <input
+                type="number"
+                id="pm-spikeMinVolume24h"
+                min={0}
+                value={value.spike_min_volume_24h ?? ""}
+                onChange={(e) =>
+                  handleChange(
+                    "spike_min_volume_24h",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
+                }
+                placeholder="10000"
+                className={styles.numberInput}
+              />
+            </div>
+          </div>
+          <div className={styles.inlineField}>
+            <div className={styles.field}>
+              <label htmlFor="pm-spikeMinLiquidity" className={styles.label}>
+                Min Liquidity ($)
+                <HelpTooltip
+                  title="Spike Minimum Liquidity"
+                  content={
+                    <>
+                      <p>Minimum liquidity for a market to be considered as a spike.</p>
+                      <p>Ensures spikes are from credible markets.</p>
+                    </>
+                  }
+                />
+              </label>
+              <input
+                type="number"
+                id="pm-spikeMinLiquidity"
+                min={0}
+                value={value.spike_min_liquidity ?? ""}
+                onChange={(e) =>
+                  handleChange(
+                    "spike_min_liquidity",
+                    e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  )
+                }
+                placeholder="5000"
+                className={styles.numberInput}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

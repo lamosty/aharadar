@@ -453,6 +453,16 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
 
     case "polymarket":
       return {
+        min_volume: 10000,
+        min_liquidity: 5000,
+        min_volume_24h: 2000,
+        include_new_markets: true,
+        include_spike_markets: true,
+        include_restricted: true,
+        spike_probability_change_threshold: 10,
+        spike_volume_change_threshold: 100,
+        spike_min_volume_24h: 10000,
+        spike_min_liquidity: 5000,
         max_markets_per_fetch: 50,
       } as Partial<PolymarketConfig>;
 

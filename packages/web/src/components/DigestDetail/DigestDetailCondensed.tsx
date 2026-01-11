@@ -118,6 +118,7 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
   const displayTitle = getDisplayTitle(item);
   const displayAuthor = getDisplayAuthor(item);
   const displayDate = getDisplayDate(item);
+  const isRestricted = item.contentItem.metadata?.is_restricted === true;
 
   return (
     <>
@@ -142,6 +143,7 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
         </td>
         <td className={styles.tdSource}>
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
+          {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
         </td>
         <td className={styles.tdDate}>{displayDate}</td>
         <td className={styles.tdScore}>
