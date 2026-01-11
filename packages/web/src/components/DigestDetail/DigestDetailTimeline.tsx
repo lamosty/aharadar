@@ -139,6 +139,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
   const displayTitle = getDisplayTitle(item);
   const displayAuthor = getDisplayAuthor(item);
   const dateInfo = getDisplayDateInfo(item);
+  const isRestricted = item.contentItem.metadata?.is_restricted === true;
 
   return (
     <article className={styles.post} data-testid={`digest-item-${item.id}`}>
@@ -146,6 +147,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
         <div className={styles.postMeta}>
           <span className={styles.rank}>#{item.rank}</span>
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
+          {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
           <span className={styles.score}>{(item.score * 100).toFixed(0)}%</span>
         </div>
         {dateInfo && (
