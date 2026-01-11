@@ -426,9 +426,14 @@ export async function triageCandidate(params: {
   router: LlmRouter;
   tier: BudgetTier;
   candidate: TriageCandidateInput;
+  reasoningEffortOverride?: ReasoningEffort | null;
 }): Promise<TriageCallResult> {
   try {
-    const result = await runTriageOnce({ ...params, isRetry: false });
+    const result = await runTriageOnce({
+      ...params,
+      isRetry: false,
+      reasoningEffortOverride: params.reasoningEffortOverride,
+    });
     return {
       output: result.output,
       inputTokens: result.inputTokens,
@@ -452,7 +457,11 @@ export async function triageCandidate(params: {
     const backoffMs = 1000 + Math.random() * 1000;
     await delay(backoffMs);
 
-    const retry = await runTriageOnce({ ...params, isRetry: true });
+    const retry = await runTriageOnce({
+      ...params,
+      isRetry: true,
+      reasoningEffortOverride: params.reasoningEffortOverride,
+    });
     return {
       output: retry.output,
       inputTokens: retry.inputTokens,
@@ -826,6 +835,7 @@ export async function triageBatch(params: {
   tier: BudgetTier;
   candidates: TriageCandidateInput[];
   batchId: string;
+  reasoningEffortOverride?: ReasoningEffort | null;
 }): Promise<TriageBatchCallResult> {
   if (params.candidates.length === 0) {
     return {
@@ -844,7 +854,11 @@ export async function triageBatch(params: {
   const ref = params.router.chooseModel("triage", params.tier);
 
   try {
-    const result = await runBatchTriageOnce({ ...params, isRetry: false });
+    const result = await runBatchTriageOnce({
+      ...params,
+      isRetry: false,
+      reasoningEffortOverride: params.reasoningEffortOverride,
+    });
     return {
       outputs: result.outputs,
       inputTokens: result.inputTokens,
@@ -869,7 +883,11 @@ export async function triageBatch(params: {
     const backoffMs = 1500 + Math.random() * 1000;
     await delay(backoffMs);
 
-    const retry = await runBatchTriageOnce({ ...params, isRetry: true });
+    const retry = await runBatchTriageOnce({
+      ...params,
+      isRetry: true,
+      reasoningEffortOverride: params.reasoningEffortOverride,
+    });
     return {
       outputs: retry.outputs,
       inputTokens: retry.inputTokens,

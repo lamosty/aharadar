@@ -413,6 +413,7 @@ async function triageCandidates(params: {
         tier,
         candidates: batchInputs,
         batchId,
+        reasoningEffortOverride: params.llmConfig?.reasoningEffort,
       });
 
       // Merge results into triageMap
@@ -588,6 +589,7 @@ async function triageCandidatesIndividually(params: {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
         },
+        reasoningEffortOverride: params.llmConfig?.reasoningEffort,
       });
 
       triageMap.set(candidate.candidateId, result.output);
