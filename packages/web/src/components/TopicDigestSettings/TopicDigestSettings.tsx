@@ -115,36 +115,36 @@ function computeDigestPlan(mode: DigestMode, depth: number, sourceCount: number)
   // Mode coefficients - must match backend digest_plan.ts
   const coeffByMode = {
     low: {
-      base: 10,
-      perSource: 1,
-      min: 20,
-      max: 80,
+      base: 30,
+      perSource: 10,
+      min: 25,
+      max: 300,
       triageMultiplier: 2,
       deepSummaryRatio: 0,
       deepSummaryMax: 0,
     },
     normal: {
-      base: 20,
-      perSource: 2,
-      min: 40,
-      max: 150,
+      base: 70,
+      perSource: 20,
+      min: 50,
+      max: 700,
       triageMultiplier: 3,
       deepSummaryRatio: 0.15,
-      deepSummaryMax: 20,
+      deepSummaryMax: 40,
     },
     high: {
-      base: 50,
-      perSource: 5,
+      base: 200,
+      perSource: 60,
       min: 100,
-      max: 300,
+      max: 2000,
       triageMultiplier: 5,
       deepSummaryRatio: 0.3,
-      deepSummaryMax: 60,
+      deepSummaryMax: 150,
     },
   };
 
   const coeff = coeffByMode[mode];
-  const depthFactor = 0.5 + depth / 100; // 0.5 to 1.5
+  const depthFactor = 0.5 + (depth * 1.5) / 100; // 0.5 to 2.0
 
   // Calculate digest max items with per-source scaling and min/max clamping
   const rawMaxItems = Math.round((coeff.base + coeff.perSource * sourceCount) * depthFactor);
@@ -152,14 +152,14 @@ function computeDigestPlan(mode: DigestMode, depth: number, sourceCount: number)
 
   // Calculate triage max calls
   const rawTriageCalls = digestMaxItems * coeff.triageMultiplier;
-  const triageMaxCalls = Math.max(digestMaxItems, Math.min(5000, rawTriageCalls));
+  const triageMaxCalls = Math.max(digestMaxItems, Math.min(10000, rawTriageCalls));
 
   // Calculate deep summary max calls
   const rawDeepSummary = Math.round(digestMaxItems * coeff.deepSummaryRatio);
   const deepSummaryMaxCalls = Math.min(coeff.deepSummaryMax, rawDeepSummary);
 
   // Calculate candidate pool max
-  const candidatePoolMax = Math.min(5000, Math.max(500, digestMaxItems * 20));
+  const candidatePoolMax = Math.min(10000, Math.max(500, digestMaxItems * 20));
 
   return {
     digestMaxItems,

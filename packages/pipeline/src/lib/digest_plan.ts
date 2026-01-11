@@ -37,40 +37,40 @@ export interface CompileDigestPlanParams {
 /** Mode-specific coefficients for digest sizing */
 const MODE_COEFFICIENTS = {
   low: {
-    base: 10,
-    perSource: 1,
-    min: 20,
-    max: 80,
+    base: 30,
+    perSource: 10,
+    min: 25,
+    max: 300,
     triageMultiplier: 2,
     deepSummaryRatio: 0, // No deep summaries in low mode
     deepSummaryMax: 0,
   },
   normal: {
-    base: 20,
-    perSource: 2,
-    min: 40,
-    max: 150,
+    base: 70,
+    perSource: 20,
+    min: 50,
+    max: 700,
     triageMultiplier: 3,
     deepSummaryRatio: 0.15,
-    deepSummaryMax: 20,
+    deepSummaryMax: 40,
   },
   high: {
-    base: 50,
-    perSource: 5,
+    base: 200,
+    perSource: 60,
     min: 100,
-    max: 300,
+    max: 2000,
     triageMultiplier: 5,
     deepSummaryRatio: 0.3,
-    deepSummaryMax: 60,
+    deepSummaryMax: 150,
   },
 } as const;
 
 /** Default hard caps (can be overridden via env) */
 const DEFAULT_HARD_CAPS = {
-  maxItems: 300,
-  triageMaxCalls: 2000,
-  deepSummaryMaxCalls: 60,
-  candidatePoolMax: 5000,
+  maxItems: 2500,
+  triageMaxCalls: 10000,
+  deepSummaryMaxCalls: 200,
+  candidatePoolMax: 10000,
 } as const;
 
 // ============================================================================
@@ -95,10 +95,10 @@ function parseIntEnv(env: NodeJS.ProcessEnv | undefined, key: string, fallback: 
  *
  * Formulas:
  * - digestMaxItems = clamp(min, max, round((base + perSource*S) * depthFactor))
- * - depthFactor = 0.5 + digestDepth/100 (range [0.5, 1.5])
- * - triageMaxCalls = clamp(digestMaxItems, 5000, digestMaxItems * triageMultiplier)
+ * - depthFactor = 0.5 + (digestDepth * 1.5) / 100 (range [0.5, 2.0])
+ * - triageMaxCalls = clamp(digestMaxItems, 10000, digestMaxItems * triageMultiplier)
  * - deepSummaryMaxCalls = min(deepSummaryMax, round(digestMaxItems * deepSummaryRatio))
- * - candidatePoolMax = min(5000, max(500, digestMaxItems * 20))
+ * - candidatePoolMax = min(10000, max(500, digestMaxItems * 20))
  */
 export function compileDigestPlan(params: CompileDigestPlanParams): DigestPlan {
   const { mode, digestDepth, enabledSourceCount, env = process.env } = params;
@@ -126,9 +126,9 @@ export function compileDigestPlan(params: CompileDigestPlanParams): DigestPlan {
     ),
   };
 
-  // Calculate depth factor (0.5 to 1.5)
+  // Calculate depth factor (0.5 to 2.0)
   const clampedDepth = clamp(0, 100, digestDepth);
-  const depthFactor = 0.5 + clampedDepth / 100;
+  const depthFactor = 0.5 + (clampedDepth * 1.5) / 100;
 
   // Calculate digest max items
   const rawMaxItems = Math.round((coeff.base + coeff.perSource * enabledSourceCount) * depthFactor);
@@ -138,7 +138,7 @@ export function compileDigestPlan(params: CompileDigestPlanParams): DigestPlan {
   const rawTriageCalls = digestMaxItems * coeff.triageMultiplier;
   const triageMaxCalls = Math.min(
     hardCaps.triageMaxCalls,
-    clamp(digestMaxItems, 5000, rawTriageCalls),
+    clamp(digestMaxItems, 10000, rawTriageCalls),
   );
 
   // Calculate deep summary max calls
