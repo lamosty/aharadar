@@ -112,3 +112,4 @@ Task files (in recommended order):
 82. `task-134-polymarket-daily-spikes-docs.md` - Docs: daily interesting + spike contract for Polymarket
 83. `task-135-polymarket-connector-spikes.md` - Connector: new + spike detection (Gamma only)
 84. `task-136-polymarket-ui-config-restricted.md` - Web: config fields + restricted badge
+85. `task-137-manual-summary-deep-dive.md` - Web/API/LLM: manual paste summary + promote/drop flow
