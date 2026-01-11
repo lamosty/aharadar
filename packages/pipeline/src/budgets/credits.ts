@@ -65,7 +65,7 @@ export async function computeCreditsStatus(params: {
        and started_at >= $2::timestamptz`,
     [params.userId, monthStartIso],
   );
-  const monthlyUsed = Number.parseFloat(monthlyResult.rows[0]?.total ?? "0") || 0;
+  const monthlyRaw = Number.parseFloat(monthlyResult.rows[0]?.total ?? "0") || 0;
 
   // Query daily used credits
   const dailyResult = await params.db.query<{ total: string | null }>(
@@ -76,7 +76,33 @@ export async function computeCreditsStatus(params: {
        and started_at >= $2::timestamptz`,
     [params.userId, dayStartIso],
   );
-  const dailyUsed = Number.parseFloat(dailyResult.rows[0]?.total ?? "0") || 0;
+  const dailyRaw = Number.parseFloat(dailyResult.rows[0]?.total ?? "0") || 0;
+
+  // Query monthly reset offset (sum of all resets within this month)
+  const monthlyResetResult = await params.db.query<{ total: string | null }>(
+    `select coalesce(sum(credits_at_reset), 0)::text as total
+     from budget_resets
+     where user_id = $1
+       and period = 'monthly'
+       and reset_at >= $2::timestamptz`,
+    [params.userId, monthStartIso],
+  );
+  const monthlyOffset = Number.parseFloat(monthlyResetResult.rows[0]?.total ?? "0") || 0;
+
+  // Query daily reset offset (sum of all resets within this day)
+  const dailyResetResult = await params.db.query<{ total: string | null }>(
+    `select coalesce(sum(credits_at_reset), 0)::text as total
+     from budget_resets
+     where user_id = $1
+       and period = 'daily'
+       and reset_at >= $2::timestamptz`,
+    [params.userId, dayStartIso],
+  );
+  const dailyOffset = Number.parseFloat(dailyResetResult.rows[0]?.total ?? "0") || 0;
+
+  // Subtract offsets from raw usage
+  const monthlyUsed = Math.max(0, monthlyRaw - monthlyOffset);
+  const dailyUsed = Math.max(0, dailyRaw - dailyOffset);
 
   const monthlyLimit = params.monthlyCredits;
   const monthlyRemaining = Math.max(0, monthlyLimit - monthlyUsed);
@@ -166,4 +192,57 @@ export function printCreditsWarning(status: CreditsStatus): boolean {
   }
 
   return true;
+}
+
+export type BudgetPeriod = "daily" | "monthly";
+
+export interface BudgetResetResult {
+  period: BudgetPeriod;
+  creditsReset: number;
+  resetAt: string;
+}
+
+/**
+ * Reset budget for a given period by recording the current usage as an offset.
+ * Future computeCreditsStatus calls will subtract this offset from actual usage.
+ */
+export async function resetBudget(params: {
+  db: Db;
+  userId: string;
+  period: BudgetPeriod;
+  monthlyCredits: number;
+  dailyThrottleCredits?: number;
+}): Promise<BudgetResetResult> {
+  const windowEnd = new Date().toISOString();
+
+  // Get current status to know how many credits to offset
+  const status = await computeCreditsStatus({
+    db: params.db,
+    userId: params.userId,
+    monthlyCredits: params.monthlyCredits,
+    dailyThrottleCredits: params.dailyThrottleCredits,
+    windowEnd,
+  });
+
+  // Credits to offset is current used amount for the period
+  const creditsToOffset = params.period === "monthly" ? status.monthlyUsed : status.dailyUsed;
+
+  // Insert reset record
+  const resetAt = new Date().toISOString();
+  await params.db.query(
+    `insert into budget_resets (user_id, period, credits_at_reset, reset_at)
+     values ($1, $2, $3, $4::timestamptz)`,
+    [params.userId, params.period, creditsToOffset, resetAt],
+  );
+
+  log.info(
+    { userId: params.userId, period: params.period, creditsReset: creditsToOffset },
+    "Budget reset recorded",
+  );
+
+  return {
+    period: params.period,
+    creditsReset: creditsToOffset,
+    resetAt,
+  };
 }

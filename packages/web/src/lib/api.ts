@@ -368,6 +368,27 @@ export interface BudgetsResponse {
   budgets: BudgetStatus;
 }
 
+/** Budget period type */
+export type BudgetPeriod = "daily" | "monthly";
+
+/** Budget reset result */
+export interface BudgetResetResult {
+  period: BudgetPeriod;
+  creditsReset: number;
+  resetAt: string;
+}
+
+/** Budget reset request */
+export interface BudgetResetRequest {
+  period: BudgetPeriod;
+}
+
+/** Budget reset response */
+export interface BudgetResetResponse {
+  ok: true;
+  reset: BudgetResetResult;
+}
+
 // ============================================================================
 // Dev Settings
 // ============================================================================
@@ -754,6 +775,20 @@ export async function postAdminSource(
  */
 export async function getAdminBudgets(signal?: AbortSignal): Promise<BudgetsResponse> {
   return apiFetch<BudgetsResponse>("/admin/budgets", { signal });
+}
+
+/**
+ * Reset budget for a given period.
+ */
+export async function resetAdminBudget(
+  period: BudgetPeriod,
+  signal?: AbortSignal,
+): Promise<BudgetResetResponse> {
+  return apiFetch<BudgetResetResponse>("/admin/budgets/reset", {
+    method: "POST",
+    body: { period },
+    signal,
+  });
 }
 
 /** Source delete response */

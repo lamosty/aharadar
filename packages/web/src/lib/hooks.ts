@@ -25,6 +25,8 @@ import {
   type AdminRunRequest,
   type AdminRunResponse,
   type ApiError,
+  type BudgetPeriod,
+  type BudgetResetResponse,
   type BudgetsResponse,
   type ClearFeedbackRequest,
   type ClearFeedbackResponse,
@@ -99,6 +101,7 @@ import {
   type QueueStatusResponse,
   type QuotaStatusResponse,
   removeQueueJob,
+  resetAdminBudget,
   resumeQueue,
   type SourceCreateRequest,
   type SourceCreateResponse,
@@ -645,6 +648,27 @@ export function useAdminBudgets(
     queryFn: ({ signal }) => getAdminBudgets(signal),
     // Refetch budgets more frequently as they change
     staleTime: 10 * 1000, // 10 seconds
+    ...options,
+  });
+}
+
+/**
+ * Mutation to reset budget for a given period.
+ */
+export function useResetBudget(
+  options?: Omit<
+    UseMutationOptions<BudgetResetResponse, ApiError | NetworkError, BudgetPeriod>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (period: BudgetPeriod) => resetAdminBudget(period),
+    onSettled: () => {
+      // Invalidate budgets query to refetch updated status
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.budgets });
+    },
     ...options,
   });
 }

@@ -1,6 +1,6 @@
 import type { LlmProvider, LlmSettingsUpdate, ReasoningEffort, SourceRow } from "@aharadar/db";
-import { checkQuotaForRun, getQuotaStatus } from "@aharadar/llm";
-import { compileDigestPlan, computeCreditsStatus } from "@aharadar/pipeline";
+import { checkQuotaForRun, getQuotaStatusAsync } from "@aharadar/llm";
+import { compileDigestPlan, computeCreditsStatus, resetBudget } from "@aharadar/pipeline";
 import {
   type AbtestVariantConfig,
   clearEmergencyStop,
@@ -473,6 +473,52 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
+  // POST /admin/budgets/reset - Reset daily or monthly budget
+  fastify.post("/admin/budgets/reset", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const body = request.body as { period?: unknown };
+    const period = body?.period;
+
+    if (period !== "daily" && period !== "monthly") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PERIOD",
+          message: "period must be 'daily' or 'monthly'",
+        },
+      });
+    }
+
+    const monthlyCredits = Number.parseInt(process.env.MONTHLY_CREDITS ?? "10000", 10);
+    const dailyThrottleCreditsStr = process.env.DAILY_THROTTLE_CREDITS;
+    const dailyThrottleCredits = dailyThrottleCreditsStr
+      ? Number.parseInt(dailyThrottleCreditsStr, 10)
+      : undefined;
+
+    const result = await resetBudget({
+      db: getDb(),
+      userId: ctx.userId,
+      period,
+      monthlyCredits,
+      dailyThrottleCredits,
+    });
+
+    return {
+      ok: true,
+      reset: result,
+    };
+  });
+
   // GET /admin/sources - List all sources for user (across all topics)
   fastify.get("/admin/sources", async (_request, reply) => {
     const ctx = await getSingletonContext();
@@ -818,8 +864,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     const db = getDb();
     const settings = await db.llmSettings.get();
 
-    // Get quota status from the in-memory trackers
-    const quotaStatus = getQuotaStatus({
+    // Get quota status from Redis (shared between API and worker)
+    const quotaStatus = await getQuotaStatusAsync({
       claudeCallsPerHour: settings.claude_calls_per_hour,
       codexCallsPerHour: settings.codex_calls_per_hour,
     });

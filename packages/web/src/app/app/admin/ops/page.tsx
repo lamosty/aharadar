@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  useAdminBudgets,
   useDrainQueue,
   useEmergencyStop,
   useObliterateQueue,
@@ -10,6 +11,7 @@ import {
   usePauseQueue,
   useQueueStatus,
   useRemoveQueueJob,
+  useResetBudget,
   useResumeQueue,
 } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
@@ -18,9 +20,12 @@ import styles from "./page.module.css";
 export default function AdminOpsPage() {
   const { data, isLoading, isError, error } = useOpsStatus();
   const { data: queueData, isLoading: queueLoading } = useQueueStatus();
+  const { data: budgetData } = useAdminBudgets();
 
   const [confirmObliterate, setConfirmObliterate] = useState(false);
   const [confirmEmergencyStop, setConfirmEmergencyStop] = useState(false);
+  const [confirmResetDaily, setConfirmResetDaily] = useState(false);
+  const [confirmResetMonthly, setConfirmResetMonthly] = useState(false);
 
   const pauseMutation = usePauseQueue();
   const resumeMutation = useResumeQueue();
@@ -32,6 +37,12 @@ export default function AdminOpsPage() {
   const emergencyStopMutation = useEmergencyStop({
     onSuccess: () => setConfirmEmergencyStop(false),
   });
+  const resetBudgetMutation = useResetBudget({
+    onSuccess: () => {
+      setConfirmResetDaily(false);
+      setConfirmResetMonthly(false);
+    },
+  });
 
   const isAnyMutating =
     pauseMutation.isPending ||
@@ -39,7 +50,8 @@ export default function AdminOpsPage() {
     obliterateMutation.isPending ||
     drainMutation.isPending ||
     removeJobMutation.isPending ||
-    emergencyStopMutation.isPending;
+    emergencyStopMutation.isPending ||
+    resetBudgetMutation.isPending;
 
   if (isLoading) {
     return (
@@ -281,6 +293,105 @@ export default function AdminOpsPage() {
         ) : (
           <p className={styles.noJobs}>No jobs in queue</p>
         )}
+      </div>
+
+      {/* Budget Reset Section */}
+      <div className={styles.section} style={{ marginTop: "var(--space-6)" }}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Budget Reset</h2>
+        </div>
+        <p
+          style={{
+            fontSize: "var(--font-size-sm)",
+            color: "var(--color-text-muted)",
+            margin: "0 0 var(--space-4) 0",
+          }}
+        >
+          Reset daily or monthly budget counters. Current usage will be offset so remaining budget
+          shows full limit.
+        </p>
+        {budgetData?.budgets && (
+          <div
+            style={{
+              fontSize: "var(--font-size-sm)",
+              color: "var(--color-text-muted)",
+              marginBottom: "var(--space-4)",
+            }}
+          >
+            <span>
+              Monthly: {budgetData.budgets.monthlyUsed.toFixed(2)} /{" "}
+              {budgetData.budgets.monthlyLimit} credits
+            </span>
+            {budgetData.budgets.dailyLimit !== null && (
+              <span style={{ marginLeft: "var(--space-4)" }}>
+                Daily: {budgetData.budgets.dailyUsed?.toFixed(2) ?? 0} /{" "}
+                {budgetData.budgets.dailyLimit} credits
+              </span>
+            )}
+          </div>
+        )}
+        <div className={styles.queueControls}>
+          {!confirmResetDaily ? (
+            <button
+              type="button"
+              className={`${styles.controlButton} ${styles.dangerButton}`}
+              onClick={() => setConfirmResetDaily(true)}
+              disabled={isAnyMutating}
+            >
+              <ResetIcon />
+              <span>Reset Daily</span>
+            </button>
+          ) : (
+            <div className={styles.confirmGroup}>
+              <button
+                type="button"
+                className={`${styles.controlButton} ${styles.dangerButton}`}
+                onClick={() => resetBudgetMutation.mutate("daily")}
+                disabled={isAnyMutating}
+              >
+                {resetBudgetMutation.isPending ? "..." : "Confirm"}
+              </button>
+              <button
+                type="button"
+                className={styles.controlButton}
+                onClick={() => setConfirmResetDaily(false)}
+                disabled={isAnyMutating}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {!confirmResetMonthly ? (
+            <button
+              type="button"
+              className={`${styles.controlButton} ${styles.dangerButton}`}
+              onClick={() => setConfirmResetMonthly(true)}
+              disabled={isAnyMutating}
+            >
+              <ResetIcon />
+              <span>Reset Monthly</span>
+            </button>
+          ) : (
+            <div className={styles.confirmGroup}>
+              <button
+                type="button"
+                className={`${styles.controlButton} ${styles.dangerButton}`}
+                onClick={() => resetBudgetMutation.mutate("monthly")}
+                disabled={isAnyMutating}
+              >
+                {resetBudgetMutation.isPending ? "..." : "Confirm"}
+              </button>
+              <button
+                type="button"
+                className={styles.controlButton}
+                onClick={() => setConfirmResetMonthly(false)}
+                disabled={isAnyMutating}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tools Section */}
@@ -538,6 +649,23 @@ function TrashIcon() {
     >
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+function ResetIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
     </svg>
   );
 }
