@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DigestMode, Source, Topic } from "@/lib/api";
 import { useUpdateTopicDigestSettings } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
+import { HelpTooltip } from "../HelpTooltip/HelpTooltip";
 import styles from "./TopicDigestSettings.module.css";
 
 type CadencePreset = "daily" | "weekly" | "monthly" | "custom";
@@ -441,18 +442,21 @@ export function TopicDigestSettings({
             <span className={styles.previewValue}>{plan.digestMaxItems}</span>
             <span className={styles.previewLabel}>
               {t("topics.digestSettings.preview.digestItems")}
+              <HelpTooltip content={t("topics.digestSettings.preview.digestItemsTooltip")} />
             </span>
           </div>
           <div className={styles.previewItem}>
             <span className={styles.previewValue}>{plan.triageMaxCalls}</span>
             <span className={styles.previewLabel}>
               {t("topics.digestSettings.preview.triageCalls")}
+              <HelpTooltip content={t("topics.digestSettings.preview.triageCallsTooltip")} />
             </span>
           </div>
           <div className={styles.previewItem}>
             <span className={styles.previewValue}>{plan.deepSummaryMaxCalls}</span>
             <span className={styles.previewLabel}>
               {t("topics.digestSettings.preview.deepSummaries")}
+              <HelpTooltip content={t("topics.digestSettings.preview.deepSummariesTooltip")} />
             </span>
           </div>
           <div className={styles.previewItem}>

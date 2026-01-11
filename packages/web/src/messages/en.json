@@ -749,15 +749,18 @@
           "high": "High"
         },
         "depthSlider": "Depth",
-        "hint": "Higher depth increases digest items, triage calls, and deep summaries. High mode is for deep dives; normal is the default; low is cost-efficient."
+        "hint": "Higher depth means more items scanned and more top picks. High mode scans more for better quality; Low mode is cost-efficient."
       },
       "preview": {
         "title": "Estimated Output",
-        "digestItems": "Digest items",
-        "triageCalls": "Triage calls",
-        "deepSummaries": "Deep summaries",
+        "digestItems": "Top picks",
+        "triageCalls": "Scanned",
+        "deepSummaries": "Full summaries",
         "estimatedCost": "Est. cost:",
-        "enabledSources": "Enabled sources"
+        "enabledSources": "Enabled sources",
+        "digestItemsTooltip": "The best stories selected for your digest after AI scoring and ranking.",
+        "triageCallsTooltip": "How many candidates the AI reviews to find your top picks. More scanning = better quality selection.",
+        "deepSummariesTooltip": "Top stories get detailed breakdowns: key points, why it matters, risks, and follow-ups. Only in Normal/High modes."
       },
       "updateSuccess": "Digest settings updated",
       "updateFailed": "Failed to update digest settings"
