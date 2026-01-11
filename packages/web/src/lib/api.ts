@@ -977,6 +977,8 @@ export interface Topic {
   digestMode: DigestMode;
   digestDepth: number;
   digestCursorEnd: string | null;
+  // Custom settings (e.g., personalization tuning)
+  customSettings: Record<string, unknown> | null;
 }
 
 /** Topics list response */
@@ -1039,6 +1041,22 @@ export interface TopicDigestSettingsUpdateResponse {
   topic: Topic;
 }
 
+/** Topic custom settings update request */
+export interface TopicCustomSettingsUpdateRequest {
+  personalization_tuning_v1?: {
+    prefBiasSamplingWeight?: number;
+    prefBiasTriageWeight?: number;
+    rankPrefWeight?: number;
+    feedbackWeightDelta?: number;
+  };
+}
+
+/** Topic custom settings update response */
+export interface TopicCustomSettingsUpdateResponse {
+  ok: true;
+  topic: Topic;
+}
+
 /**
  * Update a topic's digest settings.
  */
@@ -1048,6 +1066,21 @@ export async function patchTopicDigestSettings(
   signal?: AbortSignal,
 ): Promise<TopicDigestSettingsUpdateResponse> {
   return apiFetch<TopicDigestSettingsUpdateResponse>(`/topics/${id}/digest-settings`, {
+    method: "PATCH",
+    body: data,
+    signal,
+  });
+}
+
+/**
+ * Update a topic's custom settings (e.g., personalization tuning).
+ */
+export async function patchTopicCustomSettings(
+  id: string,
+  data: TopicCustomSettingsUpdateRequest,
+  signal?: AbortSignal,
+): Promise<TopicCustomSettingsUpdateResponse> {
+  return apiFetch<TopicCustomSettingsUpdateResponse>(`/topics/${id}/custom-settings`, {
     method: "PATCH",
     body: data,
     signal,

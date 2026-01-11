@@ -265,6 +265,10 @@
       "abtests": {
         "title": "AB Tests",
         "description": "Compare LLM configurations"
+      },
+      "tuning": {
+        "title": "Personalization Tuning",
+        "description": "Adjust how preferences affect content ranking"
       }
     },
     "run": {
@@ -517,6 +521,49 @@
         "medium": "Medium",
         "high": "High"
       }
+    },
+    "tuning": {
+      "title": "Personalization Tuning",
+      "description": "Fine-tune how your feedback influences content ranking. Changes apply per topic.",
+      "selectTopic": "Select Topic",
+      "selectTopicHint": "Choose a topic to configure its personalization settings",
+      "infoBox": "These settings control how your feedback (likes, saves, dislikes) influences content ranking. Higher values increase personalization strength. Changes take effect on the next pipeline run.",
+      "currentSettings": "Current Settings",
+      "resetToDefaults": "Reset to Defaults",
+      "save": "Save Settings",
+      "saving": "Saving...",
+      "saved": "Tuning settings saved",
+      "saveFailed": "Failed to save tuning settings",
+      "noTopics": "No topics found. Create a topic first to configure tuning.",
+      "prefBiasSamplingWeight": {
+        "label": "Sampling Preference Bias",
+        "description": "How much your preferences influence which items enter the candidate pool.",
+        "explanation": "Affects which items are selected for potential triage. Higher values favor items matching your preference profile.",
+        "tradeoffs": "Higher = more personalized but may miss diverse content. Lower = more exploration.",
+        "costImpact": "No additional LLM calls. Only changes selection order."
+      },
+      "prefBiasTriageWeight": {
+        "label": "Triage Preference Bias",
+        "description": "How much your preferences influence which items get AI analysis.",
+        "explanation": "Affects allocation of triage calls within exploration budget. Higher values prioritize preferred items for LLM scoring.",
+        "tradeoffs": "Higher = preferred items scored first. Lower = fairer distribution across sources.",
+        "costImpact": "Same number of LLM calls, just different ordering."
+      },
+      "rankPrefWeight": {
+        "label": "Ranking Preference Weight",
+        "description": "How heavily your preferences factor into final item scores.",
+        "explanation": "Directly affects the ranking formula. wPref controls how much positive/negative similarity impacts final score.",
+        "tradeoffs": "Higher = stronger echo chamber effect. Lower = more AI-driven scoring.",
+        "costImpact": "No additional cost. Applied during score calculation."
+      },
+      "feedbackWeightDelta": {
+        "label": "Feedback Learning Rate",
+        "description": "How quickly preferences adapt to your likes and dislikes.",
+        "explanation": "Each like/save adds this delta to source/author weights. Each dislike subtracts it.",
+        "tradeoffs": "Higher = faster adaptation but may overfit to recent feedback. Lower = more stable but slower to learn.",
+        "costImpact": "No additional cost. Applied when computing preferences."
+      },
+      "defaultsNote": "Default values are tuned for balanced personalization. Adjust carefully."
     }
   },
   "accessibility": {

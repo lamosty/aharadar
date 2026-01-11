@@ -85,6 +85,7 @@ import {
   patchAdminLlmSettings,
   patchAdminSource,
   patchPreferences,
+  patchTopicCustomSettings,
   patchTopicDigestSettings,
   pauseQueue,
   postAdminAbtest,
@@ -103,6 +104,8 @@ import {
   type SourcePatchRequest,
   type SourcePatchResponse,
   type SourcesListResponse,
+  type TopicCustomSettingsUpdateRequest,
+  type TopicCustomSettingsUpdateResponse,
   type TopicDetailResponse,
   type TopicDigestSettingsUpdateRequest,
   type TopicDigestSettingsUpdateResponse,
@@ -1079,6 +1082,32 @@ export function useUpdateTopicDigestSettings(
 
   return useMutation({
     mutationFn: (data) => patchTopicDigestSettings(topicId, data),
+    onSuccess: () => {
+      // Invalidate topic queries to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to update a topic's custom settings (e.g., personalization tuning).
+ */
+export function useUpdateTopicCustomSettings(
+  topicId: string,
+  options?: Omit<
+    UseMutationOptions<
+      TopicCustomSettingsUpdateResponse,
+      ApiError | NetworkError,
+      TopicCustomSettingsUpdateRequest
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => patchTopicCustomSettings(topicId, data),
     onSuccess: () => {
       // Invalidate topic queries to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
