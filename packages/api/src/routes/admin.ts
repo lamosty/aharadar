@@ -383,10 +383,17 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         enabledSourceCount,
       });
 
+      // Calculate actual expected LLM calls (accounting for batching)
+      // Batching divides total items by batch size
+      let expectedLlmCalls = digestPlan.triageMaxCalls;
+      if (llmSettings.triage_batch_enabled && llmSettings.triage_batch_size > 1) {
+        expectedLlmCalls = Math.ceil(digestPlan.triageMaxCalls / llmSettings.triage_batch_size);
+      }
+
       // Check quota
       const quotaCheck = checkQuotaForRun({
         provider: effectiveProvider,
-        expectedCalls: digestPlan.triageMaxCalls,
+        expectedCalls: expectedLlmCalls,
         claudeCallsPerHour: llmSettings.claude_calls_per_hour,
         codexCallsPerHour: llmSettings.codex_calls_per_hour,
       });

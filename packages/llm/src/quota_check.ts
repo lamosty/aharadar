@@ -36,7 +36,7 @@ export interface QuotaCheckResult {
  * Check if there's sufficient quota for a pipeline run.
  *
  * Returns ok: true for API providers (openai, anthropic) since they don't have hourly quotas.
- * For subscription providers, checks if remaining quota >= expected triage calls.
+ * For subscription providers, checks if remaining quota >= expected LLM calls.
  */
 export function checkQuotaForRun(params: QuotaCheckParams): QuotaCheckResult {
   const { provider, expectedCalls, claudeCallsPerHour = 100, codexCallsPerHour = 25 } = params;
@@ -70,7 +70,7 @@ export function checkQuotaForRun(params: QuotaCheckParams): QuotaCheckResult {
         ok: false,
         error:
           `Insufficient Claude quota for this run. ` +
-          `Expected ~${expectedCalls} triage calls but only ${remaining.calls} calls remaining this hour. ` +
+          `Expected ~${expectedCalls} LLM calls but only ${remaining.calls} calls remaining this hour. ` +
           `Wait for quota reset, reduce digest depth, or switch to API provider.`,
         remainingQuota: remaining.calls,
         expectedCalls,
@@ -101,7 +101,7 @@ export function checkQuotaForRun(params: QuotaCheckParams): QuotaCheckResult {
         ok: false,
         error:
           `Insufficient Codex quota for this run. ` +
-          `Expected ~${expectedCalls} triage calls but only ${remaining.calls} calls remaining this hour. ` +
+          `Expected ~${expectedCalls} LLM calls but only ${remaining.calls} calls remaining this hour. ` +
           `Wait for quota reset, reduce digest depth, or switch to API provider.`,
         remainingQuota: remaining.calls,
         expectedCalls,
