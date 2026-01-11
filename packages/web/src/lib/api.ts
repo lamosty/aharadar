@@ -1309,6 +1309,7 @@ export interface QueueJob {
 export interface QueueStatusResponse {
   ok: true;
   queue: {
+    isPaused: boolean;
     active: QueueJob[];
     waiting: QueueJob[];
     counts: {

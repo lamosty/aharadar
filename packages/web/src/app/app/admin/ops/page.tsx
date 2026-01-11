@@ -141,26 +141,32 @@ export default function AdminOpsPage() {
 
       {/* Queue Controls Section */}
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Queue Controls</h2>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Queue Controls</h2>
+          {queueData?.queue?.isPaused && <span className={styles.pausedBadge}>PAUSED</span>}
+        </div>
         <div className={styles.queueControls}>
-          <button
-            type="button"
-            className={styles.controlButton}
-            onClick={() => pauseMutation.mutate()}
-            disabled={isAnyMutating}
-          >
-            <PauseIcon />
-            <span>Pause</span>
-          </button>
-          <button
-            type="button"
-            className={styles.controlButton}
-            onClick={() => resumeMutation.mutate()}
-            disabled={isAnyMutating}
-          >
-            <PlayIcon />
-            <span>Resume</span>
-          </button>
+          {queueData?.queue?.isPaused ? (
+            <button
+              type="button"
+              className={`${styles.controlButton} ${styles.resumeButton}`}
+              onClick={() => resumeMutation.mutate()}
+              disabled={isAnyMutating}
+            >
+              <PlayIcon />
+              <span>Resume</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.controlButton}
+              onClick={() => pauseMutation.mutate()}
+              disabled={isAnyMutating}
+            >
+              <PauseIcon />
+              <span>Pause</span>
+            </button>
+          )}
           <button
             type="button"
             className={styles.controlButton}

@@ -1068,10 +1068,11 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
     const queue = getPipelineQueue();
 
-    // Get active and waiting jobs
-    const [activeJobs, waitingJobs] = await Promise.all([
+    // Get active and waiting jobs, and paused state
+    const [activeJobs, waitingJobs, isPaused] = await Promise.all([
       queue.getJobs(["active"]),
       queue.getJobs(["waiting", "delayed"]),
+      queue.isPaused(),
     ]);
 
     // Format job info
@@ -1095,6 +1096,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     return {
       ok: true,
       queue: {
+        isPaused,
         active: activeJobs.map(formatJob),
         waiting: waitingJobs.map(formatJob),
         counts: {
