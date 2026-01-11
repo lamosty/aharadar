@@ -6,6 +6,8 @@
  * Experimental feature - off by default via QA_ENABLED=false.
  */
 
+import type { LlmSettingsRow } from "@aharadar/db";
+import type { LlmRuntimeConfig } from "@aharadar/llm";
 import { computeCreditsStatus, handleAskQuestion } from "@aharadar/pipeline";
 import type { AskRequest, AskResponse } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
@@ -48,6 +50,22 @@ interface AskRequestBody {
     maxClusters?: number;
     /** Include verbose debug information in response */
     debug?: boolean;
+  };
+}
+
+function buildLlmRuntimeConfig(settings: LlmSettingsRow): LlmRuntimeConfig {
+  return {
+    provider: settings.provider,
+    anthropicModel: settings.anthropic_model,
+    openaiModel: settings.openai_model,
+    claudeSubscriptionEnabled: settings.claude_subscription_enabled,
+    claudeTriageThinking: settings.claude_triage_thinking,
+    claudeCallsPerHour: settings.claude_calls_per_hour,
+    codexSubscriptionEnabled: settings.codex_subscription_enabled,
+    codexCallsPerHour: settings.codex_calls_per_hour,
+    reasoningEffort: settings.reasoning_effort,
+    triageBatchEnabled: settings.triage_batch_enabled,
+    triageBatchSize: settings.triage_batch_size,
   };
 }
 
@@ -232,12 +250,16 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
         options,
       };
 
+      const llmSettings = await db.llmSettings.get();
+      const llmConfig = buildLlmRuntimeConfig(llmSettings);
+
       const response: AskResponse = await handleAskQuestion({
         db,
         request: askRequest,
         userId: ctx.userId,
         tier: "normal", // Use normal tier for Q&A
         topicName, // Pass topic name for debug info
+        llmConfig,
       });
 
       return {

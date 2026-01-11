@@ -11,7 +11,7 @@ export interface AbtestVariantConfig {
   name: string;
   provider: "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
   model: string;
-  reasoningEffort?: "low" | "medium" | "high" | null;
+  reasoningEffort?: "none" | "low" | "medium" | "high" | null;
   maxOutputTokens?: number;
 }
 
@@ -245,6 +245,17 @@ export async function runAbtestOnce(db: Db, params: RunAbtestParams): Promise<Ab
     let errorCount = 0;
 
     for (const variant of insertedVariants) {
+      const rawReasoningEffort = variant.reasoning_effort;
+      const normalizedReasoningEffort =
+        rawReasoningEffort === "none" ||
+        rawReasoningEffort === "low" ||
+        rawReasoningEffort === "medium" ||
+        rawReasoningEffort === "high"
+          ? rawReasoningEffort
+          : null;
+      // Treat null/undefined as "none" so reasoning can be explicitly disabled.
+      const reasoningEffortOverride = normalizedReasoningEffort ?? "none";
+
       // Build LLM config for this variant
       const llmConfig: LlmRuntimeConfig = {
         provider: variant.provider as LlmRuntimeConfig["provider"],
@@ -256,6 +267,7 @@ export async function runAbtestOnce(db: Db, params: RunAbtestParams): Promise<Ab
         claudeSubscriptionEnabled: variant.provider === "claude-subscription",
         claudeTriageThinking: false,
         claudeCallsPerHour: 1000, // High limit for AB tests
+        reasoningEffort: reasoningEffortOverride,
       };
 
       const router = createConfiguredLlmRouter(process.env, llmConfig);
@@ -280,6 +292,7 @@ export async function runAbtestOnce(db: Db, params: RunAbtestParams): Promise<Ab
               windowStart,
               windowEnd,
             },
+            reasoningEffortOverride,
           });
 
           results.push({

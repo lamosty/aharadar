@@ -22,7 +22,7 @@ export const RUN_ABTEST_JOB_NAME = "run_abtest";
  * Per-run LLM provider override for manual runs.
  */
 export interface ProviderOverride {
-  provider?: "openai" | "anthropic" | "claude-subscription";
+  provider?: "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
   model?: string;
 }
 
@@ -49,7 +49,7 @@ export interface AbtestVariantConfig {
   name: string;
   provider: "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
   model: string;
-  reasoningEffort?: "low" | "medium" | "high" | null;
+  reasoningEffort?: "none" | "low" | "medium" | "high" | null;
   maxOutputTokens?: number;
 }
 

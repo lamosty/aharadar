@@ -296,7 +296,12 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Validate providerOverride if provided
-    const validProviders = ["openai", "anthropic", "claude-subscription"] as const;
+    const validProviders = [
+      "openai",
+      "anthropic",
+      "claude-subscription",
+      "codex-subscription",
+    ] as const;
     let resolvedProviderOverride: ProviderOverride | undefined;
     if (providerOverride !== undefined) {
       if (typeof providerOverride !== "object" || providerOverride === null) {
@@ -1595,7 +1600,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       // Validate optional reasoningEffort
-      const validReasoningEfforts = ["low", "medium", "high", null, undefined];
+      const validReasoningEfforts = ["none", "low", "medium", "high", null, undefined];
       if (
         v.reasoningEffort !== undefined &&
         !validReasoningEfforts.includes(v.reasoningEffort as string | null)
@@ -1604,7 +1609,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           ok: false,
           error: {
             code: "INVALID_PARAM",
-            message: `variants[${i}].reasoningEffort must be one of: low, medium, high, or null`,
+            message: `variants[${i}].reasoningEffort must be one of: none, low, medium, high, or null`,
           },
         });
       }
@@ -1630,7 +1635,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         name: (v.name as string).trim(),
         provider: v.provider as AbtestProvider,
         model: (v.model as string).trim(),
-        reasoningEffort: (v.reasoningEffort as "low" | "medium" | "high" | null) ?? null,
+        reasoningEffort: (v.reasoningEffort as "none" | "low" | "medium" | "high" | null) ?? null,
         maxOutputTokens: v.maxOutputTokens as number | undefined,
       });
     }

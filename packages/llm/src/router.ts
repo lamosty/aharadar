@@ -30,6 +30,28 @@ export interface LlmRuntimeConfig {
   triageBatchSize?: number;
 }
 
+const TASKS: TaskType[] = ["triage", "deep_summary", "entity_extract", "signal_parse", "qa"];
+const TIERS: BudgetTier[] = ["low", "normal", "high"];
+
+function applyTaskModelOverrides(params: {
+  env: NodeJS.ProcessEnv;
+  prefix: string;
+  model: string;
+  includeTiered?: boolean;
+}): void {
+  const { env, prefix, model, includeTiered } = params;
+  for (const task of TASKS) {
+    const taskKey = `${prefix}_${task.toUpperCase()}_MODEL`;
+    env[taskKey] = model;
+    if (includeTiered) {
+      for (const tier of TIERS) {
+        const tierKey = `${taskKey}_${tier.toUpperCase()}`;
+        env[tierKey] = model;
+      }
+    }
+  }
+}
+
 function firstEnv(env: NodeJS.ProcessEnv, names: string[]): string | undefined {
   for (const name of names) {
     const value = env[name];
@@ -374,9 +396,35 @@ export function createConfiguredLlmRouter(
   }
   if (config.anthropicModel !== undefined) {
     effectiveEnv.ANTHROPIC_MODEL = config.anthropicModel;
+    applyTaskModelOverrides({
+      env: effectiveEnv,
+      prefix: "ANTHROPIC",
+      model: config.anthropicModel,
+      includeTiered: true,
+    });
+    effectiveEnv.CLAUDE_MODEL = config.anthropicModel;
+    applyTaskModelOverrides({
+      env: effectiveEnv,
+      prefix: "CLAUDE",
+      model: config.anthropicModel,
+      includeTiered: false,
+    });
   }
   if (config.openaiModel !== undefined) {
     effectiveEnv.OPENAI_MODEL = config.openaiModel;
+    applyTaskModelOverrides({
+      env: effectiveEnv,
+      prefix: "OPENAI",
+      model: config.openaiModel,
+      includeTiered: true,
+    });
+    effectiveEnv.CODEX_MODEL = config.openaiModel;
+    applyTaskModelOverrides({
+      env: effectiveEnv,
+      prefix: "CODEX",
+      model: config.openaiModel,
+      includeTiered: false,
+    });
   }
   if (config.codexSubscriptionEnabled !== undefined) {
     effectiveEnv.CODEX_USE_SUBSCRIPTION = config.codexSubscriptionEnabled ? "true" : "false";

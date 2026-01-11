@@ -1444,7 +1444,7 @@ export async function getEmergencyStopStatus(
 export type AbtestRunStatus = "pending" | "running" | "completed" | "failed";
 
 /** AB test reasoning effort */
-export type AbtestReasoningEffort = "low" | "medium" | "high" | null;
+export type AbtestReasoningEffort = "none" | "low" | "medium" | "high" | null;
 
 /** AB test variant configuration (for creating runs) */
 export interface AbtestVariantConfig {

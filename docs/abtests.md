@@ -29,7 +29,7 @@ An `abtest_variant` is one LLM configuration to test. Each run has 2+ variants (
 Fields:
 - `provider` — LLM provider (anthropic, openai, xai, google, etc.)
 - `model` — model identifier
-- `reasoning_effort` — optional (low, medium, high) for models that support it
+- `reasoning_effort` — optional (`none|low|medium|high`) for models that support it; `none` disables reasoning
 - `max_output_tokens` — token limit for response
 - `order` — display ordering (1, 2, 3, ...)
 

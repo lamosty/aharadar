@@ -6,7 +6,7 @@
  *   pnpm dev:cli -- ask "What would Buffett think?" --topic default --max-clusters 10
  */
 
-import { createDb } from "@aharadar/db";
+import { createDb, type LlmSettingsRow } from "@aharadar/db";
 import { handleAskQuestion } from "@aharadar/pipeline";
 import { loadRuntimeEnv } from "@aharadar/shared";
 
@@ -17,6 +17,22 @@ type AskArgs = {
   topic: string | null;
   maxClusters: number;
 };
+
+function buildLlmRuntimeConfig(settings: LlmSettingsRow) {
+  return {
+    provider: settings.provider,
+    anthropicModel: settings.anthropic_model,
+    openaiModel: settings.openai_model,
+    claudeSubscriptionEnabled: settings.claude_subscription_enabled,
+    claudeTriageThinking: settings.claude_triage_thinking,
+    claudeCallsPerHour: settings.claude_calls_per_hour,
+    codexSubscriptionEnabled: settings.codex_subscription_enabled,
+    codexCallsPerHour: settings.codex_calls_per_hour,
+    reasoningEffort: settings.reasoning_effort,
+    triageBatchEnabled: settings.triage_batch_enabled,
+    triageBatchSize: settings.triage_batch_size,
+  };
+}
 
 function parseAskArgs(args: string[]): AskArgs {
   let topic: string | null = null;
@@ -110,6 +126,9 @@ export async function askCommand(args: string[] = []): Promise<void> {
     console.log(`   Max clusters: ${parsed.maxClusters}\n`);
 
     const startTime = Date.now();
+    const llmSettings = await db.llmSettings.get();
+    const llmConfig = buildLlmRuntimeConfig(llmSettings);
+
     const response = await handleAskQuestion({
       db,
       request: {
@@ -119,6 +138,7 @@ export async function askCommand(args: string[] = []): Promise<void> {
       },
       userId: user.id,
       tier: "normal",
+      llmConfig,
     });
     const elapsed = Date.now() - startTime;
 

@@ -106,7 +106,10 @@ async function handleRunWindowJob(
         providerOverride.provider === "claude-subscription"
       ) {
         llmConfig.anthropicModel = providerOverride.model;
-      } else if (providerOverride.provider === "openai") {
+      } else if (
+        providerOverride.provider === "openai" ||
+        providerOverride.provider === "codex-subscription"
+      ) {
         llmConfig.openaiModel = providerOverride.model;
       }
     }
