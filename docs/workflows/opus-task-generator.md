@@ -3,7 +3,9 @@
 This repo uses a three-role workflow:
 
 - **Driver (human)**: runs commands, chooses tradeoffs
-- **Task generator (GPT‑5.2 xtra high)**: writes/updates Opus task specs under `docs/_session/tasks/`
+- **Task generator (GPT‑5.2 xtra high)**: writes/updates Opus task specs under `docs/tasks/`
+  - **Use git to commit** after updating task specs/docs (one docs-only commit before Opus runs)
+  - **Use subagents** to save context (spawn Task agents for exploration/implementation)
 - **Implementer (Claude Code Opus 4.5)**: executes one task spec per commit
 
 This document defines a required “Driver Q&A gate” step for the task generator so we don’t go down the wrong path.

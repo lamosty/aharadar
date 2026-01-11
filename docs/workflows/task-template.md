@@ -1,6 +1,6 @@
 # Task template (for Opus implementer)
 
-Copy/paste this template into a new section in `docs/_session/opus-worklist.md` (or a standalone `_session` doc) for each commit-sized task.
+Copy/paste this template into a new section in `docs/tasks/opus-worklist.md` (or a standalone `_session` doc) for each commit-sized task.
 
 ---
 
@@ -71,17 +71,17 @@ Commit instructions:
 
 After committing, write a short task report to:
 
-- `docs/_session/results/latest.md` (overwrite each task)
+- `docs/tasks/results/latest.md` (overwrite each task)
 
 If you execute multiple tasks back-to-back, also write a single end-of-run recap to:
 
-- `docs/_session/results/final-recap.md` (overwrite once at the end)
+- `docs/tasks/results/final-recap.md` (overwrite once at the end)
 
 Then print only the file path(s) you wrote (so the driver can open them), e.g.:
 
 ```text
-WROTE REPORT: docs/_session/results/latest.md
-WROTE FINAL RECAP: docs/_session/results/final-recap.md
+WROTE REPORT: docs/tasks/results/latest.md
+WROTE FINAL RECAP: docs/tasks/results/final-recap.md
 ```
 
 `latest.md` format:

@@ -11,7 +11,7 @@ You are an AI coding agent working in this repository.
 - Read this file fully.
 - Read the relevant spec/contract docs first (see **Where to read (minimal)** below).
 - Confirm behavior against `docs/*` (or update the docs first if you are changing a contract).
-- If present, read the latest handoff recap in `docs/sessions/recaps/` before starting work.
+- If present, read the latest handoff recap in `docs/recaps/` before starting work.
 
 **If you are generating Opus tasks (planning mode)**
 
@@ -56,8 +56,8 @@ This enables parallelism: while Opus implements the current batch, the task gene
   - Include **copy/paste-ready commands** to create the commit (so humans can split work into multiple clean commits):
     - `git add <files...>`
     - `git commit -m "<type(scope)>: <message>"` (and optional extra `-m` lines for body)
-- If chat context is running low (or the session was long), write a handoff recap to `docs/sessions/recaps/` using `docs/sessions/template.md` and **commit it**. Never include secrets (API keys, tokens, full `.env` values).
-  - Naming: `docs/sessions/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
+- If chat context is running low (or the session was long), write a handoff recap to `docs/recaps/` and **commit it**. Never include secrets (API keys, tokens, full `.env` values).
+  - Naming: `docs/recaps/recap-YYYY-MM-DDTHHMMZ-<slug>.md`
 
 ## Fast context (TL;DR)
 

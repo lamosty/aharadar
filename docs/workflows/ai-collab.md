@@ -12,8 +12,8 @@ This workflow is designed to maximize speed **without** losing correctness.
 
 - **Source of truth contracts**: `docs/*` + `docs/adr/*`
 - **Collaboration flow + templates**: `docs/workflows/*`
-- **Current active work orders** (ephemeral but committed for continuity): `docs/_session/*`
-  - Current worklist: `docs/_session/opus-worklist.md`
+- **Task specs** (active work orders): `docs/tasks/`
+- **Session recaps**: `docs/recaps/`
 
 ## Non‑negotiables (must hold for every change)
 
@@ -41,7 +41,7 @@ If the change affects contracts, write/update docs/ADRs **first** and commit the
 Use:
 
 - `docs/workflows/task-template.md` (copy/paste)
-- `docs/_session/opus-worklist.md` (queue tasks)
+- Task specs in `docs/tasks/` (queue tasks)
 
 #### 1a) Driver Q&A gate (required when generating a batch of tasks)
 
@@ -70,7 +70,7 @@ Rules for Opus:
   - Subagents may propose code or even edit files, but they often **won’t** follow repo-specific git/reporting rituals.
   - The **top-level Opus run remains responsible** for:
     - staging + committing (one task → one commit)
-    - writing the required report files under `docs/_session/results/`
+    - writing the required report files under `docs/tasks/results/`
   - If a subagent suggests running git commands, ignore that and do it in the main loop.
 
 ### 3) Opus runs checks + smoke test
@@ -87,14 +87,14 @@ Plus a task-specific CLI smoke test (e.g., `pnpm dev:cli -- admin:run-now ...`).
 
 To minimize driver effort and avoid scrolling terminal output, Opus must write reports to:
 
-- `docs/_session/results/latest.md` — overwritten after each task/commit
-- `docs/_session/results/final-recap.md` — written once at the end of a multi-task run (optional)
+- `docs/tasks/results/latest.md` — overwritten after each task/commit
+- `docs/tasks/results/final-recap.md` — written once at the end of a multi-task run (optional)
 
 After writing, Opus should print only the path(s), e.g.:
 
 ```text
-WROTE REPORT: docs/_session/results/latest.md
-WROTE FINAL RECAP: docs/_session/results/final-recap.md
+WROTE REPORT: docs/tasks/results/latest.md
+WROTE FINAL RECAP: docs/tasks/results/final-recap.md
 ```
 
 The report formats are defined in `docs/workflows/task-template.md`.

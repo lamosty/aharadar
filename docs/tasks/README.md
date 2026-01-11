@@ -5,7 +5,7 @@ This directory contains **copy/paste-ready task specs** for Claude Code Opus 4.5
 Start here:
 
 - Workflow: `docs/workflows/ai-collab.md`
-- Worklist: `docs/_session/opus-worklist.md`
+- Task results: `docs/tasks/results/latest.md`
 - Task specs in this directory are the canonical source of truth for Opus execution.
 
 Task files (in recommended order):
