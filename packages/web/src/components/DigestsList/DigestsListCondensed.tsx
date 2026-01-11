@@ -48,8 +48,8 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
   return labels[mode];
 }
 
-function formatScore(score: number | null): string {
-  if (score === null) return "—";
+function formatScore(score: number | null | undefined): string {
+  if (score == null) return "—";
   return score.toFixed(2);
 }
 
