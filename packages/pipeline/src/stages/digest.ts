@@ -362,9 +362,12 @@ async function triageCandidates(params: {
   // Take only up to maxCalls candidates (this is the allocation limit)
   const candidatesToTriage = params.candidates.slice(0, params.maxCalls);
 
-  // Check if batching is enabled (default: true)
-  const batchEnabled = process.env.TRIAGE_BATCH_ENABLED !== "false";
-  const batchSize = parseInt(process.env.TRIAGE_BATCH_SIZE ?? "", 10) || TRIAGE_BATCH_SIZE;
+  // Check if batching is enabled: llmConfig > env > default (true)
+  const batchEnabled =
+    params.llmConfig?.triageBatchEnabled ?? process.env.TRIAGE_BATCH_ENABLED !== "false";
+  const batchSize =
+    params.llmConfig?.triageBatchSize ??
+    (parseInt(process.env.TRIAGE_BATCH_SIZE ?? "", 10) || TRIAGE_BATCH_SIZE);
   const maxChars = parseInt(process.env.TRIAGE_BATCH_MAX_CHARS ?? "", 10) || TRIAGE_BATCH_MAX_CHARS;
 
   if (!batchEnabled) {
