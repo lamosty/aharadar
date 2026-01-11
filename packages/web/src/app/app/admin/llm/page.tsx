@@ -37,6 +37,8 @@ export default function AdminLlmPage() {
   const [claudeCallsPerHour, setClaudeCallsPerHour] = useState(100);
   const [codexCallsPerHour, setCodexCallsPerHour] = useState(25);
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("none");
+  const [triageBatchEnabled, setTriageBatchEnabled] = useState(true);
+  const [triageBatchSize, setTriageBatchSize] = useState(15);
 
   // Sync form state when data loads
   useEffect(() => {
@@ -47,6 +49,8 @@ export default function AdminLlmPage() {
       setClaudeCallsPerHour(settings.claudeCallsPerHour);
       setCodexCallsPerHour(settings.codexCallsPerHour);
       setReasoningEffort(settings.reasoningEffort);
+      setTriageBatchEnabled(settings.triageBatchEnabled);
+      setTriageBatchSize(settings.triageBatchSize);
     }
   }, [settings]);
 
@@ -72,6 +76,8 @@ export default function AdminLlmPage() {
       codexSubscriptionEnabled: provider === "codex-subscription",
       codexCallsPerHour,
       reasoningEffort,
+      triageBatchEnabled,
+      triageBatchSize,
     });
   };
 
@@ -83,7 +89,9 @@ export default function AdminLlmPage() {
       openaiModel !== settings.openaiModel ||
       claudeCallsPerHour !== settings.claudeCallsPerHour ||
       codexCallsPerHour !== settings.codexCallsPerHour ||
-      reasoningEffort !== settings.reasoningEffort);
+      reasoningEffort !== settings.reasoningEffort ||
+      triageBatchEnabled !== settings.triageBatchEnabled ||
+      triageBatchSize !== settings.triageBatchSize);
 
   if (isLoading) {
     return (
@@ -253,6 +261,44 @@ export default function AdminLlmPage() {
             </div>
           </div>
         )}
+
+        {/* Batch Triage Settings */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t("admin.llm.batchTriage")}</h2>
+          <p className={styles.sectionDescription}>{t("admin.llm.batchTriageDescription")}</p>
+
+          <div className={styles.formGroup}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={triageBatchEnabled}
+                onChange={(e) => setTriageBatchEnabled(e.target.checked)}
+                className={styles.checkbox}
+                disabled={isSaving}
+              />
+              <span>{t("admin.llm.batchTriageEnabled")}</span>
+            </label>
+          </div>
+
+          {triageBatchEnabled && (
+            <div className={styles.formGroup}>
+              <label htmlFor="batchSize" className={styles.label}>
+                {t("admin.llm.batchSizeLabel")}
+              </label>
+              <input
+                id="batchSize"
+                type="number"
+                min="1"
+                max="50"
+                value={triageBatchSize}
+                onChange={(e) => setTriageBatchSize(Number(e.target.value))}
+                className={styles.input}
+                disabled={isSaving}
+              />
+              <p className={styles.hint}>{t("admin.llm.batchSizeHint")}</p>
+            </div>
+          )}
+        </div>
 
         {/* Subscription Info & Rate Limit - only for subscription providers */}
         {isSubscriptionProvider(provider) && (

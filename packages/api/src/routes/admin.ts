@@ -779,6 +779,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         codexSubscriptionEnabled: settings.codex_subscription_enabled,
         codexCallsPerHour: settings.codex_calls_per_hour,
         reasoningEffort: settings.reasoning_effort,
+        triageBatchEnabled: settings.triage_batch_enabled,
+        triageBatchSize: settings.triage_batch_size,
         updatedAt: settings.updated_at,
       },
     };
@@ -858,6 +860,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       codexSubscriptionEnabled,
       codexCallsPerHour,
       reasoningEffort,
+      triageBatchEnabled,
+      triageBatchSize,
     } = body as Record<string, unknown>;
 
     // Validate provider if provided
@@ -978,6 +982,34 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    // Validate batch triage settings
+    if (triageBatchEnabled !== undefined && typeof triageBatchEnabled !== "boolean") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "triageBatchEnabled must be a boolean",
+        },
+      });
+    }
+
+    if (triageBatchSize !== undefined) {
+      if (
+        typeof triageBatchSize !== "number" ||
+        !Number.isInteger(triageBatchSize) ||
+        triageBatchSize < 1 ||
+        triageBatchSize > 50
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "triageBatchSize must be an integer between 1 and 50",
+          },
+        });
+      }
+    }
+
     // Build update params
     const updateParams: LlmSettingsUpdate = {};
     if (provider !== undefined) updateParams.provider = provider as LlmProvider;
@@ -995,6 +1027,9 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       updateParams.codex_calls_per_hour = codexCallsPerHour as number;
     if (reasoningEffort !== undefined)
       updateParams.reasoning_effort = reasoningEffort as ReasoningEffort;
+    if (triageBatchEnabled !== undefined)
+      updateParams.triage_batch_enabled = triageBatchEnabled as boolean;
+    if (triageBatchSize !== undefined) updateParams.triage_batch_size = triageBatchSize as number;
 
     const db = getDb();
     const settings = await db.llmSettings.update(updateParams);
@@ -1011,6 +1046,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         codexSubscriptionEnabled: settings.codex_subscription_enabled,
         codexCallsPerHour: settings.codex_calls_per_hour,
         reasoningEffort: settings.reasoning_effort,
+        triageBatchEnabled: settings.triage_batch_enabled,
+        triageBatchSize: settings.triage_batch_size,
         updatedAt: settings.updated_at,
       },
     };

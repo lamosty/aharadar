@@ -26,6 +26,8 @@ export interface LlmRuntimeConfig {
   codexSubscriptionEnabled?: boolean;
   codexCallsPerHour?: number;
   reasoningEffort?: ReasoningEffort;
+  triageBatchEnabled?: boolean;
+  triageBatchSize?: number;
 }
 
 function firstEnv(env: NodeJS.ProcessEnv, names: string[]): string | undefined {
@@ -386,6 +388,12 @@ export function createConfiguredLlmRouter(
     // Set reasoning effort for all LLM tasks (triage, deep_summary, etc.)
     effectiveEnv.OPENAI_TRIAGE_REASONING_EFFORT = config.reasoningEffort;
     effectiveEnv.OPENAI_DEEP_SUMMARY_REASONING_EFFORT = config.reasoningEffort;
+  }
+  if (config.triageBatchEnabled !== undefined) {
+    effectiveEnv.TRIAGE_BATCH_ENABLED = config.triageBatchEnabled ? "true" : "false";
+  }
+  if (config.triageBatchSize !== undefined) {
+    effectiveEnv.TRIAGE_BATCH_SIZE = String(config.triageBatchSize);
   }
 
   return createEnvLlmRouter(effectiveEnv);

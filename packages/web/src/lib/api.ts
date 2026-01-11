@@ -793,6 +793,8 @@ export interface LlmSettings {
   codexSubscriptionEnabled: boolean;
   codexCallsPerHour: number;
   reasoningEffort: ReasoningEffort;
+  triageBatchEnabled: boolean;
+  triageBatchSize: number;
   updatedAt: string;
 }
 
@@ -813,6 +815,8 @@ export interface LlmSettingsUpdateRequest {
   codexSubscriptionEnabled?: boolean;
   codexCallsPerHour?: number;
   reasoningEffort?: ReasoningEffort;
+  triageBatchEnabled?: boolean;
+  triageBatchSize?: number;
 }
 
 /**

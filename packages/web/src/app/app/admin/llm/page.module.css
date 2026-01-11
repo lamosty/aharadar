@@ -235,6 +235,28 @@
   cursor: not-allowed;
 }
 
+/* Checkbox */
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Toggle */
 .toggle {
   margin-top: var(--space-4);

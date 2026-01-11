@@ -414,7 +414,12 @@
         "medium": "Medium - 2000 tokens",
         "high": "High - 4000 tokens"
       },
-      "reasoningTokenNote": "Higher reasoning effort requires more output tokens. Token budget is automatically adjusted based on this setting. Use 'None' for budget-friendly non-reasoning models."
+      "reasoningTokenNote": "Higher reasoning effort requires more output tokens. Token budget is automatically adjusted based on this setting. Use 'None' for budget-friendly non-reasoning models.",
+      "batchTriage": "Batch Triage",
+      "batchTriageDescription": "Process multiple items in a single API call to reduce costs (10-15x fewer calls).",
+      "batchTriageEnabled": "Enable batch triage processing",
+      "batchSizeLabel": "Batch size (items per call)",
+      "batchSizeHint": "Default: 15. Higher values reduce API calls but may hit token limits."
     },
     "ops": {
       "title": "Operations",
