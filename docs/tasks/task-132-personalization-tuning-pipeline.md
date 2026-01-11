@@ -13,7 +13,7 @@ Improve personalization **without increasing LLM call volume** by:
 - Increasing personalization impact in ranking (configurable `wPref`)
 - Speeding up source/author preference learning (configurable `feedbackWeightDelta`)
 
-All behavior must be **configurable per user** (via `user_preferences.custom_settings`) with safe defaults.
+All behavior must be **configurable per topic** (via `topics.custom_settings`) with safe defaults.
 
 ## Read first (required)
 
@@ -27,7 +27,8 @@ All behavior must be **configurable per user** (via `user_preferences.custom_set
   - `packages/pipeline/src/lib/triage_allocation.ts`
   - `packages/pipeline/src/stages/rank.ts`
   - `packages/db/src/repos/feedback_events.ts`
-  - `packages/db/src/repos/user_preferences.ts`
+  - `packages/db/src/repos/topics.ts`
+  - `packages/db/migrations/*` (topics custom_settings)
 
 ## Scope (allowed files)
 
@@ -36,21 +37,21 @@ All behavior must be **configurable per user** (via `user_preferences.custom_set
 - `packages/pipeline/src/lib/triage_allocation.ts`
 - `packages/pipeline/src/stages/rank.ts`
 - `packages/db/src/repos/feedback_events.ts`
-- `packages/db/src/db.ts` (if you need to expose user preferences repo)
+- `packages/db/migrations/0021_topics_custom_settings.sql` (new)
+- `packages/db/src/repos/topics.ts`
+- `packages/db/src/db.ts` (if you need to expose new topic fields)
 - `packages/shared/src/types/*` (new tuning types/helpers)
 - `packages/shared/src/index.ts` (export new types)
 - Tests:
   - `packages/pipeline/src/stages/digest.int.test.ts`
   - `packages/pipeline/src/stages/rank.test.ts`
 
-If you need UI/API/schema changes, **stop and ask** (that’s Task 133).
+If you need UI changes, **stop and ask** (that’s Task 133). Schema changes for topic custom_settings are in scope.
 
-## Decisions (pending driver input)
-
-Confirm these before implementation (see Driver Q&A gate):
+## Decisions (approved)
 
 1. **Where to store tuning settings** in `custom_settings`:
-   - Proposal: `custom_settings.personalization_tuning_v1` (object)
+   - Use `topics.custom_settings.personalization_tuning_v1` (object)
 2. **Default values** (should change behavior by default):
    - `prefBiasSamplingWeight` (sampling bias): **0.15**
    - `prefBiasTriageWeight` (triage bias): **0.20**
@@ -61,18 +62,23 @@ Confirm these before implementation (see Driver Q&A gate):
    - `prefBiasTriageWeight`: 0.0–0.5
    - `rankPrefWeight`: 0.0–0.5
    - `feedbackWeightDelta`: 0.0–0.2
+4. **Scope**:
+   - Per‑topic (stored in `topics.custom_settings`)
 
 ## Implementation requirements
 
-### 1) Tuning schema + parsing (required)
+### 1) Topic custom_settings + tuning schema (required)
 
-Create a shared tuning type + parser (clamp + defaults):
+Add topic-scoped storage and a shared tuning type + parser (clamp + defaults):
 
+- Add a migration to extend `topics` with:
+  - `custom_settings JSONB NOT NULL DEFAULT '{}'::jsonb`
+- Update `packages/db/src/repos/topics.ts` to read/write `custom_settings`
 - New type in `packages/shared/src/types/*` (e.g. `personalization_tuning.ts`):
   - `PersonalizationTuningV1` with a `schema_version` (string literal) and numeric fields
   - `PersonalizationTuningResolved` (post-parse, all fields filled)
 - Add a helper `parsePersonalizationTuning(raw: unknown): PersonalizationTuningResolved`
-  - Accepts `custom_settings.personalization_tuning_v1` if present
+  - Accepts `topics.custom_settings.personalization_tuning_v1` if present
   - Falls back to **defaults** when missing/invalid
   - Clamps values to the approved ranges
 
@@ -120,9 +126,9 @@ Exploration guarantees **must remain** (minimum per source/type), only ordering 
 
 In `packages/pipeline/src/stages/digest.ts`:
 
-- Load user preferences and parse tuning:
-  - Use `createUserPreferencesRepo(db)` (or add repo to db context) and `getOrCreate(userId)`
-  - Read `custom_settings` and parse with `parsePersonalizationTuning`
+- Load topic settings and parse tuning:
+  - Fetch the topic row (already done for decay hours) and read `custom_settings`
+  - Parse with `parsePersonalizationTuning`
 - Pass `weights: { wPref: tuning.rankPrefWeight }` into `rankCandidates`
 - Pass `feedbackWeightDelta` into `feedbackEvents.computeUserPreferences` (see below)
 
@@ -144,14 +150,14 @@ Add a compact log line in digest run summarizing effective tuning values so we c
   - Add unit tests for `allocateTriageCalls` showing preference bias changes ordering
 - `packages/pipeline/src/stages/rank.test.ts`:
   - Add test that `wPref` override affects score as expected
-- Ensure existing tests pass without schema changes
+- Ensure existing tests pass (including new migration)
 
 ## Acceptance criteria
 
 - [ ] No additional LLM calls are introduced (same triage budget as before)
 - [ ] When tuning weights are unset, behavior matches current defaults
 - [ ] Preference bias reorders candidates but **does not** remove exploration coverage
-- [ ] `wPref` and `feedbackWeightDelta` can be overridden via custom settings
+- [ ] `wPref` and `feedbackWeightDelta` can be overridden via topic custom settings
 - [ ] All tests pass: `pnpm -r typecheck` and `pnpm test`
 
 ## Test plan (copy/paste)
@@ -170,6 +176,8 @@ pnpm test
   - `packages/pipeline/src/lib/triage_allocation.ts`
   - `packages/pipeline/src/stages/rank.ts`
   - `packages/db/src/repos/feedback_events.ts`
+  - `packages/db/migrations/0021_topics_custom_settings.sql`
+  - `packages/db/src/repos/topics.ts`
   - `packages/shared/src/types/*`
   - `packages/shared/src/index.ts`
   - `packages/pipeline/src/stages/digest.int.test.ts`

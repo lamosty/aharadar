@@ -10,7 +10,7 @@ Expose **personalization tuning controls** in the Admin UI so the driver can exp
 
 The UI must:
 
-- Read/write `user_preferences.custom_settings`
+- Read/write `topics.custom_settings` (per topic)
 - Provide **heavy explanation** and safety notes for each control
 - Preserve unknown keys in `custom_settings` (no destructive overwrite)
 - Offer a **Reset to defaults** button
@@ -24,7 +24,7 @@ This task does **not** implement A/B tests (explicitly deferred).
 - `docs/pipeline.md`
 - `docs/data-model.md`
 - Code:
-  - `packages/api/src/routes/preferences.ts`
+  - `packages/api/src/routes/topics.ts`
   - `packages/web/src/app/app/admin/page.tsx`
   - `packages/web/src/lib/api.ts`
   - `packages/web/src/lib/hooks.ts`
@@ -32,7 +32,7 @@ This task does **not** implement A/B tests (explicitly deferred).
 ## Scope (allowed files)
 
 - API:
-  - `packages/api/src/routes/preferences.ts`
+  - `packages/api/src/routes/topics.ts`
 - Shared types:
   - `packages/shared/src/types/*`
   - `packages/shared/src/index.ts`
@@ -45,14 +45,15 @@ This task does **not** implement A/B tests (explicitly deferred).
   - `packages/web/src/lib/hooks.ts`
   - `packages/web/src/messages/en.json`
 
-If you need new endpoints or schema changes, **stop and ask**.
+Depends on Task 132 (topic custom_settings + parser). If you need additional schema changes beyond Task 132, **stop and ask**.
 
-## Decisions (pending driver input)
+## Decisions (approved)
 
 Use the same decisions from Task 132:
 
-- Custom settings key (proposed `custom_settings.personalization_tuning_v1`)
-- Defaults + clamp ranges
+- Custom settings key: `topics.custom_settings.personalization_tuning_v1`
+- Defaults + clamp ranges: approved (see Task 132)
+- Scope: per‑topic
 
 ## Implementation requirements
 
@@ -62,9 +63,10 @@ Use the same `PersonalizationTuningV1` and parser from Task 132. Do **not** dupl
 
 ### 2) API validation + merge (required)
 
-In `packages/api/src/routes/preferences.ts`:
+In `packages/api/src/routes/topics.ts`:
 
-- Accept `customSettings` in PATCH as before, but **validate and clamp**
+- Add support for updating topic `custom_settings` (either extend `PATCH /topics/:id` or add `/topics/:id/tuning`).
+- Accept `customSettings` in PATCH, but **validate and clamp**
   `custom_settings.personalization_tuning_v1` if present.
 - Do **not** discard unknown keys. Merge by:
   - `nextCustomSettings = { ...existing, ...incoming, personalization_tuning_v1: parsed }`
@@ -75,6 +77,7 @@ In `packages/api/src/routes/preferences.ts`:
 Create `/app/admin/tuning` page with:
 
 - “Back to Admin” link
+- Topic selector (dropdown), default to first topic if none selected
 - Summary of current effective tuning values (resolved)
 - Sliders or number inputs for:
   - `prefBiasSamplingWeight` (0–0.5)
@@ -92,8 +95,8 @@ Use existing Admin layout styles (do not introduce new design language).
 
 ### 4) Wire data flow (required)
 
-- Use `usePreferences()` to load preferences
-- Use `useUpdatePreferences()` to PATCH custom settings
+- Use `useTopics()` to load topics and select a current topic (default to first)
+- Add a `useUpdateTopic()` (or extend existing topic mutations) to PATCH custom settings
 - Preserve other custom settings keys on save
 - Use `PersonalizationTuningResolved` from the shared parser for display
 
@@ -136,7 +139,7 @@ pnpm dev
 
 - **Message**: `feat(web): admin personalization tuning controls`
 - **Files expected**:
-  - `packages/api/src/routes/preferences.ts`
+  - `packages/api/src/routes/topics.ts`
   - `packages/web/src/app/app/admin/page.tsx`
   - `packages/web/src/app/app/admin/page.module.css`
   - `packages/web/src/app/app/admin/tuning/page.tsx`
