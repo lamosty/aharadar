@@ -1,11 +1,26 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
-import { generateMarketId, type PolymarketRawMarket, parseProbability, parseVolume } from "./fetch";
+import {
+  generateMarketId,
+  type PolymarketCandidate,
+  type PolymarketRawMarket,
+  parseProbability,
+  parseVolume,
+} from "./fetch";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
   return {};
+}
+
+/**
+ * Type guard to check if raw is a PolymarketCandidate
+ */
+function isPolymarketCandidate(raw: unknown): raw is PolymarketCandidate {
+  return (
+    raw !== null && typeof raw === "object" && "market" in raw && "isNew" in raw && "isSpike" in raw
+  );
 }
 
 /**
@@ -34,16 +49,39 @@ function calculateDaysToResolution(endDateIso: string): number | null {
 
 /**
  * Generate a descriptive title for the market
- * Format: "{Question} - {X}%" or "{Question} - Now {X}% ({change} 24h)"
+ * Format:
+ *   - New market: "{Question} - {X}%"
+ *   - Spike (prob): "{Question} - {X}% ({+/-N}pp)"
+ *   - Spike (volume): "{Question} - {X}% (vol +N%)"
+ *   - Spike (both): "{Question} - {X}% ({+/-N}pp, vol +N%)"
  */
-function generateTitle(market: PolymarketRawMarket, probChange: number | null): string {
+function generateTitle(
+  market: PolymarketRawMarket,
+  isSpike: boolean,
+  spikeReason: "probability" | "volume" | "both" | null,
+  probChangePP: number | null,
+  volChangePct: number | null,
+): string {
   const probability =
     market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) * 100 : 0;
   const probStr = probability.toFixed(0);
 
-  if (probChange !== null && Math.abs(probChange) >= 5) {
-    const direction = probChange > 0 ? "+" : "";
-    return `${market.question} - ${probStr}% (${direction}${probChange.toFixed(0)}pp)`;
+  if (isSpike && spikeReason) {
+    const parts: string[] = [];
+
+    if ((spikeReason === "probability" || spikeReason === "both") && probChangePP !== null) {
+      const direction = probChangePP > 0 ? "+" : "";
+      parts.push(`${direction}${probChangePP.toFixed(0)}pp`);
+    }
+
+    if ((spikeReason === "volume" || spikeReason === "both") && volChangePct !== null) {
+      const direction = volChangePct > 0 ? "+" : "";
+      parts.push(`vol ${direction}${volChangePct.toFixed(0)}%`);
+    }
+
+    if (parts.length > 0) {
+      return `${market.question} - ${probStr}% (${parts.join(", ")})`;
+    }
   }
 
   return `${market.question} - ${probStr}%`;
@@ -52,7 +90,15 @@ function generateTitle(market: PolymarketRawMarket, probChange: number | null): 
 /**
  * Generate body text with market details
  */
-function generateBodyText(market: PolymarketRawMarket, probChange: number | null): string {
+function generateBodyText(
+  market: PolymarketRawMarket,
+  isNew: boolean,
+  isSpike: boolean,
+  spikeReason: "probability" | "volume" | "both" | null,
+  probChangePP: number | null,
+  volChangePct: number | null,
+  volChangeAbs: number | null,
+): string {
   const probability =
     market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) * 100 : 0;
   const volume = parseVolume(market.volume);
@@ -68,11 +114,30 @@ function generateBodyText(market: PolymarketRawMarket, probChange: number | null
     if (market.description.length > 500) body += "...";
   }
 
+  // Add spike context at the top if applicable
+  if (isSpike && spikeReason) {
+    body += `\n\n**Spike Alert**:`;
+    if (spikeReason === "probability" || spikeReason === "both") {
+      const direction = (probChangePP ?? 0) > 0 ? "+" : "";
+      body += ` Probability moved ${direction}${(probChangePP ?? 0).toFixed(1)}pp`;
+    }
+    if (spikeReason === "volume" || spikeReason === "both") {
+      const direction = (volChangePct ?? 0) > 0 ? "+" : "";
+      const volAbsStr = volChangeAbs !== null ? ` (${formatVolume(Math.abs(volChangeAbs))})` : "";
+      if (spikeReason === "both") {
+        body += ` |`;
+      }
+      body += ` 24h volume ${direction}${(volChangePct ?? 0).toFixed(0)}%${volAbsStr}`;
+    }
+  } else if (isNew) {
+    body += `\n\n**New Market**`;
+  }
+
   body += `\n\nCurrent Probability: ${probability.toFixed(1)}%`;
 
-  if (probChange !== null) {
-    const direction = probChange > 0 ? "+" : "";
-    body += ` (${direction}${probChange.toFixed(1)}pp since last check)`;
+  if (probChangePP !== null && !isSpike) {
+    const direction = probChangePP > 0 ? "+" : "";
+    body += ` (${direction}${probChangePP.toFixed(1)}pp since last check)`;
   }
 
   body += `\n\nMarket Stats:`;
@@ -107,30 +172,64 @@ function buildCanonicalUrl(market: PolymarketRawMarket): string {
 
 /**
  * Normalize Polymarket market to ContentItemDraft
+ * Accepts either PolymarketCandidate (new format) or PolymarketRawMarket (legacy)
  */
 export async function normalizePolymarket(
   raw: unknown,
   params: FetchParams,
 ): Promise<ContentItemDraft> {
-  const market = asRecord(raw) as unknown as PolymarketRawMarket;
+  // Extract market and candidate fields
+  let market: PolymarketRawMarket;
+  let isNew = false;
+  let isSpike = false;
+  let spikeReason: "probability" | "volume" | "both" | null = null;
+  let probChangePP: number | null = null;
+  let volChangePct: number | null = null;
+  let volChangeAbs: number | null = null;
+  let observedAt: string | null = null;
+
+  if (isPolymarketCandidate(raw)) {
+    // New format: PolymarketCandidate
+    market = raw.market;
+    isNew = raw.isNew;
+    isSpike = raw.isSpike;
+    spikeReason = raw.spikeReason;
+    probChangePP = raw.probabilityChangePP;
+    volChangePct = raw.volume24hChangePct;
+    volChangeAbs = raw.volume24hChangeAbs;
+    observedAt = raw.observedAt;
+  } else {
+    // Legacy format: PolymarketRawMarket
+    market = asRecord(raw) as unknown as PolymarketRawMarket;
+
+    // Calculate probability change from cursor if available (legacy behavior)
+    const currentProb =
+      market.outcomePrices?.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
+    const lastPrices = params.cursor?.last_prices as Record<string, number> | undefined;
+    if (lastPrices && market.conditionId in lastPrices) {
+      probChangePP = (currentProb - lastPrices[market.conditionId]) * 100;
+    }
+  }
 
   // Validate required fields
   if (!market.conditionId || !market.question) {
     throw new Error("Malformed Polymarket market: missing required fields (conditionId, question)");
   }
 
-  // Calculate probability change from cursor if available
-  let probChange: number | null = null;
   const currentProb =
-    market.outcomePrices.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
-  const lastPrices = params.cursor?.last_prices as Record<string, number> | undefined;
-  if (lastPrices && market.conditionId in lastPrices) {
-    probChange = (currentProb - lastPrices[market.conditionId]) * 100;
-  }
+    market.outcomePrices?.length > 0 ? parseProbability(market.outcomePrices[0]) : 0;
 
   const marketId = generateMarketId(market);
-  const title = generateTitle(market, probChange);
-  const bodyText = generateBodyText(market, probChange);
+  const title = generateTitle(market, isSpike, spikeReason, probChangePP, volChangePct);
+  const bodyText = generateBodyText(
+    market,
+    isNew,
+    isSpike,
+    spikeReason,
+    probChangePP,
+    volChangePct,
+    volChangeAbs,
+  );
   const canonicalUrl = buildCanonicalUrl(market);
 
   const volume = parseVolume(market.volume);
@@ -139,9 +238,15 @@ export async function normalizePolymarket(
   const spread = parseFloat(market.spread) || 0;
   const daysToResolution = calculateDaysToResolution(market.endDateIso);
 
-  // Use market creation date as published date
+  // Determine published_at:
+  // - New market -> market.createdAt
+  // - Spike market -> observedAt (spike observation time)
+  // - Legacy -> market.createdAt
   let publishedAt: string | null = null;
-  if (market.createdAt) {
+  if (isSpike && observedAt) {
+    // Spike: use observation time to re-enter daily window
+    publishedAt = observedAt;
+  } else if (market.createdAt) {
     try {
       const date = new Date(market.createdAt);
       if (!Number.isNaN(date.getTime())) {
@@ -163,15 +268,27 @@ export async function normalizePolymarket(
     liquidity: liquidity,
     spread: spread,
     outcomes: market.outcomes,
-    outcome_prices: market.outcomePrices.map((p) => parseProbability(p)),
+    outcome_prices: market.outcomePrices?.map((p) => parseProbability(p)) ?? [],
     is_active: market.active,
     is_closed: market.closed,
     resolution_status: market.closed ? "resolved" : "open",
     end_date: market.endDateIso,
+
+    // New/spike detection fields
+    is_new: isNew,
+    is_spike: isSpike,
+    spike_reason: spikeReason,
+    probability_change_pp: probChangePP,
+    volume_24h_change_pct: volChangePct,
+    volume_24h_change_abs: volChangeAbs,
+    market_created_at: market.createdAt ?? null,
+    market_updated_at: market.updatedAt ?? null,
+    is_restricted: market.restricted ?? false,
   };
 
-  if (probChange !== null) {
-    metadata.probability_change = probChange;
+  // Legacy field for backward compat
+  if (probChangePP !== null) {
+    metadata.probability_change = probChangePP;
   }
 
   if (daysToResolution !== null) {
@@ -207,6 +324,7 @@ export async function normalizePolymarket(
       active: market.active,
       closed: market.closed,
       end_date: market.endDateIso,
+      restricted: market.restricted,
     },
   };
 }
