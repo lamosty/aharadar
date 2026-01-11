@@ -7,6 +7,7 @@ import styles from "./DigestsListCondensed.module.css";
 
 interface DigestsListCondensedProps {
   digests: DigestSummary[];
+  showTopic?: boolean; // Show topic column (for all-topics view)
 }
 
 function formatWindowRange(start: string, end: string): string {
@@ -47,6 +48,15 @@ function getModeLabel(mode: DigestSummary["mode"]): string {
   return labels[mode];
 }
 
+function formatScore(score: number | null): string {
+  if (score === null) return "—";
+  return score.toFixed(2);
+}
+
+function formatCredits(credits: number): string {
+  return `$${credits.toFixed(2)}`;
+}
+
 function StatusBadge({ status }: { status: DigestSummary["status"] }) {
   return (
     <span
@@ -84,7 +94,7 @@ function StatusBadge({ status }: { status: DigestSummary["status"] }) {
   );
 }
 
-export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
+export function DigestsListCondensed({ digests, showTopic = false }: DigestsListCondensedProps) {
   return (
     <div className={styles.container} data-testid="digests-list">
       <table className={styles.table}>
@@ -93,6 +103,11 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
             <th scope="col" className={styles.thStatus}>
               {t("digests.list.status")}
             </th>
+            {showTopic && (
+              <th scope="col" className={styles.thTopic}>
+                {t("digests.list.topic")}
+              </th>
+            )}
             <th scope="col" className={styles.thWindow}>
               {t("digests.list.window")}
             </th>
@@ -102,8 +117,11 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
             <th scope="col" className={styles.thItems}>
               {t("digests.list.items")}
             </th>
-            <th scope="col" className={styles.thSources}>
-              {t("digests.list.sources")}
+            <th scope="col" className={styles.thScore}>
+              {t("digests.list.topScore")}
+            </th>
+            <th scope="col" className={styles.thCredits}>
+              {t("digests.list.credits")}
             </th>
             <th scope="col" className={styles.thCreated}>
               {t("digests.list.created")}
@@ -116,6 +134,11 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
               <td className={styles.tdStatus}>
                 <StatusBadge status={digest.status} />
               </td>
+              {showTopic && (
+                <td className={styles.tdTopic}>
+                  <span className={styles.topicBadge}>{digest.topicName}</span>
+                </td>
+              )}
               <td className={styles.tdWindow}>
                 <Link
                   href={`/app/digests/${digest.id}`}
@@ -133,12 +156,8 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
                 </span>
               </td>
               <td className={styles.tdItems}>{digest.itemCount}</td>
-              <td className={styles.tdSources}>
-                <span className={digest.sourceCount.skipped > 0 ? styles.sourcesWarning : ""}>
-                  {digest.sourceCount.succeeded}/{digest.sourceCount.total}
-                  {digest.sourceCount.skipped > 0 && ` (${digest.sourceCount.skipped} skipped)`}
-                </span>
-              </td>
+              <td className={styles.tdScore}>{formatScore(digest.topScore)}</td>
+              <td className={styles.tdCredits}>{formatCredits(digest.creditsUsed)}</td>
               <td className={styles.tdCreated}>
                 <time dateTime={digest.createdAt}>{formatRelativeTime(digest.createdAt)}</time>
               </td>
@@ -150,7 +169,13 @@ export function DigestsListCondensed({ digests }: DigestsListCondensedProps) {
   );
 }
 
-export function DigestsListCondensedSkeleton() {
+interface DigestsListCondensedSkeletonProps {
+  showTopic?: boolean;
+}
+
+export function DigestsListCondensedSkeleton({
+  showTopic = false,
+}: DigestsListCondensedSkeletonProps) {
   return (
     <div className={styles.container}>
       <table className={styles.table} aria-busy="true">
@@ -159,6 +184,11 @@ export function DigestsListCondensedSkeleton() {
             <th scope="col" className={styles.thStatus}>
               {t("digests.list.status")}
             </th>
+            {showTopic && (
+              <th scope="col" className={styles.thTopic}>
+                {t("digests.list.topic")}
+              </th>
+            )}
             <th scope="col" className={styles.thWindow}>
               {t("digests.list.window")}
             </th>
@@ -168,8 +198,11 @@ export function DigestsListCondensedSkeleton() {
             <th scope="col" className={styles.thItems}>
               {t("digests.list.items")}
             </th>
-            <th scope="col" className={styles.thSources}>
-              {t("digests.list.sources")}
+            <th scope="col" className={styles.thScore}>
+              {t("digests.list.topScore")}
+            </th>
+            <th scope="col" className={styles.thCredits}>
+              {t("digests.list.credits")}
             </th>
             <th scope="col" className={styles.thCreated}>
               {t("digests.list.created")}
@@ -182,6 +215,11 @@ export function DigestsListCondensedSkeleton() {
               <td className={styles.tdStatus}>
                 <span className={styles.skeleton} style={{ width: "20px" }} />
               </td>
+              {showTopic && (
+                <td className={styles.tdTopic}>
+                  <span className={styles.skeleton} style={{ width: "80px" }} />
+                </td>
+              )}
               <td className={styles.tdWindow}>
                 <span className={styles.skeleton} style={{ width: "180px" }} />
               </td>
@@ -191,7 +229,10 @@ export function DigestsListCondensedSkeleton() {
               <td className={styles.tdItems}>
                 <span className={styles.skeleton} style={{ width: "30px" }} />
               </td>
-              <td className={styles.tdSources}>
+              <td className={styles.tdScore}>
+                <span className={styles.skeleton} style={{ width: "40px" }} />
+              </td>
+              <td className={styles.tdCredits}>
                 <span className={styles.skeleton} style={{ width: "50px" }} />
               </td>
               <td className={styles.tdCreated}>

@@ -1,0 +1,188 @@
+/* ============================================
+   DigestStatsCards - Stat cards container
+   ============================================ */
+
+.container {
+  display: flex;
+  gap: var(--space-4);
+}
+
+/* ============================================
+   Individual stat card
+   ============================================ */
+
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  min-width: 0;
+}
+
+.cardLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cardPrimary {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  line-height: 1.1;
+}
+
+.cardSecondary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.cardTrend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* ============================================
+   Trend indicators
+   ============================================ */
+
+.trendUp {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-success);
+}
+
+.trendDown {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-error);
+}
+
+.trendNeutral {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.trendLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* ============================================
+   Mode breakdown text
+   ============================================ */
+
+.modeBreakdown {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* ============================================
+   Triage donut chart
+   ============================================ */
+
+.donutContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.donut {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  /* Mask for donut hole */
+  mask: radial-gradient(circle at center, transparent 40%, black 41%);
+  -webkit-mask: radial-gradient(circle at center, transparent 40%, black 41%);
+}
+
+.donutEmpty {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.donutLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.legendDotHigh,
+.legendDotMedium,
+.legendDotLow,
+.legendDotSkip {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.legendDotHigh {
+  background: var(--color-success);
+}
+
+.legendDotMedium {
+  background: var(--color-warning);
+}
+
+.legendDotLow {
+  background: var(--color-primary);
+}
+
+.legendDotSkip {
+  background: var(--color-text-muted);
+}
+
+/* ============================================
+   Responsive - Stack vertically on mobile
+   ============================================ */
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .card {
+    width: 100%;
+  }
+}
+
+/* ============================================
+   Reduced motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

@@ -30,6 +30,10 @@
   text-align: center;
 }
 
+.thTopic {
+  min-width: 100px;
+}
+
 .thWindow {
   min-width: 200px;
 }
@@ -39,12 +43,18 @@
 }
 
 .thItems {
-  width: 80px;
+  width: 60px;
   text-align: right;
 }
 
-.thSources {
-  width: 120px;
+.thScore {
+  width: 70px;
+  text-align: right;
+}
+
+.thCredits {
+  width: 80px;
+  text-align: right;
 }
 
 .thCreated {
@@ -114,10 +124,42 @@
   color: var(--color-text-primary);
 }
 
+.tdTopic {
+  /* Topic badge container */
+}
+
+.topicBadge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tdItems {
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
+}
+
+.tdScore {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.tdCredits {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }
 
 .tdStatus {
@@ -182,9 +224,13 @@
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .thTopic,
+  .tdTopic,
   .thMode,
   .tdMode,
+  .thCredits,
+  .tdCredits,
   .thCreated,
   .tdCreated {
     display: none;
