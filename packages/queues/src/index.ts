@@ -1,6 +1,7 @@
 import type { BudgetTier } from "@aharadar/shared";
 import type { ConnectionOptions } from "bullmq";
 import { Queue } from "bullmq";
+import Redis from "ioredis";
 
 /**
  * Queue name for pipeline jobs.
@@ -96,4 +97,52 @@ export function createPipelineQueue(redisUrl: string): Queue<RunWindowJobData> {
   return new Queue<RunWindowJobData>(PIPELINE_QUEUE_NAME, {
     connection: parseRedisConnection(redisUrl),
   });
+}
+
+// ============================================================================
+// Emergency Stop (Kill Switch)
+// ============================================================================
+
+const EMERGENCY_STOP_KEY = "pipeline:emergency_stop";
+
+/**
+ * Create a Redis client for emergency stop operations.
+ */
+export function createRedisClient(redisUrl: string): Redis {
+  // Parse the URL directly for ioredis
+  const url = new URL(redisUrl);
+  const isTls = url.protocol === "rediss:";
+  const dbMatch = url.pathname.match(/^\/(\d+)$/);
+  const db = dbMatch ? Number.parseInt(dbMatch[1], 10) : undefined;
+
+  return new Redis({
+    host: url.hostname,
+    port: Number.parseInt(url.port || "6379", 10),
+    password: url.password || undefined,
+    db,
+    tls: isTls ? {} : undefined,
+  });
+}
+
+/**
+ * Set the emergency stop flag.
+ * When set, workers should stop processing and exit.
+ */
+export async function setEmergencyStop(redis: Redis): Promise<void> {
+  await redis.set(EMERGENCY_STOP_KEY, "1");
+}
+
+/**
+ * Clear the emergency stop flag.
+ */
+export async function clearEmergencyStop(redis: Redis): Promise<void> {
+  await redis.del(EMERGENCY_STOP_KEY);
+}
+
+/**
+ * Check if emergency stop is active.
+ */
+export async function isEmergencyStopActive(redis: Redis): Promise<boolean> {
+  const value = await redis.get(EMERGENCY_STOP_KEY);
+  return value === "1";
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   useDrainQueue,
+  useEmergencyStop,
   useObliterateQueue,
   useOpsStatus,
   usePauseQueue,
@@ -19,6 +20,7 @@ export default function AdminOpsPage() {
   const { data: queueData, isLoading: queueLoading } = useQueueStatus();
 
   const [confirmObliterate, setConfirmObliterate] = useState(false);
+  const [confirmEmergencyStop, setConfirmEmergencyStop] = useState(false);
 
   const pauseMutation = usePauseQueue();
   const resumeMutation = useResumeQueue();
@@ -27,13 +29,17 @@ export default function AdminOpsPage() {
   });
   const drainMutation = useDrainQueue();
   const removeJobMutation = useRemoveQueueJob();
+  const emergencyStopMutation = useEmergencyStop({
+    onSuccess: () => setConfirmEmergencyStop(false),
+  });
 
   const isAnyMutating =
     pauseMutation.isPending ||
     resumeMutation.isPending ||
     obliterateMutation.isPending ||
     drainMutation.isPending ||
-    removeJobMutation.isPending;
+    removeJobMutation.isPending ||
+    emergencyStopMutation.isPending;
 
   if (isLoading) {
     return (
@@ -200,6 +206,37 @@ export default function AdminOpsPage() {
                 type="button"
                 className={styles.controlButton}
                 onClick={() => setConfirmObliterate(false)}
+                disabled={isAnyMutating}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {/* Emergency Stop - kills queue AND signals worker to exit */}
+          {!confirmEmergencyStop ? (
+            <button
+              type="button"
+              className={`${styles.controlButton} ${styles.emergencyButton}`}
+              onClick={() => setConfirmEmergencyStop(true)}
+              disabled={isAnyMutating}
+            >
+              <StopIcon />
+              <span>EMERGENCY STOP</span>
+            </button>
+          ) : (
+            <div className={styles.confirmGroup}>
+              <button
+                type="button"
+                className={`${styles.controlButton} ${styles.emergencyButton}`}
+                onClick={() => emergencyStopMutation.mutate()}
+                disabled={isAnyMutating}
+              >
+                {emergencyStopMutation.isPending ? "..." : "CONFIRM STOP"}
+              </button>
+              <button
+                type="button"
+                className={styles.controlButton}
+                onClick={() => setConfirmEmergencyStop(false)}
                 disabled={isAnyMutating}
               >
                 Cancel
@@ -501,6 +538,23 @@ function TrashIcon() {
     >
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <rect x="9" y="9" width="6" height="6" />
     </svg>
   );
 }

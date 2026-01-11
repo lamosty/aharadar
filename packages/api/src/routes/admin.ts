@@ -3,9 +3,13 @@ import { checkQuotaForRun } from "@aharadar/llm";
 import { compileDigestPlan, computeCreditsStatus } from "@aharadar/pipeline";
 import {
   type AbtestVariantConfig,
+  clearEmergencyStop,
+  createRedisClient,
+  isEmergencyStopActive,
   type ProviderOverride,
   RUN_ABTEST_JOB_NAME,
   RUN_WINDOW_JOB_NAME,
+  setEmergencyStop,
 } from "@aharadar/queues";
 import type { BudgetTier } from "@aharadar/shared";
 import { loadRuntimeEnv, type OpsLinks } from "@aharadar/shared";
@@ -1207,6 +1211,72 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       }
     },
   );
+
+  // POST /admin/queue/emergency-stop - Trigger emergency stop (obliterate + signal workers to exit)
+  fastify.post("/admin/queue/emergency-stop", async (_request, reply) => {
+    const env = loadRuntimeEnv();
+    const redis = createRedisClient(env.redisUrl);
+    const queue = getPipelineQueue();
+
+    try {
+      // Set emergency stop flag first (workers will see this and exit)
+      await setEmergencyStop(redis);
+
+      // Then obliterate the queue
+      await queue.obliterate({ force: true });
+
+      return {
+        ok: true,
+        message: "Emergency stop activated. Workers will exit when they check the flag.",
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "EMERGENCY_STOP_FAILED", message },
+      });
+    } finally {
+      await redis.quit();
+    }
+  });
+
+  // POST /admin/queue/clear-emergency-stop - Clear the emergency stop flag
+  fastify.post("/admin/queue/clear-emergency-stop", async (_request, reply) => {
+    const env = loadRuntimeEnv();
+    const redis = createRedisClient(env.redisUrl);
+
+    try {
+      await clearEmergencyStop(redis);
+      return { ok: true, message: "Emergency stop cleared. Workers can start again." };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "CLEAR_EMERGENCY_STOP_FAILED", message },
+      });
+    } finally {
+      await redis.quit();
+    }
+  });
+
+  // GET /admin/queue/emergency-stop-status - Check if emergency stop is active
+  fastify.get("/admin/queue/emergency-stop-status", async (_request, reply) => {
+    const env = loadRuntimeEnv();
+    const redis = createRedisClient(env.redisUrl);
+
+    try {
+      const isActive = await isEmergencyStopActive(redis);
+      return { ok: true, emergencyStopActive: isActive };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "CHECK_EMERGENCY_STOP_FAILED", message },
+      });
+    } finally {
+      await redis.quit();
+    }
+  });
 
   // GET /admin/env-config - Get important non-secret environment variables
   fastify.get("/admin/env-config", async (request, reply) => {

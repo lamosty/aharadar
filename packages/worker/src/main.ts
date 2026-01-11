@@ -6,6 +6,7 @@ import {
   getSchedulableTopics,
   parseSchedulerConfig,
 } from "@aharadar/pipeline";
+import { clearEmergencyStop, createRedisClient, isEmergencyStopActive } from "@aharadar/queues";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger, loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
 
@@ -161,6 +162,13 @@ async function main(): Promise<void> {
   // Create worker to process jobs
   const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
 
+  // Create Redis client for emergency stop checks
+  const emergencyStopRedis = createRedisClient(env.redisUrl);
+
+  // Clear any stale emergency stop flag on startup
+  await clearEmergencyStop(emergencyStopRedis);
+  log.info("Emergency stop flag cleared on startup");
+
   // Start metrics server (also serves /health)
   const metricsServer = startMetricsServer(METRICS_PORT);
   log.info({ port: METRICS_PORT }, "Metrics server started");
@@ -192,21 +200,40 @@ async function main(): Promise<void> {
   }, tickIntervalMs);
 
   // Graceful shutdown
+  let isShuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
+    if (isShuttingDown) return; // Prevent double shutdown
+    isShuttingDown = true;
+
     log.info({ signal }, "Received signal, shutting down");
 
     clearInterval(schedulerInterval);
     clearInterval(queueDepthInterval);
+    clearInterval(emergencyStopInterval);
 
     await metricsServer.close();
     await worker.close();
     await queue.close();
+    await emergencyStopRedis.quit();
     await schedulerDb.close();
     await workerDb.close();
 
     log.info("Shutdown complete");
     process.exit(0);
   };
+
+  // Poll for emergency stop flag every 2 seconds
+  const emergencyStopInterval = setInterval(async () => {
+    try {
+      const shouldStop = await isEmergencyStopActive(emergencyStopRedis);
+      if (shouldStop) {
+        log.warn("Emergency stop flag detected! Shutting down worker...");
+        await shutdown("EMERGENCY_STOP");
+      }
+    } catch (err) {
+      log.warn({ err }, "Failed to check emergency stop flag");
+    }
+  }, 2000);
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));

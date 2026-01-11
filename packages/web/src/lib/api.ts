@@ -1407,6 +1407,35 @@ export async function removeQueueJob(jobId: string): Promise<QueueActionResponse
   });
 }
 
+/**
+ * Trigger emergency stop (obliterate queue + signal workers to exit).
+ */
+export async function emergencyStop(): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>("/admin/queue/emergency-stop", { method: "POST" });
+}
+
+/**
+ * Clear emergency stop flag (allow workers to start again).
+ */
+export async function clearEmergencyStop(): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>("/admin/queue/clear-emergency-stop", { method: "POST" });
+}
+
+/** Emergency stop status response */
+export interface EmergencyStopStatusResponse {
+  ok: boolean;
+  emergencyStopActive: boolean;
+}
+
+/**
+ * Check if emergency stop is currently active.
+ */
+export async function getEmergencyStopStatus(
+  signal?: AbortSignal,
+): Promise<EmergencyStopStatusResponse> {
+  return apiFetch<EmergencyStopStatusResponse>("/admin/queue/emergency-stop-status", { signal });
+}
+
 // ============================================================================
 // AB Tests API
 // ============================================================================

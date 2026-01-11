@@ -306,6 +306,20 @@
   border-color: var(--color-error);
 }
 
+.emergencyButton {
+  color: white;
+  background-color: var(--color-error);
+  border-color: var(--color-error);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.emergencyButton:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+}
+
 .confirmGroup {
   display: flex;
   gap: var(--space-2);

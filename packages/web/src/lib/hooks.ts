@@ -30,6 +30,7 @@ import {
   type ClearFeedbackResponse,
   type CreateTopicRequest,
   type CreateTopicResponse,
+  clearEmergencyStop as clearEmergencyStopApi,
   clearFeedback,
   createTopic,
   type DailyUsageResponse,
@@ -39,6 +40,8 @@ import {
   deleteAdminSource,
   deleteTopic,
   drainQueue,
+  type EmergencyStopStatusResponse,
+  emergencyStop,
   type FeedbackAction,
   type FeedbackByTopicResponse,
   type FeedbackDailyStatsResponse,
@@ -53,6 +56,7 @@ import {
   getDailyUsage,
   getDigest,
   getDigests,
+  getEmergencyStopStatus,
   getFeedbackByTopic,
   getFeedbackDailyStats,
   getFeedbackSummary,
@@ -820,6 +824,66 @@ export function useRemoveQueueJob(
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
     },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to trigger emergency stop (obliterate queue + signal workers to exit).
+ */
+export function useEmergencyStop(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, void>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => emergencyStop(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to clear emergency stop flag.
+ */
+export function useClearEmergencyStop(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, void>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => clearEmergencyStopApi(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Query to check if emergency stop is active.
+ */
+export function useEmergencyStopStatus(
+  options?: Omit<
+    UseQueryOptions<EmergencyStopStatusResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: ["admin", "emergency-stop-status"] as const,
+    queryFn: ({ signal }) => getEmergencyStopStatus(signal),
+    refetchInterval: 5000, // Poll every 5 seconds
+    staleTime: 2000,
     ...options,
   });
 }
