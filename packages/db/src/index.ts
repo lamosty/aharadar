@@ -1,4 +1,5 @@
 export * from "./db";
+export * from "./repos/abtests";
 export * from "./repos/auth_tokens";
 export * from "./repos/content_item_sources";
 export * from "./repos/content_items";

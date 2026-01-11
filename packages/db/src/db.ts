@@ -1,5 +1,6 @@
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 import { Pool } from "pg";
+import { createAbtestsRepo } from "./repos/abtests";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
@@ -41,6 +42,7 @@ export type DbContext = Queryable & {
   sessions: ReturnType<typeof createSessionsRepo>;
   userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
   llmSettings: ReturnType<typeof createLlmSettingsRepo>;
+  abtests: ReturnType<typeof createAbtestsRepo>;
 };
 
 export interface Db extends DbContext {
@@ -67,6 +69,7 @@ function createContext(db: Queryable): DbContext {
     sessions: createSessionsRepo(db),
     userApiKeys: createUserApiKeysRepo(db),
     llmSettings: createLlmSettingsRepo(db),
+    abtests: createAbtestsRepo(db),
   };
 }
 
