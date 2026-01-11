@@ -64,29 +64,27 @@ export function EnvConfigWarnings({ showFullConfig = false }: EnvConfigWarningsP
 
       {showFullConfig && config && (
         <div className={styles.configSection}>
-          <h3 className={styles.configTitle}>Environment Configuration</h3>
-          <div className={styles.configGrid}>
-            <ConfigItem
-              label="App Environment"
-              value={config.appEnv}
-              highlight={config.appEnv !== "production"}
-            />
-            <ConfigItem label="Timezone" value={config.appTimezone} />
-            <ConfigItem label="Monthly Credits" value={config.monthlyCredits.toLocaleString()} />
-            <ConfigItem
-              label="Daily Throttle"
-              value={config.dailyThrottleCredits?.toLocaleString() ?? "Unlimited"}
-            />
-            <ConfigItem label="Default Tier" value={config.defaultTier} />
-            <ConfigItem
-              label="X Posts Max Calls/Run"
-              value={config.xPostsMaxSearchCallsPerRun?.toString() ?? "Unlimited"}
-              highlight={config.xPostsMaxSearchCallsPerRun !== null}
-              warning={config.xPostsMaxSearchCallsPerRun !== null}
-            />
-            <ConfigItem label="OpenAI Triage Model" value={config.openaiTriageModel ?? "Not set"} />
-            <ConfigItem label="Grok Model" value={config.signalGrokModel ?? "Not set"} />
-          </div>
+          <span className={styles.configTitle}>Environment Configuration</span>
+          <ConfigItem
+            label="App Environment"
+            value={config.appEnv}
+            highlight={config.appEnv !== "production"}
+          />
+          <ConfigItem label="Timezone" value={config.appTimezone} />
+          <ConfigItem label="Monthly Credits" value={config.monthlyCredits.toLocaleString()} />
+          <ConfigItem
+            label="Daily Throttle"
+            value={config.dailyThrottleCredits?.toLocaleString() ?? "Unlimited"}
+          />
+          <ConfigItem label="Default Tier" value={config.defaultTier} />
+          <ConfigItem
+            label="X Posts Max Calls/Run"
+            value={config.xPostsMaxSearchCallsPerRun?.toString() ?? "Unlimited"}
+            highlight={config.xPostsMaxSearchCallsPerRun !== null}
+            warning={config.xPostsMaxSearchCallsPerRun !== null}
+          />
+          <ConfigItem label="OpenAI Triage Model" value={config.openaiTriageModel ?? "Not set"} />
+          <ConfigItem label="Grok Model" value={config.signalGrokModel ?? "Not set"} />
         </div>
       )}
     </div>
