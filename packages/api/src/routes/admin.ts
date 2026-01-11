@@ -1,4 +1,4 @@
-import type { LlmProvider, LlmSettingsUpdate, SourceRow } from "@aharadar/db";
+import type { LlmProvider, LlmSettingsUpdate, ReasoningEffort, SourceRow } from "@aharadar/db";
 import { checkQuotaForRun } from "@aharadar/llm";
 import { compileDigestPlan, computeCreditsStatus } from "@aharadar/pipeline";
 import {
@@ -778,6 +778,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         claudeCallsPerHour: settings.claude_calls_per_hour,
         codexSubscriptionEnabled: settings.codex_subscription_enabled,
         codexCallsPerHour: settings.codex_calls_per_hour,
+        reasoningEffort: settings.reasoning_effort,
         updatedAt: settings.updated_at,
       },
     };
@@ -856,6 +857,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       claudeCallsPerHour,
       codexSubscriptionEnabled,
       codexCallsPerHour,
+      reasoningEffort,
     } = body as Record<string, unknown>;
 
     // Validate provider if provided
@@ -961,6 +963,21 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       }
     }
 
+    // Validate reasoning effort
+    const validReasoningEfforts = ["none", "low", "medium", "high"];
+    if (
+      reasoningEffort !== undefined &&
+      !validReasoningEfforts.includes(reasoningEffort as string)
+    ) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `reasoningEffort must be one of: ${validReasoningEfforts.join(", ")}`,
+        },
+      });
+    }
+
     // Build update params
     const updateParams: LlmSettingsUpdate = {};
     if (provider !== undefined) updateParams.provider = provider as LlmProvider;
@@ -976,6 +993,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       updateParams.codex_subscription_enabled = codexSubscriptionEnabled as boolean;
     if (codexCallsPerHour !== undefined)
       updateParams.codex_calls_per_hour = codexCallsPerHour as number;
+    if (reasoningEffort !== undefined)
+      updateParams.reasoning_effort = reasoningEffort as ReasoningEffort;
 
     const db = getDb();
     const settings = await db.llmSettings.update(updateParams);
@@ -991,6 +1010,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         claudeCallsPerHour: settings.claude_calls_per_hour,
         codexSubscriptionEnabled: settings.codex_subscription_enabled,
         codexCallsPerHour: settings.codex_calls_per_hour,
+        reasoningEffort: settings.reasoning_effort,
         updatedAt: settings.updated_at,
       },
     };

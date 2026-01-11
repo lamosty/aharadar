@@ -2,6 +2,8 @@ import type { Queryable } from "../db";
 
 export type LlmProvider = "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
 
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
+
 export interface LlmSettingsRow {
   id: number;
   provider: LlmProvider;
@@ -12,6 +14,7 @@ export interface LlmSettingsRow {
   claude_calls_per_hour: number;
   codex_subscription_enabled: boolean;
   codex_calls_per_hour: number;
+  reasoning_effort: ReasoningEffort;
   updated_at: string;
 }
 
@@ -24,6 +27,7 @@ export interface LlmSettingsUpdate {
   claude_calls_per_hour?: number;
   codex_subscription_enabled?: boolean;
   codex_calls_per_hour?: number;
+  reasoning_effort?: ReasoningEffort;
 }
 
 export function createLlmSettingsRepo(db: Queryable) {
@@ -33,7 +37,7 @@ export function createLlmSettingsRepo(db: Queryable) {
         `SELECT id, provider, anthropic_model, openai_model,
                 claude_subscription_enabled, claude_triage_thinking,
                 claude_calls_per_hour, codex_subscription_enabled,
-                codex_calls_per_hour, updated_at
+                codex_calls_per_hour, reasoning_effort, updated_at
          FROM llm_settings
          WHERE id = 1`,
       );
@@ -82,6 +86,10 @@ export function createLlmSettingsRepo(db: Queryable) {
         setClauses.push(`codex_calls_per_hour = $${paramIndex++}`);
         values.push(params.codex_calls_per_hour);
       }
+      if (params.reasoning_effort !== undefined) {
+        setClauses.push(`reasoning_effort = $${paramIndex++}`);
+        values.push(params.reasoning_effort);
+      }
 
       if (setClauses.length === 0) {
         // Nothing to update, just return current
@@ -90,12 +98,12 @@ export function createLlmSettingsRepo(db: Queryable) {
 
       const result = await db.query<LlmSettingsRow>(
         `UPDATE llm_settings
-         SET ${setClauses.join(", ")}
+         SET ${setClauses.join(", ")}, updated_at = now()
          WHERE id = 1
          RETURNING id, provider, anthropic_model, openai_model,
                    claude_subscription_enabled, claude_triage_thinking,
                    claude_calls_per_hour, codex_subscription_enabled,
-                   codex_calls_per_hour, updated_at`,
+                   codex_calls_per_hour, reasoning_effort, updated_at`,
         values,
       );
 

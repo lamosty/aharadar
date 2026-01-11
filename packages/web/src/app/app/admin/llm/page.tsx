@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
-import type { LlmProvider } from "@/lib/api";
+import type { LlmProvider, ReasoningEffort } from "@/lib/api";
 import { useAdminLlmSettings, useAdminLlmSettingsUpdate } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
@@ -36,6 +36,7 @@ export default function AdminLlmPage() {
   const [openaiModel, setOpenaiModel] = useState("");
   const [claudeCallsPerHour, setClaudeCallsPerHour] = useState(100);
   const [codexCallsPerHour, setCodexCallsPerHour] = useState(25);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("none");
 
   // Sync form state when data loads
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function AdminLlmPage() {
       setOpenaiModel(settings.openaiModel);
       setClaudeCallsPerHour(settings.claudeCallsPerHour);
       setCodexCallsPerHour(settings.codexCallsPerHour);
+      setReasoningEffort(settings.reasoningEffort);
     }
   }, [settings]);
 
@@ -69,6 +71,7 @@ export default function AdminLlmPage() {
       claudeCallsPerHour,
       codexSubscriptionEnabled: provider === "codex-subscription",
       codexCallsPerHour,
+      reasoningEffort,
     });
   };
 
@@ -79,7 +82,8 @@ export default function AdminLlmPage() {
       anthropicModel !== settings.anthropicModel ||
       openaiModel !== settings.openaiModel ||
       claudeCallsPerHour !== settings.claudeCallsPerHour ||
-      codexCallsPerHour !== settings.codexCallsPerHour);
+      codexCallsPerHour !== settings.codexCallsPerHour ||
+      reasoningEffort !== settings.reasoningEffort);
 
   if (isLoading) {
     return (
@@ -224,6 +228,31 @@ export default function AdminLlmPage() {
             />
           )}
         </div>
+
+        {/* Reasoning Effort - only for OpenAI providers */}
+        {usesOpenAiModels(provider) && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>{t("admin.llm.reasoningEffort")}</h2>
+            <p className={styles.sectionDescription}>{t("admin.llm.reasoningEffortDescription")}</p>
+            <select
+              value={reasoningEffort}
+              onChange={(e) => setReasoningEffort(e.target.value as ReasoningEffort)}
+              className={styles.select}
+              disabled={isSaving}
+            >
+              <option value="none">{t("admin.llm.reasoningEfforts.none")}</option>
+              <option value="low">{t("admin.llm.reasoningEfforts.low")}</option>
+              <option value="medium">{t("admin.llm.reasoningEfforts.medium")}</option>
+              <option value="high">{t("admin.llm.reasoningEfforts.high")}</option>
+            </select>
+            <div className={styles.infoBox}>
+              <InfoIcon />
+              <div className={styles.infoContent}>
+                <p>{t("admin.llm.reasoningTokenNote")}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Subscription Info & Rate Limit - only for subscription providers */}
         {isSubscriptionProvider(provider) && (

@@ -405,7 +405,16 @@
       "lastUpdated": "Last updated",
       "currentConfig": "Current Configuration",
       "activeProvider": "Active Provider",
-      "activeModel": "Active Model"
+      "activeModel": "Active Model",
+      "reasoningEffort": "Reasoning Effort",
+      "reasoningEffortDescription": "Controls how much the model 'thinks' before responding. Reasoning models like gpt-5-mini need this configured correctly.",
+      "reasoningEfforts": {
+        "none": "None (Disabled) - 350 tokens",
+        "low": "Low - 800 tokens",
+        "medium": "Medium - 2000 tokens",
+        "high": "High - 4000 tokens"
+      },
+      "reasoningTokenNote": "Higher reasoning effort requires more output tokens. Token budget is automatically adjusted based on this setting. Use 'None' for budget-friendly non-reasoning models."
     },
     "ops": {
       "title": "Operations",

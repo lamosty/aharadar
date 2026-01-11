@@ -52,11 +52,34 @@ function parseFloatEnv(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseReasoningEffort(value: string | undefined): "low" | "medium" | "high" | null {
+type ReasoningEffort = "none" | "low" | "medium" | "high";
+
+function parseReasoningEffort(value: string | undefined): ReasoningEffort | null {
   if (!value) return null;
   const raw = value.trim().toLowerCase();
-  if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  if (raw === "none" || raw === "low" || raw === "medium" || raw === "high") return raw;
   return null;
+}
+
+/**
+ * Calculate max output tokens based on reasoning effort.
+ * Deep summaries need more base tokens than triage.
+ */
+function getMaxOutputTokensForReasoning(
+  effort: ReasoningEffort | null,
+  envOverride: number | null,
+): number {
+  if (envOverride !== null) return envOverride;
+
+  // Token budgets based on reasoning effort (higher base for deep summary)
+  const budgets: Record<ReasoningEffort, number> = {
+    none: 700, // No reasoning overhead
+    low: 1200, // Light reasoning
+    medium: 2500, // Standard reasoning
+    high: 5000, // Deep reasoning
+  };
+
+  return budgets[effort ?? "none"];
 }
 
 function truncate(value: string, maxChars: number): string {
@@ -196,6 +219,7 @@ async function runDeepSummaryOnce(params: {
   tier: BudgetTier;
   candidate: DeepSummaryCandidateInput;
   isRetry: boolean;
+  reasoningEffortOverride?: ReasoningEffort | null;
 }): Promise<{
   output: DeepSummaryOutput;
   inputTokens: number;
@@ -203,14 +227,26 @@ async function runDeepSummaryOnce(params: {
   endpoint: string;
 }> {
   const ref = params.router.chooseModel("deep_summary", params.tier);
-  const reasoningEffort = parseReasoningEffort(process.env.OPENAI_DEEP_SUMMARY_REASONING_EFFORT);
-  const maxOutputTokens = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_OUTPUT_TOKENS) ?? 700;
+
+  // Determine reasoning effort: override > env > default (none)
+  const reasoningEffort =
+    params.reasoningEffortOverride !== undefined
+      ? params.reasoningEffortOverride
+      : parseReasoningEffort(process.env.OPENAI_DEEP_SUMMARY_REASONING_EFFORT);
+
+  // Calculate max output tokens based on reasoning effort
+  const envTokenOverride = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_OUTPUT_TOKENS);
+  const maxOutputTokens = getMaxOutputTokensForReasoning(reasoningEffort, envTokenOverride);
+
+  // When effort is "none", omit reasoning param to disable reasoning entirely
+  const effectiveReasoningEffort =
+    reasoningEffort === "none" || reasoningEffort === null ? undefined : reasoningEffort;
 
   const call = await params.router.call("deep_summary", ref, {
     system: buildSystemPrompt(ref, params.isRetry),
     user: buildUserPrompt(params.candidate, params.tier),
     maxOutputTokens,
-    reasoningEffort: reasoningEffort ?? undefined,
+    reasoningEffort: effectiveReasoningEffort,
   });
 
   const parsed = tryParseJsonObject(call.outputText);

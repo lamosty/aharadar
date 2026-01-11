@@ -14,6 +14,8 @@ type Provider = "openai" | "anthropic" | "claude-subscription" | "codex-subscrip
  * Runtime configuration for LLM router.
  * These values override environment variables when passed to createConfiguredLlmRouter.
  */
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
+
 export interface LlmRuntimeConfig {
   provider?: Provider;
   anthropicModel?: string;
@@ -23,6 +25,7 @@ export interface LlmRuntimeConfig {
   claudeCallsPerHour?: number;
   codexSubscriptionEnabled?: boolean;
   codexCallsPerHour?: number;
+  reasoningEffort?: ReasoningEffort;
 }
 
 function firstEnv(env: NodeJS.ProcessEnv, names: string[]): string | undefined {
@@ -378,6 +381,11 @@ export function createConfiguredLlmRouter(
   }
   if (config.codexCallsPerHour !== undefined) {
     effectiveEnv.CODEX_CALLS_PER_HOUR = String(config.codexCallsPerHour);
+  }
+  if (config.reasoningEffort !== undefined) {
+    // Set reasoning effort for all LLM tasks (triage, deep_summary, etc.)
+    effectiveEnv.OPENAI_TRIAGE_REASONING_EFFORT = config.reasoningEffort;
+    effectiveEnv.OPENAI_DEEP_SUMMARY_REASONING_EFFORT = config.reasoningEffort;
   }
 
   return createEnvLlmRouter(effectiveEnv);

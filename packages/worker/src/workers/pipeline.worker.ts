@@ -91,6 +91,7 @@ async function handleRunWindowJob(
       claudeSubscriptionEnabled: llmSettings.claude_subscription_enabled,
       claudeTriageThinking: llmSettings.claude_triage_thinking,
       claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+      reasoningEffort: llmSettings.reasoning_effort,
     };
 
     // Apply per-run override if present (for manual runs)

@@ -779,6 +779,9 @@ export async function deleteAdminSource(
 // LLM Settings API
 // ============================================================================
 
+/** Reasoning effort levels for OpenAI models */
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
+
 /** LLM settings data */
 export interface LlmSettings {
   provider: LlmProvider;
@@ -789,6 +792,7 @@ export interface LlmSettings {
   claudeCallsPerHour: number;
   codexSubscriptionEnabled: boolean;
   codexCallsPerHour: number;
+  reasoningEffort: ReasoningEffort;
   updatedAt: string;
 }
 
@@ -808,6 +812,7 @@ export interface LlmSettingsUpdateRequest {
   claudeCallsPerHour?: number;
   codexSubscriptionEnabled?: boolean;
   codexCallsPerHour?: number;
+  reasoningEffort?: ReasoningEffort;
 }
 
 /**
