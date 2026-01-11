@@ -5,6 +5,39 @@ import type { LlmRouter, ModelRef } from "./types";
 const PROMPT_ID = "triage_v1";
 const SCHEMA_VERSION = "triage_v1";
 
+/**
+ * JSON Schema for triage output - used for structured output with Claude Agent SDK.
+ * This enables the SDK's native JSON mode for reliable parsing.
+ */
+export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    schema_version: { type: "string", const: "triage_v1" },
+    prompt_id: { type: "string", const: "triage_v1" },
+    provider: { type: "string" },
+    model: { type: "string" },
+    aha_score: { type: "number", minimum: 0, maximum: 100 },
+    reason: { type: "string" },
+    is_relevant: { type: "boolean" },
+    is_novel: { type: "boolean" },
+    categories: { type: "array", items: { type: "string" } },
+    should_deep_summarize: { type: "boolean" },
+  },
+  required: [
+    "schema_version",
+    "prompt_id",
+    "provider",
+    "model",
+    "aha_score",
+    "reason",
+    "is_relevant",
+    "is_novel",
+    "categories",
+    "should_deep_summarize",
+  ],
+  additionalProperties: false,
+};
+
 export interface TriageCandidateInput {
   id: string;
   title: string | null;
@@ -79,7 +112,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
   return (
     "You are a strict JSON generator for content triage.\n" +
     `${retryNote}\n` +
-    "Output must match this schema (no extra keys, no markdown):\n" +
+    "Output must match this schema (no extra keys, no markdown, no code fences):\n" +
     "{\n" +
     '  "schema_version": "triage_v1",\n' +
     '  "prompt_id": "triage_v1",\n' +
@@ -93,7 +126,8 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     '  "should_deep_summarize": false\n' +
     "}\n" +
     "Aha score range: 0-100 (0=low-signal noise, 100=rare high-signal). " +
-    "Keep reason concise and topic-agnostic. Categories should be short, generic labels."
+    "Keep reason concise and topic-agnostic. Categories should be short, generic labels.\n" +
+    "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
 
@@ -120,15 +154,75 @@ function buildUserPrompt(candidate: TriageCandidateInput, tier: BudgetTier): str
   return `Input JSON:\n${JSON.stringify(payload)}`;
 }
 
-function tryParseJsonObject(text: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
-      return parsed as Record<string, unknown>;
-    return null;
-  } catch {
-    return null;
+/**
+ * Extract JSON object from text that may be wrapped in markdown code fences
+ * or prefixed with thinking/explanation text.
+ *
+ * Handles:
+ * - Raw JSON: {"key": "value"}
+ * - Markdown wrapped: ```json {"key": "value"} ```
+ * - Thinking prefixed: "Let me think... ```json {"key": "value"} ```"
+ * - Multiple JSON blocks (takes the last complete one)
+ */
+function extractJsonFromText(text: string): Record<string, unknown> | null {
+  const trimmed = text.trim();
+
+  // Try direct JSON parse first (most common case for OpenAI/Anthropic API)
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Not valid JSON, continue to extraction
+    }
   }
+
+  // Extract from markdown code blocks (```json ... ``` or ``` ... ```)
+  // Use global flag to find all matches, take the last one (most likely to be the final answer)
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/g;
+  let lastMatch: string | null = null;
+
+  for (const match of trimmed.matchAll(codeBlockRegex)) {
+    const content = match[1].trim();
+    if (content.startsWith("{")) {
+      lastMatch = content;
+    }
+  }
+
+  if (lastMatch) {
+    try {
+      const parsed = JSON.parse(lastMatch);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Invalid JSON in code block
+    }
+  }
+
+  // Last resort: find any JSON object in the text
+  // Look for { ... } pattern that might be valid JSON
+  const jsonObjectRegex = /\{[\s\S]*?"aha_score"[\s\S]*?\}/g;
+  let lastJsonMatch: string | null = null;
+
+  for (const match of trimmed.matchAll(jsonObjectRegex)) {
+    lastJsonMatch = match[0];
+  }
+
+  if (lastJsonMatch) {
+    try {
+      const parsed = JSON.parse(lastJsonMatch);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Still not valid JSON
+    }
+  }
+
+  return null;
 }
 
 function asString(value: unknown): string | null {
@@ -174,18 +268,23 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
   const shouldDeepSummarize = asBoolean(value.should_deep_summarize);
   if (isRelevant === null || isNovel === null || shouldDeepSummarize === null) return null;
 
+  // Allow missing schema_version/prompt_id - we'll fill them in
   const schemaVersion = asString(value.schema_version) ?? SCHEMA_VERSION;
-  const promptId = asString(value.prompt_id) ?? PROMPT_ID;
-  if (schemaVersion !== SCHEMA_VERSION || promptId !== PROMPT_ID) return null;
+  const _promptId = asString(value.prompt_id) ?? PROMPT_ID;
 
-  const provider = ref.provider;
-  const model = ref.model;
+  // Be lenient on schema validation - as long as we have required fields
+  if (schemaVersion !== SCHEMA_VERSION) {
+    // Log but don't fail - model might use different casing or format
+    console.warn(
+      `[triage] Unexpected schema_version: ${schemaVersion}, expected: ${SCHEMA_VERSION}`,
+    );
+  }
 
   return {
     schema_version: SCHEMA_VERSION,
     prompt_id: PROMPT_ID,
-    provider,
-    model,
+    provider: ref.provider,
+    model: ref.model,
     aha_score: ahaScore,
     reason,
     is_relevant: isRelevant,
@@ -220,20 +319,49 @@ async function runTriageOnce(params: {
   const reasoningEffort = parseReasoningEffort(process.env.OPENAI_TRIAGE_REASONING_EFFORT);
   const maxOutputTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 250;
 
+  // Build JSON schema for the request (provider-specific, but Claude subscription uses it)
+  const jsonSchema = { ...TRIAGE_JSON_SCHEMA };
+  // Inject provider/model into schema for validation
+  if (jsonSchema.properties && typeof jsonSchema.properties === "object") {
+    const props = jsonSchema.properties as Record<string, unknown>;
+    props.provider = { type: "string", const: ref.provider };
+    props.model = { type: "string", const: ref.model };
+  }
+
   const call = await params.router.call("triage", ref, {
     system: buildSystemPrompt(ref, params.isRetry),
     user: buildUserPrompt(params.candidate, params.tier),
     maxOutputTokens,
     reasoningEffort: reasoningEffort ?? undefined,
+    jsonSchema,
   });
 
-  const parsed = tryParseJsonObject(call.outputText);
+  // Try structured output first (from Claude subscription SDK)
+  let parsed: Record<string, unknown> | null = null;
+
+  if (call.structuredOutput && typeof call.structuredOutput === "object") {
+    parsed = call.structuredOutput as Record<string, unknown>;
+  }
+
+  // Fall back to text extraction
   if (!parsed) {
+    parsed = extractJsonFromText(call.outputText);
+  }
+
+  if (!parsed) {
+    // Log the problematic output for debugging
+    const preview = call.outputText.substring(0, 200);
+    console.error(
+      `[triage] Failed to parse JSON from output (${call.outputText.length} chars): ${preview}...`,
+    );
     throw new Error("Triage output is not valid JSON");
   }
 
   const normalized = normalizeTriageOutput(parsed, ref);
   if (!normalized) {
+    console.error(
+      `[triage] Schema validation failed for parsed JSON: ${JSON.stringify(parsed).substring(0, 200)}`,
+    );
     throw new Error("Triage output failed schema validation");
   }
 
@@ -243,6 +371,18 @@ async function runTriageOnce(params: {
     outputTokens: call.outputTokens,
     endpoint: call.endpoint,
   };
+}
+
+/** Delay helper for retry backoff */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Check if error is a quota/limit error that shouldn't be retried */
+function isQuotaError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes("quota exceeded") || msg.includes("rate limit") || msg.includes("too many");
 }
 
 export async function triageCandidate(params: {
@@ -261,7 +401,20 @@ export async function triageCandidate(params: {
       model: result.output.model,
       endpoint: result.endpoint,
     };
-  } catch {
+  } catch (firstError) {
+    // Don't retry quota/rate limit errors - they won't resolve immediately
+    if (isQuotaError(firstError)) {
+      throw firstError;
+    }
+
+    // Log first error for debugging
+    const errMsg = firstError instanceof Error ? firstError.message : String(firstError);
+    console.warn(`[triage] First attempt failed: ${errMsg}, retrying after backoff...`);
+
+    // Backoff before retry (1-2 seconds with jitter)
+    const backoffMs = 1000 + Math.random() * 1000;
+    await delay(backoffMs);
+
     const retry = await runTriageOnce({ ...params, isRetry: true });
     return {
       output: retry.output,

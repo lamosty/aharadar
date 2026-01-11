@@ -14,6 +14,8 @@ export interface LlmRequest {
   maxOutputTokens?: number;
   temperature?: number;
   reasoningEffort?: "low" | "medium" | "high";
+  /** JSON Schema for structured output (used by Claude Agent SDK) */
+  jsonSchema?: Record<string, unknown>;
 }
 
 export interface LlmCallResult {
@@ -22,6 +24,8 @@ export interface LlmCallResult {
   inputTokens: number;
   outputTokens: number;
   endpoint: string;
+  /** Parsed structured output when jsonSchema was provided */
+  structuredOutput?: unknown;
 }
 
 export interface LlmRouter {

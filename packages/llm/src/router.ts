@@ -144,29 +144,57 @@ function resolveCodexSubscriptionModel(
   return resolveOpenAiModel(env, task, tier);
 }
 
-// Provider resolution with subscription priority
+// Provider resolution - explicit selection takes priority
 function resolveProvider(
   env: NodeJS.ProcessEnv,
   task: TaskType,
   openaiApiKey: string | undefined,
   anthropicApiKey: string | undefined,
 ): Provider {
-  // Check if Claude subscription mode is enabled and available
-  if (env.CLAUDE_USE_SUBSCRIPTION === "true") {
-    const limits = getUsageLimitsFromEnv(env);
-    if (canUseClaudeSubscription(limits)) {
-      return "claude-subscription";
+  // Check for explicit global provider preference FIRST
+  // This ensures user's explicit choice is respected
+  const globalProvider = env.LLM_PROVIDER?.toLowerCase();
+
+  // If user explicitly selected a subscription provider, use it (with quota check)
+  // NO FALLBACK - if quota exceeded, throw error to prevent unexpected API costs
+  if (globalProvider === "claude-subscription") {
+    if (env.CLAUDE_USE_SUBSCRIPTION !== "true") {
+      throw new Error(
+        "Provider 'claude-subscription' selected but CLAUDE_USE_SUBSCRIPTION is not enabled",
+      );
     }
-    console.warn("[llm] Claude subscription quota exceeded, falling back to API");
+    const limits = getUsageLimitsFromEnv(env);
+    if (!canUseClaudeSubscription(limits)) {
+      throw new Error(
+        `Claude subscription quota exceeded (${limits.callsPerHour} calls/hour). ` +
+          "Wait for quota reset or increase limit in settings.",
+      );
+    }
+    return "claude-subscription";
   }
 
-  // Check if Codex subscription mode is enabled and available
-  if (env.CODEX_USE_SUBSCRIPTION === "true") {
-    const limits = getCodexUsageLimitsFromEnv(env);
-    if (canUseCodexSubscription(limits)) {
-      return "codex-subscription";
+  if (globalProvider === "codex-subscription") {
+    if (env.CODEX_USE_SUBSCRIPTION !== "true") {
+      throw new Error(
+        "Provider 'codex-subscription' selected but CODEX_USE_SUBSCRIPTION is not enabled",
+      );
     }
-    console.warn("[llm] Codex subscription quota exceeded, falling back to API");
+    const limits = getCodexUsageLimitsFromEnv(env);
+    if (!canUseCodexSubscription(limits)) {
+      throw new Error(
+        `Codex subscription quota exceeded (${limits.callsPerHour} calls/hour). ` +
+          "Wait for quota reset or increase limit in settings.",
+      );
+    }
+    return "codex-subscription";
+  }
+
+  // If user explicitly selected an API provider, use it
+  if (globalProvider === "anthropic" && anthropicApiKey) {
+    return "anthropic";
+  }
+  if (globalProvider === "openai" && openaiApiKey) {
+    return "openai";
   }
 
   // Check for task-specific provider override
@@ -178,17 +206,39 @@ function resolveProvider(
   if (taskProvider === "openai" && openaiApiKey) {
     return "openai";
   }
-
-  // Check for global provider preference
-  const globalProvider = env.LLM_PROVIDER?.toLowerCase();
-  if (globalProvider === "anthropic" && anthropicApiKey) {
-    return "anthropic";
+  // Task-specific subscription providers also throw on quota exceeded
+  if (taskProvider === "claude-subscription") {
+    if (env.CLAUDE_USE_SUBSCRIPTION !== "true") {
+      throw new Error(
+        `Task provider 'claude-subscription' selected but CLAUDE_USE_SUBSCRIPTION is not enabled`,
+      );
+    }
+    const limits = getUsageLimitsFromEnv(env);
+    if (!canUseClaudeSubscription(limits)) {
+      throw new Error(
+        `Claude subscription quota exceeded (${limits.callsPerHour} calls/hour). ` +
+          "Wait for quota reset or increase limit in settings.",
+      );
+    }
+    return "claude-subscription";
   }
-  if (globalProvider === "openai" && openaiApiKey) {
-    return "openai";
+  if (taskProvider === "codex-subscription") {
+    if (env.CODEX_USE_SUBSCRIPTION !== "true") {
+      throw new Error(
+        `Task provider 'codex-subscription' selected but CODEX_USE_SUBSCRIPTION is not enabled`,
+      );
+    }
+    const limits = getCodexUsageLimitsFromEnv(env);
+    if (!canUseCodexSubscription(limits)) {
+      throw new Error(
+        `Codex subscription quota exceeded (${limits.callsPerHour} calls/hour). ` +
+          "Wait for quota reset or increase limit in settings.",
+      );
+    }
+    return "codex-subscription";
   }
 
-  // Auto-select based on available keys
+  // Auto-select based on available keys (no explicit provider set)
   if (anthropicApiKey) return "anthropic";
   if (openaiApiKey) return "openai";
 

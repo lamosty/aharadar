@@ -18,6 +18,18 @@ const DEFAULT_CONFIG: CodexSubscriptionConfig = {
   workingDirectory: undefined,
 };
 
+// Logging helper - can be replaced with proper logger
+const log = {
+  debug: (msg: string, data?: Record<string, unknown>) => {
+    if (process.env.CODEX_SUBSCRIPTION_DEBUG === "true") {
+      console.log(`[codex-sub] ${msg}`, data ? JSON.stringify(data) : "");
+    }
+  },
+  warn: (msg: string, data?: Record<string, unknown>) => {
+    console.warn(`[codex-sub] ${msg}`, data ? JSON.stringify(data) : "");
+  },
+};
+
 /**
  * Call OpenAI using Codex SDK with ChatGPT subscription credentials.
  * Works without OPENAI_API_KEY when `codex` CLI is logged in.
@@ -29,20 +41,40 @@ export async function callCodexSubscription(
 ): Promise<LlmCallResult> {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
+  log.debug("Starting call", {
+    model: ref.model,
+    promptLength: request.user.length,
+    hasSystem: !!request.system,
+  });
+
   try {
     // Dynamic import for ESM-only module in CommonJS context
     const { Codex } = await import("@openai/codex-sdk");
 
     const codex = new Codex();
     const thread = codex.startThread({
+      model: ref.model, // Use the resolved model (e.g., gpt-5.1)
       ...(mergedConfig.workingDirectory ? { workingDirectory: mergedConfig.workingDirectory } : {}),
     });
 
     // Build the prompt combining system and user content
     const fullPrompt = request.system ? `${request.system}\n\n${request.user}` : request.user;
 
+    log.debug("Running thread", { promptLength: fullPrompt.length });
+
     // Use run() for simple request/response pattern
     const turn = await thread.run(fullPrompt);
+
+    const finalResponse = typeof turn.finalResponse === "string" ? turn.finalResponse.trim() : "";
+
+    log.debug("Call complete", {
+      responseLength: finalResponse.length,
+      hasResponse: finalResponse.length > 0,
+    });
+
+    if (finalResponse.length === 0) {
+      log.warn("SDK returned empty response", { model: ref.model });
+    }
 
     // Record usage for quota tracking
     recordCodexUsage({ calls: 1 });
@@ -50,7 +82,7 @@ export async function callCodexSubscription(
     // Note: Subscription mode doesn't expose token counts for billing
     // We return 0 - cost tracking happens via OpenAI's subscription billing
     return {
-      outputText: typeof turn.finalResponse === "string" ? turn.finalResponse.trim() : "",
+      outputText: finalResponse,
       rawResponse: turn,
       inputTokens: 0, // Not available in subscription mode
       outputTokens: 0, // Not available in subscription mode
@@ -59,6 +91,10 @@ export async function callCodexSubscription(
   } catch (error) {
     // Enrich error with context
     const err = error instanceof Error ? error : new Error(String(error));
+    log.warn("Call failed", {
+      error: err.message,
+      model: ref.model,
+    });
     const enrichedError = Object.assign(err, {
       provider: "codex-subscription",
       model: ref.model,
