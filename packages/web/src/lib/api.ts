@@ -1360,6 +1360,53 @@ export async function getOpsStatus(signal?: AbortSignal): Promise<OpsStatusRespo
 }
 
 // ============================================================================
+// Queue Actions API
+// ============================================================================
+
+/** Response from queue action endpoints */
+export interface QueueActionResponse {
+  ok: boolean;
+  message: string;
+}
+
+/**
+ * Force obliterate the queue (removes all jobs including active).
+ */
+export async function obliterateQueue(): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>("/admin/queue/obliterate", { method: "POST" });
+}
+
+/**
+ * Drain the queue (removes waiting jobs, keeps active).
+ */
+export async function drainQueue(): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>("/admin/queue/drain", { method: "POST" });
+}
+
+/**
+ * Pause the queue.
+ */
+export async function pauseQueue(): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>("/admin/queue/pause", { method: "POST" });
+}
+
+/**
+ * Resume the queue.
+ */
+export async function resumeQueue(): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>("/admin/queue/resume", { method: "POST" });
+}
+
+/**
+ * Remove a specific job from the queue.
+ */
+export async function removeQueueJob(jobId: string): Promise<QueueActionResponse> {
+  return apiFetch<QueueActionResponse>(`/admin/queue/job/${encodeURIComponent(jobId)}`, {
+    method: "DELETE",
+  });
+}
+
+// ============================================================================
 // AB Tests API
 // ============================================================================
 

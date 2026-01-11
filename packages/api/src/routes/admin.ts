@@ -1105,6 +1105,107 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
+  // POST /admin/queue/obliterate - Force obliterate the queue (removes all jobs)
+  fastify.post("/admin/queue/obliterate", async (_request, reply) => {
+    const queue = getPipelineQueue();
+
+    try {
+      await queue.obliterate({ force: true });
+      return { ok: true, message: "Queue obliterated" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "OBLITERATE_FAILED", message },
+      });
+    }
+  });
+
+  // POST /admin/queue/drain - Remove all waiting jobs (keeps active jobs)
+  fastify.post("/admin/queue/drain", async (_request, reply) => {
+    const queue = getPipelineQueue();
+
+    try {
+      await queue.drain();
+      return { ok: true, message: "Queue drained (waiting jobs removed)" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "DRAIN_FAILED", message },
+      });
+    }
+  });
+
+  // POST /admin/queue/pause - Pause the queue
+  fastify.post("/admin/queue/pause", async (_request, reply) => {
+    const queue = getPipelineQueue();
+
+    try {
+      await queue.pause();
+      return { ok: true, message: "Queue paused" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "PAUSE_FAILED", message },
+      });
+    }
+  });
+
+  // POST /admin/queue/resume - Resume the queue
+  fastify.post("/admin/queue/resume", async (_request, reply) => {
+    const queue = getPipelineQueue();
+
+    try {
+      await queue.resume();
+      return { ok: true, message: "Queue resumed" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "RESUME_FAILED", message },
+      });
+    }
+  });
+
+  // DELETE /admin/queue/job/:jobId - Remove a specific job
+  fastify.delete<{ Params: { jobId: string } }>(
+    "/admin/queue/job/:jobId",
+    async (request, reply) => {
+      const queue = getPipelineQueue();
+      const { jobId } = request.params;
+
+      try {
+        const job = await queue.getJob(jobId);
+        if (!job) {
+          return reply.code(404).send({
+            ok: false,
+            error: { code: "JOB_NOT_FOUND", message: `Job ${jobId} not found` },
+          });
+        }
+
+        // Try to remove - this works for waiting/delayed jobs
+        // For active jobs, we need to use moveToFailed
+        const state = await job.getState();
+        if (state === "active") {
+          // Move active job to failed state so it stops processing
+          await job.moveToFailed(new Error("Manually killed via admin API"), "0", true);
+        } else {
+          await job.remove();
+        }
+
+        return { ok: true, message: `Job ${jobId} removed (was ${state})` };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return reply.code(500).send({
+          ok: false,
+          error: { code: "REMOVE_JOB_FAILED", message },
+        });
+      }
+    },
+  );
+
   // GET /admin/env-config - Get important non-secret environment variables
   fastify.get("/admin/env-config", async (request, reply) => {
     const db = getDb();

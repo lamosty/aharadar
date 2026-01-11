@@ -38,6 +38,7 @@ import {
   type DigestsListResponse,
   deleteAdminSource,
   deleteTopic,
+  drainQueue,
   type FeedbackAction,
   type FeedbackByTopicResponse,
   type FeedbackDailyStatsResponse,
@@ -73,6 +74,7 @@ import {
   type MonthlyUsageResponse,
   type NetworkError,
   type OpsStatusResponse,
+  obliterateQueue,
   type PreferencesGetResponse,
   type PreferencesMarkCheckedResponse,
   type PreferencesUpdateResponse,
@@ -80,13 +82,17 @@ import {
   patchAdminSource,
   patchPreferences,
   patchTopicDigestSettings,
+  pauseQueue,
   postAdminAbtest,
   postAdminRun,
   postAdminSource,
   postFeedback,
   postMarkChecked,
   postTopicMarkChecked,
+  type QueueActionResponse,
   type QueueStatusResponse,
+  removeQueueJob,
+  resumeQueue,
   type SourceCreateRequest,
   type SourceCreateResponse,
   type SourceDeleteResponse,
@@ -705,6 +711,115 @@ export function useOpsStatus(
     queryFn: ({ signal }) => getOpsStatus(signal),
     refetchInterval: 10000, // Poll every 10s
     staleTime: 5000,
+    ...options,
+  });
+}
+
+// ============================================================================
+// Queue Actions Mutations
+// ============================================================================
+
+/**
+ * Mutation to obliterate the queue (force remove all jobs).
+ */
+export function useObliterateQueue(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, void>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => obliterateQueue(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to drain the queue (remove waiting jobs only).
+ */
+export function useDrainQueue(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, void>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => drainQueue(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to pause the queue.
+ */
+export function usePauseQueue(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, void>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => pauseQueue(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to resume the queue.
+ */
+export function useResumeQueue(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, void>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => resumeQueue(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to remove a specific job from the queue.
+ */
+export function useRemoveQueueJob(
+  options?: Omit<
+    UseMutationOptions<QueueActionResponse, ApiError | NetworkError, string>,
+    "mutationFn" | "onSettled"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: string) => removeQueueJob(jobId),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.queueStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.opsStatus });
+    },
     ...options,
   });
 }
