@@ -51,6 +51,7 @@ import {
   getAdminAbtest,
   getAdminAbtests,
   getAdminBudgets,
+  getAdminLlmQuota,
   getAdminLlmSettings,
   getAdminSources,
   getDailyUsage,
@@ -96,6 +97,7 @@ import {
   postTopicMarkChecked,
   type QueueActionResponse,
   type QueueStatusResponse,
+  type QuotaStatusResponse,
   removeQueueJob,
   resumeQueue,
   type SourceCreateRequest,
@@ -146,6 +148,7 @@ export const queryKeys = {
     sources: ["admin", "sources"] as const,
     budgets: ["admin", "budgets"] as const,
     llmSettings: ["admin", "llm-settings"] as const,
+    llmQuota: ["admin", "llm-quota"] as const,
     queueStatus: ["admin", "queue-status"] as const,
     opsStatus: ["admin", "ops-status"] as const,
     abtests: {
@@ -679,6 +682,26 @@ export function useAdminLlmSettingsUpdate(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.llmSettings });
     },
+    ...options,
+  });
+}
+
+/**
+ * Query for LLM quota status (subscription providers).
+ * Shows current usage for Claude and Codex subscriptions.
+ */
+export function useAdminLlmQuota(
+  options?: Omit<
+    UseQueryOptions<QuotaStatusResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.llmQuota,
+    queryFn: ({ signal }) => getAdminLlmQuota(signal),
+    // Poll frequently since quota changes during digests
+    refetchInterval: 10 * 1000, // 10 seconds
+    staleTime: 5 * 1000, // 5 seconds
     ...options,
   });
 }

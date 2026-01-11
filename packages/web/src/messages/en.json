@@ -423,7 +423,15 @@
       "batchTriageDescription": "Process multiple items in a single API call to reduce costs (10-15x fewer calls).",
       "batchTriageEnabled": "Enable batch triage processing",
       "batchSizeLabel": "Batch size (items per call)",
-      "batchSizeHint": "Default: 15. Higher values reduce API calls but may hit token limits."
+      "batchSizeHint": "Default: 15. Higher values reduce API calls but may hit token limits.",
+      "quotaStatus": "Hourly Quota Status",
+      "quotaStatusDescription": "Real-time usage for subscription providers. Quota resets hourly.",
+      "quotaUsed": "{used} / {limit} calls used",
+      "quotaRemaining": "{remaining} remaining",
+      "quotaResetAt": "Resets {time}",
+      "quotaOk": "Within quota",
+      "quotaWarning": "Approaching limit",
+      "quotaCritical": "Near limit"
     },
     "ops": {
       "title": "Operations",

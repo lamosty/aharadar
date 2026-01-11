@@ -6,6 +6,7 @@ export * from "./costs";
 export * from "./deep_summary";
 export * from "./embeddings";
 export * from "./quota_check";
+export * from "./quota_status";
 export * from "./router";
 export * from "./triage";
 export * from "./types";

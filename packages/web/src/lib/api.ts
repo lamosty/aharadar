@@ -819,11 +819,46 @@ export interface LlmSettingsUpdateRequest {
   triageBatchSize?: number;
 }
 
+// ============================================================================
+// LLM Quota Status API
+// ============================================================================
+
+/** Provider quota status */
+export interface ProviderQuotaStatus {
+  /** Calls used this hour */
+  used: number;
+  /** Calls limit per hour */
+  limit: number;
+  /** Calls remaining this hour */
+  remaining: number;
+  /** When the quota resets (ISO string) */
+  resetAt: string;
+}
+
+/** Quota status for all subscription providers */
+export interface QuotaStatus {
+  claude: ProviderQuotaStatus | null;
+  codex: ProviderQuotaStatus | null;
+}
+
+/** Quota status response */
+export interface QuotaStatusResponse {
+  ok: true;
+  quota: QuotaStatus;
+}
+
 /**
  * Get LLM settings.
  */
 export async function getAdminLlmSettings(signal?: AbortSignal): Promise<LlmSettingsResponse> {
   return apiFetch<LlmSettingsResponse>("/admin/llm-settings", { signal });
+}
+
+/**
+ * Get LLM quota status for subscription providers.
+ */
+export async function getAdminLlmQuota(signal?: AbortSignal): Promise<QuotaStatusResponse> {
+  return apiFetch<QuotaStatusResponse>("/admin/llm/quota", { signal });
 }
 
 // ============================================================================

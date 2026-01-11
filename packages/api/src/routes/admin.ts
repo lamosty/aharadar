@@ -1,5 +1,5 @@
 import type { LlmProvider, LlmSettingsUpdate, ReasoningEffort, SourceRow } from "@aharadar/db";
-import { checkQuotaForRun } from "@aharadar/llm";
+import { checkQuotaForRun, getQuotaStatus } from "@aharadar/llm";
 import { compileDigestPlan, computeCreditsStatus } from "@aharadar/pipeline";
 import {
   type AbtestVariantConfig,
@@ -792,6 +792,34 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         triageBatchSize: settings.triage_batch_size,
         updatedAt: settings.updated_at,
       },
+    };
+  });
+
+  // GET /admin/llm/quota - Get current subscription quota status
+  fastify.get("/admin/llm/quota", async (_request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const db = getDb();
+    const settings = await db.llmSettings.get();
+
+    // Get quota status from the in-memory trackers
+    const quotaStatus = getQuotaStatus({
+      claudeCallsPerHour: settings.claude_calls_per_hour,
+      codexCallsPerHour: settings.codex_calls_per_hour,
+    });
+
+    return {
+      ok: true,
+      quota: quotaStatus,
     };
   });
 

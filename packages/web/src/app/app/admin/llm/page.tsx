@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
-import type { LlmProvider, ReasoningEffort } from "@/lib/api";
-import { useAdminLlmSettings, useAdminLlmSettingsUpdate } from "@/lib/hooks";
+import type { LlmProvider, ProviderQuotaStatus, ReasoningEffort } from "@/lib/api";
+import { useAdminLlmQuota, useAdminLlmSettings, useAdminLlmSettingsUpdate } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -28,7 +28,9 @@ function isSubscriptionProvider(provider: LlmProvider): boolean {
 export default function AdminLlmPage() {
   const { addToast } = useToast();
   const { data, isLoading, isError, error } = useAdminLlmSettings();
+  const { data: quotaData } = useAdminLlmQuota();
   const settings = data?.settings ?? null;
+  const quota = quotaData?.quota ?? null;
 
   // Form state
   const [provider, setProvider] = useState<LlmProvider>("openai");
@@ -174,6 +176,30 @@ export default function AdminLlmPage() {
           )}
         </div>
       </div>
+
+      {/* Quota Status - only show if any subscription provider data is available */}
+      {quota && (quota.claude || quota.codex) && (
+        <div className={styles.quotaStatus}>
+          <h2 className={styles.sectionTitle}>{t("admin.llm.quotaStatus")}</h2>
+          <p className={styles.sectionDescription}>{t("admin.llm.quotaStatusDescription")}</p>
+          <div className={styles.quotaGrid}>
+            {quota.claude && (
+              <QuotaCard
+                provider="Claude"
+                status={quota.claude}
+                isActive={settings.provider === "claude-subscription"}
+              />
+            )}
+            {quota.codex && (
+              <QuotaCard
+                provider="Codex"
+                status={quota.codex}
+                isActive={settings.provider === "codex-subscription"}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className={styles.form}>
         {/* Provider Selection */}
@@ -383,6 +409,80 @@ export default function AdminLlmPage() {
           )}
         </div>
       </form>
+    </div>
+  );
+}
+
+/**
+ * QuotaCard component to display subscription provider quota status.
+ */
+function QuotaCard({
+  provider,
+  status,
+  isActive,
+}: {
+  provider: string;
+  status: ProviderQuotaStatus;
+  isActive: boolean;
+}) {
+  const usagePercent = status.limit > 0 ? (status.used / status.limit) * 100 : 0;
+
+  // Determine status level for styling
+  const getStatusLevel = () => {
+    if (usagePercent >= 90) return "critical";
+    if (usagePercent >= 70) return "warning";
+    return "ok";
+  };
+
+  const statusLevel = getStatusLevel();
+
+  // Format time until reset
+  const formatResetTime = () => {
+    const resetDate = new Date(status.resetAt);
+    const now = new Date();
+    const diffMs = resetDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) return "Now";
+
+    const diffMins = Math.ceil(diffMs / (1000 * 60));
+    if (diffMins < 60) return `${diffMins}m`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    const remainingMins = diffMins % 60;
+    return remainingMins > 0 ? `${diffHours}h ${remainingMins}m` : `${diffHours}h`;
+  };
+
+  return (
+    <div className={styles.quotaCard} style={{ opacity: isActive ? 1 : 0.6 }}>
+      <div className={styles.quotaCardHeader}>
+        <span className={styles.quotaProvider}>
+          {provider}
+          {isActive && " (Active)"}
+        </span>
+        <span className={styles.quotaReset}>
+          {t("admin.llm.quotaResetAt", { time: formatResetTime() })}
+        </span>
+      </div>
+      <div className={styles.quotaBar}>
+        <div
+          className={`${styles.quotaBarFill} ${
+            statusLevel === "ok"
+              ? styles.quotaBarFillOk
+              : statusLevel === "warning"
+                ? styles.quotaBarFillWarning
+                : styles.quotaBarFillCritical
+          }`}
+          style={{ width: `${Math.min(usagePercent, 100)}%` }}
+        />
+      </div>
+      <div className={styles.quotaDetails}>
+        <span className={styles.quotaUsed}>
+          {t("admin.llm.quotaUsed", { used: status.used, limit: status.limit })}
+        </span>
+        <span className={styles.quotaRemaining}>
+          {t("admin.llm.quotaRemaining", { remaining: status.remaining })}
+        </span>
+      </div>
     </div>
   );
 }
