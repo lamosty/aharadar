@@ -134,6 +134,27 @@ export function createSourcesRepo(db: Queryable) {
       return { previous: previousWeight, updated: newWeight };
     },
 
+    async updateConfig(params: {
+      sourceId: string;
+      config: Record<string, unknown>;
+    }): Promise<{ previous: Record<string, unknown>; updated: Record<string, unknown> }> {
+      const current = await db.query<{ config_json: Record<string, unknown> }>(
+        "select config_json from sources where id = $1::uuid",
+        [params.sourceId],
+      );
+      const row = current.rows[0];
+      if (!row) throw new Error(`Source not found: ${params.sourceId}`);
+
+      const previous = row.config_json ?? {};
+
+      await db.query("update sources set config_json = $2::jsonb where id = $1::uuid", [
+        params.sourceId,
+        JSON.stringify(params.config),
+      ]);
+
+      return { previous, updated: params.config };
+    },
+
     async updateEnabled(params: {
       sourceId: string;
       isEnabled: boolean;
