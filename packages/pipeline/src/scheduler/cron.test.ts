@@ -74,6 +74,7 @@ describe("generateDueWindows", () => {
       digest_mode: "normal",
       digest_depth: 50,
       digest_cursor_end: null,
+      custom_settings: {},
       ...overrides,
     };
   }
@@ -368,6 +369,7 @@ describe("getSchedulableTopics", () => {
       digest_mode: "normal",
       digest_depth: 50,
       digest_cursor_end: null,
+      custom_settings: {},
       ...overrides,
     };
   }

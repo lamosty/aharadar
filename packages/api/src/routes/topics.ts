@@ -1,4 +1,5 @@
 import type { DigestMode, Topic } from "@aharadar/db";
+import { validatePersonalizationTuning } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -25,6 +26,8 @@ function formatTopic(topic: Topic) {
     digestMode: topic.digestMode,
     digestDepth: topic.digestDepth,
     digestCursorEnd: topic.digestCursorEnd?.toISOString() ?? null,
+    // Custom settings
+    customSettings: topic.customSettings,
   };
 }
 
@@ -71,6 +74,7 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       digestMode: row.digest_mode,
       digestDepth: row.digest_depth,
       digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
+      customSettings: row.custom_settings,
     }));
 
     return {
@@ -143,6 +147,7 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       digestMode: row.digest_mode,
       digestDepth: row.digest_depth,
       digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
+      customSettings: row.custom_settings,
     };
 
     return {
@@ -342,6 +347,108 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
         digestMode: digestMode as DigestMode | undefined,
         digestDepth: digestDepth as number | undefined,
       });
+
+      return {
+        ok: true,
+        topic: formatTopic(updated),
+      };
+    },
+  );
+
+  // PATCH /topics/:id/custom-settings - Update topic custom settings
+  fastify.patch<{ Params: { id: string } }>(
+    "/topics/:id/custom-settings",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_BODY",
+            message: "Request body must be a JSON object",
+          },
+        });
+      }
+
+      const bodyObj = body as Record<string, unknown>;
+
+      // Validate personalization_tuning_v1 if present
+      if (bodyObj.personalization_tuning_v1 !== undefined) {
+        const tuningInput = bodyObj.personalization_tuning_v1;
+        if (
+          tuningInput !== null &&
+          typeof tuningInput === "object" &&
+          !Array.isArray(tuningInput)
+        ) {
+          const errors = validatePersonalizationTuning(tuningInput as Record<string, unknown>);
+          if (errors.length > 0) {
+            return reply.code(400).send({
+              ok: false,
+              error: {
+                code: "INVALID_TUNING",
+                message: `Invalid personalization tuning: ${errors.join("; ")}`,
+              },
+            });
+          }
+        }
+      }
+
+      // Verify topic exists and belongs to user
+      const db = getDb();
+      const existing = await db.topics.getById(id);
+
+      if (!existing) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Topic not found: ${id}`,
+          },
+        });
+      }
+
+      if (existing.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+
+      // Merge with existing custom_settings (preserve unknown keys)
+      const existingSettings = existing.custom_settings ?? {};
+      const nextSettings = {
+        ...existingSettings,
+        ...bodyObj,
+      };
+
+      // Apply updates
+      const updated = await db.topics.updateCustomSettings(id, nextSettings);
 
       return {
         ok: true,

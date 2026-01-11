@@ -15,6 +15,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.3.11
         version: 2.3.11
+      '@openai/codex-sdk':
+        specifier: ^0.80.0
+        version: 0.80.0
       '@testcontainers/postgresql':
         specifier: ^10.18.0
         version: 10.28.0

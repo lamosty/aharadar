@@ -48,10 +48,18 @@ export async function callCodexSubscription(
   });
 
   try {
-    // Dynamic import for ESM-only module in CommonJS context
-    const { Codex } = await import("@openai/codex-sdk");
+    // Dynamic import for ESM-only module in CommonJS context.
+    // Use Function constructor to prevent TypeScript from transforming this
+    // to require(), which doesn't work with ESM-only packages.
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const importDynamic = new Function("modulePath", "return import(modulePath)") as (
+      path: string,
+    ) => Promise<{ Codex: unknown }>;
+    const mod = await importDynamic("@openai/codex-sdk");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const CodexClass = mod.Codex as any;
 
-    const codex = new Codex();
+    const codex = new CodexClass();
     const thread = codex.startThread({
       model: ref.model, // Use the resolved model (e.g., gpt-5.1)
       ...(mergedConfig.workingDirectory ? { workingDirectory: mergedConfig.workingDirectory } : {}),
