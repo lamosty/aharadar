@@ -107,3 +107,5 @@ Task files (in recommended order):
 77. `task-129-remove-signal-connector.md` - Remove signal connector and document deferral
 78. `task-130-unify-topic-frequency-and-decay.md` - Unify digest schedule + decay; remove viewing profile UI/API
 79. `task-131-highlights-idea-library.md` - Highlights/Idea Library view for liked/saved items
+80. `task-132-personalization-tuning-pipeline.md` - Preference‑biased sampling/triage + tuning overrides
+81. `task-133-admin-personalization-tuning-ui.md` - Admin UI for personalization tuning controls
