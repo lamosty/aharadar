@@ -699,6 +699,9 @@ export async function persistDigestFromContentItems(params: {
     itemsFetched: number;
   }>;
 }): Promise<DigestRunResult | null> {
+  // Track when this digest run starts for cost aggregation
+  const runStartedAt = new Date();
+
   const paidCallsAllowed = params.paidCallsAllowed ?? true;
   const maxItems = params.limits?.maxItems ?? 20;
   const triageMaxCalls = params.limits?.triageMaxCalls;
@@ -1213,6 +1216,9 @@ export async function persistDigestFromContentItems(params: {
         };
   });
 
+  // Sum LLM costs incurred during this digest run (triage + deep_summary)
+  const runCosts = await params.db.providerCalls.getDigestRunCosts(params.userId, runStartedAt);
+
   const digest = await params.db.tx(async (tx) => {
     const res = await tx.digests.upsert({
       userId: params.userId,
@@ -1221,7 +1227,7 @@ export async function persistDigestFromContentItems(params: {
       windowEnd: params.windowEnd,
       mode: params.mode,
       status: "complete",
-      creditsUsed: 0, // TODO: calculate actual credits used during this digest run
+      creditsUsed: runCosts.totalUsd,
       sourceResults: params.sourceResults ?? [],
     });
     await tx.digestItems.replaceForDigest({ digestId: res.id, items });

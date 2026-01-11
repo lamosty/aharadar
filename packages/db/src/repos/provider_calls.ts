@@ -210,5 +210,32 @@ export function createProviderCallsRepo(db: Queryable) {
         callCount: parseInt(r.callCount, 10),
       }));
     },
+
+    /**
+     * Get total USD cost for a digest run.
+     * Sums costs from triage and deep_summary calls made after the run start time.
+     */
+    async getDigestRunCosts(
+      userId: string,
+      runStartedAt: Date,
+    ): Promise<{ totalUsd: number; callCount: number }> {
+      const result = await db.query<{ totalUsd: string; callCount: string }>(
+        `SELECT
+           COALESCE(SUM(cost_estimate_usd), 0) as "totalUsd",
+           COUNT(*) as "callCount"
+         FROM provider_calls
+         WHERE user_id = $1
+           AND started_at >= $2
+           AND purpose IN ('triage', 'triage_batch', 'deep_summary')
+           AND status = 'ok'`,
+        [userId, runStartedAt.toISOString()],
+      );
+
+      const row = result.rows[0];
+      return {
+        totalUsd: parseFloat(row?.totalUsd ?? "0"),
+        callCount: parseInt(row?.callCount ?? "0", 10),
+      };
+    },
   };
 }
