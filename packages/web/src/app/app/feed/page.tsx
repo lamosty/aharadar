@@ -30,7 +30,7 @@ const DEFAULT_PAGE_SIZE: PageSize = 50;
 
 /**
  * Transform a DeepDiveQueueItem to FeedItem shape for display in the feed.
- * Now includes score and triageJson from the queue query.
+ * Now includes score, triageJson, and previewSummaryJson from the queue query.
  */
 function transformQueueItemToFeedItem(queueItem: DeepDiveQueueItem): FeedItemType {
   return {
@@ -52,6 +52,7 @@ function transformQueueItemToFeedItem(queueItem: DeepDiveQueueItem): FeedItemTyp
     feedback: "like", // These are liked items by definition
     topicId: "", // Not available from queue
     topicName: "", // Not available from queue
+    previewSummaryJson: queueItem.previewSummaryJson,
   };
 }
 

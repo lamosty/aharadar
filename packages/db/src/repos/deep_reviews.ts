@@ -2,7 +2,7 @@ import type { SourceType } from "@aharadar/shared";
 
 import type { Queryable } from "../db";
 
-export type DeepReviewStatus = "promoted" | "dropped";
+export type DeepReviewStatus = "preview" | "promoted" | "dropped";
 
 export interface DeepReviewRow {
   id: string;
@@ -25,6 +25,8 @@ export interface DeepReviewQueueItem {
   likedAt: string;
   score: number;
   triageJson: Record<string, unknown> | null;
+  /** Existing preview summary if already generated */
+  previewSummaryJson: Record<string, unknown> | null;
 }
 
 export interface PromotedItem {
@@ -89,6 +91,7 @@ export function createDeepReviewsRepo(db: Queryable) {
         liked_at: string;
         score: number | null;
         triage_json: Record<string, unknown> | null;
+        preview_summary_json: Record<string, unknown> | null;
       }>(
         `with latest_feedback as (
            -- Get the most recent feedback action per content item for this user
@@ -120,7 +123,8 @@ export function createDeepReviewsRepo(db: Queryable) {
            ci.published_at::text as published_at,
            lf.liked_at::text as liked_at,
            ldi.score,
-           ldi.triage_json
+           ldi.triage_json,
+           dr.summary_json as preview_summary_json
          from latest_feedback lf
          join content_items ci on ci.id = lf.content_item_id
          left join content_item_deep_reviews dr
@@ -128,7 +132,7 @@ export function createDeepReviewsRepo(db: Queryable) {
            and dr.user_id = $1
          left join latest_digest_item ldi on ldi.content_item_id = ci.id
          where lf.action = 'like'
-           and dr.id is null
+           and (dr.id is null or dr.status = 'preview')
          order by lf.liked_at desc
          limit $2
          offset $3`,
@@ -146,6 +150,7 @@ export function createDeepReviewsRepo(db: Queryable) {
         likedAt: row.liked_at,
         score: row.score ?? 0,
         triageJson: row.triage_json,
+        previewSummaryJson: row.preview_summary_json,
       }));
     },
 

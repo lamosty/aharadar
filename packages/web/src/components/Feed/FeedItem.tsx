@@ -334,8 +334,11 @@ export function FeedItem({
   const { addToast } = useToast();
 
   // Research panel state (for Top Picks view)
+  // Initialize with existing preview summary if available
   const [pastedText, setPastedText] = useState("");
-  const [summary, setSummary] = useState<ManualSummaryOutput | null>(null);
+  const [summary, setSummary] = useState<ManualSummaryOutput | null>(
+    item.previewSummaryJson ?? null,
+  );
   const [researchError, setResearchError] = useState<string | null>(null);
 
   // Mutations for research
@@ -573,6 +576,12 @@ export function FeedItem({
                     >
                       {previewMutation.isPending ? "..." : "Generate"}
                     </button>
+                    {onNext && (
+                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
+                        Next
+                      </button>
+                    )}
+                    <span className={styles.actionSpacer} />
                     <button
                       type="button"
                       className={styles.dropBtnCompact}
@@ -581,11 +590,6 @@ export function FeedItem({
                     >
                       Drop
                     </button>
-                    {onNext && (
-                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
-                        Next
-                      </button>
-                    )}
                   </div>
                   {researchError && <p className={styles.detailResearchError}>{researchError}</p>}
                 </>
@@ -608,6 +612,12 @@ export function FeedItem({
                     >
                       Save
                     </button>
+                    {onNext && (
+                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
+                        Next
+                      </button>
+                    )}
+                    <span className={styles.actionSpacer} />
                     <button
                       type="button"
                       className={styles.dropBtnCompact}
@@ -616,11 +626,6 @@ export function FeedItem({
                     >
                       Drop
                     </button>
-                    {onNext && (
-                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
-                        Next
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -771,6 +776,12 @@ export function FeedItem({
                   >
                     {previewMutation.isPending ? "Generating..." : "Generate"}
                   </button>
+                  {onNext && (
+                    <button type="button" className={styles.nextBtn} onClick={onNext}>
+                      Next
+                    </button>
+                  )}
+                  <span className={styles.actionSpacer} />
                   <button
                     type="button"
                     className={styles.dropBtn}
@@ -779,11 +790,6 @@ export function FeedItem({
                   >
                     Drop
                   </button>
-                  {onNext && (
-                    <button type="button" className={styles.nextBtn} onClick={onNext}>
-                      Next
-                    </button>
-                  )}
                 </div>
               </div>
               {researchError && <p className={styles.researchError}>{researchError}</p>}
@@ -808,6 +814,12 @@ export function FeedItem({
                 >
                   Save
                 </button>
+                {onNext && (
+                  <button type="button" className={styles.nextBtn} onClick={onNext}>
+                    Next
+                  </button>
+                )}
+                <span className={styles.actionSpacer} />
                 <button
                   type="button"
                   className={styles.dropBtn}
@@ -816,11 +828,6 @@ export function FeedItem({
                 >
                   Drop
                 </button>
-                {onNext && (
-                  <button type="button" className={styles.nextBtn} onClick={onNext}>
-                    Next
-                  </button>
-                )}
               </div>
             </div>
           )}

@@ -42,6 +42,7 @@ function isValidUuid(value: unknown): value is string {
 }
 
 interface PreviewRequestBody {
+  contentItemId: string;
   pastedText: string;
   metadata?: {
     title?: string | null;
@@ -87,7 +88,18 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    const { pastedText, metadata } = body as PreviewRequestBody;
+    const { contentItemId, pastedText, metadata } = body as PreviewRequestBody;
+
+    // Validate contentItemId
+    if (!isValidUuid(contentItemId)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "contentItemId must be a valid UUID",
+        },
+      });
+    }
 
     // Validate pastedText
     if (!pastedText || typeof pastedText !== "string" || pastedText.trim().length === 0) {
@@ -192,6 +204,14 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
       };
 
       await db.providerCalls.insert(providerCallDraft);
+
+      // Persist the summary with status="preview" so it's not lost
+      await db.deepReviews.upsertDecision({
+        userId: ctx.userId,
+        contentItemId,
+        status: "preview",
+        summaryJson: result.output,
+      });
 
       return {
         ok: true,

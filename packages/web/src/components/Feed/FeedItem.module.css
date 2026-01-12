@@ -1554,3 +1554,9 @@
   color: var(--color-primary);
   border-color: var(--color-primary);
 }
+
+/* Spacer to separate positive actions from destructive (Drop) */
+.actionSpacer {
+  flex: 1;
+  min-width: var(--space-4);
+}

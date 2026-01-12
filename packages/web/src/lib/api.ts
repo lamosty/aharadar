@@ -225,6 +225,8 @@ export interface FeedItem {
   // Topic context (for "all topics" mode)
   topicId: string;
   topicName: string;
+  // Preview summary if already generated (Top Picks)
+  previewSummaryJson?: ManualSummaryOutput | null;
 }
 
 /** Pagination info */
@@ -1880,6 +1882,8 @@ export interface DeepDiveQueueItem {
   likedAt: string;
   score: number;
   triageJson: Record<string, unknown> | null;
+  /** Existing preview summary if already generated */
+  previewSummaryJson: ManualSummaryOutput | null;
 }
 
 /** Deep Dive queue response */
