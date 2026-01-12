@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { WhyShown } from "@/components/WhyShown";
-import type { FeedItem as FeedItemType } from "@/lib/api";
+import type { FeedItem as FeedItemType, ManualSummaryOutput } from "@/lib/api";
+import { useDeepDiveDecision, useDeepDivePreview } from "@/lib/hooks";
 import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
@@ -326,6 +328,20 @@ export function FeedItem({
   onSummaryDecision,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const { addToast } = useToast();
+
+  // Research panel state (for Top Picks view)
+  const [pastedText, setPastedText] = useState("");
+  const [summary, setSummary] = useState<ManualSummaryOutput | null>(null);
+  const [researchError, setResearchError] = useState<string | null>(null);
+
+  // Mutations for research
+  const previewMutation = useDeepDivePreview();
+  const decisionMutation = useDeepDiveDecision({
+    onSuccess: () => {
+      onSummaryDecision?.();
+    },
+  });
 
   // Force expanded state (for fast triage mode)
   const isExpanded = forceExpanded || expanded;
@@ -339,6 +355,59 @@ export function FeedItem({
   const handleClear = async () => {
     if (onClear) {
       await onClear(item.id);
+    }
+  };
+
+  // Research handlers
+  const handleGenerateSummary = async () => {
+    if (!pastedText.trim()) return;
+    setResearchError(null);
+
+    try {
+      const result = await previewMutation.mutateAsync({
+        contentItemId: item.id,
+        pastedText: pastedText.trim(),
+        metadata: {
+          title: item.item.title ?? undefined,
+          author: item.item.author ?? undefined,
+          url: item.item.url ?? undefined,
+          sourceType: item.item.sourceType,
+        },
+      });
+      setSummary(result.summary);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to generate summary";
+      if (message.includes("INSUFFICIENT_CREDITS")) {
+        setResearchError(t("deepDive.insufficientCredits"));
+      } else {
+        setResearchError(message);
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    if (!summary) return;
+    try {
+      await decisionMutation.mutateAsync({
+        contentItemId: item.id,
+        decision: "promote",
+        summaryJson: summary,
+      });
+      addToast("Saved to Deep Dives", "success");
+    } catch (err) {
+      addToast("Failed to save", "error");
+    }
+  };
+
+  const handleDrop = async () => {
+    try {
+      await decisionMutation.mutateAsync({
+        contentItemId: item.id,
+        decision: "drop",
+      });
+      addToast("Dropped", "info");
+    } catch (err) {
+      addToast("Failed to drop", "error");
     }
   };
 
@@ -591,11 +660,113 @@ export function FeedItem({
       {/* For items without title (X posts): title already shows full content, no need for body */}
       {hasRealTitle && expandedBodyText && <p className={styles.bodyPreview}>{expandedBodyText}</p>}
 
-      <WhyShown
-        features={item.triageJson as TriageFeatures | undefined}
-        clusterItems={item.clusterItems}
-      />
+      {!isTopPicksView && (
+        <WhyShown
+          features={item.triageJson as TriageFeatures | undefined}
+          clusterItems={item.clusterItems}
+        />
+      )}
+
+      {/* Research panel for Top Picks view */}
+      {isTopPicksView && (
+        <div className={styles.researchPanel}>
+          {!summary ? (
+            // Input phase: paste content and generate
+            <>
+              <div className={styles.researchInputRow}>
+                <textarea
+                  className={styles.researchTextarea}
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  placeholder="Paste article content here..."
+                  rows={2}
+                  disabled={previewMutation.isPending}
+                />
+                <div className={styles.researchActions}>
+                  {item.item.url && (
+                    <a
+                      href={item.item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.openLinkBtn}
+                      title="Open source to copy content"
+                    >
+                      <ExternalLinkIcon />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.generateBtn}
+                    onClick={handleGenerateSummary}
+                    disabled={previewMutation.isPending || !pastedText.trim()}
+                  >
+                    {previewMutation.isPending ? "Generating..." : "Generate"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dropBtn}
+                    onClick={handleDrop}
+                    disabled={decisionMutation.isPending}
+                  >
+                    Drop
+                  </button>
+                </div>
+              </div>
+              {researchError && <p className={styles.researchError}>{researchError}</p>}
+            </>
+          ) : (
+            // Summary phase: show preview with save/drop
+            <div className={styles.summaryPreview}>
+              <p className={styles.summaryOneLiner}>{summary.one_liner}</p>
+              <div className={styles.summaryActions}>
+                <button
+                  type="button"
+                  className={styles.viewDetailsBtn}
+                  onClick={() => onViewSummary?.(item)}
+                >
+                  View Details
+                </button>
+                <button
+                  type="button"
+                  className={styles.saveBtn}
+                  onClick={handleSave}
+                  disabled={decisionMutation.isPending}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className={styles.dropBtn}
+                  onClick={handleDrop}
+                  disabled={decisionMutation.isPending}
+                >
+                  Drop
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </article>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
   );
 }
 
