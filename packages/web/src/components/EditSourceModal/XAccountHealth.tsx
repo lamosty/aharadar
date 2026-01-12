@@ -82,11 +82,13 @@ export function XAccountHealth({ sourceId }: XAccountHealthProps) {
     );
   }
 
-  const handleModeChange = (handle: string, mode: XAccountPolicyMode) => {
+  const handleModeChange = (e: React.MouseEvent, handle: string, mode: XAccountPolicyMode) => {
+    e.stopPropagation();
     updateMode.mutate({ handle, mode });
   };
 
-  const handleReset = (handle: string) => {
+  const handleReset = (e: React.MouseEvent, handle: string) => {
+    e.stopPropagation();
     resetPolicy.mutate(handle);
   };
 
@@ -135,7 +137,7 @@ export function XAccountHealth({ sourceId }: XAccountHealthProps) {
                         key={option.value}
                         type="button"
                         className={`${styles.modeButton} ${policy.mode === option.value ? styles.modeActive : ""}`}
-                        onClick={() => handleModeChange(policy.handle, option.value)}
+                        onClick={(e) => handleModeChange(e, policy.handle, option.value)}
                         disabled={updateMode.isPending}
                       >
                         {t(option.labelKey)}
@@ -183,7 +185,7 @@ export function XAccountHealth({ sourceId }: XAccountHealthProps) {
                 <button
                   type="button"
                   className={styles.resetButton}
-                  onClick={() => handleReset(policy.handle)}
+                  onClick={(e) => handleReset(e, policy.handle)}
                   disabled={resetPolicy.isPending}
                 >
                   {t("editSource.xAccountHealth.reset")}
