@@ -12,6 +12,7 @@ const MAX_CHARS = 60000;
 interface DeepDiveModalProps {
   isOpen: boolean;
   item: FeedItem | null;
+  existingSummary?: ManualSummaryOutput | null;
   onClose: () => void;
   onDecision: () => void;
 }
@@ -70,7 +71,13 @@ function formatRelativeTime(dateStr: string | null): string {
   return `${diffDays}d ago`;
 }
 
-export function DeepDiveModal({ isOpen, item, onClose, onDecision }: DeepDiveModalProps) {
+export function DeepDiveModal({
+  isOpen,
+  item,
+  existingSummary,
+  onClose,
+  onDecision,
+}: DeepDiveModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
 
@@ -78,6 +85,9 @@ export function DeepDiveModal({ isOpen, item, onClose, onDecision }: DeepDiveMod
   const [pastedText, setPastedText] = useState("");
   const [summary, setSummary] = useState<ManualSummaryOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Use existing summary if provided (reader mode)
+  const displaySummary = existingSummary || summary;
 
   // Mutations
   const previewMutation = useDeepDivePreview();
@@ -153,13 +163,13 @@ export function DeepDiveModal({ isOpen, item, onClose, onDecision }: DeepDiveMod
   };
 
   const handleSave = async () => {
-    if (!item || !summary) return;
+    if (!item || !displaySummary) return;
 
     try {
       await decisionMutation.mutateAsync({
         contentItemId: item.id,
         decision: "promote",
-        summaryJson: summary,
+        summaryJson: displaySummary,
       });
       addToast("Item saved to Deep Dives", "success");
     } catch (err) {
@@ -234,8 +244,8 @@ export function DeepDiveModal({ isOpen, item, onClose, onDecision }: DeepDiveMod
 
         {/* Body */}
         <div className={styles.body}>
-          {!summary ? (
-            // Phase A: Paste input
+          {!displaySummary ? (
+            // Phase A: Paste input (only when no existing summary)
             <div className={styles.pasteSection}>
               <label className={styles.label}>{t("deepDive.paste.label")}</label>
               <textarea
@@ -255,54 +265,54 @@ export function DeepDiveModal({ isOpen, item, onClose, onDecision }: DeepDiveMod
               {error && <p className={styles.error}>{error}</p>}
             </div>
           ) : (
-            // Phase B: Summary display
+            // Phase B: Summary display (reader mode)
             <div className={styles.summarySection}>
               <h4 className={styles.sectionTitle}>{t("deepDive.preview.title")}</h4>
 
               <div className={styles.summaryBlock}>
                 <h5>{t("deepDive.preview.oneLiner")}</h5>
-                <p className={styles.oneLiner}>{summary.one_liner}</p>
+                <p className={styles.oneLiner}>{displaySummary.one_liner}</p>
               </div>
 
-              {summary.bullets.length > 0 && (
+              {displaySummary.bullets.length > 0 && (
                 <div className={styles.summaryBlock}>
                   <h5>{t("deepDive.preview.bullets")}</h5>
                   <ul className={styles.bulletList}>
-                    {summary.bullets.map((bullet, i) => (
+                    {displaySummary.bullets.map((bullet, i) => (
                       <li key={i}>{bullet}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {summary.why_it_matters.length > 0 && (
+              {displaySummary.why_it_matters.length > 0 && (
                 <div className={styles.summaryBlock}>
                   <h5>{t("deepDive.preview.whyItMatters")}</h5>
                   <ul className={styles.bulletList}>
-                    {summary.why_it_matters.map((item, i) => (
-                      <li key={i}>{item}</li>
+                    {displaySummary.why_it_matters.map((why, i) => (
+                      <li key={i}>{why}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {summary.risks_or_caveats.length > 0 && (
+              {displaySummary.risks_or_caveats.length > 0 && (
                 <div className={styles.summaryBlock}>
                   <h5>{t("deepDive.preview.risksOrCaveats")}</h5>
                   <ul className={styles.bulletList}>
-                    {summary.risks_or_caveats.map((item, i) => (
-                      <li key={i}>{item}</li>
+                    {displaySummary.risks_or_caveats.map((risk, i) => (
+                      <li key={i}>{risk}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {summary.suggested_followups.length > 0 && (
+              {displaySummary.suggested_followups.length > 0 && (
                 <div className={styles.summaryBlock}>
                   <h5>{t("deepDive.preview.suggestedFollowups")}</h5>
                   <ul className={styles.bulletList}>
-                    {summary.suggested_followups.map((item, i) => (
-                      <li key={i}>{item}</li>
+                    {displaySummary.suggested_followups.map((followup, i) => (
+                      <li key={i}>{followup}</li>
                     ))}
                   </ul>
                 </div>
@@ -313,7 +323,7 @@ export function DeepDiveModal({ isOpen, item, onClose, onDecision }: DeepDiveMod
 
         {/* Footer */}
         <div className={styles.footer}>
-          {!summary ? (
+          {!displaySummary ? (
             <>
               <button
                 type="button"

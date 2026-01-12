@@ -116,6 +116,9 @@ function FeedPageContent() {
 
   // Deep dive modal state
   const [deepDiveItem, setDeepDiveItem] = useState<FeedItemType | null>(null);
+  const [deepDiveSummary, setDeepDiveSummary] = useState<
+    import("@/lib/api").ManualSummaryOutput | null
+  >(null);
   const [isDeepDiveModalOpen, setIsDeepDiveModalOpen] = useState(false);
 
   // Sync URL topic param with TopicProvider on mount
@@ -325,10 +328,14 @@ function FeedPageContent() {
   }, [markCheckedMutation, currentTopicId]);
 
   // Open reader modal for an item with summary
-  const handleOpenReaderModal = useCallback((item: FeedItemType) => {
-    setDeepDiveItem(item);
-    setIsDeepDiveModalOpen(true);
-  }, []);
+  const handleOpenReaderModal = useCallback(
+    (item: FeedItemType, summary: import("@/lib/api").ManualSummaryOutput) => {
+      setDeepDiveItem(item);
+      setDeepDiveSummary(summary);
+      setIsDeepDiveModalOpen(true);
+    },
+    [],
+  );
 
   // Handle deep dive decision (refetch top picks queue)
   const handleDeepDiveDecision = useCallback(() => {
@@ -606,13 +613,15 @@ function FeedPageContent() {
         </>
       )}
 
-      {/* Deep Dive Modal */}
+      {/* Deep Dive Modal - Reader mode for viewing summary details */}
       <DeepDiveModal
         isOpen={isDeepDiveModalOpen}
         item={deepDiveItem}
+        existingSummary={deepDiveSummary}
         onClose={() => {
           setIsDeepDiveModalOpen(false);
           setDeepDiveItem(null);
+          setDeepDiveSummary(null);
         }}
         onDecision={handleDeepDiveDecision}
       />

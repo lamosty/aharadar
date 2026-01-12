@@ -30,7 +30,7 @@ interface FeedItemProps {
   /** Whether this is the Top Picks view (shows inline research UI) */
   isTopPicksView?: boolean;
   /** Called when user wants to view full summary (reader modal) */
-  onViewSummary?: (item: FeedItemType) => void;
+  onViewSummary?: (item: FeedItemType, summary: ManualSummaryOutput) => void;
   /** Called after a summary decision (save/drop) to refetch */
   onSummaryDecision?: () => void;
 }
@@ -722,7 +722,7 @@ export function FeedItem({
                 <button
                   type="button"
                   className={styles.viewDetailsBtn}
-                  onClick={() => onViewSummary?.(item)}
+                  onClick={() => onViewSummary?.(item, summary)}
                 >
                   View Details
                 </button>
