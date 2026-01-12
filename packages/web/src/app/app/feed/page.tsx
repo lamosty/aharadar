@@ -30,12 +30,12 @@ const DEFAULT_PAGE_SIZE: PageSize = 50;
 
 /**
  * Transform a DeepDiveQueueItem to FeedItem shape for display in the feed.
- * Uses placeholder values for fields that don't exist in the queue item.
+ * Now includes score and triageJson from the queue query.
  */
 function transformQueueItemToFeedItem(queueItem: DeepDiveQueueItem): FeedItemType {
   return {
     id: queueItem.id,
-    score: 0, // Queue items don't have a score
+    score: queueItem.score,
     rank: 0, // No ranking in queue
     digestId: "", // No digest association
     digestCreatedAt: queueItem.likedAt, // Use liked date
@@ -48,7 +48,7 @@ function transformQueueItemToFeedItem(queueItem: DeepDiveQueueItem): FeedItemTyp
       sourceType: queueItem.sourceType,
       sourceId: "", // Not available from queue
     },
-    triageJson: null,
+    triageJson: queueItem.triageJson,
     feedback: "like", // These are liked items by definition
     topicId: "", // Not available from queue
     topicName: "", // Not available from queue

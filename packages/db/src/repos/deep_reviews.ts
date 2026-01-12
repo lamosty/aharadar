@@ -23,6 +23,8 @@ export interface DeepReviewQueueItem {
   sourceType: SourceType;
   publishedAt: string | null;
   likedAt: string;
+  score: number;
+  triageJson: Record<string, unknown> | null;
 }
 
 export interface PromotedItem {
@@ -85,6 +87,8 @@ export function createDeepReviewsRepo(db: Queryable) {
         source_type: string;
         published_at: string | null;
         liked_at: string;
+        score: number | null;
+        triage_json: Record<string, unknown> | null;
       }>(
         `with latest_feedback as (
            -- Get the most recent feedback action per content item for this user
@@ -95,6 +99,16 @@ export function createDeepReviewsRepo(db: Queryable) {
            from feedback_events
            where user_id = $1
            order by content_item_id, created_at desc
+         ),
+         latest_digest_item as (
+           -- Get the most recent digest_item for score and triage_json
+           select distinct on (di.content_item_id)
+             di.content_item_id,
+             di.score,
+             di.triage_json
+           from digest_items di
+           join digests d on d.id = di.digest_id
+           order by di.content_item_id, d.created_at desc
          )
          select
            ci.id::text as id,
@@ -104,12 +118,15 @@ export function createDeepReviewsRepo(db: Queryable) {
            ci.author,
            ci.source_type,
            ci.published_at::text as published_at,
-           lf.liked_at::text as liked_at
+           lf.liked_at::text as liked_at,
+           ldi.score,
+           ldi.triage_json
          from latest_feedback lf
          join content_items ci on ci.id = lf.content_item_id
          left join content_item_deep_reviews dr
            on dr.content_item_id = lf.content_item_id
            and dr.user_id = $1
+         left join latest_digest_item ldi on ldi.content_item_id = ci.id
          where lf.action = 'like'
            and dr.id is null
          order by lf.liked_at desc
@@ -127,6 +144,8 @@ export function createDeepReviewsRepo(db: Queryable) {
         sourceType: row.source_type as SourceType,
         publishedAt: row.published_at,
         likedAt: row.liked_at,
+        score: row.score ?? 0,
+        triageJson: row.triage_json,
       }));
     },
 

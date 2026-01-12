@@ -411,8 +411,8 @@ export function FeedItem({
     }
   };
 
-  const scorePercent = Math.round(item.score * 100);
-  const scoreTier = getScoreTier(item.score);
+  const scorePercent = Math.round((item.score ?? 0) * 100);
+  const scoreTier = getScoreTier(item.score ?? 0);
   const subreddit = item.item.metadata?.subreddit as string | undefined;
   const isRestricted = item.item.metadata?.is_restricted === true;
   const displayDate = getDisplayDate(item);
@@ -546,17 +546,84 @@ export function FeedItem({
             )}
           </div>
 
-          {/* Actions */}
-          <div className={styles.detailActions}>
-            <FeedbackButtons
-              contentItemId={item.id}
-              digestId={item.digestId}
-              currentFeedback={item.feedback}
-              onFeedback={handleFeedback}
-              onClear={handleClear}
-              variant="compact"
-            />
-          </div>
+          {/* Actions - research panel for Top Picks, feedback for others */}
+          {isTopPicksView ? (
+            <div className={styles.detailResearchPanel}>
+              {!summary ? (
+                <>
+                  <div className={styles.detailResearchRow}>
+                    <textarea
+                      className={styles.detailResearchTextarea}
+                      value={pastedText}
+                      onChange={(e) => setPastedText(e.target.value)}
+                      placeholder="Paste article content..."
+                      rows={2}
+                      disabled={previewMutation.isPending}
+                    />
+                  </div>
+                  <div className={styles.detailResearchActions}>
+                    <button
+                      type="button"
+                      className={styles.generateBtnCompact}
+                      onClick={handleGenerateSummary}
+                      disabled={previewMutation.isPending || !pastedText.trim()}
+                    >
+                      {previewMutation.isPending ? "..." : "Generate"}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dropBtnCompact}
+                      onClick={handleDrop}
+                      disabled={decisionMutation.isPending}
+                    >
+                      Drop
+                    </button>
+                  </div>
+                  {researchError && <p className={styles.detailResearchError}>{researchError}</p>}
+                </>
+              ) : (
+                <div className={styles.detailSummaryPreview}>
+                  <p className={styles.detailSummaryOneLiner}>{summary.one_liner}</p>
+                  <div className={styles.detailSummaryActions}>
+                    <button
+                      type="button"
+                      className={styles.viewDetailsBtnCompact}
+                      onClick={() => onViewSummary?.(item, summary)}
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.saveBtnCompact}
+                      onClick={handleSave}
+                      disabled={decisionMutation.isPending}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dropBtnCompact}
+                      onClick={handleDrop}
+                      disabled={decisionMutation.isPending}
+                    >
+                      Drop
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={styles.detailActions}>
+              <FeedbackButtons
+                contentItemId={item.id}
+                digestId={item.digestId}
+                currentFeedback={item.feedback}
+                onFeedback={handleFeedback}
+                onClear={handleClear}
+                variant="compact"
+              />
+            </div>
+          )}
 
           {/* WhyShown */}
           <div className={styles.detailWhyShown}>
@@ -609,17 +676,19 @@ export function FeedItem({
             </time>
           </span>
 
-          {/* Actions */}
-          <div className={styles.headerActions}>
-            <FeedbackButtons
-              contentItemId={item.id}
-              digestId={item.digestId}
-              currentFeedback={item.feedback}
-              onFeedback={handleFeedback}
-              onClear={handleClear}
-              variant="compact"
-            />
-          </div>
+          {/* Actions - hide in Top Picks view (already liked) */}
+          {!isTopPicksView && (
+            <div className={styles.headerActions}>
+              <FeedbackButtons
+                contentItemId={item.id}
+                digestId={item.digestId}
+                currentFeedback={item.feedback}
+                onFeedback={handleFeedback}
+                onClear={handleClear}
+                variant="compact"
+              />
+            </div>
+          )}
         </div>
 
         {/* Right section: cluster badge + score */}
@@ -660,12 +729,10 @@ export function FeedItem({
       {/* For items without title (X posts): title already shows full content, no need for body */}
       {hasRealTitle && expandedBodyText && <p className={styles.bodyPreview}>{expandedBodyText}</p>}
 
-      {!isTopPicksView && (
-        <WhyShown
-          features={item.triageJson as TriageFeatures | undefined}
-          clusterItems={item.clusterItems}
-        />
-      )}
+      <WhyShown
+        features={item.triageJson as TriageFeatures | undefined}
+        clusterItems={item.clusterItems}
+      />
 
       {/* Research panel for Top Picks view */}
       {isTopPicksView && (
@@ -683,17 +750,6 @@ export function FeedItem({
                   disabled={previewMutation.isPending}
                 />
                 <div className={styles.researchActions}>
-                  {item.item.url && (
-                    <a
-                      href={item.item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.openLinkBtn}
-                      title="Open source to copy content"
-                    >
-                      <ExternalLinkIcon />
-                    </a>
-                  )}
                   <button
                     type="button"
                     className={styles.generateBtn}

@@ -135,9 +135,32 @@ function buildUserPrompt(input: ManualSummaryInput, tier: BudgetTier): string {
   return `Input JSON:\n${JSON.stringify(payload)}`;
 }
 
+/**
+ * Extract JSON from potential markdown code blocks.
+ * Handles: ```json...```, ```...```, or raw JSON.
+ */
+function extractJsonFromResponse(text: string): string {
+  const trimmed = text.trim();
+
+  // Try to extract from markdown code block: ```json...``` or ```...```
+  const codeBlockMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  if (codeBlockMatch?.[1]) {
+    return codeBlockMatch[1].trim();
+  }
+
+  // Try to find JSON object in the text (starts with { ends with })
+  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+
+  return trimmed;
+}
+
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   try {
-    const parsed = JSON.parse(text) as unknown;
+    const extracted = extractJsonFromResponse(text);
+    const parsed = JSON.parse(extracted) as unknown;
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
       return parsed as Record<string, unknown>;
     return null;

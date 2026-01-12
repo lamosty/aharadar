@@ -1878,6 +1878,8 @@ export interface DeepDiveQueueItem {
   sourceType: string;
   publishedAt: string | null;
   likedAt: string;
+  score: number;
+  triageJson: Record<string, unknown> | null;
 }
 
 /** Deep Dive queue response */
