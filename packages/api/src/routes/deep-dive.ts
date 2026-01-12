@@ -7,11 +7,32 @@
  * GET  /api/deep-dive/promoted - Get promoted items with summaries
  */
 
-import { createConfiguredLlmRouter, manualSummarize } from "@aharadar/llm";
+import type { LlmSettingsRow } from "@aharadar/db";
+import { createConfiguredLlmRouter, type LlmRuntimeConfig, manualSummarize } from "@aharadar/llm";
 import { computeCreditsStatus } from "@aharadar/pipeline";
 import type { ProviderCallDraft } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
+
+/**
+ * Build LLM runtime config from database settings.
+ * Same pattern as ask.ts for consistency.
+ */
+function buildLlmRuntimeConfig(settings: LlmSettingsRow): LlmRuntimeConfig {
+  return {
+    provider: settings.provider,
+    anthropicModel: settings.anthropic_model,
+    openaiModel: settings.openai_model,
+    claudeSubscriptionEnabled: settings.claude_subscription_enabled,
+    claudeTriageThinking: settings.claude_triage_thinking,
+    claudeCallsPerHour: settings.claude_calls_per_hour,
+    codexSubscriptionEnabled: settings.codex_subscription_enabled,
+    codexCallsPerHour: settings.codex_calls_per_hour,
+    reasoningEffort: settings.reasoning_effort,
+    triageBatchEnabled: settings.triage_batch_enabled,
+    triageBatchSize: settings.triage_batch_size,
+  };
+}
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PASTED_TEXT_LENGTH = 60_000;
@@ -128,8 +149,10 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
     try {
       const startedAt = new Date().toISOString();
 
-      // Create LLM router
-      const router = createConfiguredLlmRouter(process.env);
+      // Fetch user's LLM settings and create configured router
+      const llmSettings = await db.llmSettings.get();
+      const llmConfig = buildLlmRuntimeConfig(llmSettings);
+      const router = createConfiguredLlmRouter(process.env, llmConfig);
 
       // Call manualSummarize
       const result = await manualSummarize({

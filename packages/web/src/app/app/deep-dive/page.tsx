@@ -295,6 +295,11 @@ function QueueDetailPanel({
   const { addToast } = useToast();
   const [error, setError] = useState<string | null>(null);
 
+  // Clear error when switching to a different item
+  useEffect(() => {
+    setError(null);
+  }, [item.id]);
+
   const previewMutation = useDeepDivePreview();
   const decisionMutation = useDeepDiveDecision({ onSuccess: onDecisionMade });
 
