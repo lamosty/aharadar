@@ -67,10 +67,8 @@ Rules for Opus:
   - if it changes behavior/contracts, **stop and ask the driver** before implementing the alternative
 - Subagents / skills (important edge case):
   - Treat subagents as **advisors/drafters** only.
-  - Subagents may propose code or even edit files, but they often **won’t** follow repo-specific git/reporting rituals.
-  - The **top-level Opus run remains responsible** for:
-    - staging + committing (one task → one commit)
-    - writing the required report files under `docs/tasks/results/`
+  - Subagents may propose code or even edit files, but they often **won't** follow repo-specific git rituals.
+  - The **top-level Opus run remains responsible** for staging + committing (one task → one commit).
   - If a subagent suggests running git commands, ignore that and do it in the main loop.
 
 ### 3) Opus runs checks + smoke test
@@ -83,23 +81,7 @@ pnpm -r typecheck
 
 Plus a task-specific CLI smoke test (e.g., `pnpm dev:cli -- admin:run-now ...`).
 
-### 4) Opus writes task reports to files (required; no copy/paste)
-
-To minimize driver effort and avoid scrolling terminal output, Opus must write reports to:
-
-- `docs/tasks/results/latest.md` — overwritten after each task/commit
-- `docs/tasks/results/final-recap.md` — written once at the end of a multi-task run (optional)
-
-After writing, Opus should print only the path(s), e.g.:
-
-```text
-WROTE REPORT: docs/tasks/results/latest.md
-WROTE FINAL RECAP: docs/tasks/results/final-recap.md
-```
-
-The report formats are defined in `docs/workflows/task-template.md`.
-
-### 5) GPT‑5.2 reviews → Opus applies fixes
+### 4) GPT‑5.2 reviews → Opus applies fixes
 
 If changes are required, Opus should apply them in a follow-up commit (or amend if you prefer).
 

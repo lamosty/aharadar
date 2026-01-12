@@ -48,8 +48,3 @@ Thumbs.db
 
 # Docker
 docker-data/
-
-# Opus/GPT session artifacts (do not commit)
-# Task results are ephemeral; keep .gitkeep to preserve the directory.
-docs/tasks/results/*
-!docs/tasks/results/.gitkeep
