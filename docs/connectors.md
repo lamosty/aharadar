@@ -976,6 +976,7 @@ This makes `x_posts` a viable **free alternative to some paid data APIs** when i
   "maxResultsPerQuery": 20,
   "excludeReplies": true,
   "excludeRetweets": true,
+  "fairnessByAccount": false,
   "cadence": { "mode": "interval", "every_minutes": 1440 }
 }
 ```
@@ -986,6 +987,7 @@ Notes:
 - `accounts`: list of X handles to follow (without `@`).
 - `keywords`: optional topic keywords to monitor.
 - `queries`: advanced escape hatch; if present, used directly instead of compiling from `accounts`/`keywords`.
+- `fairnessByAccount`: when true, treat each account as its own fairness bucket during sampling/triage (no UI source splitting).
 - `cadence`: per-source cadence (see ADR 0009); `x_posts` defaults to daily (1440 minutes).
 
 **cursor_json**

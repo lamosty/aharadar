@@ -46,4 +46,10 @@ export interface XPostsSourceConfig {
    * - heavy: longer text capture (~1500 chars), more detail, costs more tokens
    */
   promptProfile?: "light" | "heavy";
+
+  /**
+   * Fairness mode: when true, treat each account as a separate "source"
+   * for sampling/triage fairness within this x_posts source.
+   */
+  fairnessByAccount?: boolean;
 }

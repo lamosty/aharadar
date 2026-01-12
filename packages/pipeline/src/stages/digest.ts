@@ -10,6 +10,7 @@ import {
 import {
   type BudgetTier,
   createLogger,
+  normalizeHandle,
   parsePersonalizationTuning,
   type SourceType,
 } from "@aharadar/shared";
@@ -92,6 +93,25 @@ function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value))
     return value as Record<string, unknown>;
   return {};
+}
+
+function parseXPostsFairnessByAccount(config: Record<string, unknown>): boolean {
+  const raw = config.fairnessByAccount ?? config.fairness_by_account;
+  return raw === true;
+}
+
+function computeFairnessSourceId(params: {
+  sourceType: string;
+  sourceId: string;
+  sourceConfig: Record<string, unknown>;
+  author: string | null;
+}): string {
+  if (params.sourceType !== "x_posts") return params.sourceId;
+  if (!parseXPostsFairnessByAccount(params.sourceConfig)) return params.sourceId;
+  if (!params.author) return params.sourceId;
+  const handle = normalizeHandle(params.author);
+  if (!handle) return params.sourceId;
+  return `${params.sourceId}::${handle}`;
 }
 
 function parseIntEnv(value: string | undefined): number | null {
@@ -877,6 +897,13 @@ export async function persistDigestFromContentItems(params: {
     const ageMs = Math.max(0, windowEndMs - tMs);
     const recency = clamp01(1 - ageMs / windowMs);
     const meta = asRecord(row.metadata_json);
+    const sourceConfigJson = asRecord(row.source_config_json);
+    const fairnessSourceId = computeFairnessSourceId({
+      sourceType: row.source_type,
+      sourceId: row.source_id,
+      sourceConfig: sourceConfigJson,
+      author: row.author,
+    });
     const engagementRaw = getEngagementRaw(meta);
     recencies.push(recency);
     engagements.push(engagementRaw);
@@ -886,9 +913,10 @@ export async function persistDigestFromContentItems(params: {
       representativeContentItemId: row.rep_content_item_id,
       candidateAtMs: tMs,
       sourceId: row.source_id,
+      fairnessSourceId,
       sourceType: row.source_type,
       sourceName: row.source_name,
-      sourceConfigJson: asRecord(row.source_config_json),
+      sourceConfigJson,
       title: row.title,
       bodyText: row.body_text,
       canonicalUrl: row.canonical_url,
@@ -963,7 +991,7 @@ export async function persistDigestFromContentItems(params: {
   const samplingCandidates: SamplingCandidate[] = scored.map((c) => ({
     candidateId: c.candidateId,
     sourceType: c.sourceType,
-    sourceId: c.sourceId,
+    sourceId: c.fairnessSourceId,
     candidateAtMs: c.candidateAtMs,
     heuristicScore: c.heuristicScore,
     preferenceScore: computePreferenceScore(c.positiveSim, c.negativeSim),
@@ -1005,7 +1033,7 @@ export async function persistDigestFromContentItems(params: {
   const triageCandidatesForAlloc: TriageCandidate[] = sampledScored.map((c) => ({
     candidateId: c.candidateId,
     sourceType: c.sourceType,
-    sourceId: c.sourceId,
+    sourceId: c.fairnessSourceId,
     heuristicScore: c.heuristicScore,
     preferenceScore: computePreferenceScore(c.positiveSim, c.negativeSim),
   }));

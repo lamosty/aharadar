@@ -233,7 +233,7 @@ function FeedPageContent() {
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
-  const isDeepDiveView = view === "deep_dive";
+  const isTopPicksView = view === "top_picks";
   const {
     data: feedData,
     isLoading: feedLoading,
@@ -247,43 +247,43 @@ function FeedPageContent() {
     page: currentPage,
     pageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
-    view: isDeepDiveView ? "inbox" : view, // Fallback to inbox when deep_dive
+    view: isTopPicksView ? "inbox" : view, // Fallback to inbox when top_picks
   });
 
-  // Fetch deep dive queue when in deep dive view
+  // Fetch deep dive queue when in top picks view (liked items)
   const {
-    data: deepDiveData,
-    isLoading: deepDiveLoading,
-    isError: deepDiveError,
-    error: deepDiveErrorMsg,
-    isFetching: deepDiveFetching,
-    refetch: deepDiveRefetch,
+    data: topPicksData,
+    isLoading: topPicksLoading,
+    isError: topPicksError,
+    error: topPicksErrorMsg,
+    isFetching: topPicksFetching,
+    refetch: topPicksRefetch,
   } = useDeepDiveQueue({
     limit: pageSize,
     offset: (currentPage - 1) * pageSize,
   });
 
   // Merge data sources based on view
-  const data = isDeepDiveView
-    ? deepDiveData
+  const data = isTopPicksView
+    ? topPicksData
       ? {
-          items: deepDiveData.items.map(transformQueueItemToFeedItem),
+          items: topPicksData.items.map(transformQueueItemToFeedItem),
           pagination: {
-            total: deepDiveData.pagination.count,
-            limit: deepDiveData.pagination.limit,
-            offset: deepDiveData.pagination.offset,
+            total: topPicksData.pagination.count,
+            limit: topPicksData.pagination.limit,
+            offset: topPicksData.pagination.offset,
             hasMore:
-              deepDiveData.pagination.offset + deepDiveData.items.length <
-              deepDiveData.pagination.count,
+              topPicksData.pagination.offset + topPicksData.items.length <
+              topPicksData.pagination.count,
           },
         }
       : undefined
     : feedData;
-  const isLoading = isDeepDiveView ? deepDiveLoading : feedLoading;
-  const isError = isDeepDiveView ? deepDiveError : feedError;
-  const error = isDeepDiveView ? deepDiveErrorMsg : feedErrorMsg;
-  const isFetching = isDeepDiveView ? deepDiveFetching : feedFetching;
-  const refetch = isDeepDiveView ? deepDiveRefetch : feedRefetch;
+  const isLoading = isTopPicksView ? topPicksLoading : feedLoading;
+  const isError = isTopPicksView ? topPicksError : feedError;
+  const error = isTopPicksView ? topPicksErrorMsg : feedErrorMsg;
+  const isFetching = isTopPicksView ? topPicksFetching : feedFetching;
+  const refetch = isTopPicksView ? topPicksRefetch : feedRefetch;
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -324,16 +324,16 @@ function FeedPageContent() {
     markCheckedMutation.mutate();
   }, [markCheckedMutation, currentTopicId]);
 
-  // Open deep dive modal for an item
-  const handleOpenDeepDive = useCallback((item: FeedItemType) => {
+  // Open reader modal for an item with summary
+  const handleOpenReaderModal = useCallback((item: FeedItemType) => {
     setDeepDiveItem(item);
     setIsDeepDiveModalOpen(true);
   }, []);
 
-  // Handle deep dive decision (refetch queue)
+  // Handle deep dive decision (refetch top picks queue)
   const handleDeepDiveDecision = useCallback(() => {
-    deepDiveRefetch();
-  }, [deepDiveRefetch]);
+    topPicksRefetch();
+  }, [topPicksRefetch]);
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "skip") => {
@@ -445,7 +445,7 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
-            {/* View toggle: Inbox / Top Picks / All / Deep Dive */}
+            {/* View toggle: Inbox / Top Picks / All */}
             <div className={styles.viewToggle}>
               <button
                 type="button"
@@ -456,10 +456,10 @@ function FeedPageContent() {
               </button>
               <button
                 type="button"
-                className={`${styles.viewToggleBtn} ${view === "highlights" ? styles.viewToggleBtnActive : ""}`}
-                onClick={() => handleViewChange("highlights")}
+                className={`${styles.viewToggleBtn} ${view === "top_picks" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("top_picks")}
               >
-                {t("feed.view.highlights")}
+                {t("feed.view.top_picks")}
               </button>
               <button
                 type="button"
@@ -467,13 +467,6 @@ function FeedPageContent() {
                 onClick={() => handleViewChange("all")}
               >
                 {t("feed.view.all")}
-              </button>
-              <button
-                type="button"
-                className={`${styles.viewToggleBtn} ${view === "deep_dive" ? styles.viewToggleBtnActive : ""}`}
-                onClick={() => handleViewChange("deep_dive")}
-              >
-                {t("feed.view.deep_dive")}
               </button>
             </div>
             <LayoutToggle
@@ -562,13 +555,15 @@ function FeedPageContent() {
               <FeedItem
                 key={item.id}
                 item={item}
-                onFeedback={isDeepDiveView ? undefined : handleFeedback}
-                onClear={isDeepDiveView ? undefined : handleClearFeedback}
+                onFeedback={isTopPicksView ? undefined : handleFeedback}
+                onClear={isTopPicksView ? undefined : handleClearFeedback}
                 layout={layout}
-                showTopicBadge={isAllTopicsMode && !isDeepDiveView}
+                showTopicBadge={isAllTopicsMode && !isTopPicksView}
                 forceExpanded={fastTriageMode && forceExpandedId === item.id}
                 fastTriageMode={fastTriageMode && forceExpandedId !== null}
-                onClick={isDeepDiveView ? () => handleOpenDeepDive(item) : undefined}
+                isTopPicksView={isTopPicksView}
+                onViewSummary={handleOpenReaderModal}
+                onSummaryDecision={handleDeepDiveDecision}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand

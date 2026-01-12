@@ -817,9 +817,8 @@
     "approximateDate": "Approximate date (day-level precision)",
     "view": {
       "inbox": "Inbox",
-      "highlights": "Top Picks",
-      "all": "All",
-      "deep_dive": "Deep Dive"
+      "top_picks": "Top Picks",
+      "all": "All"
     },
     "layout": {
       "condensed": "Condensed",

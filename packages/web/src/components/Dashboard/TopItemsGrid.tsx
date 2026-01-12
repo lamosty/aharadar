@@ -7,11 +7,10 @@ import { useItems, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./Dashboard.module.css";
 
-type ViewOption = "inbox" | "highlights" | "all";
+type ViewOption = FeedView;
 
 const VIEW_OPTIONS: { value: ViewOption; label: string }[] = [
   { value: "inbox", label: "Unprocessed" },
-  { value: "highlights", label: "Highlights" },
   { value: "all", label: "All" },
 ];
 
@@ -109,11 +108,7 @@ function TopicColumn({ topic, view }: TopicColumnProps) {
         <div className={styles.topicColumnError}>{t("common.error")}</div>
       ) : items.length === 0 ? (
         <div className={styles.topicColumnEmpty}>
-          {view === "inbox"
-            ? "All caught up!"
-            : view === "highlights"
-              ? "No liked items"
-              : "No items yet"}
+          {view === "inbox" ? "All caught up!" : "No items yet"}
         </div>
       ) : (
         <ul className={styles.compactItemList}>

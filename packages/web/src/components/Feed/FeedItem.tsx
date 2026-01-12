@@ -25,8 +25,12 @@ interface FeedItemProps {
   onHover?: () => void;
   /** Whether fast triage mode is active (disables hover expansion) */
   fastTriageMode?: boolean;
-  /** Called when item is clicked (for deep dive view) */
-  onClick?: () => void;
+  /** Whether this is the Top Picks view (shows inline research UI) */
+  isTopPicksView?: boolean;
+  /** Called when user wants to view full summary (reader modal) */
+  onViewSummary?: (item: FeedItemType) => void;
+  /** Called after a summary decision (save/drop) to refetch */
+  onSummaryDecision?: () => void;
 }
 
 interface DisplayDate {
@@ -317,7 +321,9 @@ export function FeedItem({
   forceExpanded = false,
   onHover,
   fastTriageMode = false,
-  onClick,
+  isTopPicksView = false,
+  onViewSummary,
+  onSummaryDecision,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -388,22 +394,10 @@ export function FeedItem({
   if (layout === "condensed") {
     return (
       <article
-        className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""} ${onClick ? styles.clickable : ""}`}
+        className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
         data-testid={`feed-item-${item.id}`}
         data-tier={scoreTier}
         onMouseEnter={onHover}
-        onClick={(e) => {
-          if (onClick && !(e.target as HTMLElement).closest("a, button")) {
-            onClick();
-          }
-        }}
-        role={onClick ? "button" : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onKeyDown={(e) => {
-          if (onClick && e.key === "Enter" && !(e.target as HTMLElement).closest("a, button")) {
-            onClick();
-          }
-        }}
       >
         {/* Main row: title + trailing meta */}
         <div className={styles.scanRow}>
@@ -510,22 +504,7 @@ export function FeedItem({
 
   // Default: reader/timeline layout (card-based)
   return (
-    <article
-      className={`${styles.card} ${onClick ? styles.clickable : ""}`}
-      data-testid={`feed-item-${item.id}`}
-      onClick={(e) => {
-        if (onClick && !(e.target as HTMLElement).closest("a, button")) {
-          onClick();
-        }
-      }}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={(e) => {
-        if (onClick && e.key === "Enter" && !(e.target as HTMLElement).closest("a, button")) {
-          onClick();
-        }
-      }}
-    >
+    <article className={styles.card} data-testid={`feed-item-${item.id}`}>
       <div className={styles.header}>
         {/* Left section: badges + source + meta + actions */}
         <div className={styles.headerLeft}>

@@ -109,6 +109,8 @@ function asConfig(value: Record<string, unknown>): XPostsSourceConfig {
         ? value.maxOutputTokensPerAccount
         : undefined,
     promptProfile: asPromptProfile(value.promptProfile),
+    fairnessByAccount:
+      typeof value.fairnessByAccount === "boolean" ? value.fairnessByAccount : undefined,
   };
 }
 

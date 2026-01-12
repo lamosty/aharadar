@@ -489,6 +489,41 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
         <div className={styles.checkboxField}>
           <input
             type="checkbox"
+            id="x-fairnessByAccount"
+            checked={value.fairnessByAccount ?? false}
+            onChange={(e) => handleChange("fairnessByAccount", e.target.checked)}
+            className={styles.checkbox}
+          />
+          <label htmlFor="x-fairnessByAccount" className={styles.checkboxLabel}>
+            Fairness by account
+            <HelpTooltip
+              title="Account Fairness"
+              content={
+                <>
+                  <p>
+                    Treat each followed account as its own fairness bucket during sampling and
+                    triage.
+                  </p>
+                  <p>
+                    <strong>Enabled:</strong> Each account gets a fair shot when it has posts in the
+                    window.
+                  </p>
+                  <p>
+                    <strong>Disabled:</strong> All accounts are pooled as one source for fairness.
+                  </p>
+                  <p>
+                    This does not create separate sources in the UI and does not override
+                    account-level mute/reduction.
+                  </p>
+                </>
+              }
+            />
+          </label>
+        </div>
+
+        <div className={styles.checkboxField}>
+          <input
+            type="checkbox"
             id="x-excludeReplies"
             checked={value.excludeReplies ?? false}
             onChange={(e) => handleChange("excludeReplies", e.target.checked)}

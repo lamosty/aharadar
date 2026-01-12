@@ -437,6 +437,7 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
         queries: [],
         excludeReplies: true,
         excludeRetweets: true,
+        fairnessByAccount: false,
       } as Partial<XPostsConfig>;
 
     case "sec_edgar":

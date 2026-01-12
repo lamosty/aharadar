@@ -53,6 +53,10 @@ export interface XPostsConfig {
    * - heavy: longer text capture (~1500 chars), more detail, costs more tokens
    */
   promptProfile?: "light" | "heavy";
+  /**
+   * When enabled, treat each account as its own fairness bucket.
+   */
+  fairnessByAccount?: boolean;
 }
 
 // SEC EDGAR Source Config
