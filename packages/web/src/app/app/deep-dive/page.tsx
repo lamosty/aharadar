@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import type { DeepDivePromotedItem, DeepDiveQueueItem, ManualSummaryOutput } from "@/lib/api";
 import {
@@ -13,6 +13,61 @@ import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 const MAX_CHARS = 60000;
+
+// Helper functions for display
+function getDisplayTitle(item: {
+  title: string | null;
+  author: string | null;
+  sourceType: string;
+}): string {
+  // For X posts without title, show @author as primary
+  if (item.sourceType === "x_posts" && !item.title) {
+    if (item.author) {
+      // Ensure @ prefix, avoid double @
+      return item.author.startsWith("@") ? item.author : `@${item.author}`;
+    }
+    return "X post";
+  }
+  return item.title || "(No title)";
+}
+
+function formatSourceType(type: string): string {
+  const labels: Record<string, string> = {
+    hn: "HN",
+    reddit: "Reddit",
+    rss: "RSS",
+    youtube: "YouTube",
+    x_posts: "X",
+    signal: "Signal",
+  };
+  return labels[type] || type.toUpperCase();
+}
+
+function getSourceColor(type: string): string {
+  const colors: Record<string, string> = {
+    hn: "var(--color-warning)",
+    reddit: "#ff4500",
+    rss: "var(--color-primary)",
+    youtube: "#ff0000",
+    x_posts: "var(--color-text-primary)",
+    signal: "var(--color-success)",
+  };
+  return colors[type] || "var(--color-text-muted)";
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
 
 export default function DeepDivePage() {
   return (
@@ -36,6 +91,11 @@ function DeepDivePageSkeleton() {
 
 function DeepDivePageContent() {
   const [activeTab, setActiveTab] = useState<"queue" | "promoted">("queue");
+  const { data: queueData } = useDeepDiveQueue();
+  const { data: promotedData } = useDeepDivePromoted();
+
+  const queueCount = queueData?.items?.length ?? 0;
+  const promotedCount = promotedData?.items?.length ?? 0;
 
   return (
     <div className={styles.container}>
@@ -51,6 +111,7 @@ function DeepDivePageContent() {
           onClick={() => setActiveTab("queue")}
         >
           {t("deepDive.tabs.queue")}
+          {queueCount > 0 && <span className={styles.tabBadge}>{queueCount}</span>}
         </button>
         <button
           type="button"
@@ -58,6 +119,7 @@ function DeepDivePageContent() {
           onClick={() => setActiveTab("promoted")}
         >
           {t("deepDive.tabs.promoted")}
+          {promotedCount > 0 && <span className={styles.tabBadge}>{promotedCount}</span>}
         </button>
       </div>
 
@@ -69,6 +131,54 @@ function DeepDivePageContent() {
 function QueueView() {
   const { data, isLoading, isError, refetch } = useDeepDiveQueue();
   const items = data?.items ?? [];
+
+  // State for master-detail pattern
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [pastedTexts, setPastedTexts] = useState<Record<string, string>>({});
+  const [summaries, setSummaries] = useState<Record<string, ManualSummaryOutput>>({});
+
+  // Auto-select first item when list loads
+  useEffect(() => {
+    if (items.length > 0 && !selectedItemId) {
+      setSelectedItemId(items[0].id);
+    }
+  }, [items, selectedItemId]);
+
+  // Clear selection when selected item is removed (after decision)
+  useEffect(() => {
+    if (selectedItemId && !items.find((item) => item.id === selectedItemId)) {
+      // Select next item or first item
+      setSelectedItemId(items.length > 0 ? items[0].id : null);
+    }
+  }, [items, selectedItemId]);
+
+  const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
+
+  const handlePastedTextChange = useCallback((itemId: string, text: string) => {
+    setPastedTexts((prev) => ({ ...prev, [itemId]: text }));
+  }, []);
+
+  const handleSummaryGenerated = useCallback((itemId: string, summary: ManualSummaryOutput) => {
+    setSummaries((prev) => ({ ...prev, [itemId]: summary }));
+  }, []);
+
+  const handleDecisionMade = useCallback(
+    (itemId: string) => {
+      // Clear state for this item
+      setPastedTexts((prev) => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      setSummaries((prev) => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      refetch();
+    },
+    [refetch],
+  );
 
   if (isLoading) {
     return <div className={styles.loadingState}>Loading...</div>;
@@ -95,24 +205,95 @@ function QueueView() {
   }
 
   return (
-    <div className={styles.queueList}>
-      {items.map((item) => (
-        <QueueItemCard key={item.id} item={item} onDecisionMade={refetch} />
-      ))}
+    <div className={styles.masterDetailLayout}>
+      {/* Master Panel (Left) */}
+      <div className={styles.masterPanel}>
+        <div className={styles.masterPanelHeader}>
+          <span>Items to review</span>
+          <span className={styles.masterPanelCount}>{items.length}</span>
+        </div>
+        <div className={styles.masterList}>
+          {items.map((item) => (
+            <QueueListItem
+              key={item.id}
+              item={item}
+              isSelected={item.id === selectedItemId}
+              onSelect={() => setSelectedItemId(item.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Detail Panel (Right) */}
+      {selectedItem ? (
+        <QueueDetailPanel
+          item={selectedItem}
+          pastedText={pastedTexts[selectedItem.id] ?? ""}
+          summary={summaries[selectedItem.id] ?? null}
+          onPastedTextChange={(text) => handlePastedTextChange(selectedItem.id, text)}
+          onSummaryGenerated={(summary) => handleSummaryGenerated(selectedItem.id, summary)}
+          onDecisionMade={() => handleDecisionMade(selectedItem.id)}
+        />
+      ) : (
+        <div className={styles.detailPanelEmpty}>
+          <p>Select an item from the list to review</p>
+        </div>
+      )}
     </div>
   );
 }
 
-function QueueItemCard({
+function QueueListItem({
   item,
+  isSelected,
+  onSelect,
+}: {
+  item: DeepDiveQueueItem;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`${styles.listItem} ${isSelected ? styles.listItemSelected : ""}`}
+      onClick={onSelect}
+    >
+      <div className={styles.listItemContent}>
+        <span className={styles.listItemTitle}>{getDisplayTitle(item)}</span>
+        <div className={styles.listItemMeta}>
+          <span
+            className={styles.sourceBadge}
+            style={{ "--source-color": getSourceColor(item.sourceType) } as React.CSSProperties}
+          >
+            {formatSourceType(item.sourceType)}
+          </span>
+          {item.author && item.sourceType !== "x_posts" && (
+            <span className={styles.listItemAuthor}>{item.author}</span>
+          )}
+          <span className={styles.listItemTime}>{formatRelativeTime(item.likedAt)}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function QueueDetailPanel({
+  item,
+  pastedText,
+  summary,
+  onPastedTextChange,
+  onSummaryGenerated,
   onDecisionMade,
 }: {
   item: DeepDiveQueueItem;
+  pastedText: string;
+  summary: ManualSummaryOutput | null;
+  onPastedTextChange: (text: string) => void;
+  onSummaryGenerated: (summary: ManualSummaryOutput) => void;
   onDecisionMade: () => void;
 }) {
   const { addToast } = useToast();
-  const [pastedText, setPastedText] = useState("");
-  const [summary, setSummary] = useState<ManualSummaryOutput | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const previewMutation = useDeepDivePreview();
   const decisionMutation = useDeepDiveDecision({ onSuccess: onDecisionMade });
@@ -122,6 +303,7 @@ function QueueItemCard({
   const canSummarize = charCount > 0 && !isOverLimit && !previewMutation.isPending;
 
   const handleSummarize = useCallback(async () => {
+    setError(null);
     try {
       const result = await previewMutation.mutateAsync({
         contentItemId: item.id,
@@ -133,16 +315,16 @@ function QueueItemCard({
           sourceType: item.sourceType,
         },
       });
-      setSummary(result.summary);
+      onSummaryGenerated(result.summary);
     } catch (err) {
-      const error = err as { error?: { code?: string } };
-      if (error?.error?.code === "INSUFFICIENT_CREDITS") {
-        addToast(t("deepDive.insufficientCredits"), "error");
+      const apiError = err as { error?: { code?: string; message?: string } };
+      if (apiError?.error?.code === "INSUFFICIENT_CREDITS") {
+        setError(t("deepDive.insufficientCredits"));
       } else {
-        addToast("Failed to generate summary", "error");
+        setError(apiError?.error?.message || "Failed to generate summary. Please try again.");
       }
     }
-  }, [previewMutation, item, pastedText, addToast]);
+  }, [previewMutation, item, pastedText, onSummaryGenerated]);
 
   const handlePromote = useCallback(async () => {
     if (!summary) return;
@@ -170,35 +352,54 @@ function QueueItemCard({
     }
   }, [decisionMutation, item.id, addToast]);
 
+  // For X posts without title, we use @author as the title, so don't duplicate it in meta
+  const showAuthorInMeta = item.author && !(item.sourceType === "x_posts" && !item.title);
+
   return (
-    <div className={styles.queueItem}>
-      <div className={styles.itemHeader}>
-        <h3 className={styles.itemTitle}>
+    <div className={styles.detailPanel}>
+      {/* Header */}
+      <div className={styles.detailHeader}>
+        <h3 className={styles.detailTitle}>
           {item.url ? (
             <a href={item.url} target="_blank" rel="noopener noreferrer">
-              {item.title || "(No title)"}
+              {getDisplayTitle(item)}
             </a>
           ) : (
-            item.title || "(No title)"
+            getDisplayTitle(item)
           )}
         </h3>
-        <div className={styles.itemMeta}>
-          {item.author && <span className={styles.author}>{item.author}</span>}
-          <span className={styles.sourceType}>{item.sourceType}</span>
-          <span className={styles.likedAt}>Liked {formatRelativeTime(item.likedAt)}</span>
+        <div className={styles.detailMeta}>
+          <span
+            className={styles.detailSourceBadge}
+            style={{ "--source-color": getSourceColor(item.sourceType) } as React.CSSProperties}
+          >
+            {formatSourceType(item.sourceType)}
+          </span>
+          {showAuthorInMeta && <span>·</span>}
+          {showAuthorInMeta && <span>{item.author}</span>}
+          <span>·</span>
+          <span>Liked {formatRelativeTime(item.likedAt)}</span>
         </div>
+        {/* Show body text preview for items (especially X posts) */}
+        {item.bodyText && <p className={styles.detailBodyPreview}>{item.bodyText}</p>}
       </div>
 
       {!summary ? (
         <>
+          {/* Inline error */}
+          {error && <div className={styles.errorInline}>{error}</div>}
+
+          {/* Paste section */}
           <div className={styles.pasteSection}>
-            <label className={styles.pasteLabel}>{t("deepDive.paste.label")}</label>
             <textarea
               className={`${styles.pasteArea} ${isOverLimit ? styles.pasteAreaError : ""}`}
               placeholder={t("deepDive.paste.placeholder")}
               value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              rows={8}
+              onChange={(e) => {
+                onPastedTextChange(e.target.value);
+                if (error) setError(null);
+              }}
+              disabled={previewMutation.isPending}
             />
             <div className={styles.pasteFooter}>
               <span className={`${styles.charCount} ${isOverLimit ? styles.charCountError : ""}`}>
@@ -208,7 +409,8 @@ function QueueItemCard({
             </div>
           </div>
 
-          <div className={styles.itemActions}>
+          {/* Actions */}
+          <div className={styles.detailActions}>
             <button className="btn btn-primary" onClick={handleSummarize} disabled={!canSummarize}>
               {previewMutation.isPending ? t("deepDive.summarizing") : t("deepDive.summarize")}
             </button>
@@ -356,15 +558,20 @@ function PromotedItemCard({ item }: { item: DeepDivePromotedItem }) {
         <h3 className={styles.itemTitle}>
           {item.url ? (
             <a href={item.url} target="_blank" rel="noopener noreferrer">
-              {item.title || "(No title)"}
+              {getDisplayTitle(item)}
             </a>
           ) : (
-            item.title || "(No title)"
+            getDisplayTitle(item)
           )}
         </h3>
         <div className={styles.itemMeta}>
+          <span
+            className={styles.sourceType}
+            style={{ "--source-color": getSourceColor(item.sourceType) } as React.CSSProperties}
+          >
+            {formatSourceType(item.sourceType)}
+          </span>
           {item.author && <span className={styles.author}>{item.author}</span>}
-          <span className={styles.sourceType}>{item.sourceType}</span>
           <span className={styles.promotedAt}>Promoted {formatRelativeTime(item.promotedAt)}</span>
         </div>
       </div>
@@ -424,18 +631,4 @@ function PromotedItemCard({ item }: { item: DeepDivePromotedItem }) {
       )}
     </div>
   );
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
 }

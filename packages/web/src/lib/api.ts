@@ -1872,6 +1872,7 @@ export interface DeepDiveDecisionResponse {
 export interface DeepDiveQueueItem {
   id: string;
   title: string | null;
+  bodyText: string | null;
   url: string | null;
   author: string | null;
   sourceType: string;

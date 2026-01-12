@@ -17,6 +17,7 @@ export interface DeepReviewRow {
 export interface DeepReviewQueueItem {
   id: string;
   title: string | null;
+  bodyText: string | null;
   url: string | null;
   author: string | null;
   sourceType: SourceType;
@@ -27,6 +28,7 @@ export interface DeepReviewQueueItem {
 export interface PromotedItem {
   id: string;
   title: string | null;
+  bodyText: string | null;
   url: string | null;
   author: string | null;
   sourceType: SourceType;
@@ -77,6 +79,7 @@ export function createDeepReviewsRepo(db: Queryable) {
       const res = await db.query<{
         id: string;
         title: string | null;
+        body_text: string | null;
         url: string | null;
         author: string | null;
         source_type: string;
@@ -96,6 +99,7 @@ export function createDeepReviewsRepo(db: Queryable) {
          select
            ci.id::text as id,
            ci.title,
+           ci.body_text,
            ci.canonical_url as url,
            ci.author,
            ci.source_type,
@@ -117,6 +121,7 @@ export function createDeepReviewsRepo(db: Queryable) {
       return res.rows.map((row) => ({
         id: row.id,
         title: row.title,
+        bodyText: row.body_text,
         url: row.url,
         author: row.author,
         sourceType: row.source_type as SourceType,
@@ -138,6 +143,7 @@ export function createDeepReviewsRepo(db: Queryable) {
       const res = await db.query<{
         id: string;
         title: string | null;
+        body_text: string | null;
         url: string | null;
         author: string | null;
         source_type: string;
@@ -148,6 +154,7 @@ export function createDeepReviewsRepo(db: Queryable) {
         `select
            ci.id::text as id,
            ci.title,
+           ci.body_text,
            ci.canonical_url as url,
            ci.author,
            ci.source_type,
@@ -167,6 +174,7 @@ export function createDeepReviewsRepo(db: Queryable) {
       return res.rows.map((row) => ({
         id: row.id,
         title: row.title,
+        bodyText: row.body_text,
         url: row.url,
         author: row.author,
         sourceType: row.source_type as SourceType,
