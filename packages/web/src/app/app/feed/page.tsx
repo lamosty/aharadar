@@ -342,6 +342,21 @@ function FeedPageContent() {
     topPicksRefetch();
   }, [topPicksRefetch]);
 
+  // Handle "Next" button in Top Picks - move to next item
+  const handleNextItem = useCallback(
+    (currentItemId: string) => {
+      const items = data?.items ?? [];
+      const currentIndex = items.findIndex((i) => i.id === currentItemId);
+      if (currentIndex >= 0 && currentIndex < items.length - 1) {
+        const nextItem = items[currentIndex + 1];
+        if (nextItem) {
+          setForceExpandedId(nextItem.id);
+        }
+      }
+    },
+    [data],
+  );
+
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "skip") => {
       const items = data?.items ?? [];
@@ -566,11 +581,12 @@ function FeedPageContent() {
                 onClear={isTopPicksView ? undefined : handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode && !isTopPicksView}
-                forceExpanded={fastTriageMode && forceExpandedId === item.id}
-                fastTriageMode={fastTriageMode && forceExpandedId !== null}
+                forceExpanded={(fastTriageMode || isTopPicksView) && forceExpandedId === item.id}
+                fastTriageMode={(fastTriageMode || isTopPicksView) && forceExpandedId !== null}
                 isTopPicksView={isTopPicksView}
                 onViewSummary={handleOpenReaderModal}
                 onSummaryDecision={handleDeepDiveDecision}
+                onNext={isTopPicksView ? () => handleNextItem(item.id) : undefined}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand

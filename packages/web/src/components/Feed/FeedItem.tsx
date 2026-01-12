@@ -33,6 +33,8 @@ interface FeedItemProps {
   onViewSummary?: (item: FeedItemType, summary: ManualSummaryOutput) => void;
   /** Called after a summary decision (save/drop) to refetch */
   onSummaryDecision?: () => void;
+  /** Called when user wants to skip to next item (Top Picks fast triage) */
+  onNext?: () => void;
 }
 
 interface DisplayDate {
@@ -326,6 +328,7 @@ export function FeedItem({
   isTopPicksView = false,
   onViewSummary,
   onSummaryDecision,
+  onNext,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { addToast } = useToast();
@@ -578,6 +581,11 @@ export function FeedItem({
                     >
                       Drop
                     </button>
+                    {onNext && (
+                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
+                        Next
+                      </button>
+                    )}
                   </div>
                   {researchError && <p className={styles.detailResearchError}>{researchError}</p>}
                 </>
@@ -608,6 +616,11 @@ export function FeedItem({
                     >
                       Drop
                     </button>
+                    {onNext && (
+                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
+                        Next
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -766,6 +779,11 @@ export function FeedItem({
                   >
                     Drop
                   </button>
+                  {onNext && (
+                    <button type="button" className={styles.nextBtn} onClick={onNext}>
+                      Next
+                    </button>
+                  )}
                 </div>
               </div>
               {researchError && <p className={styles.researchError}>{researchError}</p>}
@@ -798,6 +816,11 @@ export function FeedItem({
                 >
                   Drop
                 </button>
+                {onNext && (
+                  <button type="button" className={styles.nextBtn} onClick={onNext}>
+                    Next
+                  </button>
+                )}
               </div>
             </div>
           )}
