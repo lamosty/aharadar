@@ -236,7 +236,7 @@ export interface PaginationInfo {
 }
 
 /** Feed view types */
-export type FeedView = "inbox" | "highlights" | "all";
+export type FeedView = "inbox" | "highlights" | "all" | "deep_dive";
 
 /** Items list params */
 export interface ItemsListParams {

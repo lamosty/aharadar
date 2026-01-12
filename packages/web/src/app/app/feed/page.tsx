@@ -10,9 +10,10 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { useTopic } from "@/components/TopicProvider";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
-import type { FeedView } from "@/lib/api";
+import type { DeepDiveQueueItem, FeedItem as FeedItemType, FeedView } from "@/lib/api";
 import {
   useClearFeedback,
+  useDeepDiveQueue,
   useFeedback,
   useLocalStorage,
   usePagedItems,
@@ -25,6 +26,33 @@ import styles from "./page.module.css";
 
 // Default page size based on layout
 const DEFAULT_PAGE_SIZE: PageSize = 50;
+
+/**
+ * Transform a DeepDiveQueueItem to FeedItem shape for display in the feed.
+ * Uses placeholder values for fields that don't exist in the queue item.
+ */
+function transformQueueItemToFeedItem(queueItem: DeepDiveQueueItem): FeedItemType {
+  return {
+    id: queueItem.id,
+    score: 0, // Queue items don't have a score
+    rank: 0, // No ranking in queue
+    digestId: "", // No digest association
+    digestCreatedAt: queueItem.likedAt, // Use liked date
+    item: {
+      title: queueItem.title,
+      bodyText: queueItem.bodyText,
+      url: queueItem.url,
+      author: queueItem.author,
+      publishedAt: queueItem.publishedAt,
+      sourceType: queueItem.sourceType,
+      sourceId: "", // Not available from queue
+    },
+    triageJson: null,
+    feedback: "like", // These are liked items by definition
+    topicId: "", // Not available from queue
+    topicName: "", // Not available from queue
+  };
+}
 
 export default function FeedPage() {
   return (
@@ -200,14 +228,57 @@ function FeedPageContent() {
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
-  const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
+  const isDeepDiveView = view === "deep_dive";
+  const {
+    data: feedData,
+    isLoading: feedLoading,
+    isError: feedError,
+    error: feedErrorMsg,
+    isFetching: feedFetching,
+    refetch: feedRefetch,
+  } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     page: currentPage,
     pageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
-    view,
+    view: isDeepDiveView ? "inbox" : view, // Fallback to inbox when deep_dive
   });
+
+  // Fetch deep dive queue when in deep dive view
+  const {
+    data: deepDiveData,
+    isLoading: deepDiveLoading,
+    isError: deepDiveError,
+    error: deepDiveErrorMsg,
+    isFetching: deepDiveFetching,
+    refetch: deepDiveRefetch,
+  } = useDeepDiveQueue({
+    limit: pageSize,
+    offset: (currentPage - 1) * pageSize,
+  });
+
+  // Merge data sources based on view
+  const data = isDeepDiveView
+    ? deepDiveData
+      ? {
+          items: deepDiveData.items.map(transformQueueItemToFeedItem),
+          pagination: {
+            total: deepDiveData.pagination.count,
+            limit: deepDiveData.pagination.limit,
+            offset: deepDiveData.pagination.offset,
+            hasMore:
+              deepDiveData.pagination.offset + deepDiveData.items.length <
+              deepDiveData.pagination.count,
+          },
+        }
+      : undefined
+    : feedData;
+  const isLoading = isDeepDiveView ? deepDiveLoading : feedLoading;
+  const isError = isDeepDiveView ? deepDiveError : feedError;
+  const error = isDeepDiveView ? deepDiveErrorMsg : feedErrorMsg;
+  const isFetching = isDeepDiveView ? deepDiveFetching : feedFetching;
+  const refetch = isDeepDiveView ? deepDiveRefetch : feedRefetch;
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -358,7 +429,7 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
-            {/* View toggle: Inbox / Highlights / All */}
+            {/* View toggle: Inbox / Top Picks / All / Deep Dive */}
             <div className={styles.viewToggle}>
               <button
                 type="button"
@@ -380,6 +451,13 @@ function FeedPageContent() {
                 onClick={() => handleViewChange("all")}
               >
                 {t("feed.view.all")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${view === "deep_dive" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("deep_dive")}
+              >
+                {t("feed.view.deep_dive")}
               </button>
             </div>
             <LayoutToggle
@@ -473,7 +551,14 @@ function FeedPageContent() {
                 layout={layout}
                 showTopicBadge={isAllTopicsMode}
                 forceExpanded={fastTriageMode && forceExpandedId === item.id}
+                fastTriageMode={fastTriageMode && forceExpandedId !== null}
                 onHover={() => {
+                  // In fast triage mode, don't clear force-expanded on hover
+                  // CSS disables hover expansion, users click to manually expand
+                  if (fastTriageMode) {
+                    return;
+                  }
+
                   // Clear any pending timeout
                   if (hoverClearTimeoutRef.current) {
                     clearTimeout(hoverClearTimeoutRef.current);
