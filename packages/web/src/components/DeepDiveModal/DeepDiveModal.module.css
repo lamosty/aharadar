@@ -102,6 +102,26 @@
   line-height: 1.4;
 }
 
+.openLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.openLink:hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--color-primary);
+}
+
 .bodyPreview {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
