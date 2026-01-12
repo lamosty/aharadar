@@ -58,9 +58,9 @@ export const mainNavItems: NavItem[] = [
     mobileNav: false,
   },
   {
-    id: "deep-dive",
-    href: "/app/deep-dive",
-    labelKey: "nav.deepDive",
+    id: "deep-dives",
+    href: "/app/deep-dives",
+    labelKey: "nav.deepDives",
     icon: "deep-dive",
     mobileNav: false,
   },
