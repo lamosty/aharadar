@@ -4,6 +4,7 @@ import { createAbtestsRepo } from "./repos/abtests";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
+import { createDeepReviewsRepo } from "./repos/deep_reviews";
 import { createDigestItemsRepo } from "./repos/digest_items";
 import { createDigestsRepo } from "./repos/digests";
 import { createEmbeddingsRepo } from "./repos/embeddings";
@@ -45,6 +46,7 @@ export type DbContext = Queryable & {
   llmSettings: ReturnType<typeof createLlmSettingsRepo>;
   abtests: ReturnType<typeof createAbtestsRepo>;
   xAccountPolicies: ReturnType<typeof createXAccountPoliciesRepo>;
+  deepReviews: ReturnType<typeof createDeepReviewsRepo>;
 };
 
 export interface Db extends DbContext {
@@ -73,6 +75,7 @@ function createContext(db: Queryable): DbContext {
     llmSettings: createLlmSettingsRepo(db),
     abtests: createAbtestsRepo(db),
     xAccountPolicies: createXAccountPoliciesRepo(db),
+    deepReviews: createDeepReviewsRepo(db),
   };
 }
 

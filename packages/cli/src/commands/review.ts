@@ -215,7 +215,7 @@ async function computeWhyShown(params: {
        from nn
        join last_feedback lf on lf.content_item_id = nn.content_item_id
        join topic_membership tm on tm.content_item_id = nn.content_item_id
-       where lf.action in ('like','save')
+       where lf.action = 'like'
        order by nn.similarity desc
        limit 3
      )
@@ -272,7 +272,6 @@ function renderHelp(): void {
   console.log(`- ${DEFAULT_KEYMAP.next}/${DEFAULT_KEYMAP.prev}: next/prev`);
   console.log(`- ${DEFAULT_KEYMAP.like}: like`);
   console.log(`- ${DEFAULT_KEYMAP.dislike}: dislike`);
-  console.log(`- ${DEFAULT_KEYMAP.save}: save`);
   console.log(`- ${DEFAULT_KEYMAP.skip}: skip`);
   console.log(`- ${DEFAULT_KEYMAP.open}: open link`);
   console.log(`- ${DEFAULT_KEYMAP.why}: details (toggle)`);
@@ -331,7 +330,7 @@ function renderItem(params: {
 
   console.log("");
   console.log(
-    `keys: ${DEFAULT_KEYMAP.like}=like ${DEFAULT_KEYMAP.dislike}=dislike ${DEFAULT_KEYMAP.save}=save ${DEFAULT_KEYMAP.skip}=skip ` +
+    `keys: ${DEFAULT_KEYMAP.like}=like ${DEFAULT_KEYMAP.dislike}=dislike ${DEFAULT_KEYMAP.skip}=skip ` +
       `${DEFAULT_KEYMAP.next}/${DEFAULT_KEYMAP.prev}=nav ${DEFAULT_KEYMAP.open}=open ${DEFAULT_KEYMAP.why}=details ${DEFAULT_KEYMAP.help}=help ${DEFAULT_KEYMAP.quit}=quit`,
   );
 
@@ -355,7 +354,7 @@ function renderItem(params: {
       if (!data.targetHasEmbedding) {
         console.log("(no embedding for this item yet; run admin:embed-now)");
       } else if (!data.profile) {
-        console.log("(no topic preference profile yet; like/save/dislike a few items)");
+        console.log("(no topic preference profile yet; like/dislike a few items)");
       } else {
         const posSim = data.profile.positiveSim;
         const negSim = data.profile.negativeSim;
@@ -710,7 +709,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
         });
 
         // Update topic-scoped preference profile (best effort).
-        if (action === "like" || action === "save" || action === "dislike") {
+        if (action === "like" || action === "dislike") {
           try {
             const emb = await db.query<{ vector_text: string | null }>(
               `select vector::text as vector_text
@@ -845,10 +844,6 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
       }
       if (key === DEFAULT_KEYMAP.dislike) {
         void recordFeedback("dislike");
-        return;
-      }
-      if (key === DEFAULT_KEYMAP.save) {
-        void recordFeedback("save");
         return;
       }
       if (key === DEFAULT_KEYMAP.skip) {

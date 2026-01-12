@@ -8,10 +8,7 @@ import styles from "./DigestDetailTimeline.module.css";
 interface DigestDetailTimelineProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
 }
 
 function truncateText(text: string, maxLength: number): string {
@@ -123,14 +120,11 @@ function getScoreClass(score: number): string {
 interface DigestItemPostProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
 }
 
 function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
-  const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
+  const handleFeedback = async (action: "like" | "dislike" | "skip") => {
     if (onFeedback) {
       await onFeedback(item.contentItem.id, action);
     }

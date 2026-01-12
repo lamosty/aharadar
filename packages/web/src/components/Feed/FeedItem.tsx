@@ -12,10 +12,7 @@ import styles from "./FeedItem.module.css";
 
 interface FeedItemProps {
   item: FeedItemType;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
   /** Called when feedback is cleared (toggle off) */
   onClear?: (contentItemId: string) => Promise<void>;
   /** Layout mode - affects rendering style */
@@ -321,7 +318,7 @@ export function FeedItem({
   // Force expanded state (for fast triage mode)
   const isExpanded = forceExpanded || expanded;
 
-  const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
+  const handleFeedback = async (action: "like" | "dislike" | "skip") => {
     if (onFeedback) {
       await onFeedback(item.id, action);
     }

@@ -89,7 +89,7 @@ export interface DigestItem {
     metadata?: Record<string, unknown> | null;
   };
   triageJson?: TriageFeatures;
-  feedback?: "like" | "dislike" | "save" | "skip" | null;
+  feedback?: "like" | "dislike" | "skip" | null;
 }
 
 export interface DigestDetail {
@@ -324,7 +324,7 @@ const mockDigestItems: DigestItem[] = [
         recency_decay_v1: { age_hours: 15, decay_hours: 24, decay_factor: 0.53 },
       },
     },
-    feedback: "save",
+    feedback: "like",
   },
   {
     id: "di5-uuid-mock",
@@ -411,7 +411,7 @@ export interface UseFeedbackResult {
   submitFeedback: (
     contentItemId: string,
     digestId: string,
-    action: "like" | "dislike" | "save" | "skip",
+    action: "like" | "dislike" | "skip",
   ) => Promise<void>;
   isPending: boolean;
 }
@@ -592,7 +592,7 @@ export function useRealFeedback(): UseFeedbackResult {
     submitFeedback: async (
       contentItemId: string,
       digestId: string,
-      action: "like" | "dislike" | "save" | "skip",
+      action: "like" | "dislike" | "skip",
     ) => {
       await mutation.mutateAsync({
         contentItemId,

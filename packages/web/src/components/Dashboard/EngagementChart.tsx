@@ -35,7 +35,6 @@ export function EngagementChart() {
     data?.daily?.map((d) => ({
       date: formatDate(d.date),
       likes: d.likes,
-      saves: d.saves,
       dislikes: d.dislikes,
       skips: d.skips,
     })) ?? [];
@@ -44,14 +43,13 @@ export function EngagementChart() {
   const totals = chartData.reduce(
     (acc, d) => ({
       likes: acc.likes + d.likes,
-      saves: acc.saves + d.saves,
       dislikes: acc.dislikes + d.dislikes,
       skips: acc.skips + d.skips,
     }),
-    { likes: 0, saves: 0, dislikes: 0, skips: 0 },
+    { likes: 0, dislikes: 0, skips: 0 },
   );
 
-  const hasData = totals.likes + totals.saves + totals.dislikes + totals.skips > 0;
+  const hasData = totals.likes + totals.dislikes + totals.skips > 0;
 
   return (
     <div className={styles.widget}>
@@ -62,9 +60,7 @@ export function EngagementChart() {
       {!hasData ? (
         <div className={styles.chartEmpty}>
           <p>No feedback data yet</p>
-          <span className={styles.chartEmptyHint}>
-            Like, save, or skip items to see trends here
-          </span>
+          <span className={styles.chartEmptyHint}>Like or skip items to see trends here</span>
         </div>
       ) : (
         <>
@@ -97,14 +93,6 @@ export function EngagementChart() {
                 />
                 <Line
                   type="monotone"
-                  dataKey="saves"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Saves"
-                />
-                <Line
-                  type="monotone"
                   dataKey="dislikes"
                   stroke="var(--color-error)"
                   strokeWidth={2}
@@ -128,10 +116,6 @@ export function EngagementChart() {
             <span className={styles.legendItem}>
               <span className={styles.legendDot} style={{ background: "var(--color-success)" }} />
               Likes: {totals.likes}
-            </span>
-            <span className={styles.legendItem}>
-              <span className={styles.legendDot} style={{ background: "var(--color-primary)" }} />
-              Saves: {totals.saves}
             </span>
             <span className={styles.legendItem}>
               <span className={styles.legendDot} style={{ background: "var(--color-error)" }} />

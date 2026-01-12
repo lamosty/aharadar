@@ -1,4 +1,4 @@
-export type FeedbackAction = "like" | "dislike" | "save" | "skip";
+export type FeedbackAction = "like" | "dislike" | "skip";
 
 export interface FeedbackEventDraft {
   userId: string;
@@ -16,7 +16,6 @@ export interface FeedbackDailyStats {
   date: string; // ISO date YYYY-MM-DD
   likes: number;
   dislikes: number;
-  saves: number;
   skips: number;
 }
 
@@ -26,10 +25,9 @@ export interface FeedbackSummary {
   byAction: {
     like: number;
     dislike: number;
-    save: number;
     skip: number;
   };
-  /** Ratio of positive (like+save) to negative (dislike) feedback. Null if no negative feedback. */
+  /** Ratio of positive (like) to negative (dislike) feedback. Null if no negative feedback. */
   qualityRatio: number | null;
 }
 
@@ -39,7 +37,6 @@ export interface FeedbackByTopic {
   topicName: string;
   likes: number;
   dislikes: number;
-  saves: number;
   skips: number;
 }
 

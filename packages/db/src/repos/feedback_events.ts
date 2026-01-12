@@ -83,7 +83,7 @@ export function createFeedbackEventsRepo(db: Queryable) {
 
     /**
      * Compute user preference weights from feedback history.
-     * Like/save → +weightDelta weight, dislike → -weightDelta weight.
+     * Like → +weightDelta weight, dislike → -weightDelta weight.
      * Weights are clamped to [0.5, 2.0].
      *
      * @param userId - The user to compute preferences for
@@ -131,7 +131,7 @@ export function createFeedbackEventsRepo(db: Queryable) {
 
       for (const row of res.rows) {
         const delta =
-          row.action === "like" || row.action === "save"
+          row.action === "like"
             ? effectiveWeightDelta
             : row.action === "dislike"
               ? -effectiveWeightDelta
@@ -179,7 +179,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
         date: string;
         likes: string;
         dislikes: string;
-        saves: string;
         skips: string;
       }>(
         `with date_series as (
@@ -194,7 +193,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
              date(created_at) as date,
              count(*) filter (where action = 'like') as likes,
              count(*) filter (where action = 'dislike') as dislikes,
-             count(*) filter (where action = 'save') as saves,
              count(*) filter (where action = 'skip') as skips
            from feedback_events
            where user_id = $1
@@ -205,7 +203,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
            ds.date::text as date,
            coalesce(dc.likes, 0)::text as likes,
            coalesce(dc.dislikes, 0)::text as dislikes,
-           coalesce(dc.saves, 0)::text as saves,
            coalesce(dc.skips, 0)::text as skips
          from date_series ds
          left join daily_counts dc on dc.date = ds.date
@@ -217,7 +214,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
         date: row.date,
         likes: parseInt(row.likes, 10),
         dislikes: parseInt(row.dislikes, 10),
-        saves: parseInt(row.saves, 10),
         skips: parseInt(row.skips, 10),
       }));
     },
@@ -231,14 +227,12 @@ export function createFeedbackEventsRepo(db: Queryable) {
         total: string;
         likes: string;
         dislikes: string;
-        saves: string;
         skips: string;
       }>(
         `select
            count(*)::text as total,
            count(*) filter (where action = 'like')::text as likes,
            count(*) filter (where action = 'dislike')::text as dislikes,
-           count(*) filter (where action = 'save')::text as saves,
            count(*) filter (where action = 'skip')::text as skips
          from feedback_events
          where user_id = $1`,
@@ -249,23 +243,21 @@ export function createFeedbackEventsRepo(db: Queryable) {
       if (!row) {
         return {
           total: 0,
-          byAction: { like: 0, dislike: 0, save: 0, skip: 0 },
+          byAction: { like: 0, dislike: 0, skip: 0 },
           qualityRatio: null,
         };
       }
 
       const likes = parseInt(row.likes, 10);
       const dislikes = parseInt(row.dislikes, 10);
-      const saves = parseInt(row.saves, 10);
       const skips = parseInt(row.skips, 10);
 
-      // Quality ratio = (likes + saves) / dislikes
-      const positive = likes + saves;
-      const qualityRatio = dislikes > 0 ? positive / dislikes : null;
+      // Quality ratio = likes / dislikes
+      const qualityRatio = dislikes > 0 ? likes / dislikes : null;
 
       return {
         total: parseInt(row.total, 10),
-        byAction: { like: likes, dislike: dislikes, save: saves, skip: skips },
+        byAction: { like: likes, dislike: dislikes, skip: skips },
         qualityRatio,
       };
     },
@@ -280,7 +272,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
         topic_name: string;
         likes: string;
         dislikes: string;
-        saves: string;
         skips: string;
       }>(
         `select
@@ -288,7 +279,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
            t.name as topic_name,
            count(*) filter (where fe.action = 'like')::text as likes,
            count(*) filter (where fe.action = 'dislike')::text as dislikes,
-           count(*) filter (where fe.action = 'save')::text as saves,
            count(*) filter (where fe.action = 'skip')::text as skips
          from feedback_events fe
          join content_items ci on ci.id = fe.content_item_id
@@ -306,7 +296,6 @@ export function createFeedbackEventsRepo(db: Queryable) {
         topicName: row.topic_name,
         likes: parseInt(row.likes, 10),
         dislikes: parseInt(row.dislikes, 10),
-        saves: parseInt(row.saves, 10),
         skips: parseInt(row.skips, 10),
       }));
     },

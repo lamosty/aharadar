@@ -10,8 +10,8 @@ import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const VALID_ACTIONS: FeedbackAction[] = ["like", "dislike", "save", "skip"];
-const PROFILE_ACTIONS: FeedbackAction[] = ["like", "dislike", "save"];
+const VALID_ACTIONS: FeedbackAction[] = ["like", "dislike", "skip"];
+const PROFILE_ACTIONS: FeedbackAction[] = ["like", "dislike"];
 
 function isValidUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_REGEX.test(value);
@@ -91,7 +91,7 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       action,
     });
 
-    // Update preference profile if this is a like/save/dislike action
+    // Update preference profile if this is a like/dislike action
     if (PROFILE_ACTIONS.includes(action)) {
       try {
         // Get the topic_id for this content item via content_item_sources -> sources
@@ -114,7 +114,7 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
             await db.topicPreferenceProfiles.applyFeedbackEmbedding({
               userId: ctx.userId,
               topicId: topicRow.topic_id,
-              action: action as "like" | "save" | "dislike",
+              action: action as "like" | "dislike",
               embeddingVector: embedding.vector,
             });
           }

@@ -8,10 +8,7 @@ import styles from "./DigestDetailReader.module.css";
 interface DigestDetailReaderProps {
   items: DigestItem[];
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
 }
 
 function truncateText(text: string, maxLength: number): string {
@@ -86,14 +83,11 @@ export function DigestDetailReader({ items, digestId, onFeedback }: DigestDetail
 interface DigestItemCardProps {
   item: DigestItem;
   digestId: string;
-  onFeedback?: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => Promise<void>;
+  onFeedback?: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
 }
 
 function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
-  const handleFeedback = async (action: "like" | "dislike" | "save" | "skip") => {
+  const handleFeedback = async (action: "like" | "dislike" | "skip") => {
     if (onFeedback) {
       await onFeedback(item.contentItem.id, action);
     }

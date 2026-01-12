@@ -11,6 +11,7 @@ import { registerMetricsHooks } from "./metrics.js";
 import { adminRoutes } from "./routes/admin.js";
 import { askRoutes } from "./routes/ask.js";
 import { authRoutes } from "./routes/auth.js";
+import { deepDiveRoutes } from "./routes/deep-dive.js";
 import { digestsRoutes } from "./routes/digests.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
@@ -101,6 +102,7 @@ async function buildServer() {
       });
       await api.register(adminRoutes);
       await api.register(askRoutes);
+      await api.register(deepDiveRoutes);
       await api.register(digestsRoutes);
       await api.register(feedbackRoutes);
       await api.register(itemsRoutes);

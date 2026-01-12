@@ -41,7 +41,7 @@ When a provider offers an OpenAI-compatible **Responses API**, prefer it over Ch
 ## Router contract
 
 ```ts
-type TaskType = "triage" | "deep_summary" | "entity_extract" | "signal_parse";
+type TaskType = "triage" | "deep_summary" | "manual_summary" | "entity_extract" | "signal_parse";
 type BudgetTier = "low" | "normal" | "high";
 
 interface LLMRouter {
@@ -180,6 +180,44 @@ Generate a deeper summary for top-ranked candidates, emphasizing:
   "suggested_followups": ["If relevant: what to read/check next"]
 }
 ```
+
+## Manual summary task (Deep Dive)
+
+### Purpose
+
+Generate a detailed summary from user-pasted full content for Deep Dive workflow.
+Uses the same output schema as deep_summary, allowing users to create rich summaries
+for content they've liked.
+
+### Key differences from deep_summary
+
+- **Input**: User-pasted text (up to 60,000 characters) instead of pre-fetched bodyText
+- **Prompt note**: "If the content contains comments or discussion threads, surface the most insightful comments in the bullets section."
+- **Budget gating**: Uses computeCreditsStatus (402 if exhausted)
+- **Provider call purpose**: `manual_summary`
+
+### Output schema (manual_summary_v1)
+
+Same structure as deep_summary_v1:
+
+```json
+{
+  "schema_version": "manual_summary_v1",
+  "prompt_id": "manual_summary_v1",
+  "provider": "<provider-id>",
+  "model": "<model-id>",
+  "one_liner": "One sentence.",
+  "bullets": ["Bullet 1", "Bullet 2"],
+  "why_it_matters": ["Reason 1", "Reason 2"],
+  "risks_or_caveats": ["Caveat 1"],
+  "suggested_followups": ["If relevant: what to read/check next"]
+}
+```
+
+### Storage
+
+Promoted summaries are stored in `content_item_deep_reviews.summary_json`.
+Raw pasted text is never stored.
 
 ## Entity extraction (optional MVP)
 

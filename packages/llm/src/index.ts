@@ -5,6 +5,7 @@ export * from "./codex_usage_tracker";
 export * from "./costs";
 export * from "./deep_summary";
 export * from "./embeddings";
+export * from "./manual_summary";
 export * from "./quota_check";
 export * from "./quota_status";
 export * from "./redis_quota";

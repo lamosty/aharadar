@@ -26,6 +26,7 @@
     "dashboard": "Dashboard",
     "feed": "Feed",
     "ask": "Ask",
+    "deepDive": "Deep Dive",
     "digests": "Digests",
     "sources": "Sources",
     "topics": "Topics",
@@ -50,6 +51,42 @@
     "featureDisabled": "Feature Not Enabled",
     "enableInSettings": "Enable the Q&A experimental feature in Settings to start asking questions about your knowledge base.",
     "goToSettings": "Go to Settings"
+  },
+  "deepDive": {
+    "title": "Deep Dive",
+    "subtitle": "Create detailed summaries of your favorite content",
+    "tabs": {
+      "queue": "To Review",
+      "promoted": "Promoted"
+    },
+    "queue": {
+      "empty": "No items to review",
+      "emptyDescription": "Like items in your feed to add them to your Deep Dive queue."
+    },
+    "promoted": {
+      "empty": "No promoted summaries yet",
+      "emptyDescription": "Generate and promote summaries to see them here."
+    },
+    "paste": {
+      "label": "Paste full content",
+      "placeholder": "Paste the full article text here...",
+      "charCount": "{count} / 60,000 characters",
+      "charCountError": "Content exceeds 60,000 character limit",
+      "warning": "Only paste content you have the right to use. We never store the raw pasted text."
+    },
+    "summarize": "Generate Summary",
+    "summarizing": "Generating summary...",
+    "preview": {
+      "title": "Summary Preview",
+      "oneLiner": "One-liner",
+      "bullets": "Key Points",
+      "whyItMatters": "Why It Matters",
+      "risksOrCaveats": "Risks & Caveats",
+      "suggestedFollowups": "Suggested Follow-ups"
+    },
+    "promote": "Promote",
+    "drop": "Drop",
+    "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
   },
   "landing": {
     "hero": {
@@ -674,11 +711,9 @@
     "feedback": {
       "like": "Like",
       "dislike": "Dislike",
-      "save": "Save",
       "skip": "Skip",
       "liked": "Liked",
       "disliked": "Disliked",
-      "saved": "Saved",
       "skipped": "Skipped",
       "submitting": "Submitting...",
       "error": "Failed to submit feedback",
@@ -781,7 +816,6 @@
     "approximateDate": "Approximate date (day-level precision)",
     "view": {
       "inbox": "Inbox",
-      "saved": "Saved",
       "highlights": "Highlights",
       "all": "All"
     },
@@ -813,7 +847,6 @@
     "categories": "Topics the AI identified in this content.",
     "feedbackLike": "Mark as interesting - helps surface similar content in the future.",
     "feedbackDislike": "Mark as not relevant - helps filter out similar content.",
-    "feedbackSave": "Bookmark for later (also trains preferences like Like).",
     "feedbackSkip": "Dismiss from inbox without training preferences.",
     "sourceHN": "Hacker News - tech news and community discussions.",
     "sourceReddit": "Reddit community post.",

@@ -84,7 +84,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
     async applyFeedbackEmbedding(params: {
       userId: string;
       topicId: string;
-      action: "like" | "save" | "dislike";
+      action: "like" | "dislike";
       embeddingVector: number[];
     }): Promise<{ positiveCount: number; negativeCount: number }> {
       // We do a read-modify-write so we don't rely on pgvector arithmetic operators.
@@ -107,7 +107,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
       let posCount = current.positive_count;
       let negCount = current.negative_count;
 
-      if (params.action === "like" || params.action === "save") {
+      if (params.action === "like") {
         const upd = meanUpdate(posVec, posCount, params.embeddingVector);
         nextPos = upd.vector;
         posCount = upd.count;
@@ -160,7 +160,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
          join embeddings e on e.content_item_id = ci.id
          where fe.user_id = $1
            and s.topic_id = $2::uuid
-           and fe.action in ('like', 'save', 'dislike')
+           and fe.action in ('like', 'dislike')
          order by fe.created_at asc`,
         [params.userId, params.topicId],
       );
@@ -175,7 +175,7 @@ export function createTopicPreferenceProfilesRepo(db: Queryable) {
         const vec = parseVectorText(row.vector);
         if (!vec) continue;
 
-        if (row.action === "like" || row.action === "save") {
+        if (row.action === "like") {
           const upd = meanUpdate(posVec, posCount, vec);
           posVec = upd.vector;
           posCount = upd.count;

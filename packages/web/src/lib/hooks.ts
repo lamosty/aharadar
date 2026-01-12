@@ -36,6 +36,9 @@ import {
   clearFeedback,
   createTopic,
   type DailyUsageResponse,
+  type DeepDiveDecisionRequest,
+  // Deep Dive
+  type DeepDivePreviewRequest,
   type DeleteTopicResponse,
   type DigestDetailResponse,
   type DigestStatsResponse,
@@ -58,6 +61,8 @@ import {
   getAdminLlmSettings,
   getAdminSources,
   getDailyUsage,
+  getDeepDivePromoted,
+  getDeepDiveQueue,
   getDigest,
   getDigestStats,
   getDigests,
@@ -97,6 +102,8 @@ import {
   postAdminAbtest,
   postAdminRun,
   postAdminSource,
+  postDeepDiveDecision,
+  postDeepDivePreview,
   postFeedback,
   postMarkChecked,
   postTopicMarkChecked,
@@ -1462,4 +1469,39 @@ export function usePageLayout(page: LayoutPage): UsePageLayoutResult {
     cycleLayout,
     layouts: LAYOUTS,
   };
+}
+
+// ============================================================================
+// Deep Dive Hooks
+// ============================================================================
+
+export function useDeepDiveQueue(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ["deep-dive", "queue", params],
+    queryFn: ({ signal }) => getDeepDiveQueue(params, signal),
+  });
+}
+
+export function useDeepDivePromoted(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ["deep-dive", "promoted", params],
+    queryFn: ({ signal }) => getDeepDivePromoted(params, signal),
+  });
+}
+
+export function useDeepDivePreview() {
+  return useMutation({
+    mutationFn: (request: DeepDivePreviewRequest) => postDeepDivePreview(request),
+  });
+}
+
+export function useDeepDiveDecision(options?: { onSuccess?: () => void }) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: DeepDiveDecisionRequest) => postDeepDiveDecision(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deep-dive"] });
+      options?.onSuccess?.();
+    },
+  });
 }

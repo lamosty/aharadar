@@ -215,11 +215,28 @@ create table feedback_events (
   user_id uuid not null references users(id) on delete cascade,
   digest_id uuid references digests(id) on delete set null,
   content_item_id uuid not null references content_items(id) on delete cascade,
-  action text not null, -- like|dislike|save|skip
+  action text not null, -- like|dislike|skip
   created_at timestamptz not null default now()
 );
 create index feedback_events_user_created_idx on feedback_events(user_id, created_at desc);
 create index feedback_events_item_idx on feedback_events(content_item_id);
+
+-- content_item_deep_reviews: Deep Dive manual summary workflow
+-- Users paste content for liked items, generate AI summary, then promote or drop.
+-- Raw pasted text is never stored; only the summary JSON is stored on promote.
+create table content_item_deep_reviews (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  content_item_id uuid not null references content_items(id) on delete cascade,
+  status text not null check (status in ('promoted', 'dropped')),
+  summary_json jsonb, -- populated only when status='promoted'
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index content_item_deep_reviews_user_item_idx
+  on content_item_deep_reviews(user_id, content_item_id);
+create index content_item_deep_reviews_user_status_idx
+  on content_item_deep_reviews(user_id, status);
 
 -- provider_calls: accounting + debuggability for metered provider usage (LLM, embeddings, signal search, etc.)
 create table provider_calls (

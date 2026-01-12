@@ -3,7 +3,6 @@ export const DEFAULT_KEYMAP = {
   prev: "k",
   like: "l",
   dislike: "d",
-  save: "s",
   skip: "x",
   open: "o",
   why: "w",

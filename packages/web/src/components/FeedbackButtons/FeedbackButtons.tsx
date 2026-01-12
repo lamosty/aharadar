@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/Tooltip";
 import { t } from "@/lib/i18n";
 import styles from "./FeedbackButtons.module.css";
 
-type FeedbackAction = "like" | "dislike" | "save" | "skip";
+type FeedbackAction = "like" | "dislike" | "skip";
 
 interface FeedbackButtonsProps {
   contentItemId: string;
@@ -91,13 +91,6 @@ export function FeedbackButtons({
         compact={isCompact}
       />
       <FeedbackButton
-        action="save"
-        isActive={optimisticFeedback === "save"}
-        isPending={isPending}
-        onClick={() => handleFeedback("save")}
-        compact={isCompact}
-      />
-      <FeedbackButton
         action="skip"
         isActive={optimisticFeedback === "skip"}
         isPending={isPending}
@@ -112,9 +105,6 @@ export function FeedbackButtons({
             </div>
             <div className={styles.helpRow}>
               <DislikeIcon filled={false} /> <span>Less like this</span>
-            </div>
-            <div className={styles.helpRow}>
-              <SaveIcon filled={false} /> <span>Bookmark</span>
             </div>
             <div className={styles.helpRow}>
               <SkipIcon filled={false} /> <span>Dismiss</span>
@@ -142,14 +132,12 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
   const labels: Record<FeedbackAction, string> = {
     like: t("digests.feedback.like"),
     dislike: t("digests.feedback.dislike"),
-    save: t("digests.feedback.save"),
     skip: t("digests.feedback.skip"),
   };
 
   const activeLabels: Record<FeedbackAction, string> = {
     like: t("digests.feedback.liked"),
     dislike: t("digests.feedback.disliked"),
-    save: t("digests.feedback.saved"),
     skip: t("digests.feedback.skipped"),
   };
 
@@ -177,7 +165,6 @@ function FeedbackButton({ action, isActive, isPending, onClick, compact }: Feedb
 const feedbackIcons: Record<FeedbackAction, React.FC<{ filled: boolean }>> = {
   like: LikeIcon,
   dislike: DislikeIcon,
-  save: SaveIcon,
   skip: SkipIcon,
 };
 
@@ -213,24 +200,6 @@ function DislikeIcon({ filled }: { filled: boolean }) {
       aria-hidden="true"
     >
       <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-    </svg>
-  );
-}
-
-function SaveIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }

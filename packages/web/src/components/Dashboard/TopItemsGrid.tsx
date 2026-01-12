@@ -7,11 +7,11 @@ import { useItems, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./Dashboard.module.css";
 
-type ViewOption = "inbox" | "saved" | "all";
+type ViewOption = "inbox" | "highlights" | "all";
 
 const VIEW_OPTIONS: { value: ViewOption; label: string }[] = [
   { value: "inbox", label: "Unprocessed" },
-  { value: "saved", label: "Saved" },
+  { value: "highlights", label: "Highlights" },
   { value: "all", label: "All" },
 ];
 
@@ -111,8 +111,8 @@ function TopicColumn({ topic, view }: TopicColumnProps) {
         <div className={styles.topicColumnEmpty}>
           {view === "inbox"
             ? "All caught up!"
-            : view === "saved"
-              ? "No saved items"
+            : view === "highlights"
+              ? "No liked items"
               : "No items yet"}
         </div>
       ) : (

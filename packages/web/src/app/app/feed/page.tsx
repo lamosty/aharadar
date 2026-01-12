@@ -249,7 +249,7 @@ function FeedPageContent() {
   }, [markCheckedMutation, currentTopicId]);
 
   const handleFeedback = useCallback(
-    async (contentItemId: string, action: "like" | "dislike" | "save" | "skip") => {
+    async (contentItemId: string, action: "like" | "dislike" | "skip") => {
       const items = data?.items ?? [];
       const item = items.find((i) => i.id === contentItemId);
       const currentIndex = items.findIndex((i) => i.id === contentItemId);
@@ -358,7 +358,7 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
-            {/* View toggle: Inbox / Saved / Highlights / All */}
+            {/* View toggle: Inbox / Highlights / All */}
             <div className={styles.viewToggle}>
               <button
                 type="button"
@@ -366,13 +366,6 @@ function FeedPageContent() {
                 onClick={() => handleViewChange("inbox")}
               >
                 {t("feed.view.inbox")}
-              </button>
-              <button
-                type="button"
-                className={`${styles.viewToggleBtn} ${view === "saved" ? styles.viewToggleBtnActive : ""}`}
-                onClick={() => handleViewChange("saved")}
-              >
-                {t("feed.view.saved")}
               </button>
               <button
                 type="button"

@@ -32,10 +32,7 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   // Using real API feedback hook
   const { submitFeedback } = useRealFeedback();
 
-  const handleFeedback = async (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => {
+  const handleFeedback = async (contentItemId: string, action: "like" | "dislike" | "skip") => {
     await submitFeedback(contentItemId, id, action);
   };
 
@@ -126,10 +123,7 @@ interface DigestDetailProps {
   layout: "condensed" | "reader" | "timeline";
   items: DigestItem[];
   digestId: string;
-  onFeedback: (
-    contentItemId: string,
-    action: "like" | "dislike" | "save" | "skip",
-  ) => Promise<void>;
+  onFeedback: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
 }
 
 function DigestDetail({ layout, items, digestId, onFeedback }: DigestDetailProps) {
