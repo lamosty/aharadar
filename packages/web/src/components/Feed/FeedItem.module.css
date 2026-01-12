@@ -33,6 +33,16 @@
   opacity: 0.5;
 }
 
+/* Clickable state for deep dive mode */
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -885,6 +895,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   min-height: 44px;
+  overflow: hidden;
 }
 
 /* Topic badge for "all topics" mode */
@@ -1001,6 +1012,13 @@
   visibility: visible;
   transform: translateY(0);
   transition-delay: 0ms;
+  z-index: 100; /* Higher than pagination to overlay */
+}
+
+/* Fast triage mode - disable hover expansion on non-expanded items */
+.scanItemFastTriage:not(.scanItemExpanded):hover .detailPanel {
+  opacity: 0;
+  visibility: hidden;
 }
 
 /* Inherit tier indicator color on detail panel */

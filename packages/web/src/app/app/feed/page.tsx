@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { DeepDiveModal } from "@/components/DeepDiveModal";
 import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
@@ -112,6 +113,10 @@ function FeedPageContent() {
 
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
+
+  // Deep dive modal state
+  const [deepDiveItem, setDeepDiveItem] = useState<FeedItemType | null>(null);
+  const [isDeepDiveModalOpen, setIsDeepDiveModalOpen] = useState(false);
 
   // Sync URL topic param with TopicProvider on mount
   useEffect(() => {
@@ -318,6 +323,17 @@ function FeedPageContent() {
     if (!currentTopicId) return;
     markCheckedMutation.mutate();
   }, [markCheckedMutation, currentTopicId]);
+
+  // Open deep dive modal for an item
+  const handleOpenDeepDive = useCallback((item: FeedItemType) => {
+    setDeepDiveItem(item);
+    setIsDeepDiveModalOpen(true);
+  }, []);
+
+  // Handle deep dive decision (refetch queue)
+  const handleDeepDiveDecision = useCallback(() => {
+    deepDiveRefetch();
+  }, [deepDiveRefetch]);
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "skip") => {
@@ -546,12 +562,13 @@ function FeedPageContent() {
               <FeedItem
                 key={item.id}
                 item={item}
-                onFeedback={handleFeedback}
-                onClear={handleClearFeedback}
+                onFeedback={isDeepDiveView ? undefined : handleFeedback}
+                onClear={isDeepDiveView ? undefined : handleClearFeedback}
                 layout={layout}
-                showTopicBadge={isAllTopicsMode}
+                showTopicBadge={isAllTopicsMode && !isDeepDiveView}
                 forceExpanded={fastTriageMode && forceExpandedId === item.id}
                 fastTriageMode={fastTriageMode && forceExpandedId !== null}
+                onClick={isDeepDiveView ? () => handleOpenDeepDive(item) : undefined}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand
@@ -593,6 +610,17 @@ function FeedPageContent() {
           />
         </>
       )}
+
+      {/* Deep Dive Modal */}
+      <DeepDiveModal
+        isOpen={isDeepDiveModalOpen}
+        item={deepDiveItem}
+        onClose={() => {
+          setIsDeepDiveModalOpen(false);
+          setDeepDiveItem(null);
+        }}
+        onDecision={handleDeepDiveDecision}
+      />
     </div>
   );
 }
