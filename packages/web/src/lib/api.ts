@@ -238,8 +238,13 @@ export interface PaginationInfo {
   hasMore: boolean;
 }
 
-/** Feed view types */
-export type FeedView = "inbox" | "top_picks" | "all";
+/** Feed view types
+ * - inbox: items without feedback
+ * - deep_dive: liked items awaiting deep dive review (not promoted/dropped)
+ * - all: all items regardless of feedback
+ * - top_picks: URL alias for deep_dive (kept for backward compatibility)
+ */
+export type FeedView = "inbox" | "deep_dive" | "all" | "top_picks";
 
 /** Items list params */
 export interface ItemsListParams {
@@ -648,7 +653,11 @@ export async function getItems(
   if (params?.until) searchParams.set("until", params.until);
   if (params?.sort) searchParams.set("sort", params.sort);
   if (params?.topicId) searchParams.set("topicId", params.topicId);
-  if (params?.view) searchParams.set("view", params.view);
+  if (params?.view) {
+    // Map top_picks (URL alias) to deep_dive for the API
+    const apiView = params.view === "top_picks" ? "deep_dive" : params.view;
+    searchParams.set("view", apiView);
+  }
 
   const query = searchParams.toString();
   const path = query ? `/items?${query}` : "/items";

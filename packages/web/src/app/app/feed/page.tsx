@@ -11,10 +11,9 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { useTopic } from "@/components/TopicProvider";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
-import type { DeepDiveQueueItem, FeedItem as FeedItemType, FeedView } from "@/lib/api";
+import type { FeedItem as FeedItemType, FeedView } from "@/lib/api";
 import {
   useClearFeedback,
-  useDeepDiveQueue,
   useFeedback,
   useLocalStorage,
   usePagedItems,
@@ -27,34 +26,6 @@ import styles from "./page.module.css";
 
 // Default page size based on layout
 const DEFAULT_PAGE_SIZE: PageSize = 50;
-
-/**
- * Transform a DeepDiveQueueItem to FeedItem shape for display in the feed.
- * Now includes score, triageJson, and previewSummaryJson from the queue query.
- */
-function transformQueueItemToFeedItem(queueItem: DeepDiveQueueItem): FeedItemType {
-  return {
-    id: queueItem.id,
-    score: queueItem.score,
-    rank: 0, // No ranking in queue
-    digestId: "", // No digest association
-    digestCreatedAt: queueItem.likedAt, // Use liked date
-    item: {
-      title: queueItem.title,
-      bodyText: queueItem.bodyText,
-      url: queueItem.url,
-      author: queueItem.author,
-      publishedAt: queueItem.publishedAt,
-      sourceType: queueItem.sourceType,
-      sourceId: "", // Not available from queue
-    },
-    triageJson: queueItem.triageJson,
-    feedback: "like", // These are liked items by definition
-    topicId: "", // Not available from queue
-    topicName: "", // Not available from queue
-    previewSummaryJson: queueItem.previewSummaryJson,
-  };
-}
 
 export default function FeedPage() {
   return (
@@ -237,58 +208,16 @@ function FeedPageContent() {
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
+  // Note: view=top_picks is mapped to deep_dive in the API client
   const isTopPicksView = view === "top_picks";
-  const {
-    data: feedData,
-    isLoading: feedLoading,
-    isError: feedError,
-    error: feedErrorMsg,
-    isFetching: feedFetching,
-    refetch: feedRefetch,
-  } = usePagedItems({
+  const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     page: currentPage,
     pageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
-    view: isTopPicksView ? "inbox" : view, // Fallback to inbox when top_picks
+    view, // Passes directly; top_picks is mapped to deep_dive in getItems
   });
-
-  // Fetch deep dive queue when in top picks view (liked items)
-  const {
-    data: topPicksData,
-    isLoading: topPicksLoading,
-    isError: topPicksError,
-    error: topPicksErrorMsg,
-    isFetching: topPicksFetching,
-    refetch: topPicksRefetch,
-  } = useDeepDiveQueue({
-    limit: pageSize,
-    offset: (currentPage - 1) * pageSize,
-    sort: sort === "best" || sort === "latest" ? sort : "best",
-  });
-
-  // Merge data sources based on view
-  const data = isTopPicksView
-    ? topPicksData
-      ? {
-          items: topPicksData.items.map(transformQueueItemToFeedItem),
-          pagination: {
-            total: topPicksData.pagination.count,
-            limit: topPicksData.pagination.limit,
-            offset: topPicksData.pagination.offset,
-            hasMore:
-              topPicksData.pagination.offset + topPicksData.items.length <
-              topPicksData.pagination.count,
-          },
-        }
-      : undefined
-    : feedData;
-  const isLoading = isTopPicksView ? topPicksLoading : feedLoading;
-  const isError = isTopPicksView ? topPicksError : feedError;
-  const error = isTopPicksView ? topPicksErrorMsg : feedErrorMsg;
-  const isFetching = isTopPicksView ? topPicksFetching : feedFetching;
-  const refetch = isTopPicksView ? topPicksRefetch : feedRefetch;
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -364,11 +293,11 @@ function FeedPageContent() {
     }
   }, [nextItemWithSummary]);
 
-  // Handle deep dive decision (refetch top picks queue)
+  // Handle deep dive decision (refetch items list for Deep Dive view)
   // Note: Don't clear forceExpandedId here - onNext/handleDrop will set the next item
   const handleDeepDiveDecision = useCallback(() => {
-    topPicksRefetch();
-  }, [topPicksRefetch]);
+    refetch();
+  }, [refetch]);
 
   // Handle "Next" button in Top Picks - expand next item's detail panel
   const handleNextItem = useCallback(

@@ -241,3 +241,71 @@ test.describe("Feed Interactions", () => {
     await expect(commentsLink).toBeVisible();
   });
 });
+
+test.describe("Deep Dive View", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupFeedMocks(page);
+  });
+
+  test("Deep Dive tab uses /api/items with view=deep_dive", async ({ page }) => {
+    // Track API requests
+    const apiRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/items")) {
+        apiRequests.push(url);
+      }
+    });
+
+    await page.goto("/app/feed");
+    await page.waitForLoadState("networkidle");
+
+    // Click on Deep Dive tab (labeled as "Top Picks" in UI)
+    const deepDiveTab = page.locator("button", { hasText: "Deep Dive" });
+    await deepDiveTab.click();
+    await page.waitForLoadState("networkidle");
+
+    // Verify the API was called with view=deep_dive
+    const deepDiveRequest = apiRequests.find((url) => url.includes("view=deep_dive"));
+    expect(deepDiveRequest).toBeDefined();
+
+    // Items should still render
+    const feedItems = page.locator('[data-testid^="feed-item-"]');
+    await expect(feedItems.first()).toBeVisible();
+  });
+
+  test("sort dropdown changes include correct sort param in Deep Dive", async ({ page }) => {
+    // Track API requests
+    const apiRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/items")) {
+        apiRequests.push(url);
+      }
+    });
+
+    await page.goto("/app/feed");
+    await page.waitForLoadState("networkidle");
+
+    // Switch to Deep Dive tab
+    const deepDiveTab = page.locator("button", { hasText: "Deep Dive" });
+    await deepDiveTab.click();
+    await page.waitForLoadState("networkidle");
+
+    // Clear previous requests
+    apiRequests.length = 0;
+
+    // Find and click the sort dropdown
+    const sortDropdown = page.getByTestId("sort-dropdown");
+    await sortDropdown.click();
+
+    // Select "AI Score" option
+    const aiScoreOption = page.locator('[role="option"]', { hasText: "AI Score" });
+    await aiScoreOption.click();
+    await page.waitForLoadState("networkidle");
+
+    // Verify the API was called with sort=ai_score
+    const aiScoreRequest = apiRequests.find((url) => url.includes("sort=ai_score"));
+    expect(aiScoreRequest).toBeDefined();
+  });
+});
