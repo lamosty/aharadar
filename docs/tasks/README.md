@@ -113,3 +113,5 @@ Task files (in recommended order):
 83. `task-135-polymarket-connector-spikes.md` - Connector: new + spike detection (Gamma only)
 84. `task-136-polymarket-ui-config-restricted.md` - Web: config fields + restricted badge
 85. `task-137-manual-summary-deep-dive.md` - Web/API/LLM: manual paste summary + promote/drop flow
+86. `task-138-x-account-health-nudge-feed.md` - Web/pipeline: X account health nudge + opt-in throttling
+87. `task-139-score-naming-aha-ai.md` - Rename Aha vs AI score semantics across DB/API/UI/CLI/docs
