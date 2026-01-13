@@ -25,6 +25,7 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 7. **Rank**: compute final score combining triage + personalization + novelty + recency + source weighting
 8. **Deep enrich (LLM)**: deep summary (+ optional entities) for top-ranked candidates
 9. **Persist digest**: write `digests` + `digest_items`
+10. **Aggregate summary (async job, optional)**: generate multi-item scope summaries after digest creation (handled in Task 142)
 
 ## Stage contracts
 
