@@ -1219,6 +1219,23 @@ export async function getTopic(id: string, signal?: AbortSignal): Promise<TopicD
   return apiFetch<TopicDetailResponse>(`/topics/${id}`, { signal });
 }
 
+/** Response for last digest end time */
+export interface TopicLastDigestEndResponse {
+  ok: true;
+  windowEnd: string | null;
+}
+
+/**
+ * Get the window_end of the most recent completed digest for a topic.
+ * Used by admin run page to continue from last run.
+ */
+export async function getTopicLastDigestEnd(
+  id: string,
+  signal?: AbortSignal,
+): Promise<TopicLastDigestEndResponse> {
+  return apiFetch<TopicLastDigestEndResponse>(`/topics/${id}/last-digest-end`, { signal });
+}
+
 /**
  * Mark a topic as "caught up".
  */

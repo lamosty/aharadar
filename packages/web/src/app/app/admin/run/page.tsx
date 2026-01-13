@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { EnvConfigWarnings } from "@/components/EnvConfigWarnings";
 import { useToast } from "@/components/Toast";
-import type { LlmProvider } from "@/lib/api";
+import { getTopicLastDigestEnd, type LlmProvider } from "@/lib/api";
 import { useAdminRun, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
@@ -34,9 +34,11 @@ export default function AdminRunPage() {
   const [providerOverride, setProviderOverride] = useState<LlmProvider | "">("");
   const [modelOverride, setModelOverride] = useState<string>("");
   const [jobId, setJobId] = useState<string | null>(null);
+  const [isLoadingLastRun, setIsLoadingLastRun] = useState(false);
 
   // Get the selected topic to show its mode
   const selectedTopic = topics.find((t) => t.id === (topicId || topics[0]?.id));
+  const effectiveTopicId = topicId || topics[0]?.id;
 
   const runMutation = useAdminRun({
     onSuccess: (data) => {
@@ -76,6 +78,31 @@ export default function AdminRunPage() {
     setTopicId("");
     setProviderOverride("");
     setModelOverride("");
+  };
+
+  const handleUseLastRun = async () => {
+    if (!effectiveTopicId) {
+      addToast(t("admin.run.noTopicSelected"), "error");
+      return;
+    }
+
+    setIsLoadingLastRun(true);
+    try {
+      const response = await getTopicLastDigestEnd(effectiveTopicId);
+      if (response.windowEnd) {
+        // Convert ISO string to datetime-local format
+        const date = new Date(response.windowEnd);
+        setWindowStart(date.toISOString().slice(0, 16));
+        setWindowEnd(getDefaultWindowEnd());
+        addToast(t("admin.run.lastRunApplied"), "success");
+      } else {
+        addToast(t("admin.run.noLastRun"), "info");
+      }
+    } catch {
+      addToast(t("admin.run.lastRunFailed"), "error");
+    } finally {
+      setIsLoadingLastRun(false);
+    }
   };
 
   const isLoading = runMutation.isPending;
@@ -118,17 +145,28 @@ export default function AdminRunPage() {
             <label htmlFor="windowStart" className={styles.label}>
               {t("admin.run.windowStart")}
             </label>
-            <input
-              type="datetime-local"
-              id="windowStart"
-              name="windowStart"
-              value={windowStart}
-              onChange={(e) => setWindowStart(e.target.value)}
-              className={styles.input}
-              disabled={isLoading}
-              required
-            />
-            <p className={styles.hint}>{t("admin.run.sinceLastRun")}</p>
+            <div className={styles.inputWithAction}>
+              <input
+                type="datetime-local"
+                id="windowStart"
+                name="windowStart"
+                value={windowStart}
+                onChange={(e) => setWindowStart(e.target.value)}
+                className={styles.input}
+                disabled={isLoading || isLoadingLastRun}
+                required
+              />
+              <button
+                type="button"
+                onClick={handleUseLastRun}
+                className={styles.lastRunButton}
+                disabled={isLoading || isLoadingLastRun}
+                title={t("admin.run.useLastRunHint")}
+              >
+                {isLoadingLastRun ? <LoadingSpinner /> : <ClockIcon />}
+                <span>{t("admin.run.sinceLastRun")}</span>
+              </button>
+            </div>
           </div>
 
           <div className={styles.formGroup}>
@@ -311,8 +349,8 @@ function LoadingSpinner() {
   return (
     <svg
       className={styles.spinner}
-      width="20"
-      height="20"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -322,6 +360,25 @@ function LoadingSpinner() {
       aria-hidden="true"
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
     </svg>
   );
 }

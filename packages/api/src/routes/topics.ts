@@ -723,4 +723,77 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
       message: `Topic deleted. Sources have been moved to "${firstTopic?.name ?? "another topic"}".`,
     };
   });
+
+  // GET /topics/:id/last-digest-end - Get the window_end of the most recent completed digest
+  // Used by admin run page to continue from last run
+  fastify.get<{ Params: { id: string } }>("/topics/:id/last-digest-end", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "id must be a valid UUID",
+        },
+      });
+    }
+
+    // Verify topic exists and belongs to user
+    const db = getDb();
+    const existing = await db.topics.getById(id);
+
+    if (!existing) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: `Topic not found: ${id}`,
+        },
+      });
+    }
+
+    if (existing.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Topic does not belong to current user",
+        },
+      });
+    }
+
+    // Get the most recent completed digest for this topic
+    const result = await db.query<{ window_end: string }>(
+      `SELECT window_end::text
+         FROM digests
+         WHERE topic_id = $1 AND user_id = $2 AND status = 'complete'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+      [id, ctx.userId],
+    );
+
+    if (result.rows.length === 0) {
+      return {
+        ok: true,
+        windowEnd: null,
+      };
+    }
+
+    return {
+      ok: true,
+      windowEnd: result.rows[0].window_end,
+    };
+  });
 }
