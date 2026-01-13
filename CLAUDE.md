@@ -26,7 +26,7 @@ pnpm dev:api          # Build + run API server (reads .env)
 pnpm dev:web          # Run Next.js dev server
 pnpm dev:worker       # Build + run scheduler worker
 pnpm typecheck        # TypeScript strict check
-pnpm format           # Prettier
+pnpm format           # Biome format + lint fix
 pnpm migrate          # Run DB migrations
 pnpm reset            # Reset DB
 ```
@@ -84,7 +84,21 @@ Don't over-engineer features before proving value. Ship toggleable, test locally
 
 Conventional commits: `feat|fix|docs|refactor|chore|test(<scope>): message`
 
-One logical change per commit. After finishing:
+One logical change per commit. **No emojis in commit messages.**
+
+### Before committing (IMPORTANT)
+
+Always run `pnpm format` before staging to ensure files pass linting:
+
+```bash
+pnpm format                    # Format all modified files
+git add <your-task-files>      # Stage task files (format changes included)
+git commit -m "..."
+```
+
+This prevents orphaned formatting changes. If `pnpm format` modifies files you're committing, those changes are already staged. If it modifies unrelated files, they remain unstaged (commit them separately as `chore: format` if needed).
+
+### After finishing task
 
 1. Summary of changes
 2. Suggested commit with file list and copy/paste commands
