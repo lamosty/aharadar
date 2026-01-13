@@ -1,7 +1,7 @@
 import { createDb, type Db } from "@aharadar/db";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import Fastify, { type FastifyInstance } from "fastify";
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -42,20 +42,11 @@ describe("API Routes Integration Tests", () => {
 
     db = createDb(connectionString);
 
-    // Apply migrations in order
+    // Apply all migrations in order
     const migrationsDir = join(__dirname, "../../../db/migrations");
-    const migrationFiles = [
-      "0001_init.sql",
-      "0002_topics.sql",
-      "0003_topic_preference_profiles.sql",
-      "0004_user_preferences.sql",
-      "0005_auth_tables.sql",
-      "0006_topics_viewing_profile.sql",
-      "0007_user_roles.sql",
-      "0008_user_api_keys.sql",
-      "0009_cost_usd_column.sql",
-      "0010_llm_settings.sql",
-    ];
+    const migrationFiles = readdirSync(migrationsDir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
 
     for (const file of migrationFiles) {
       const sql = readFileSync(join(migrationsDir, file), "utf-8");
@@ -154,8 +145,8 @@ describe("API Routes Integration Tests", () => {
 
     // Add content item to digest
     await db.query(
-      `INSERT INTO digest_items (digest_id, content_item_id, score, rank, triage_json)
-       VALUES ($1, $2, 0.85, 1, '{"aha_score": 85, "reason": "Test item"}')`,
+      `INSERT INTO digest_items (digest_id, content_item_id, aha_score, rank, triage_json)
+       VALUES ($1, $2, 0.85, 1, '{"ai_score": 85, "reason": "Test item"}')`,
       [digestId, contentItemId],
     );
   }
@@ -414,7 +405,7 @@ describe("API Routes Integration Tests", () => {
       const body = response.json();
       const itemWithTriage = body.items.find((i: { triageJson: unknown }) => i.triageJson !== null);
       expect(itemWithTriage).toBeDefined();
-      expect(itemWithTriage.triageJson.aha_score).toBe(85);
+      expect(itemWithTriage.triageJson.ai_score).toBe(85);
     });
 
     it("GET /api/items - should return 404 for non-existent topic", async () => {

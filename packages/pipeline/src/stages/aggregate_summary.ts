@@ -88,7 +88,7 @@ async function buildAggregateInputFromDigest(params: {
     `SELECT
        di.rank,
        di.aha_score,
-       COALESCE(ci.ai_score, ci_rep.ai_score) as ai_score,
+       (di.triage_json->>'ai_score')::real as ai_score,
        di.cluster_id,
        di.content_item_id,
        COALESCE(ci.title, ci_rep.title) as item_title,
@@ -216,16 +216,19 @@ async function buildAggregateInputFromInbox(params: {
     params.maxItemBodyChars ?? parseIntEnv(process.env.AGG_SUMMARY_MAX_ITEM_BODY_CHARS) ?? 500;
   const maxItems = params.maxItems ?? parseIntEnv(process.env.AGG_SUMMARY_MAX_ITEMS) ?? 50;
 
-  // Query inbox items with optional topic filter
-  const topicFilter = params.topicId ? "AND ci.topic_id = $4::uuid" : "";
+  // Query inbox items with optional topic filter (via sources table)
+  const topicJoin = params.topicId
+    ? "JOIN sources s ON s.id = ci.source_id AND s.topic_id = $4::uuid"
+    : "";
   const queryParams = params.topicId
     ? [params.userId, params.since, params.until, params.topicId]
     : [params.userId, params.since, params.until];
 
+  // Join with latest digest_items to get scores (if available)
   const itemsResult = await params.db.query<{
     id: string;
     ai_score: number | null;
-    aha_score: number;
+    aha_score: number | null;
     title: string | null;
     canonical_url: string | null;
     source_type: string;
@@ -234,18 +237,26 @@ async function buildAggregateInputFromInbox(params: {
   }>(
     `SELECT
        ci.id,
-       ci.ai_score,
-       ci.aha_score,
+       (ldi.triage_json->>'ai_score')::real as ai_score,
+       ldi.aha_score,
        ci.title,
        ci.canonical_url,
        ci.source_type,
        ci.body_text,
        ci.published_at::text
      FROM content_items ci
+     ${topicJoin}
+     LEFT JOIN LATERAL (
+       SELECT di.aha_score, di.triage_json
+       FROM digest_items di
+       JOIN digests d ON d.id = di.digest_id
+       WHERE di.content_item_id = ci.id
+       ORDER BY d.created_at DESC
+       LIMIT 1
+     ) ldi ON true
      WHERE ci.user_id = $1
        AND ci.published_at >= $2::timestamptz AND ci.published_at <= $3::timestamptz
-       ${topicFilter}
-     ORDER BY ci.aha_score DESC
+     ORDER BY COALESCE(ldi.aha_score, 0) DESC, ci.published_at DESC
      LIMIT $${params.topicId ? "5" : "4"}`,
     [...queryParams, params.maxItems],
   );
@@ -266,7 +277,7 @@ async function buildAggregateInputFromInbox(params: {
       body_snippet: clampText(row.body_text, maxItemBodyChars),
       triage_reason: null,
       ai_score: row.ai_score,
-      aha_score: row.aha_score,
+      aha_score: row.aha_score ?? 0,
       source_type: row.source_type,
       published_at: row.published_at,
       url: row.canonical_url,

@@ -87,7 +87,7 @@ export function createDeepReviewsRepo(db: Queryable) {
           ? "ci.published_at desc nulls last"
           : sort === "oldest"
             ? "ci.published_at asc nulls last"
-            : "coalesce(ldi.score, 0) desc, lf.liked_at desc"; // "best" - by score
+            : "coalesce(ldi.aha_score, 0) desc, lf.liked_at desc"; // "best" - by aha_score
 
       const res = await db.query<{
         id: string;
@@ -113,10 +113,10 @@ export function createDeepReviewsRepo(db: Queryable) {
            order by content_item_id, created_at desc
          ),
          latest_digest_item as (
-           -- Get the most recent digest_item for score and triage_json
+           -- Get the most recent digest_item for aha_score and triage_json
            select distinct on (di.content_item_id)
              di.content_item_id,
-             di.score,
+             di.aha_score,
              di.triage_json
            from digest_items di
            join digests d on d.id = di.digest_id
@@ -131,7 +131,7 @@ export function createDeepReviewsRepo(db: Queryable) {
            ci.source_type,
            ci.published_at::text as published_at,
            lf.liked_at::text as liked_at,
-           ldi.score,
+           ldi.aha_score as score,
            ldi.triage_json,
            dr.summary_json as preview_summary_json
          from latest_feedback lf

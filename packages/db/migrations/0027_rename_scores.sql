@@ -6,10 +6,21 @@
 -- 3. Backfill triage_json: aha_score -> ai_score (in digest_items)
 -- 4. Backfill triage_json: aha_score -> ai_score (in abtest_results)
 
--- Step 1: Rename column
-alter table digest_items rename column score to aha_score;
+-- Step 1: Rename column (idempotent - only if 'score' exists and 'aha_score' doesn't)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'digest_items' and column_name = 'score'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_name = 'digest_items' and column_name = 'aha_score'
+  ) then
+    alter table digest_items rename column score to aha_score;
+  end if;
+end $$;
 
--- Step 2: Rename index
+-- Step 2: Rename index (already idempotent with IF EXISTS)
 alter index if exists digest_items_digest_score_idx rename to digest_items_digest_aha_score_idx;
 
 -- Step 3: Backfill triage_json in digest_items
