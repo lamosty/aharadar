@@ -1,3 +1,4 @@
+export * from "./aggregate_summary";
 export * from "./cluster";
 export * from "./dedupe";
 export * from "./digest";
