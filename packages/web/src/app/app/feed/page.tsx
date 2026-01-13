@@ -343,25 +343,26 @@ function FeedPageContent() {
     topPicksRefetch();
   }, [topPicksRefetch]);
 
-  // Handle "Next" button in Top Picks - scroll to next item (hover-first approach)
-  // Uses DOM siblings instead of React state for reliability
-  const handleNextItem = useCallback((currentItemId: string) => {
-    const currentElement = document.getElementById(`feed-item-${currentItemId}`);
-    if (!currentElement) return;
-
-    // Find next sibling article element
-    const nextElement = currentElement.nextElementSibling as HTMLElement | null;
-    if (nextElement?.tagName === "ARTICLE") {
-      nextElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Highlight effect - add temporary outline
-      nextElement.style.outline = "3px solid var(--color-primary, #6366f1)";
-      nextElement.style.outlineOffset = "2px";
-      setTimeout(() => {
-        nextElement.style.outline = "";
-        nextElement.style.outlineOffset = "";
-      }, 1500);
-    }
-  }, []);
+  // Handle "Next" button in Top Picks - expand next item's detail panel
+  const handleNextItem = useCallback(
+    (currentItemId: string) => {
+      const allItems = data?.items ?? [];
+      const currentIndex = allItems.findIndex((i) => i.id === currentItemId);
+      if (currentIndex >= 0 && currentIndex < allItems.length - 1) {
+        const nextItem = allItems[currentIndex + 1];
+        if (nextItem) {
+          // Set force expanded to show the next item's detail panel
+          setForceExpandedId(nextItem.id);
+          // Scroll to it
+          setTimeout(() => {
+            const nextElement = document.getElementById(`feed-item-${nextItem.id}`);
+            nextElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 50);
+        }
+      }
+    },
+    [data],
+  );
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "skip") => {
@@ -587,8 +588,11 @@ function FeedPageContent() {
                 onClear={isTopPicksView ? undefined : handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode && !isTopPicksView}
-                forceExpanded={fastTriageMode && forceExpandedId === item.id}
-                fastTriageMode={fastTriageMode && forceExpandedId !== null}
+                forceExpanded={(fastTriageMode || isTopPicksView) && forceExpandedId === item.id}
+                fastTriageMode={
+                  (fastTriageMode && forceExpandedId !== null) ||
+                  (isTopPicksView && forceExpandedId !== null)
+                }
                 isTopPicksView={isTopPicksView}
                 onViewSummary={handleOpenReaderModal}
                 onSummaryDecision={handleDeepDiveDecision}
