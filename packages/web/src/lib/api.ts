@@ -924,7 +924,7 @@ export async function updateXAccountPolicyMode(
 ): Promise<XAccountPolicyResponse> {
   return apiFetch<XAccountPolicyResponse>(`/admin/sources/${sourceId}/x-account-policies/mode`, {
     method: "PATCH",
-    body: JSON.stringify({ handle, mode }),
+    body: { handle, mode },
     signal,
   });
 }
@@ -939,7 +939,7 @@ export async function resetXAccountPolicy(
 ): Promise<XAccountPolicyResponse> {
   return apiFetch<XAccountPolicyResponse>(`/admin/sources/${sourceId}/x-account-policies/reset`, {
     method: "POST",
-    body: JSON.stringify({ handle }),
+    body: { handle },
     signal,
   });
 }
