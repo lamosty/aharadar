@@ -351,13 +351,15 @@ function FeedPageContent() {
 
     // Find next sibling article element
     const nextElement = currentElement.nextElementSibling as HTMLElement | null;
-    if (nextElement && nextElement.tagName === "ARTICLE") {
+    if (nextElement?.tagName === "ARTICLE") {
       nextElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Brief highlight effect using data attribute
-      nextElement.dataset.highlight = "true";
+      // Highlight effect - add temporary outline
+      nextElement.style.outline = "3px solid var(--color-primary, #6366f1)";
+      nextElement.style.outlineOffset = "2px";
       setTimeout(() => {
-        nextElement.dataset.highlight = "false";
-      }, 1000);
+        nextElement.style.outline = "";
+        nextElement.style.outlineOffset = "";
+      }, 1500);
     }
   }, []);
 
