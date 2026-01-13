@@ -819,7 +819,11 @@ export async function persistDigestFromContentItems(params: {
            and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
          order by
            (case when ci.title is not null then 0 else 1 end) asc,
-           coalesce(ci.published_at, ci.fetched_at) desc
+           (case when ci.source_type != 'x_posts' and ci.canonical_url is not null then 0 else 1 end) asc,
+           length(coalesce(ci.body_text, '')) desc,
+           (case when ci.canonical_url is not null then 0 else 1 end) asc,
+           coalesce(ci.published_at, ci.fetched_at) desc,
+           ci.id asc
          limit 1
        ) rep on true
        join topic_item_source tis on tis.content_item_id = rep.id

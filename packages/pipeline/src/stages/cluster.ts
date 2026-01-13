@@ -229,13 +229,27 @@ export async function clusterTopicContentItems(params: {
           best.cluster_id,
         ]);
 
-        // Fill representative if missing (should be rare).
-        if (!best.representative_content_item_id) {
-          await tx.query(
-            `update clusters set representative_content_item_id = $2::uuid where id = $1::uuid and representative_content_item_id is null`,
-            [best.cluster_id, row.content_item_id],
-          );
-        }
+        // Recompute representative using content-rich heuristic.
+        // Order: title > non-x_posts with canonical_url > longer body > canonical_url > recency > id
+        await tx.query(
+          `update clusters set representative_content_item_id = (
+            select ci.id
+            from cluster_items cli
+            join content_items ci on ci.id = cli.content_item_id
+            where cli.cluster_id = $1::uuid
+              and ci.deleted_at is null
+            order by
+              (case when ci.title is not null then 0 else 1 end) asc,
+              (case when ci.source_type != 'x_posts' and ci.canonical_url is not null then 0 else 1 end) asc,
+              length(coalesce(ci.body_text, '')) desc,
+              (case when ci.canonical_url is not null then 0 else 1 end) asc,
+              coalesce(ci.published_at, ci.fetched_at) desc,
+              ci.id asc
+            limit 1
+          )
+          where id = $1::uuid`,
+          [best.cluster_id],
+        );
 
         if (updateCentroid) {
           const centroidText = best.centroid_text;

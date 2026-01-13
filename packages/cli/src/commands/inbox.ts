@@ -321,7 +321,11 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
               then 0 else 1
             end) asc,
            (case when ci2.title is not null then 0 else 1 end) asc,
-           coalesce(ci2.published_at, ci2.fetched_at) desc
+           (case when ci2.source_type != 'x_posts' and ci2.canonical_url is not null then 0 else 1 end) asc,
+           length(coalesce(ci2.body_text, '')) desc,
+           (case when ci2.canonical_url is not null then 0 else 1 end) asc,
+           coalesce(ci2.published_at, ci2.fetched_at) desc,
+           ci2.id asc
          limit 1
        ) rep on di.cluster_id is not null
        join content_items ci on ci.id = coalesce(di.content_item_id, rep.content_item_id)
