@@ -343,7 +343,8 @@ function FeedPageContent() {
     topPicksRefetch();
   }, [topPicksRefetch]);
 
-  // Handle "Next" button in Top Picks - move to next item
+  // Handle "Next" button in Top Picks - scroll to next item (hover-first approach)
+  // Unlike Inbox fast triage, we don't lock expansion - user can freely hover any item
   const handleNextItem = useCallback(
     (currentItemId: string) => {
       const items = data?.items ?? [];
@@ -351,7 +352,16 @@ function FeedPageContent() {
       if (currentIndex >= 0 && currentIndex < items.length - 1) {
         const nextItem = items[currentIndex + 1];
         if (nextItem) {
-          setForceExpandedId(nextItem.id);
+          // Scroll next item into view without locking expansion
+          const nextElement = document.getElementById(`feed-item-${nextItem.id}`);
+          if (nextElement) {
+            nextElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            // Brief highlight effect using data attribute
+            nextElement.dataset.highlight = "true";
+            setTimeout(() => {
+              nextElement.dataset.highlight = "false";
+            }, 1000);
+          }
         }
       }
     },

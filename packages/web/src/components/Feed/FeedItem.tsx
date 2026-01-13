@@ -404,7 +404,7 @@ export function FeedItem({
         summaryJson: summary,
       });
       addToast("Saved to Deep Dives", "success");
-    } catch (err) {
+    } catch {
       addToast("Failed to save", "error");
     }
   };
@@ -416,14 +416,13 @@ export function FeedItem({
         decision: "drop",
       });
       addToast("Dropped", "info");
-    } catch (err) {
+    } catch {
       addToast("Failed to drop", "error");
     }
   };
 
   const scorePercent = Math.round((item.score ?? 0) * 100);
   const scoreTier = getScoreTier(item.score ?? 0);
-  const subreddit = item.item.metadata?.subreddit as string | undefined;
   const isRestricted = item.item.metadata?.is_restricted === true;
   const displayDate = getDisplayDate(item);
   // For X posts: show display name only (handle is shown in source section)
@@ -459,20 +458,11 @@ export function FeedItem({
     item.item.author,
   );
 
-  // Mobile tap handler
-  const handleRowClick = (e: React.MouseEvent) => {
-    // Don't toggle if clicking on a link or button
-    const target = e.target as HTMLElement;
-    if (target.closest("a") || target.closest("button")) {
-      return;
-    }
-    setExpanded(!expanded);
-  };
-
   // For condensed layout, render clean scannable row with floating detail panel on hover
   if (layout === "condensed") {
     return (
       <article
+        id={`feed-item-${item.id}`}
         className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
         data-testid={`feed-item-${item.id}`}
         data-tier={scoreTier}
@@ -585,7 +575,6 @@ export function FeedItem({
                         Next
                       </button>
                     )}
-                    <span className={styles.actionSpacer} />
                     <button
                       type="button"
                       className={styles.dropBtnCompact}
@@ -621,7 +610,6 @@ export function FeedItem({
                         Next
                       </button>
                     )}
-                    <span className={styles.actionSpacer} />
                     <button
                       type="button"
                       className={styles.dropBtnCompact}
@@ -662,7 +650,11 @@ export function FeedItem({
 
   // Default: reader/timeline layout (card-based)
   return (
-    <article className={styles.card} data-testid={`feed-item-${item.id}`}>
+    <article
+      id={`feed-item-${item.id}`}
+      className={styles.card}
+      data-testid={`feed-item-${item.id}`}
+    >
       <div className={styles.header}>
         {/* Left section: badges + source + meta + actions */}
         <div className={styles.headerLeft}>
@@ -785,7 +777,6 @@ export function FeedItem({
                       Next
                     </button>
                   )}
-                  <span className={styles.actionSpacer} />
                   <button
                     type="button"
                     className={styles.dropBtn}
@@ -823,7 +814,6 @@ export function FeedItem({
                     Next
                   </button>
                 )}
-                <span className={styles.actionSpacer} />
                 <button
                   type="button"
                   className={styles.dropBtn}
@@ -838,25 +828,6 @@ export function FeedItem({
         </div>
       )}
     </article>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-      <polyline points="15 3 21 3 21 9" />
-      <line x1="10" y1="14" x2="21" y2="3" />
-    </svg>
   );
 }
 
@@ -888,45 +859,6 @@ function CommentIcon({ size = 14 }: { size?: number }) {
       aria-hidden="true"
     >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function SparklesIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-      <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
-    </svg>
-  );
-}
-
-function InfoIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="16" x2="12" y2="12" />
-      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   );
 }

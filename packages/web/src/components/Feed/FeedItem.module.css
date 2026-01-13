@@ -1555,8 +1555,17 @@
   border-color: var(--color-primary);
 }
 
-/* Spacer to separate positive actions from destructive (Drop) */
-.actionSpacer {
-  flex: 1;
-  min-width: var(--space-4);
+/* Highlight pulse animation for "Next" button scroll target */
+.scanItem[data-highlight="true"],
+.card[data-highlight="true"] {
+  animation: highlightPulse 1s ease-out;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background-color: var(--color-primary-light, rgba(99, 102, 241, 0.15));
+  }
+  100% {
+    background-color: transparent;
+  }
 }
