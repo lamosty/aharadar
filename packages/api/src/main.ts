@@ -18,6 +18,7 @@ import { healthRoutes } from "./routes/health.js";
 import { itemsRoutes } from "./routes/items.js";
 import { preferencesRoutes } from "./routes/preferences.js";
 import { storageRoutes } from "./routes/storage.js";
+import { summariesRoutes } from "./routes/summaries.js";
 import { topicsRoutes } from "./routes/topics.js";
 import { userApiKeysRoutes } from "./routes/user-api-keys.js";
 import { userUsageRoutes } from "./routes/user-usage.js";
@@ -107,6 +108,7 @@ async function buildServer() {
       await api.register(feedbackRoutes);
       await api.register(itemsRoutes);
       await api.register(preferencesRoutes);
+      await api.register(summariesRoutes);
       await api.register(topicsRoutes);
       await api.register(userApiKeysRoutes);
       await api.register(userUsageRoutes);

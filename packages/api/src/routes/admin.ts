@@ -1194,12 +1194,15 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       id: job.id,
       name: job.name,
       data: {
-        topicId: job.data.topicId,
-        windowStart: job.data.windowStart,
-        windowEnd: job.data.windowEnd,
+        // windowStart/windowEnd exist on RunWindowJobData and RunAbtestJobData
+        topicId: "topicId" in job.data ? job.data.topicId : undefined,
+        windowStart: "windowStart" in job.data ? job.data.windowStart : undefined,
+        windowEnd: "windowEnd" in job.data ? job.data.windowEnd : undefined,
         // mode only exists on RunWindowJobData, runId only on RunAbtestJobData
         mode: "mode" in job.data ? job.data.mode : undefined,
         runId: "runId" in job.data ? job.data.runId : undefined,
+        // scopeType only exists on RunAggregateSummaryJob
+        scopeType: "scopeType" in job.data ? job.data.scopeType : undefined,
       },
       progress: job.progress,
       attemptsMade: job.attemptsMade,

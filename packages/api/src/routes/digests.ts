@@ -442,6 +442,28 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         : (digest.source_results ?? [])
     ) as SourceResult[];
 
+    // Query for aggregate summary if present
+    const summaryResult = await db.query<{
+      id: string;
+      status: string;
+      summary_json: unknown;
+      provider: string | null;
+      model: string | null;
+      input_item_count: number | null;
+      input_tokens: number | null;
+      output_tokens: number | null;
+      cost_estimate_credits: string | null;
+      error_message: string | null;
+    }>(
+      `SELECT id, status, summary_json, provider, model, input_item_count, input_tokens, output_tokens, cost_estimate_credits, error_message
+       FROM aggregate_summaries
+       WHERE digest_id = $1 AND user_id = $2
+       LIMIT 1`,
+      [id, ctx.userId],
+    );
+
+    const aggregateSummary = summaryResult.rows[0];
+
     return {
       ok: true,
       digest: {
@@ -479,6 +501,22 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
               }
             : null,
       })),
+      aggregateSummary: aggregateSummary
+        ? {
+            id: aggregateSummary.id,
+            status: aggregateSummary.status,
+            summaryJson: aggregateSummary.summary_json,
+            provider: aggregateSummary.provider,
+            model: aggregateSummary.model,
+            inputItemCount: aggregateSummary.input_item_count,
+            inputTokens: aggregateSummary.input_tokens,
+            outputTokens: aggregateSummary.output_tokens,
+            costEstimateCredits: aggregateSummary.cost_estimate_credits
+              ? parseFloat(aggregateSummary.cost_estimate_credits)
+              : null,
+            errorMessage: aggregateSummary.error_message,
+          }
+        : null,
     };
   });
 }

@@ -1,13 +1,14 @@
 import {
   createPipelineQueue,
   type RunAbtestJobData,
+  type RunAggregateSummaryJob,
   type RunWindowJobData,
 } from "@aharadar/queues";
 import { loadRuntimeEnv } from "@aharadar/shared";
 import type { Queue } from "bullmq";
 
 /** Union type for all job types that can be added to the pipeline queue */
-type PipelineJobData = RunWindowJobData | RunAbtestJobData;
+type PipelineJobData = RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob;
 
 let pipelineQueue: Queue<PipelineJobData> | null = null;
 

@@ -19,6 +19,11 @@ export const RUN_WINDOW_JOB_NAME = "run_window";
 export const RUN_ABTEST_JOB_NAME = "run_abtest";
 
 /**
+ * Job name for aggregate summary jobs.
+ */
+export const RUN_AGGREGATE_SUMMARY_JOB_NAME = "run_aggregate_summary";
+
+/**
  * Per-run LLM provider override for manual runs.
  */
 export interface ProviderOverride {
@@ -65,6 +70,19 @@ export interface RunAbtestJobData {
   variants: AbtestVariantConfig[];
   /** Max items to sample for testing */
   maxItems?: number;
+}
+
+/**
+ * Job payload for aggregate summary runs.
+ */
+export interface RunAggregateSummaryJob {
+  scopeType: "digest" | "inbox" | "range" | "custom";
+  scopeHash: string;
+  digestId?: string;
+  topicId?: string;
+  since?: string;
+  until?: string;
+  view?: string;
 }
 
 /**

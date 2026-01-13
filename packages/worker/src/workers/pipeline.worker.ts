@@ -9,8 +9,9 @@ import {
   PIPELINE_QUEUE_NAME,
   parseRedisConnection,
   RUN_ABTEST_JOB_NAME,
-  RUN_WINDOW_JOB_NAME,
+  RUN_AGGREGATE_SUMMARY_JOB_NAME,
   type RunAbtestJobData,
+  type RunAggregateSummaryJob,
   type RunWindowJobData,
 } from "../queues";
 
@@ -204,21 +205,104 @@ async function handleRunAbtestJob(
 }
 
 /**
- * Create the pipeline worker that processes run_window and run_abtest jobs.
+ * Handle a run_aggregate_summary job.
+ */
+async function handleRunAggregateSummaryJob(
+  db: Db,
+  job: Job<RunAggregateSummaryJob>,
+  env: ReturnType<typeof loadRuntimeEnv>,
+): Promise<{ status: string }> {
+  const jobLog = createJobLogger(job.id ?? "unknown");
+  const { scopeType, scopeHash, digestId, topicId, since, until } = job.data;
+
+  jobLog.info(
+    {
+      scopeType,
+      scopeHash: scopeHash.slice(0, 8),
+      digestId: digestId?.slice(0, 8),
+    },
+    "Starting aggregate summary generation",
+  );
+
+  try {
+    // Import here to avoid circular dependency
+    const { generateAggregateSummary } = await import("@aharadar/pipeline");
+
+    // Get the first (and only) user for MVP
+    const user = await db.users.getFirstUser();
+    if (!user) {
+      jobLog.warn("No user found, skipping aggregate summary");
+      return { status: "skipped" };
+    }
+
+    // Load LLM settings
+    const llmSettings = await db.llmSettings.get();
+    const llmConfig: LlmRuntimeConfig = {
+      provider: llmSettings.provider,
+      anthropicModel: llmSettings.anthropic_model,
+      openaiModel: llmSettings.openai_model,
+      claudeSubscriptionEnabled: llmSettings.claude_subscription_enabled,
+      claudeTriageThinking: llmSettings.claude_triage_thinking,
+      claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+      reasoningEffort: llmSettings.reasoning_effort,
+      triageBatchEnabled: llmSettings.triage_batch_enabled,
+      triageBatchSize: llmSettings.triage_batch_size,
+    };
+
+    const summary = await generateAggregateSummary({
+      db,
+      userId: user.id,
+      scopeType,
+      scopeHash,
+      digestId,
+      topicId,
+      since,
+      until,
+      tier: "normal",
+      llmConfig,
+    });
+
+    jobLog.info(
+      {
+        summaryId: summary.id.slice(0, 8),
+        status: summary.status,
+      },
+      "Aggregate summary generation completed",
+    );
+
+    return { status: summary.status };
+  } catch (err) {
+    jobLog.error(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        scopeType,
+        scopeHash: scopeHash.slice(0, 8),
+      },
+      "Aggregate summary generation failed",
+    );
+    throw err;
+  }
+}
+
+/**
+ * Create the pipeline worker that processes run_window, run_abtest, and run_aggregate_summary jobs.
  */
 export function createPipelineWorker(redisUrl: string): {
-  worker: Worker<RunWindowJobData | RunAbtestJobData>;
+  worker: Worker<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob>;
   db: Db;
 } {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
 
-  const worker = new Worker<RunWindowJobData | RunAbtestJobData>(
+  const worker = new Worker<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob>(
     PIPELINE_QUEUE_NAME,
-    async (job: Job<RunWindowJobData | RunAbtestJobData>) => {
+    async (job: Job<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob>) => {
       // Route to appropriate handler based on job name
       if (job.name === RUN_ABTEST_JOB_NAME) {
         return handleRunAbtestJob(db, job as Job<RunAbtestJobData>);
+      }
+      if (job.name === RUN_AGGREGATE_SUMMARY_JOB_NAME) {
+        return handleRunAggregateSummaryJob(db, job as Job<RunAggregateSummaryJob>, env);
       }
       // Default to run_window job (for backwards compatibility)
       return handleRunWindowJob(db, job as Job<RunWindowJobData>, env);
