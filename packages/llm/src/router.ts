@@ -30,7 +30,14 @@ export interface LlmRuntimeConfig {
   triageBatchSize?: number;
 }
 
-const TASKS: TaskType[] = ["triage", "deep_summary", "entity_extract", "signal_parse", "qa"];
+const TASKS: TaskType[] = [
+  "triage",
+  "deep_summary",
+  "entity_extract",
+  "signal_parse",
+  "qa",
+  "aggregate_summary",
+];
 const TIERS: BudgetTier[] = ["low", "normal", "high"];
 
 function applyTaskModelOverrides(params: {
