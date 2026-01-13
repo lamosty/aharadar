@@ -1,13 +1,21 @@
-# Get list of staged files before formatting
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx|json|css)$' || true)
+# Get staged files (what we're about to commit)
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx|json|css)$' || true)
 
-# Run format on the whole repo to fix any lint issues
-pnpm format 2>/dev/null || true
+# Get modified but unstaged files (dirty working directory)
+MODIFIED=$(git diff --name-only | grep -E '\.(js|jsx|ts|tsx|json|css)$' || true)
 
-# Re-stage any files that were originally staged (in case format modified them)
-if [ -n "$STAGED_FILES" ]; then
-  echo "$STAGED_FILES" | xargs -r git add
+# Combine and dedupe
+ALL_DIRTY=$(echo -e "$STAGED\n$MODIFIED" | sort -u | grep -v '^$' || true)
+
+# Format only the dirty files (not the whole repo)
+if [ -n "$ALL_DIRTY" ]; then
+  echo "$ALL_DIRTY" | xargs pnpm biome check --write --no-errors-on-unmatched 2>/dev/null || true
 fi
 
-# Now run lint-staged (should have nothing to fix since we just formatted)
+# Re-stage originally staged files (captures any format changes)
+if [ -n "$STAGED" ]; then
+  echo "$STAGED" | xargs git add
+fi
+
+# Run lint-staged as final check
 pnpm exec lint-staged
