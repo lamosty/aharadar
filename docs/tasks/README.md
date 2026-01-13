@@ -115,3 +115,9 @@ Task files (in recommended order):
 85. `task-137-manual-summary-deep-dive.md` - Web/API/LLM: manual paste summary + promote/drop flow
 86. `task-138-x-account-health-nudge-feed.md` - Web/pipeline: X account health nudge + opt-in throttling
 87. `task-139-score-naming-aha-ai.md` - Rename Aha vs AI score semantics across DB/API/UI/CLI/docs
+88. `task-140-cluster-display-representative.md` - Prefer content-rich cluster representatives for display
+89. `task-141-aggregate-summaries-core.md` - Aggregate summaries: DB schema + LLM task + config
+90. `task-142-aggregate-summaries-jobs-api.md` - Aggregate summaries: jobs + API + pipeline wiring
+91. `task-143-aggregate-summaries-ui.md` - Web UI for digest + inbox aggregate summaries
+92. `task-144-items-deep-dive-view.md` - API: Deep Dive queue via `GET /items?view=deep_dive` + enable `sort=ai_score`
+93. `task-145-web-feed-deep-dive-use-items.md` - Web: Feed Deep Dive tab uses `/items` (fix score=0 + sort no-op)
