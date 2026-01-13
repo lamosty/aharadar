@@ -84,7 +84,7 @@ function openUrlInBrowser(url: string): void {
 
 type ReviewRow = {
   rank: number;
-  score: number;
+  aha_score: number;
   triage_json: Record<string, unknown> | null;
   // Exactly one is set (per DB constraint), but we load both for clarity:
   content_item_id: string | null;
@@ -100,13 +100,13 @@ type ReviewRow = {
 
 type ReviewItem = {
   rank: number;
-  scoreText: string;
+  ahaScoreText: string;
   contentItemIdForFeedback: string | null;
   sourceType: string;
   title: string;
   link: string | null;
   reason: string | null;
-  ahaScore: string | null;
+  aiScore: string | null;
   categories: string[];
   signalQuery: string | null;
   signalSnippets: string[];
@@ -303,7 +303,7 @@ function renderItem(params: {
   const lastAction = params.lastAction ? `last_action=${params.lastAction}` : "last_action=-";
 
   console.log(
-    `rank=${params.item.rank} score=${params.item.scoreText} aha=${params.item.ahaScore ?? "-"} ${lastAction}${busySuffix}`,
+    `rank=${params.item.rank} aha=${params.item.ahaScoreText} ai=${params.item.aiScore ?? "-"} ${lastAction}${busySuffix}`,
   );
   console.log(`source=${params.item.sourceType}`);
   console.log("");
@@ -459,9 +459,11 @@ function normalizeCategories(value: unknown): string[] {
 
 function resolveReviewItems(rows: ReviewRow[]): ReviewItem[] {
   return rows.map((row) => {
-    const scoreText = Number.isFinite(row.score) ? row.score.toFixed(3) : String(row.score);
+    const ahaScoreText = Number.isFinite(row.aha_score)
+      ? row.aha_score.toFixed(3)
+      : String(row.aha_score);
     const triage = asRecord(row.triage_json);
-    const aha = asFiniteNumber(triage.aha_score);
+    const ai = asFiniteNumber(triage.ai_score);
     const reasonRaw = asString(triage.reason);
     const meta = asRecord(row.metadata_json);
     const title = normalizeWhitespace(row.title ?? "(no title)");
@@ -469,13 +471,13 @@ function resolveReviewItems(rows: ReviewRow[]): ReviewItem[] {
 
     return {
       rank: row.rank,
-      scoreText,
+      ahaScoreText,
       contentItemIdForFeedback: row.feedback_content_item_id,
       sourceType,
       title,
       link: getPrimaryUrl({ canonicalUrl: row.canonical_url, metadata: meta }),
       reason: reasonRaw ? normalizeWhitespace(reasonRaw) : null,
-      ahaScore: aha !== null ? String(Math.round(aha)) : null,
+      aiScore: ai !== null ? String(Math.round(ai)) : null,
       categories: normalizeCategories(triage.categories),
       signalQuery: sourceType === "signal" ? extractSignalQuery(meta) : null,
       signalSnippets: sourceType === "signal" ? extractSignalHighlights(meta, 3) : [],
@@ -583,7 +585,7 @@ export async function reviewCommand(args: string[] = []): Promise<void> {
        )
        select
          di.rank,
-         di.score,
+         di.aha_score,
          di.triage_json,
          di.content_item_id::text as content_item_id,
          di.cluster_id::text as cluster_id,

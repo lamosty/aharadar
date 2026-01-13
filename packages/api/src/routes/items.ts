@@ -31,8 +31,8 @@ interface ClusterItemRow {
 
 interface UnifiedItemRow {
   content_item_id: string;
-  score: number;
-  decayed_score: number;
+  aha_score: number;
+  trending_score: number;
   digest_id: string;
   digest_created_at: string;
   triage_json: Record<string, unknown> | null;
@@ -219,7 +219,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     if (minScore !== undefined && !Number.isNaN(minScore)) {
-      filterConditions.push(`li.score >= $${filterParamIdx}`);
+      filterConditions.push(`li.aha_score >= $${filterParamIdx}`);
       filterParams.push(minScore);
       filterParamIdx++;
     }
@@ -259,15 +259,15 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         break;
       case "trending":
         // Order by decayed score (computed in SELECT)
-        orderBy = "decayed_score DESC";
+        orderBy = "trending_score DESC";
         break;
       case "ai_score":
-        // Order by raw LLM triage score (aha_score from triage_json)
-        orderBy = "(li.triage_json->>'aha_score')::numeric DESC NULLS LAST";
+        // Order by raw LLM triage score (ai_score from triage_json)
+        orderBy = "(li.triage_json->>'ai_score')::numeric DESC NULLS LAST";
         break;
       default: // "best"
         // Order by raw score (no decay) - best quality items first
-        orderBy = "li.score DESC";
+        orderBy = "li.aha_score DESC";
     }
 
     // Query: Get latest score for each content item
@@ -287,7 +287,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
           COALESCE(di.content_item_id, c.representative_content_item_id) as content_item_id,
           di.cluster_id,
-          di.score,
+          di.aha_score,
           di.digest_id,
           di.triage_json,
           di.summary_json,
@@ -306,14 +306,14 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       SELECT
         li.content_item_id,
         li.cluster_id::text,
-        li.score,
+        li.aha_score,
         -- Compute decay-adjusted score in SQL for correct ordering
-        -- Formula: score * EXP(-age_hours / decay_hours)
+        -- Formula: aha_score * EXP(-age_hours / decay_hours)
         -- Age uses published_at if available, otherwise digest_created_at
-        (li.score * EXP(
+        (li.aha_score * EXP(
           -GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(ci.published_at, li.digest_created_at))) / 3600.0)
           / GREATEST(1, $${decayHoursParamIdx}::float)
-        ))::real as decayed_score,
+        ))::real as trending_score,
         li.digest_id::text,
         li.digest_created_at::text,
         li.triage_json,
@@ -382,7 +382,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       WITH latest_items AS (
         SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
           COALESCE(di.content_item_id, c.representative_content_item_id) as content_item_id,
-          di.score
+          di.aha_score
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
         LEFT JOIN clusters c ON c.id = di.cluster_id
@@ -441,8 +441,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
 
       return {
         id: row.content_item_id,
-        score: row.decayed_score, // Decay computed in SQL
-        rawScore: row.score, // Original score before decay
+        score: row.trending_score, // Decay computed in SQL (for backwards compat)
+        ahaScore: row.aha_score, // Raw personalized score
+        trendingScore: row.trending_score, // Decayed score
         rank: offset + idx + 1,
         digestId: row.digest_id,
         digestCreatedAt: row.digest_created_at,

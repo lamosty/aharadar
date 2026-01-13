@@ -106,8 +106,8 @@ function getPrimaryUrl(item: {
 
 type InboxCard = {
   rank: number;
-  score: string;
-  aha: string | null;
+  ahaScore: string;
+  aiScore: string | null;
   source: string;
   title: string;
   reason: string | null;
@@ -123,8 +123,8 @@ function printInboxCards(rows: InboxCard[]): void {
   const contentWidth = Math.max(20, width - indent);
 
   for (const row of rows) {
-    const ahaText = row.aha ?? "-";
-    console.log(`${row.rank}. score=${row.score} aha=${ahaText} [${row.source}]`);
+    const aiText = row.aiScore ?? "-";
+    console.log(`${row.rank}. aha=${row.ahaScore} ai=${aiText} [${row.source}]`);
 
     const titleLines = wrapText(`title: ${row.title}`, contentWidth);
     for (const line of titleLines) console.log(" ".repeat(indent) + line);
@@ -156,8 +156,8 @@ function printInboxCards(rows: InboxCard[]): void {
 
 type InboxTableRow = {
   rank: string;
-  score: string;
-  aha: string;
+  ahaScore: string;
+  aiScore: string;
   source: string;
   title: string;
   link: string;
@@ -167,8 +167,8 @@ type InboxTableRow = {
 function printInboxTable(rows: InboxTableRow[]): void {
   const columns: Array<{ key: keyof InboxTableRow; label: string; maxWidth: number }> = [
     { key: "rank", label: "rank", maxWidth: 4 },
-    { key: "score", label: "score", maxWidth: 6 },
-    { key: "aha", label: "aha", maxWidth: 4 },
+    { key: "ahaScore", label: "aha", maxWidth: 6 },
+    { key: "aiScore", label: "ai", maxWidth: 4 },
     { key: "source", label: "source", maxWidth: 10 },
     { key: "title", label: "title", maxWidth: 64 },
     { key: "link", label: "link", maxWidth: 20 },
@@ -279,7 +279,7 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
 
     const items = await db.query<{
       rank: number;
-      score: number;
+      aha_score: number;
       triage_json: Record<string, unknown> | null;
       source_type: string;
       title: string | null;
@@ -298,7 +298,7 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
        )
        select
          di.rank,
-         di.score,
+         di.aha_score,
          di.triage_json,
          s.type as source_type,
          ci.title,
@@ -338,17 +338,19 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
     const rows: InboxCard[] = items.rows.map((item) => {
       const title = normalizeWhitespace(item.title ?? "(no title)");
       const primaryUrl = getPrimaryUrl(item);
-      const score = Number.isFinite(item.score) ? item.score.toFixed(3) : String(item.score);
+      const ahaScore = Number.isFinite(item.aha_score)
+        ? item.aha_score.toFixed(3)
+        : String(item.aha_score);
       const triage = asRecord(item.triage_json);
-      const ahaScore = asFiniteNumber(triage.aha_score);
+      const aiScore = asFiniteNumber(triage.ai_score);
       const reasonRaw = asString(triage.reason);
       const meta = asRecord(item.metadata_json);
       const signalSnippets = item.source_type === "signal" ? extractSignalHighlights(meta, 2) : [];
       const signalQuery = item.source_type === "signal" ? extractSignalQuery(meta) : null;
       return {
         rank: item.rank,
-        score,
-        aha: ahaScore !== null ? String(Math.round(ahaScore)) : null,
+        ahaScore,
+        aiScore: aiScore !== null ? String(Math.round(aiScore)) : null,
         source: item.source_type,
         title,
         link: primaryUrl,
@@ -366,8 +368,8 @@ export async function inboxCommand(args: string[] = []): Promise<void> {
     if (parsed.view === "table") {
       const tableRows: InboxTableRow[] = rows.map((row) => ({
         rank: String(row.rank),
-        score: row.score,
-        aha: row.aha ?? "-",
+        ahaScore: row.ahaScore,
+        aiScore: row.aiScore ?? "-",
         source: row.source,
         title: row.title,
         link: row.link ? formatOsc8Link("link", row.link) : "",

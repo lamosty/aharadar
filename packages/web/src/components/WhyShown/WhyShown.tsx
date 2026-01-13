@@ -136,12 +136,12 @@ function WhyShownContent({
       {/* Main section - always visible */}
 
       {/* AI Score - LLM triage score (main insight) */}
-      {typeof features.aha_score === "number" && (
+      {typeof features.ai_score === "number" && (
         <div className={styles.mainScore}>
           <div className={styles.scoreHeader}>
-            <span className={styles.scoreLabel}>{t("digests.whyShown.ahaScore")}</span>
+            <span className={styles.scoreLabel}>{t("digests.whyShown.aiScore")}</span>
             <div className={styles.scoreRow}>
-              <span className={styles.scoreValue}>{features.aha_score}</span>
+              <span className={styles.scoreValue}>{features.ai_score}</span>
               <span className={styles.scoreMax}>/100</span>
             </div>
           </div>

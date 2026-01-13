@@ -16,7 +16,7 @@ export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
     prompt_id: { type: "string", const: "triage_v1" },
     provider: { type: "string" },
     model: { type: "string" },
-    aha_score: { type: "number", minimum: 0, maximum: 100 },
+    ai_score: { type: "number", minimum: 0, maximum: 100 },
     reason: { type: "string" },
     is_relevant: { type: "boolean" },
     is_novel: { type: "boolean" },
@@ -28,7 +28,7 @@ export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
     "prompt_id",
     "provider",
     "model",
-    "aha_score",
+    "ai_score",
     "reason",
     "is_relevant",
     "is_novel",
@@ -56,7 +56,7 @@ export interface TriageOutput {
   prompt_id: "triage_v1";
   provider: string;
   model: string;
-  aha_score: number;
+  ai_score: number;
   reason: string;
   is_relevant: boolean;
   is_novel: boolean;
@@ -145,14 +145,14 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     '  "prompt_id": "triage_v1",\n' +
     `  "provider": "${ref.provider}",\n` +
     `  "model": "${ref.model}",\n` +
-    '  "aha_score": 0,\n' +
+    '  "ai_score": 0,\n' +
     '  "reason": "Short explanation of why this is (or is not) high-signal.",\n' +
     '  "is_relevant": true,\n' +
     '  "is_novel": true,\n' +
     '  "categories": ["topic1", "topic2"],\n' +
     '  "should_deep_summarize": false\n' +
     "}\n" +
-    "Aha score range: 0-100 (0=low-signal noise, 100=rare high-signal). " +
+    "AI score range: 0-100 (0=low-signal noise, 100=rare high-signal). " +
     "Keep reason concise and topic-agnostic. Categories should be short, generic labels.\n" +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
@@ -231,7 +231,7 @@ function extractJsonFromText(text: string): Record<string, unknown> | null {
 
   // Last resort: find any JSON object in the text
   // Look for { ... } pattern that might be valid JSON
-  const jsonObjectRegex = /\{[\s\S]*?"aha_score"[\s\S]*?\}/g;
+  const jsonObjectRegex = /\{[\s\S]*?"ai_score"[\s\S]*?\}/g;
   let lastJsonMatch: string | null = null;
 
   for (const match of trimmed.matchAll(jsonObjectRegex)) {
@@ -284,8 +284,8 @@ function normalizeCategories(value: unknown): string[] {
 }
 
 function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): TriageOutput | null {
-  const ahaScore = asNumber(value.aha_score);
-  if (ahaScore === null || ahaScore < 0 || ahaScore > 100) return null;
+  const aiScore = asNumber(value.ai_score);
+  if (aiScore === null || aiScore < 0 || aiScore > 100) return null;
 
   const reason = asString(value.reason);
   if (!reason) return null;
@@ -312,7 +312,7 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
     prompt_id: PROMPT_ID,
     provider: ref.provider,
     model: ref.model,
-    aha_score: ahaScore,
+    ai_score: aiScore,
     reason,
     is_relevant: isRelevant,
     is_novel: isNovel,
@@ -493,7 +493,7 @@ export const TRIAGE_BATCH_JSON_SCHEMA: Record<string, unknown> = {
         type: "object",
         properties: {
           id: { type: "string" },
-          aha_score: { type: "number", minimum: 0, maximum: 100 },
+          ai_score: { type: "number", minimum: 0, maximum: 100 },
           reason: { type: "string" },
           is_relevant: { type: "boolean" },
           is_novel: { type: "boolean" },
@@ -502,7 +502,7 @@ export const TRIAGE_BATCH_JSON_SCHEMA: Record<string, unknown> = {
         },
         required: [
           "id",
-          "aha_score",
+          "ai_score",
           "reason",
           "is_relevant",
           "is_novel",
@@ -518,7 +518,7 @@ export const TRIAGE_BATCH_JSON_SCHEMA: Record<string, unknown> = {
 
 export interface TriageBatchItem {
   id: string;
-  aha_score: number;
+  ai_score: number;
   reason: string;
   is_relevant: boolean;
   is_novel: boolean;
@@ -559,7 +559,7 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     '  "results": [\n' +
     "    {\n" +
     '      "id": "<item id from input>",\n' +
-    '      "aha_score": 0-100,\n' +
+    '      "ai_score": 0-100,\n' +
     '      "reason": "Short explanation of signal level",\n' +
     '      "is_relevant": true/false,\n' +
     '      "is_novel": true/false,\n' +
@@ -571,7 +571,7 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     "Rules:\n" +
     "- Return ONE result for EACH input item, in the same order\n" +
     "- Each result.id MUST match an input item id exactly\n" +
-    "- aha_score range: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
+    "- ai_score range: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
     "- Keep reason concise and topic-agnostic\n" +
     "- Categories should be short, generic labels\n" +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
@@ -641,9 +641,9 @@ function normalizeBatchOutput(
       continue;
     }
 
-    const ahaScore = asNumber(itemObj.aha_score);
-    if (ahaScore === null || ahaScore < 0 || ahaScore > 100) {
-      console.warn(`[triage-batch] Invalid aha_score for ${id}`);
+    const aiScore = asNumber(itemObj.ai_score);
+    if (aiScore === null || aiScore < 0 || aiScore > 100) {
+      console.warn(`[triage-batch] Invalid ai_score for ${id}`);
       continue;
     }
 
@@ -667,7 +667,7 @@ function normalizeBatchOutput(
       prompt_id: PROMPT_ID,
       provider: ref.provider,
       model: ref.model,
-      aha_score: ahaScore,
+      ai_score: aiScore,
       reason,
       is_relevant: isRelevant,
       is_novel: isNovel,

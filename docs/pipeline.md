@@ -8,7 +8,8 @@ This document defines **stage order**, **inputs/outputs**, **idempotency**, and 
 - **Candidate**: a cluster (preferred) or a single content item evaluated for inclusion in a digest.
 - **Budget pool**: numeric cap (credits) that limits spend over time (default: per month, with optional daily throttle).
 - **Budget tier**: `low | normal | high` is a policy preset (or derived state) that controls depth of processing.
-- **Aha Score**: 0–100 output from triage LLM; primary ranking input.
+- **AI Score**: 0–100 raw output from triage LLM; stored in `triage_json`.
+- **Aha Score**: final personalized ranking score combining AI Score with other factors; stored in `digest_items.aha_score`.
 - **Topic**: a user-defined collection of sources. Pipeline runs and digests are topic-scoped (see ADR 0008).
 
 ## Stage order (MVP)
@@ -20,7 +21,7 @@ The spec lists stages abstractly; for implementation, the order below is the rec
 3. **Dedupe**: mark hard duplicates (URL/external_id) and optional near-duplicates (semantic)
 4. **Cluster**: assign items to clusters / create clusters; update centroids
 5. **Candidate selection**: pick clusters/items eligible for the window
-6. **Triage (LLM)**: compute `aha_score` + short reason (budget-aware)
+6. **Triage (LLM)**: compute `ai_score` + short reason (budget-aware)
 7. **Rank**: compute final score combining triage + personalization + novelty + recency + source weighting
 8. **Deep enrich (LLM)**: deep summary (+ optional entities) for top-ranked candidates
 9. **Persist digest**: write `digests` + `digest_items`
@@ -160,7 +161,7 @@ Optional (Proposed, later):
 ### 6) Triage (LLM)
 
 **Goal**
-Produce `aha_score` (0–100) and a short reason string per candidate.
+Produce `ai_score` (0–100) and a short reason string per candidate.
 
 **Input construction**
 
@@ -189,11 +190,11 @@ Produce `aha_score` (0–100) and a short reason string per candidate.
 
 ### 7) Rank
 
-Ranking produces `digest_items.score` and `rank`.
+Ranking produces `digest_items.aha_score` and `rank`.
 
 **Feature set (MVP)**
 
-- **Aha**: `aha_score / 100` (from triage LLM)
+- **AI**: `ai_score / 100` (from triage LLM)
 - **Preference similarity**: cosine(candidate_vector, user_profile_vector)
 - **Novelty**: 1 − max cosine(candidate_vector, recent_history_vectors)
 - **Recency**: exponential decay based on newest item time in candidate
@@ -205,8 +206,8 @@ Ranking produces `digest_items.score` and `rank`.
 Let each component be normalized to `[0,1]`:
 
 ```
-final_score =
-  w_aha     * aha +
+aha_score =
+  w_ai      * ai +
   w_pref    * pref +
   w_novelty * novelty +
   w_recency * recency +
@@ -215,7 +216,7 @@ final_score =
 
 Default weights are **TBD**; the only strong constraint is:
 
-- `w_aha` should be largest, because Aha Score is the primary user-visible ranking input (FR‑019a).
+- `w_ai` should be largest, because AI Score is the primary LLM-based ranking input (FR‑019a).
 
 ### 8) Deep enrich (LLM)
 
@@ -224,8 +225,8 @@ Generate deeper summaries only for the most valuable candidates.
 
 **Selection rule (Proposed)**
 
-- Deep summarize top N by `final_score`, where N is budget-capped.
-- Optional: only deep summarize if `aha_score ≥ AHA_ENRICH_THRESHOLD` (TBD).
+- Deep summarize top N by `aha_score`, where N is budget-capped.
+- Optional: only deep summarize if `ai_score ≥ AI_ENRICH_THRESHOLD` (TBD).
 
 **Storage**
 
@@ -244,7 +245,7 @@ Create:
 - `digest_items` rows with:
   - reference to `cluster_id` (preferred) or `content_item_id`
   - `rank` starting at 1
-  - `score` and JSON outputs
+  - `aha_score` and JSON outputs
 
 ## Feedback loop integration
 

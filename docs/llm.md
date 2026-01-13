@@ -4,7 +4,7 @@ This document defines the LLM tasks, routing policy, and **strict JSON outputs**
 
 ## Goals (from `spec.md`)
 
-- **Triage**: cheap, fast filtering/scoring with explicit **Aha Score (0–100)** (FR‑019a).
+- **Triage**: cheap, fast filtering/scoring with explicit **AI Score (0–100)** (FR‑019a).
 - **Deep summary**: only for top candidates (budget-aware).
 - **Entities** (optional): structured extraction for search/filters.
 - **X signal parse**: structure results from the configured X/Twitter search provider into normalized signal items.
@@ -117,7 +117,7 @@ Each output JSON must include:
 
 Return a strict JSON object including:
 
-- `aha_score` (0–100)
+- `ai_score` (0–100)
 - a short reason string
 - minimal booleans to support filtering and dial decisions
 
@@ -129,7 +129,7 @@ Return a strict JSON object including:
   "prompt_id": "triage_v1",
   "provider": "<provider-id>",
   "model": "<model-id>",
-  "aha_score": 0,
+  "ai_score": 0,
   "reason": "Short explanation of why this is (or isn't) high-signal for the user.",
   "is_relevant": true,
   "is_novel": true,
@@ -138,7 +138,7 @@ Return a strict JSON object including:
 }
 ```
 
-### Aha Score semantics (contract)
+### AI Score semantics (contract)
 
 - **0–20**: noise / low-signal / redundant
 - **21–50**: mildly interesting but not urgent

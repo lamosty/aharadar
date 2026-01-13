@@ -146,8 +146,8 @@ function DigestItemCard({ item, digestId, onFeedback }: DigestItemCardProps) {
 
       <footer className={styles.cardFooter}>
         <div className={styles.scoreSection}>
-          <span className={styles.scoreLabel}>Relevance</span>
-          <span className={styles.scoreValue}>{(item.score * 100).toFixed(0)}%</span>
+          <span className={styles.scoreLabel}>Aha Score</span>
+          <span className={styles.scoreValue}>{(item.ahaScore * 100).toFixed(0)}%</span>
         </div>
 
         <FeedbackButtons

@@ -141,7 +141,7 @@ function DigestItemRow({ item, digestId, onFeedback }: DigestItemRowProps) {
         </td>
         <td className={styles.tdDate}>{displayDate}</td>
         <td className={styles.tdScore}>
-          <span className={styles.score}>{(item.score * 100).toFixed(0)}</span>
+          <span className={styles.score}>{(item.ahaScore * 100).toFixed(0)}</span>
         </td>
         <td className={styles.tdActions}>
           <FeedbackButtons

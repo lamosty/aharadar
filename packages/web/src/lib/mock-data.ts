@@ -26,7 +26,7 @@ export interface DigestSummary {
 // Top-level fields come from LLM triage, system_features come from rankCandidates
 export interface TriageFeatures {
   // Top-level LLM triage output
-  aha_score?: number;
+  ai_score?: number;
   reason?: string;
   is_relevant?: boolean;
   is_novel?: boolean;
@@ -76,7 +76,7 @@ export interface TriageFeatures {
 export interface DigestItem {
   id: string;
   rank: number;
-  score: number;
+  ahaScore: number;
   contentItem: {
     id: string;
     title: string | null;
@@ -192,7 +192,7 @@ const mockDigestItems: DigestItem[] = [
   {
     id: "di1-uuid-mock",
     rank: 1,
-    score: 0.95,
+    ahaScore: 0.95,
     contentItem: {
       id: "ci1-uuid-mock",
       title: "New breakthrough in AI code generation enables 10x productivity gains",
@@ -204,7 +204,7 @@ const mockDigestItems: DigestItem[] = [
         "Major advancement in AI-assisted coding with measurable productivity improvements.",
     },
     triageJson: {
-      aha_score: 95,
+      ai_score: 95,
       reason: "Highly relevant to AI/ML interests, novel findings",
       is_relevant: true,
       is_novel: true,
@@ -231,7 +231,7 @@ const mockDigestItems: DigestItem[] = [
   {
     id: "di2-uuid-mock",
     rank: 2,
-    score: 0.88,
+    ahaScore: 0.88,
     contentItem: {
       id: "ci2-uuid-mock",
       title: "PostgreSQL 17 release brings major performance improvements",
@@ -243,7 +243,7 @@ const mockDigestItems: DigestItem[] = [
         "PostgreSQL 17 released with significant query optimization and storage improvements.",
     },
     triageJson: {
-      aha_score: 88,
+      ai_score: 88,
       reason: "Important database update, matches tech infrastructure interests",
       is_relevant: true,
       is_novel: true,
@@ -265,7 +265,7 @@ const mockDigestItems: DigestItem[] = [
   {
     id: "di3-uuid-mock",
     rank: 3,
-    score: 0.82,
+    ahaScore: 0.82,
     contentItem: {
       id: "ci3-uuid-mock",
       title: "Understanding React Server Components: A Deep Dive",
@@ -275,7 +275,7 @@ const mockDigestItems: DigestItem[] = [
       sourceType: "rss",
     },
     triageJson: {
-      aha_score: 82,
+      ai_score: 82,
       reason: "Technical deep dive matching frontend development interests",
       is_relevant: true,
       is_novel: false,
@@ -297,7 +297,7 @@ const mockDigestItems: DigestItem[] = [
   {
     id: "di4-uuid-mock",
     rank: 4,
-    score: 0.75,
+    ahaScore: 0.75,
     contentItem: {
       id: "ci4-uuid-mock",
       title: "The State of TypeScript in 2025",
@@ -307,7 +307,7 @@ const mockDigestItems: DigestItem[] = [
       sourceType: "youtube",
     },
     triageJson: {
-      aha_score: 75,
+      ai_score: 75,
       reason: "Yearly review of TypeScript ecosystem",
       is_relevant: true,
       is_novel: false,
@@ -329,7 +329,7 @@ const mockDigestItems: DigestItem[] = [
   {
     id: "di5-uuid-mock",
     rank: 5,
-    score: 0.68,
+    ahaScore: 0.68,
     contentItem: {
       id: "ci5-uuid-mock",
       title: "Kubernetes 1.30: What's New and Migration Guide",
@@ -340,7 +340,7 @@ const mockDigestItems: DigestItem[] = [
       triageSummary: "Overview of new features in Kubernetes 1.30 with migration recommendations.",
     },
     triageJson: {
-      aha_score: 68,
+      ai_score: 68,
       reason: "Infrastructure update, moderate relevance",
       is_relevant: true,
       is_novel: false,
@@ -509,7 +509,7 @@ function adaptDigestItem(apiItem: ApiDigestItem, index: number): DigestItem {
   return {
     id: apiItem.contentItemId ?? `item-${index}`,
     rank: apiItem.rank,
-    score: apiItem.score,
+    ahaScore: apiItem.ahaScore,
     contentItem: {
       id: apiItem.contentItemId ?? `item-${index}`,
       title: apiItem.item?.title ?? null,

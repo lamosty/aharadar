@@ -433,8 +433,10 @@ export function FeedItem({
     }
   };
 
-  const scorePercent = Math.round((item.score ?? 0) * 100);
-  const scoreTier = getScoreTier(item.score ?? 0);
+  // Prefer ahaScore (raw personalized score) over score (trending/decayed)
+  const displayScore = item.ahaScore ?? item.score ?? 0;
+  const scorePercent = Math.round(displayScore * 100);
+  const scoreTier = getScoreTier(displayScore);
   const isRestricted = item.item.metadata?.is_restricted === true;
   const displayDate = getDisplayDate(item);
   // For X posts: show display name only (handle is shown in source section)

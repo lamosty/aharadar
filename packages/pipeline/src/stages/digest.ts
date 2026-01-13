@@ -1231,14 +1231,14 @@ export async function persistDigestFromContentItems(params: {
       ? {
           clusterId: s.candidateId,
           contentItemId: null,
-          score: s.score,
+          ahaScore: s.score,
           triageJson: s.triageJson,
           summaryJson,
         }
       : {
           clusterId: null,
           contentItemId: s.candidateId,
-          score: s.score,
+          ahaScore: s.score,
           triageJson: s.triageJson,
           summaryJson,
         };

@@ -127,7 +127,7 @@ export interface ContentItemBrief {
 /** Digest item with triage and summary */
 export interface DigestItem {
   rank: number;
-  score: number;
+  ahaScore: number;
   contentItemId: string | null;
   clusterId: string | null;
   triageJson: Record<string, unknown> | null;
@@ -199,8 +199,9 @@ export interface ClusterItem {
 /** Unified feed item (from GET /items endpoint) */
 export interface FeedItem {
   id: string;
-  score: number;
-  rawScore?: number; // Original score before decay
+  score: number; // Trending score for backwards compat
+  ahaScore?: number; // Raw personalized score
+  trendingScore?: number; // Decayed score
   rank: number;
   digestId: string;
   digestCreatedAt: string;
@@ -1765,7 +1766,7 @@ export interface AbtestResult {
   abtestItemId: string;
   variantId: string;
   triage: {
-    aha_score?: number;
+    ai_score?: number;
     reasoning?: string;
     is_relevant?: boolean;
     is_novel?: boolean;

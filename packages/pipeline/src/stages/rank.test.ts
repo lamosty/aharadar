@@ -14,7 +14,7 @@ function makeTriage(overrides: Partial<TriageOutput> = {}): TriageOutput {
     prompt_id: "triage_v1",
     provider: "test-provider",
     model: "test-model",
-    aha_score: 50,
+    ai_score: 50,
     reason: "test reason",
     is_relevant: true,
     is_novel: true,
@@ -199,7 +199,7 @@ describe("rankCandidates", () => {
         makeCandidate({
           candidateId: "a",
           heuristicScore: 0.2,
-          triage: makeTriage({ aha_score: 80, reason: "interesting" }),
+          triage: makeTriage({ ai_score: 80, reason: "interesting" }),
         }),
       ];
       // With default weights: wAha=0.8, wHeuristic=0.15, wPref=0.05
@@ -211,12 +211,12 @@ describe("rankCandidates", () => {
     it("includes triage fields in triageJson when triage is present", () => {
       const candidates = [
         makeCandidate({
-          triage: makeTriage({ aha_score: 75, reason: "great content" }),
+          triage: makeTriage({ ai_score: 75, reason: "great content" }),
         }),
       ];
       const [result] = rankCandidates({ candidates });
       expect(result.triageJson).toMatchObject({
-        aha_score: 75,
+        ai_score: 75,
         reason: "great content",
         schema_version: "triage_v1",
       });
@@ -309,7 +309,7 @@ describe("rankCandidates", () => {
     it("merges system_features into triageJson when triage is present", () => {
       const candidates = [
         makeCandidate({
-          triage: makeTriage({ aha_score: 90, reason: "hot topic" }),
+          triage: makeTriage({ ai_score: 90, reason: "hot topic" }),
           signalCorroboration: {
             matched: true,
             matchedUrl: "https://example.com",
@@ -319,7 +319,7 @@ describe("rankCandidates", () => {
       ];
       const [result] = rankCandidates({ candidates });
       expect(result.triageJson).toMatchObject({
-        aha_score: 90,
+        ai_score: 90,
         reason: "hot topic",
         system_features: {
           signal_corroboration_v1: {
@@ -492,7 +492,7 @@ describe("rankCandidates", () => {
       const candidates = [
         makeCandidate({
           heuristicScore: 0.5,
-          triage: makeTriage({ aha_score: 100, reason: "test" }),
+          triage: makeTriage({ ai_score: 100, reason: "test" }),
         }),
       ];
 

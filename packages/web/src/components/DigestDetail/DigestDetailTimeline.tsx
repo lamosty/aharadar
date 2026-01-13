@@ -99,7 +99,7 @@ export function DigestDetailTimeline({ items, digestId, onFeedback }: DigestDeta
         {items.map((item, index) => (
           <li key={item.id} className={styles.timelineItem}>
             <div className={styles.timelineLine}>
-              <div className={`${styles.dot} ${getScoreClass(item.score)}`} aria-hidden="true" />
+              <div className={`${styles.dot} ${getScoreClass(item.ahaScore)}`} aria-hidden="true" />
               {index < items.length - 1 && <div className={styles.connector} aria-hidden="true" />}
             </div>
 
@@ -142,7 +142,7 @@ function DigestItemPost({ item, digestId, onFeedback }: DigestItemPostProps) {
           <span className={styles.rank}>#{item.rank}</span>
           <span className={styles.sourceType}>{formatSourceType(item.contentItem.sourceType)}</span>
           {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
-          <span className={styles.score}>{(item.score * 100).toFixed(0)}%</span>
+          <span className={styles.score}>{(item.ahaScore * 100).toFixed(0)}%</span>
         </div>
         {dateInfo && (
           <time

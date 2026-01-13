@@ -12,7 +12,7 @@ interface DigestListRow {
   window_end: string;
   created_at: string;
   item_count: string; // bigint comes as string from pg
-  top_score: string | null; // real comes as string from pg
+  top_aha_score: string | null; // real comes as string from pg
   source_results: unknown; // JSONB
 }
 
@@ -41,7 +41,7 @@ interface SourceResult {
 
 interface DigestItemRow {
   rank: number;
-  score: number;
+  aha_score: number;
   content_item_id: string | null;
   cluster_id: string | null;
   effective_content_item_id: string | null;
@@ -143,7 +143,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
          d.window_end::text,
          d.created_at::text,
          (SELECT COUNT(*) FROM digest_items di WHERE di.digest_id = d.id) as item_count,
-         (SELECT MAX(di.score) FROM digest_items di WHERE di.digest_id = d.id) as top_score
+         (SELECT MAX(di.aha_score) FROM digest_items di WHERE di.digest_id = d.id) as top_aha_score
        FROM digests d
        JOIN topics t ON t.id = d.topic_id
        WHERE d.user_id = $1
@@ -174,7 +174,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
             mode: row.mode,
             status: row.status,
             creditsUsed: parseFloat(row.credits_used) || 0,
-            topScore: row.top_score ? parseFloat(row.top_score) : null,
+            topAhaScore: row.top_aha_score ? parseFloat(row.top_aha_score) : null,
             windowStart: row.window_start,
             windowEnd: row.window_end,
             createdAt: row.created_at,
@@ -273,7 +273,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
             d.mode,
             d.credits_used,
             (SELECT COUNT(*) FROM digest_items di WHERE di.digest_id = d.id) as item_count,
-            (SELECT MAX(di.score) FROM digest_items di WHERE di.digest_id = d.id) as top_score
+            (SELECT MAX(di.aha_score) FROM digest_items di WHERE di.digest_id = d.id) as top_score
           FROM digests d
           WHERE d.user_id = $1
             AND d.created_at >= $2::timestamptz AND d.created_at <= $3::timestamptz
@@ -412,7 +412,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
     const itemsResult = await db.query<DigestItemRow>(
       `SELECT
          di.rank,
-         di.score,
+         di.aha_score,
          di.content_item_id,
          di.cluster_id,
          COALESCE(di.content_item_id, cl.representative_content_item_id)::text as effective_content_item_id,
@@ -457,7 +457,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
       },
       items: itemsResult.rows.map((row) => ({
         rank: row.rank,
-        score: row.score,
+        ahaScore: row.aha_score,
         // Use effective_content_item_id for feedback/navigation (includes cluster representative)
         contentItemId: row.effective_content_item_id,
         clusterId: row.cluster_id,

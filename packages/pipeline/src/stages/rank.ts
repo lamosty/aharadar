@@ -207,7 +207,7 @@ export function rankCandidates(params: {
 
   const scored = params.candidates.map((c) => {
     const triage = c.triage;
-    const aha01 = triage ? triage.aha_score / 100 : c.heuristicScore;
+    const aha01 = triage ? triage.ai_score / 100 : c.heuristicScore;
     const pos = asFiniteNumber(c.positiveSim) ?? 0;
     const neg = asFiniteNumber(c.negativeSim) ?? 0;
     const pref = pos - neg; // [-1,1]ish

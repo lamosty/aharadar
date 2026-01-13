@@ -283,7 +283,7 @@ function VariantResult({ result, onCopyJson }: VariantResultProps) {
   }
 
   const triage = result.triage;
-  const score = triage?.aha_score ?? 0;
+  const score = triage?.ai_score ?? 0;
   const reason = triage?.reasoning ?? "";
   const isRelevant = triage?.is_relevant ?? false;
   const isNovel = triage?.is_novel ?? false;

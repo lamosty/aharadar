@@ -676,7 +676,7 @@
     },
     "whyShown": {
       "title": "Why shown",
-      "ahaScore": "AI Score",
+      "aiScore": "AI Score",
       "reason": "Reason",
       "novelty": "Novelty",
       "noveltyScore": "Novelty score",
