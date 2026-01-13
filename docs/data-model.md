@@ -74,7 +74,6 @@ create table topics (
   digest_mode text not null default 'normal',     -- low | normal | high
   digest_depth integer not null default 50,       -- 0-100 fine-tuning slider
   digest_cursor_end timestamptz,                  -- scheduler cursor: end of last completed window
-  custom_settings jsonb not null default '{}'::jsonb,  -- per-topic feature flags (e.g., aggregate_summary_v1: { enabled: bool })
   created_at timestamptz not null default now()
 );
 create unique index topics_user_name_uniq on topics(user_id, name);
@@ -359,36 +358,6 @@ create table x_account_policies (
 );
 create unique index x_account_policies_source_handle_uniq on x_account_policies(source_id, handle);
 create index x_account_policies_source_idx on x_account_policies(source_id);
-
--- aggregate_summaries: multi-item scope summaries (digest, inbox, range, custom)
--- One summary per unique scope per user (upsert on re-run).
--- Stores LLM output + usage metrics for aggregated content summaries.
-create table aggregate_summaries (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
-  scope_type text not null check (scope_type in ('digest', 'inbox', 'range', 'custom')),
-  scope_hash text not null, -- deterministic hash of normalized scope
-  digest_id uuid null references digests(id) on delete cascade,
-  topic_id uuid null references topics(id) on delete cascade,
-  status text not null default 'pending' check (status in ('pending', 'complete', 'error', 'skipped')),
-  summary_json jsonb, -- output of aggregate_summary_v1 schema
-  prompt_id text,
-  schema_version text,
-  provider text,
-  model text,
-  input_item_count int,
-  input_char_count int,
-  input_tokens int,
-  output_tokens int,
-  cost_estimate_credits numeric(12,6),
-  meta_json jsonb,
-  error_message text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create unique index aggregate_summaries_user_scope_hash on aggregate_summaries(user_id, scope_hash);
-create index aggregate_summaries_digest_id on aggregate_summaries(digest_id);
-create index aggregate_summaries_topic_scope on aggregate_summaries(topic_id, scope_type);
 ```
 
 ## Notes & constraints

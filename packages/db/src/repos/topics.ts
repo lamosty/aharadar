@@ -466,24 +466,3 @@ export function createTopicsRepo(db: Queryable) {
     },
   };
 }
-
-export interface AggregateSummaryConfig {
-  schema_version: "aggregate_summary_v1";
-  enabled: boolean;
-}
-
-export function parseAggregateSummaryConfig(settings: unknown): AggregateSummaryConfig {
-  if (!settings || typeof settings !== "object") {
-    return { schema_version: "aggregate_summary_v1", enabled: false };
-  }
-  const s = settings as Record<string, unknown>;
-  const config = s.aggregate_summary_v1;
-  if (!config || typeof config !== "object") {
-    return { schema_version: "aggregate_summary_v1", enabled: false };
-  }
-  const c = config as Record<string, unknown>;
-  return {
-    schema_version: "aggregate_summary_v1",
-    enabled: c.enabled === true,
-  };
-}

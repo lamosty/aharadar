@@ -1,7 +1,6 @@
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 import { Pool } from "pg";
 import { createAbtestsRepo } from "./repos/abtests";
-import { createAggregateSummariesRepo } from "./repos/aggregate_summaries";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
@@ -48,7 +47,6 @@ export type DbContext = Queryable & {
   abtests: ReturnType<typeof createAbtestsRepo>;
   xAccountPolicies: ReturnType<typeof createXAccountPoliciesRepo>;
   deepReviews: ReturnType<typeof createDeepReviewsRepo>;
-  aggregateSummaries: ReturnType<typeof createAggregateSummariesRepo>;
 };
 
 export interface Db extends DbContext {
@@ -78,7 +76,6 @@ function createContext(db: Queryable): DbContext {
     abtests: createAbtestsRepo(db),
     xAccountPolicies: createXAccountPoliciesRepo(db),
     deepReviews: createDeepReviewsRepo(db),
-    aggregateSummaries: createAggregateSummariesRepo(db),
   };
 }
 

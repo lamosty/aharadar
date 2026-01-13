@@ -41,7 +41,7 @@ When a provider offers an OpenAI-compatible **Responses API**, prefer it over Ch
 ## Router contract
 
 ```ts
-type TaskType = "triage" | "deep_summary" | "manual_summary" | "entity_extract" | "signal_parse" | "aggregate_summary";
+type TaskType = "triage" | "deep_summary" | "manual_summary" | "entity_extract" | "signal_parse";
 type BudgetTier = "low" | "normal" | "high";
 
 interface LLMRouter {
@@ -91,7 +91,6 @@ For now we use **OpenAI-compatible Responses API** settings (OpenAI only in conf
 
 - `triage`: fastest/cheapest model that is reliable at strict JSON
 - `deep_summary`: more capable model
-- `aggregate_summary`: capable model (similar to deep_summary)
 - `entity_extract`: cheap model unless dial-up
 - `signal_parse`: cheap model
 
@@ -240,73 +239,6 @@ Raw pasted text is never stored.
 Types (Proposed):
 
 - `person | org | product | ticker | topic | place | paper`
-
-## Aggregate summary task
-
-### Purpose
-
-Generate a summary of multiple items within a scope (digest, inbox, range, custom).
-Outputs:
-
-- one-liner and overview
-- overall sentiment
-- key themes with contributing items
-- notable items and open questions
-- suggested follow-ups
-
-### Output schema (aggregate_summary_v1)
-
-```json
-{
-  "schema_version": "aggregate_summary_v1",
-  "prompt_id": "aggregate_summary_v1",
-  "provider": "<provider-id>",
-  "model": "<model-id>",
-  "one_liner": "Single sentence summary of the batch.",
-  "overview": "Paragraph overview of key themes.",
-  "sentiment": {
-    "label": "positive|neutral|negative",
-    "confidence": 0.85,
-    "rationale": "Why this sentiment applies to the batch."
-  },
-  "themes": [
-    {
-      "title": "Theme name",
-      "summary": "What this theme is about.",
-      "item_ids": ["id1", "id2"]
-    }
-  ],
-  "notable_items": [
-    {
-      "item_id": "id",
-      "why": "Why this item stands out."
-    }
-  ],
-  "open_questions": ["What else might we need to know?"],
-  "suggested_followups": ["Related topic to explore next"]
-}
-```
-
-### Input format
-
-- array of items: title, body snippet, ai_score, aha_score, source_type, url
-- scope_type: `digest | inbox | range | custom`
-- optional window_start/window_end for scoped aggregation
-- cluster info (member count, cluster members) if applicable
-
-### Configuration
-
-- `OPENAI_AGGREGATE_SUMMARY_MODEL` (or tiered overrides: `..._LOW`, `..._NORMAL`, `..._HIGH`)
-- `OPENAI_AGGREGATE_SUMMARY_MAX_OUTPUT_TOKENS` (default 2000)
-- `OPENAI_AGGREGATE_SUMMARY_MAX_SNIPPET_CHARS` (default 500 per item)
-- `OPENAI_AGGREGATE_SUMMARY_MAX_TITLE_CHARS` (default 240 per item)
-- Optional credits estimates:
-  - `OPENAI_AGGREGATE_SUMMARY_CREDITS_PER_1K_INPUT_TOKENS`
-  - `OPENAI_AGGREGATE_SUMMARY_CREDITS_PER_1K_OUTPUT_TOKENS`
-
-### Storage
-
-Outputs are stored in `aggregate_summaries.summary_json` with computed `scope_hash` for deduplication.
 
 ## Reliability rules
 

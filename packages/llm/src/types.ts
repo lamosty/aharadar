@@ -1,12 +1,6 @@
 import type { BudgetTier } from "@aharadar/shared";
 
-export type TaskType =
-  | "triage"
-  | "deep_summary"
-  | "entity_extract"
-  | "signal_parse"
-  | "qa"
-  | "aggregate_summary";
+export type TaskType = "triage" | "deep_summary" | "entity_extract" | "signal_parse" | "qa";
 
 export interface ModelRef {
   provider: string;
