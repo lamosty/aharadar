@@ -582,8 +582,8 @@ function FeedPageContent() {
                 onClear={isTopPicksView ? undefined : handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode && !isTopPicksView}
-                forceExpanded={(fastTriageMode || isTopPicksView) && forceExpandedId === item.id}
-                fastTriageMode={(fastTriageMode || isTopPicksView) && forceExpandedId !== null}
+                forceExpanded={fastTriageMode && forceExpandedId === item.id}
+                fastTriageMode={fastTriageMode && forceExpandedId !== null}
                 isTopPicksView={isTopPicksView}
                 onViewSummary={handleOpenReaderModal}
                 onSummaryDecision={handleDeepDiveDecision}

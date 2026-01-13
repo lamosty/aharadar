@@ -5,7 +5,7 @@ import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { WhyShown } from "@/components/WhyShown";
-import type { FeedItem as FeedItemType, ManualSummaryOutput } from "@/lib/api";
+import { ApiError, type FeedItem as FeedItemType, type ManualSummaryOutput } from "@/lib/api";
 import { useDeepDiveDecision, useDeepDivePreview } from "@/lib/hooks";
 import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
@@ -335,7 +335,11 @@ export function FeedItem({
 
   // Research panel state (for Top Picks view)
   // Initialize with existing preview summary if available
-  const [pastedText, setPastedText] = useState("");
+  const [pastedText, setPastedText] = useState(() => {
+    // If the item already has content, prefill so "Generate" works out of the box.
+    // Users can still overwrite by pasting full article text (better summaries).
+    return item.item.bodyText?.trim() || item.item.title?.trim() || "";
+  });
   const [summary, setSummary] = useState<ManualSummaryOutput | null>(
     item.previewSummaryJson ?? null,
   );
@@ -383,7 +387,7 @@ export function FeedItem({
       setSummary(result.summary);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to generate summary";
-      if (message.includes("INSUFFICIENT_CREDITS")) {
+      if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
         setResearchError(t("deepDive.insufficientCredits"));
       } else {
         setResearchError(message);

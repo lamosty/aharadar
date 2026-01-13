@@ -8,7 +8,13 @@
  */
 
 import type { LlmSettingsRow } from "@aharadar/db";
-import { createConfiguredLlmRouter, type LlmRuntimeConfig, manualSummarize } from "@aharadar/llm";
+import {
+  createConfiguredLlmRouter,
+  type LlmRuntimeConfig,
+  manualSummarize,
+  TimeoutError,
+  withTimeout,
+} from "@aharadar/llm";
 import { computeCreditsStatus } from "@aharadar/pipeline";
 import type { ProviderCallDraft } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
@@ -167,19 +173,24 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
       const router = createConfiguredLlmRouter(process.env, llmConfig);
 
       // Call manualSummarize
-      const result = await manualSummarize({
-        router,
-        tier: "normal",
-        input: {
-          pastedText: pastedText.trim(),
-          metadata: {
-            title: metadata?.title ?? null,
-            author: metadata?.author ?? null,
-            url: metadata?.url ?? null,
-            sourceType: metadata?.sourceType ?? null,
+      const timeoutMs = Number.parseInt(process.env.MANUAL_SUMMARY_TIMEOUT_MS ?? "120000", 10);
+      const result = await withTimeout(
+        manualSummarize({
+          router,
+          tier: "normal",
+          input: {
+            pastedText: pastedText.trim(),
+            metadata: {
+              title: metadata?.title ?? null,
+              author: metadata?.author ?? null,
+              url: metadata?.url ?? null,
+              sourceType: metadata?.sourceType ?? null,
+            },
           },
-        },
-      });
+        }),
+        Number.isFinite(timeoutMs) ? timeoutMs : 120000,
+        "manualSummarize",
+      );
 
       const endedAt = new Date().toISOString();
 
@@ -221,6 +232,15 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
         costEstimateCredits: result.costEstimateCredits,
       };
     } catch (err) {
+      if (err instanceof TimeoutError) {
+        return reply.code(504).send({
+          ok: false,
+          error: {
+            code: "LLM_TIMEOUT",
+            message: `LLM timed out after ${err.timeoutMs}ms (${err.label}). Try again, or switch providers/models in settings.`,
+          },
+        });
+      }
       fastify.log.error({ err }, "Manual summary error");
       return reply.code(500).send({
         ok: false,

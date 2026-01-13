@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
-import type { FeedItem, ManualSummaryOutput } from "@/lib/api";
+import { ApiError, type FeedItem, type ManualSummaryOutput } from "@/lib/api";
 import { useDeepDiveDecision, useDeepDivePreview } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./DeepDiveModal.module.css";
@@ -101,7 +101,9 @@ export function DeepDiveModal({
   // Reset state when item changes or modal opens
   useEffect(() => {
     if (item && isOpen) {
-      setPastedText("");
+      // Prefill from existing item content so "Generate Summary" isn't a dead-end.
+      // Users can still paste full article text for higher-quality summaries.
+      setPastedText(item.item.bodyText?.trim() || item.item.title?.trim() || "");
       setSummary(null);
       setError(null);
     }
@@ -154,7 +156,7 @@ export function DeepDiveModal({
       setSummary(result.summary);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to generate summary";
-      if (message.includes("INSUFFICIENT_CREDITS")) {
+      if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
         setError(t("deepDive.insufficientCredits"));
       } else {
         setError(message);

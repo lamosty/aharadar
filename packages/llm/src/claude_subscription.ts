@@ -6,6 +6,7 @@
  * See docs/claude-integration.md for ToS considerations.
  */
 
+import { withTimeout } from "./timeout";
 import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 import { recordUsage } from "./usage_tracker";
 
@@ -94,93 +95,98 @@ export async function callClaudeSubscription(
       log.debug("Using structured output with schema");
     }
 
-    const response = query({
-      prompt: request.user,
-      options,
-    });
+    const timeoutMs = Number.parseInt(process.env.CLAUDE_SUBSCRIPTION_TIMEOUT_MS ?? "120000", 10);
+    const response = query({ prompt: request.user, options });
 
     // Collect all messages and extract final result
     let messageCount = 0;
-    for await (const message of response) {
-      messageCount++;
-      messages.push(message);
+    const collect = async () => {
+      for await (const message of response) {
+        messageCount++;
+        messages.push(message);
 
-      const msgType =
-        typeof message === "object" && message !== null
-          ? (message as Record<string, unknown>).type
-          : undefined;
+        const msgType =
+          typeof message === "object" && message !== null
+            ? (message as Record<string, unknown>).type
+            : undefined;
 
-      log.debug(`Message #${messageCount}`, { type: msgType });
+        log.debug(`Message #${messageCount}`, { type: msgType });
 
-      // Extract content from assistant messages
-      // SDK structure: { type: "assistant", message: { content: [...] } }
-      if (msgType === "assistant") {
-        const assistantMsg = message as {
-          message?: {
-            content?: unknown;
+        // Extract content from assistant messages
+        // SDK structure: { type: "assistant", message: { content: [...] } }
+        if (msgType === "assistant") {
+          const assistantMsg = message as {
+            message?: {
+              content?: unknown;
+            };
           };
-        };
 
-        const content = assistantMsg.message?.content;
+          const content = assistantMsg.message?.content;
 
-        if (Array.isArray(content)) {
-          for (const block of content) {
-            if (typeof block !== "object" || block === null) continue;
+          if (Array.isArray(content)) {
+            for (const block of content) {
+              if (typeof block !== "object" || block === null) continue;
 
-            const blockType = (block as { type?: string }).type;
+              const blockType = (block as { type?: string }).type;
 
-            // Extract from text blocks
-            if (blockType === "text") {
-              const textBlock = block as { text?: string };
-              if (typeof textBlock.text === "string") {
-                resultText = textBlock.text;
-                log.debug("Found text block", { length: resultText.length });
+              // Extract from text blocks
+              if (blockType === "text") {
+                const textBlock = block as { text?: string };
+                if (typeof textBlock.text === "string") {
+                  resultText = textBlock.text;
+                  log.debug("Found text block", { length: resultText.length });
+                }
               }
-            }
 
-            // Extract from StructuredOutput tool use (SDK's structured output mechanism)
-            if (blockType === "tool_use") {
-              const toolBlock = block as { name?: string; input?: unknown };
-              if (toolBlock.name === "StructuredOutput" && toolBlock.input) {
-                structuredOutput = toolBlock.input;
-                log.debug("Found StructuredOutput tool use", {
-                  hasInput: true,
-                  inputType: typeof structuredOutput,
-                });
+              // Extract from StructuredOutput tool use (SDK's structured output mechanism)
+              if (blockType === "tool_use") {
+                const toolBlock = block as { name?: string; input?: unknown };
+                if (toolBlock.name === "StructuredOutput" && toolBlock.input) {
+                  structuredOutput = toolBlock.input;
+                  log.debug("Found StructuredOutput tool use", {
+                    hasInput: true,
+                    inputType: typeof structuredOutput,
+                  });
+                }
               }
             }
           }
         }
-      }
 
-      // Check for final result message
-      if (msgType === "result") {
-        const resultMsg = message as {
-          result?: string;
-          structured_output?: unknown;
-          subtype?: string;
-        };
+        // Check for final result message
+        if (msgType === "result") {
+          const resultMsg = message as {
+            result?: string;
+            structured_output?: unknown;
+            subtype?: string;
+          };
 
-        if (typeof resultMsg.result === "string" && resultMsg.result.length > 0) {
-          resultText = resultMsg.result;
-          log.debug("Found result text", { length: resultText.length });
+          if (typeof resultMsg.result === "string" && resultMsg.result.length > 0) {
+            resultText = resultMsg.result;
+            log.debug("Found result text", { length: resultText.length });
+          }
+
+          if (resultMsg.structured_output !== undefined) {
+            structuredOutput = resultMsg.structured_output;
+            log.debug("Found structured_output in result");
+          }
+
+          log.debug("Result message", {
+            subtype: resultMsg.subtype,
+            hasResult: !!resultMsg.result,
+            hasStructuredOutput: !!resultMsg.structured_output,
+          });
         }
-
-        if (resultMsg.structured_output !== undefined) {
-          structuredOutput = resultMsg.structured_output;
-          log.debug("Found structured_output in result");
-        }
-
-        log.debug("Result message", {
-          subtype: resultMsg.subtype,
-          hasResult: !!resultMsg.result,
-          hasStructuredOutput: !!resultMsg.structured_output,
-        });
       }
-    }
+    };
+
+    await withTimeout(
+      collect(),
+      Number.isFinite(timeoutMs) ? timeoutMs : 120000,
+      "claude_subscription.query",
+    );
 
     log.debug("Call complete", {
-      messageCount,
       resultTextLength: resultText.length,
       hasStructuredOutput: structuredOutput !== undefined,
     });

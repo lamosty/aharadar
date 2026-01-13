@@ -223,13 +223,13 @@ create index feedback_events_item_idx on feedback_events(content_item_id);
 
 -- content_item_deep_reviews: Deep Dive manual summary workflow
 -- Users paste content for liked items, generate AI summary, then promote or drop.
--- Raw pasted text is never stored; only the summary JSON is stored on promote.
+-- Raw pasted text is never stored; summaries can be stored as a "preview" and later promoted or dropped.
 create table content_item_deep_reviews (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
   content_item_id uuid not null references content_items(id) on delete cascade,
-  status text not null check (status in ('promoted', 'dropped')),
-  summary_json jsonb, -- populated only when status='promoted'
+  status text not null check (status in ('preview', 'promoted', 'dropped')),
+  summary_json jsonb, -- populated when status in ('preview','promoted')
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

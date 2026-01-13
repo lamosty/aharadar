@@ -1,3 +1,4 @@
+import { withTimeout } from "./timeout";
 import type { LlmCallResult, LlmRequest } from "./types";
 
 /**
@@ -201,13 +202,25 @@ export async function callOpenAiCompat(params: {
     ...(effectiveReasoning ? { reasoning: { effort: effectiveReasoning } } : {}),
   };
 
-  const res = await fetch(params.endpoint, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${params.apiKey}`,
-    },
-    body: JSON.stringify(body),
+  const timeoutMs = Number.parseInt(process.env.OPENAI_HTTP_TIMEOUT_MS ?? "90000", 10);
+  const controller = new AbortController();
+
+  const res = await withTimeout(
+    fetch(params.endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${params.apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    }),
+    Number.isFinite(timeoutMs) ? timeoutMs : 90000,
+    "openai_compat.fetch",
+  ).catch((err) => {
+    // Ensure fetch is aborted on timeout or other early failures.
+    controller.abort();
+    throw err;
   });
 
   const contentType = res.headers.get("content-type") ?? "";

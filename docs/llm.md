@@ -216,7 +216,7 @@ Same structure as deep_summary_v1:
 
 ### Storage
 
-Promoted summaries are stored in `content_item_deep_reviews.summary_json`.
+Manual summary outputs are stored in `content_item_deep_reviews.summary_json` (typically first as `status='preview'`, then optionally `status='promoted'`).
 Raw pasted text is never stored.
 
 ## Entity extraction (optional MVP)
