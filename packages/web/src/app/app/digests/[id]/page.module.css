@@ -310,6 +310,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Generate Summary Box */
+.generateSummaryBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-8) var(--space-4);
+  background-color: var(--color-surface);
+  border: 2px dashed var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.generateSummaryMessage {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .title {
