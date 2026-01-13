@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { use } from "react";
+import { AggregateSummaryPanel } from "@/components/AggregateSummaryPanel";
 import {
   DigestDetailCondensed,
   DigestDetailCondensedSkeleton,
@@ -11,6 +13,8 @@ import {
   DigestDetailTimelineSkeleton,
 } from "@/components/DigestDetail";
 import { useTheme } from "@/components/ThemeProvider";
+import { useToast } from "@/components/Toast";
+import { useAggregateSummary, useCreateDigestSummary } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import {
   type DigestDetail as DigestDetailData,
@@ -27,10 +31,29 @@ interface DigestDetailPageProps {
 export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   const { id } = use(params);
   const { layout } = useTheme();
+  const { addToast } = useToast();
+
   // Using real API with adapter hooks
   const { data: digest, isLoading, isError, isStale, refetch } = useRealDigestDetail(id);
   // Using real API feedback hook
   const { submitFeedback } = useRealFeedback();
+
+  // Summary management
+  const createSummaryMutation = useCreateDigestSummary({
+    onSuccess: (data) => {
+      setSummaryId(data.summary.id);
+    },
+    onError: (error) => {
+      addToast(`Failed to create summary: ${error.message}`, "error");
+    },
+  });
+
+  const [summaryId, setSummaryId] = React.useState<string | null>(null);
+  const { data: summaryData, isLoading: summaryLoading } = useAggregateSummary(summaryId);
+
+  const handleGenerateSummary = async () => {
+    await createSummaryMutation.mutateAsync(id);
+  };
 
   const handleFeedback = async (contentItemId: string, action: "like" | "dislike" | "skip") => {
     await submitFeedback(contentItemId, id, action);
@@ -100,6 +123,57 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
           </header>
 
           <RunDetailsSection digest={digest} />
+
+          {/* Summary Panel */}
+          <section aria-labelledby="summary-heading">
+            <h2 id="summary-heading" className={styles.sectionTitle}>
+              {t("summaries.title")}
+            </h2>
+
+            {summaryData && !summaryLoading ? (
+              <AggregateSummaryPanel summary={summaryData} />
+            ) : summaryLoading ? (
+              <AggregateSummaryPanel
+                summary={{
+                  id: "loading",
+                  scope_type: "digest",
+                  scope_hash: "",
+                  digest_id: id,
+                  topic_id: null,
+                  status: "pending",
+                  summary_json: null,
+                  prompt_id: null,
+                  schema_version: null,
+                  provider: null,
+                  model: null,
+                  input_item_count: null,
+                  input_char_count: null,
+                  input_tokens: null,
+                  output_tokens: null,
+                  cost_estimate_credits: null,
+                  meta_json: null,
+                  error_message: null,
+                  created_at: "",
+                  updated_at: "",
+                }}
+                isLoading={true}
+              />
+            ) : (
+              <div className={styles.generateSummaryBox}>
+                <p className={styles.generateSummaryMessage}>{t("summaries.notGenerated")}</p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleGenerateSummary}
+                  disabled={createSummaryMutation.isPending}
+                >
+                  {createSummaryMutation.isPending
+                    ? t("summaries.generating")
+                    : t("summaries.generate")}
+                </button>
+              </div>
+            )}
+          </section>
 
           <section aria-labelledby="ranked-items-heading">
             <h2 id="ranked-items-heading" className={styles.sectionTitle}>

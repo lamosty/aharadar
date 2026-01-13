@@ -90,6 +90,35 @@
     "readNext": "Read Next",
     "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
   },
+  "summaries": {
+    "title": "Summary",
+    "generate": "Generate Summary",
+    "generating": "Generating summary...",
+    "notGenerated": "No summary generated yet for this digest.",
+    "overview": "Overview",
+    "sentiment": "Sentiment",
+    "themes": "Themes",
+    "notableItems": "Notable Items",
+    "openQuestions": "Open Questions",
+    "suggestedFollowups": "Suggested Follow-ups",
+    "item": "item",
+    "items": "items",
+    "inboxModal": {
+      "title": "Summarize Inbox Items",
+      "button": "Summarize items",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "generate": "Generate Summary"
+    },
+    "error": {
+      "title": "Failed to Generate Summary",
+      "message": "An error occurred while generating the summary. Please try again."
+    },
+    "skipped": {
+      "title": "Summary Generation Skipped",
+      "message": "Summary generation was skipped due to insufficient credits or budget constraints."
+    }
+  },
   "landing": {
     "hero": {
       "title": "Surface signal from noise",

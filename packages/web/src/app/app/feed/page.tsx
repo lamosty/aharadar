@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { DeepDiveModal } from "@/components/DeepDiveModal";
 import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
+import { InboxSummaryModal } from "@/components/InboxSummaryModal";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
@@ -92,6 +93,9 @@ function FeedPageContent() {
     import("@/lib/api").ManualSummaryOutput | null
   >(null);
   const [isDeepDiveModalOpen, setIsDeepDiveModalOpen] = useState(false);
+
+  // Inbox summary modal state
+  const [isInboxSummaryModalOpen, setIsInboxSummaryModalOpen] = useState(false);
 
   // Sync URL topic param with TopicProvider on mount
   useEffect(() => {
@@ -488,6 +492,15 @@ function FeedPageContent() {
                 </button>
               </Tooltip>
             )}
+            {items.length > 0 && view === "inbox" && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsInboxSummaryModalOpen(true)}
+              >
+                {t("summaries.inboxModal.button")}
+              </button>
+            )}
             <TopicSwitcher onTopicChange={handleTopicChange} />
             {isAllTopicsMode ? (
               <Tooltip content={t("feed.selectTopicForCaughtUp")}>
@@ -623,6 +636,13 @@ function FeedPageContent() {
         onDecision={handleDeepDiveDecision}
         onReadNext={handleReadNextInModal}
         hasNextWithSummary={nextItemWithSummary != null}
+      />
+
+      {/* Inbox Summary Modal */}
+      <InboxSummaryModal
+        isOpen={isInboxSummaryModalOpen}
+        topicId={currentTopicId}
+        onClose={() => setIsInboxSummaryModalOpen(false)}
       />
     </div>
   );

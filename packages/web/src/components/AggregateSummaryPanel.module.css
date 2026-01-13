@@ -1,0 +1,250 @@
+.panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.skeleton {
+  background: var(--color-bg-tertiary);
+  border-radius: 4px;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* One-liner - prominent */
+.oneLiner {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.oneLiner p {
+  margin: 0;
+}
+
+/* Section layout */
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+/* Overview paragraph */
+.overview {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: 1.7;
+}
+
+/* Sentiment card */
+.sentimentCard {
+  background: var(--color-bg-primary);
+  border-radius: 6px;
+  padding: 12px;
+  border-left: 3px solid var(--color-border);
+}
+
+.sentimentLabel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.label {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.confidence {
+  font-size: 13px;
+  background: var(--color-bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+}
+
+.rationale {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+/* Themes list */
+.themesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.themeItem {
+  background: var(--color-bg-primary);
+  border-radius: 6px;
+  padding: 12px;
+  border-left: 3px solid var(--color-border);
+  cursor: pointer;
+}
+
+.themeItem:hover {
+  background: var(--color-bg-secondary);
+}
+
+.themeItem[open] {
+  background: var(--color-bg-secondary);
+}
+
+.themeSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.themeSummary::-webkit-details-marker {
+  display: none;
+}
+
+.themeSummary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s;
+}
+
+.themeItem[open] .themeSummary::before {
+  transform: rotate(90deg);
+}
+
+.themeTitle {
+  flex: 1;
+}
+
+.itemCount {
+  font-size: 13px;
+  background: var(--color-bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.themeSummaryText {
+  margin: 12px 0 0 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* Notable items */
+.notableItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notableItem {
+  background: var(--color-bg-primary);
+  border-radius: 6px;
+  padding: 12px;
+  border-left: 3px solid var(--color-border);
+}
+
+.itemId {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.itemWhy {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+/* Bullet lists */
+.bulletList {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.bulletList li {
+  margin-bottom: 8px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.bulletList li:last-child {
+  margin-bottom: 0;
+}
+
+/* Error and skipped states */
+.errorState,
+.skippedState {
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.errorIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.errorTitle,
+.skippedTitle {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.errorMessage,
+.skippedMessage {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Footer */
+.footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.metadata {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}

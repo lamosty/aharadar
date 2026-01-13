@@ -24,16 +24,22 @@ import {
   type AbtestsListResponse,
   type AdminRunRequest,
   type AdminRunResponse,
+  type AggregateSummary,
   type ApiError,
   type BudgetPeriod,
   type BudgetResetResponse,
   type BudgetsResponse,
   type ClearFeedbackRequest,
   type ClearFeedbackResponse,
+  type CreateDigestSummaryResponse,
+  type CreateInboxSummaryRequest,
+  type CreateInboxSummaryResponse,
   type CreateTopicRequest,
   type CreateTopicResponse,
   clearEmergencyStop as clearEmergencyStopApi,
   clearFeedback,
+  createDigestSummary as createDigestSummaryApi,
+  createInboxSummary as createInboxSummaryApi,
   createTopic,
   type DailyUsageResponse,
   type DeepDiveDecisionRequest,
@@ -60,6 +66,7 @@ import {
   getAdminLlmQuota,
   getAdminLlmSettings,
   getAdminSources,
+  getAggregateSummary as getAggregateSummaryApi,
   getDailyUsage,
   getDeepDivePromoted,
   getDeepDiveQueue,
@@ -164,6 +171,10 @@ export const queryKeys = {
   usage: {
     monthly: ["usage", "monthly"] as const,
     daily: (days?: number) => ["usage", "daily", days] as const,
+  },
+  summaries: {
+    all: ["summaries"] as const,
+    detail: (id: string) => ["summaries", id] as const,
   },
   admin: {
     sources: ["admin", "sources"] as const,
@@ -1507,5 +1518,70 @@ export function useDeepDiveDecision(options?: { onSuccess?: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["deep-dive"] });
       options?.onSuccess?.();
     },
+  });
+}
+
+// ============================================================================
+// Aggregate Summaries Hooks
+// ============================================================================
+
+/**
+ * Query for a single aggregate summary by ID.
+ * Polls while status is "pending".
+ */
+export function useAggregateSummary(
+  id: string | null,
+  options?: Omit<
+    UseQueryOptions<AggregateSummary, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.summaries.detail(id ?? ""),
+    queryFn: async ({ signal }) => {
+      const response = await getAggregateSummaryApi(id ?? "", signal);
+      return response.summary;
+    },
+    enabled: !!id,
+    refetchInterval: (query) => {
+      // Poll every 2 seconds while pending
+      const data = query.state.data;
+      return data?.status === "pending" ? 2000 : false;
+    },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to create/generate digest summary.
+ */
+export function useCreateDigestSummary(
+  options?: Omit<
+    UseMutationOptions<CreateDigestSummaryResponse, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
+) {
+  return useMutation({
+    mutationFn: (digestId: string) => createDigestSummaryApi(digestId),
+    ...options,
+  });
+}
+
+/**
+ * Mutation to create/generate inbox summary.
+ */
+export function useCreateInboxSummary(
+  options?: Omit<
+    UseMutationOptions<
+      CreateInboxSummaryResponse,
+      ApiError | NetworkError,
+      CreateInboxSummaryRequest
+    >,
+    "mutationFn"
+  >,
+) {
+  return useMutation({
+    mutationFn: (params: CreateInboxSummaryRequest) => createInboxSummaryApi(params),
+    ...options,
   });
 }

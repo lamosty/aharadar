@@ -1983,3 +1983,93 @@ export async function getDeepDivePromoted(
     signal,
   });
 }
+
+// ============================================================================
+// Aggregate Summaries API
+// ============================================================================
+
+/** Aggregate summary details (from DB) */
+export interface AggregateSummary {
+  id: string;
+  scope_type: "digest" | "inbox" | "range" | "custom";
+  scope_hash: string;
+  digest_id: string | null;
+  topic_id: string | null;
+  status: "pending" | "complete" | "error" | "skipped";
+  summary_json: Record<string, unknown> | null;
+  prompt_id: string | null;
+  schema_version: string | null;
+  provider: string | null;
+  model: string | null;
+  input_item_count: number | null;
+  input_char_count: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost_estimate_credits: number | null;
+  meta_json: Record<string, unknown> | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Create digest summary request */
+export interface CreateDigestSummaryResponse {
+  ok: true;
+  summary: AggregateSummary;
+}
+
+/** Create inbox summary request */
+export interface CreateInboxSummaryRequest {
+  topicId: string | "all";
+  since: string; // ISO timestamp
+  until: string; // ISO timestamp
+}
+
+/** Create inbox summary response */
+export interface CreateInboxSummaryResponse {
+  ok: true;
+  summary: AggregateSummary;
+}
+
+/** Get aggregate summary response */
+export interface GetAggregateSummaryResponse {
+  ok: true;
+  summary: AggregateSummary;
+}
+
+/**
+ * Create or get digest summary (auto-enqueue job).
+ */
+export async function createDigestSummary(
+  digestId: string,
+  signal?: AbortSignal,
+): Promise<CreateDigestSummaryResponse> {
+  return apiFetch<CreateDigestSummaryResponse>(`/summaries/digest/${digestId}`, {
+    method: "POST",
+    signal,
+  });
+}
+
+/**
+ * Create or get inbox summary (auto-enqueue job).
+ */
+export async function createInboxSummary(
+  params: CreateInboxSummaryRequest,
+  signal?: AbortSignal,
+): Promise<CreateInboxSummaryResponse> {
+  return apiFetch<CreateInboxSummaryResponse>("/summaries/inbox", {
+    method: "POST",
+    body: params,
+    signal,
+  });
+}
+
+/**
+ * Get aggregate summary by ID.
+ */
+export async function getAggregateSummary(
+  id: string,
+  signal?: AbortSignal,
+): Promise<GetAggregateSummaryResponse> {
+  return apiFetch<GetAggregateSummaryResponse>(`/summaries/${id}`, { signal });
+}
