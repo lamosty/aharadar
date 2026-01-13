@@ -11,6 +11,7 @@ import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
 import styles from "./FeedItem.module.css";
+import { XAccountHealthNudge } from "./XAccountHealthNudge";
 
 interface FeedItemProps {
   item: FeedItemType;
@@ -241,6 +242,7 @@ function getSourceSecondaryInfo(
 
 interface SourceSectionProps {
   sourceType: string;
+  sourceId: string;
   metadata?: Record<string, unknown> | null;
   externalId?: string | null;
   author?: string | null;
@@ -255,6 +257,7 @@ interface SourceSectionProps {
  */
 function SourceSection({
   sourceType,
+  sourceId,
   metadata,
   externalId,
   author,
@@ -262,6 +265,10 @@ function SourceSection({
 }: SourceSectionProps) {
   const subreddit = metadata?.subreddit as string | undefined;
   const secondary = getSourceSecondaryInfo(sourceType, metadata, externalId, author);
+
+  // Extract handle for X account health nudge (without @ prefix)
+  const xHandle =
+    secondary?.type === "x" && secondary.text ? secondary.text.replace(/^@/, "") : null;
 
   return (
     <div className={compact ? styles.condensedSourceSection : styles.sourceSection}>
@@ -309,7 +316,12 @@ function SourceSection({
             </a>
           )}
 
-          {secondary.type === "x" && <span className={styles.sourceContext}>{secondary.text}</span>}
+          {secondary.type === "x" && (
+            <>
+              <span className={styles.sourceContext}>{secondary.text}</span>
+              {xHandle && <XAccountHealthNudge sourceId={sourceId} handle={xHandle} />}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -461,6 +473,7 @@ export function FeedItem({
         id={`feed-item-${item.id}`}
         className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
         data-testid={`feed-item-${item.id}`}
+        data-feed-item
         data-tier={scoreTier}
         onMouseEnter={onHover}
       >
@@ -648,6 +661,7 @@ export function FeedItem({
       id={`feed-item-${item.id}`}
       className={styles.card}
       data-testid={`feed-item-${item.id}`}
+      data-feed-item
     >
       <div className={styles.header}>
         {/* Left section: badges + source + meta + actions */}
@@ -666,6 +680,7 @@ export function FeedItem({
           {/* Two-line source section */}
           <SourceSection
             sourceType={item.item.sourceType}
+            sourceId={item.item.sourceId}
             metadata={item.item.metadata}
             externalId={item.item.externalId}
             author={item.item.author}

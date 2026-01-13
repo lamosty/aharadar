@@ -12,6 +12,8 @@ import styles from "./XAccountHealth.module.css";
 
 interface XAccountHealthProps {
   sourceId: string;
+  /** Whether throttling is enabled for this source (config.accountHealthMode === "throttle") */
+  throttlingEnabled?: boolean;
 }
 
 const MODE_OPTIONS: { value: XAccountPolicyMode; labelKey: MessageKey }[] = [
@@ -50,11 +52,14 @@ function getStateClass(state: XAccountPolicyView["state"]): string {
   }
 }
 
-export function XAccountHealth({ sourceId }: XAccountHealthProps) {
+export function XAccountHealth({ sourceId, throttlingEnabled = false }: XAccountHealthProps) {
   const { data, isLoading, error } = useXAccountPolicies(sourceId);
   const updateMode = useXAccountPolicyModeUpdate(sourceId);
   const resetPolicy = useXAccountPolicyReset(sourceId);
   const [expandedHandle, setExpandedHandle] = useState<string | null>(null);
+
+  // Throttling is enabled when accountHealthMode === "throttle" in source config
+  const isThrottlingActive = throttlingEnabled;
 
   if (isLoading) {
     return (
@@ -84,6 +89,8 @@ export function XAccountHealth({ sourceId }: XAccountHealthProps) {
 
   const handleModeChange = (e: React.MouseEvent, handle: string, mode: XAccountPolicyMode) => {
     e.stopPropagation();
+    // Only allow mode changes when throttling is enabled
+    if (!isThrottlingActive) return;
     updateMode.mutate({ handle, mode });
   };
 
@@ -99,8 +106,18 @@ export function XAccountHealth({ sourceId }: XAccountHealthProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h4 className={styles.title}>{t("editSource.xAccountHealth.title")}</h4>
+        <div className={styles.titleRow}>
+          <h4 className={styles.title}>{t("editSource.xAccountHealth.title")}</h4>
+          <span className={isThrottlingActive ? styles.throttleEnabled : styles.throttleDisabled}>
+            {isThrottlingActive
+              ? t("editSource.xAccountHealth.throttlingEnabled")
+              : t("editSource.xAccountHealth.throttlingDisabled")}
+          </span>
+        </div>
         <p className={styles.description}>{t("editSource.xAccountHealth.description")}</p>
+        {!isThrottlingActive && (
+          <p className={styles.nudgeNote}>{t("editSource.xAccountHealth.nudgeOnlyNote")}</p>
+        )}
       </div>
 
       <div className={styles.accountList}>
@@ -128,23 +145,27 @@ export function XAccountHealth({ sourceId }: XAccountHealthProps) {
 
             {expandedHandle === policy.handle && (
               <div className={styles.accountDetails}>
-                {/* Mode selector */}
-                <div className={styles.modeSelector}>
-                  <label className={styles.modeLabel}>{t("editSource.xAccountHealth.mode")}</label>
-                  <div className={styles.modeButtons}>
-                    {MODE_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`${styles.modeButton} ${policy.mode === option.value ? styles.modeActive : ""}`}
-                        onClick={(e) => handleModeChange(e, policy.handle, option.value)}
-                        disabled={updateMode.isPending}
-                      >
-                        {t(option.labelKey)}
-                      </button>
-                    ))}
+                {/* Mode selector - only shown when throttling is enabled */}
+                {isThrottlingActive && (
+                  <div className={styles.modeSelector}>
+                    <label className={styles.modeLabel}>
+                      {t("editSource.xAccountHealth.mode")}
+                    </label>
+                    <div className={styles.modeButtons}>
+                      {MODE_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`${styles.modeButton} ${policy.mode === option.value ? styles.modeActive : ""}`}
+                          onClick={(e) => handleModeChange(e, policy.handle, option.value)}
+                          disabled={updateMode.isPending}
+                        >
+                          {t(option.labelKey)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Stats */}
                 <div className={styles.stats}>

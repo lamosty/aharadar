@@ -160,7 +160,12 @@ export function EditSourceModal({
           {/* X Account Health (only for x_posts sources) */}
           {source.type === "x_posts" && (
             <div className={styles.configSection}>
-              <XAccountHealth sourceId={source.id} />
+              <XAccountHealth
+                sourceId={source.id}
+                throttlingEnabled={
+                  (editConfig as { accountHealthMode?: string }).accountHealthMode === "throttle"
+                }
+              />
             </div>
           )}
         </div>

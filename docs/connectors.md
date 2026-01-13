@@ -963,7 +963,7 @@ This makes `x_posts` a viable **free alternative to some paid data APIs** when i
 
 **Budget consideration**: Uses Grok/xAI credits. Control spend by limiting accounts, keywords, and `maxResultsPerQuery`. This is budget-sensitive but not paid (no separate subscription required beyond xAI API access).
 
-**Feedback-driven throttling**: User feedback (like/dislike) on posts from an account accumulates into a policy score. Accounts with poor feedback are gradually throttled (fetched less often) using deterministic sampling with an exploration floor (15%). Users can override per-account via mode controls: `auto` (feedback-driven), `always` (always fetch), `mute` (never fetch). Throttling is gradual (smoothstep mapping, 45-day decay half-life) to avoid abrupt changes. See `x_account_policies` table in data-model.md.
+**Feedback-driven account health (nudge-first with opt-in throttling)**: User feedback (like/dislike) on posts from an account accumulates into a policy score with decay + smoothing. The UI shows score/sample and a projected fetch rate. By default, this is **nudge-only** (informational); to enable automatic throttling, set `accountHealthMode: "throttle"` in the source config. When throttling is enabled, low-signal accounts are fetched less frequently based on their health score. See ADR 0011 and the `x_account_policies` table in data-model.md.
 
 **config_json**
 
@@ -977,6 +977,7 @@ This makes `x_posts` a viable **free alternative to some paid data APIs** when i
   "excludeReplies": true,
   "excludeRetweets": true,
   "fairnessByAccount": false,
+  "accountHealthMode": "nudge",
   "cadence": { "mode": "interval", "every_minutes": 1440 }
 }
 ```
@@ -988,6 +989,7 @@ Notes:
 - `keywords`: optional topic keywords to monitor.
 - `queries`: advanced escape hatch; if present, used directly instead of compiling from `accounts`/`keywords`.
 - `fairnessByAccount`: when true, treat each account as its own fairness bucket during sampling/triage (no UI source splitting).
+- `accountHealthMode`: `"nudge"` (default) = informational only; `"throttle"` = enable automatic fetch rate reduction for low-signal accounts.
 - `cadence`: per-source cadence (see ADR 0009); `x_posts` defaults to daily (1440 minutes).
 
 **cursor_json**

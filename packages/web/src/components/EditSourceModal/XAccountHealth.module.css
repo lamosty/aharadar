@@ -21,16 +21,49 @@
   margin-bottom: var(--space-3);
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
 .title {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  margin: 0 0 var(--space-1) 0;
+  margin: 0;
+}
+
+.throttleEnabled {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.throttleDisabled {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
 }
 
 .description {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   margin: 0;
+}
+
+.nudgeNote {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: var(--space-1) 0 0 0;
 }
 
 .accountList {

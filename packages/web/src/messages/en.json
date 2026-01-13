@@ -87,6 +87,7 @@
     },
     "promote": "Promote",
     "drop": "Drop",
+    "readNext": "Read Next",
     "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
   },
   "landing": {
@@ -817,7 +818,7 @@
     "approximateDate": "Approximate date (day-level precision)",
     "view": {
       "inbox": "Inbox",
-      "top_picks": "Top Picks",
+      "top_picks": "Deep Dive",
       "all": "All"
     },
     "layout": {
@@ -836,7 +837,19 @@
       "cta": "Get Started"
     },
     "openArticle": "Open Article",
-    "saveForLater": "Save for Later"
+    "saveForLater": "Save for Later",
+    "xAccountHealth": {
+      "lowSignalTitle": "Low-signal account",
+      "popoverTitle": "Low-signal account",
+      "popoverDescription": "{handle} has a low health score ({score}%) based on {sample} feedback samples. Consider enabling throttling to reduce fetch rate.",
+      "score": "Score",
+      "samples": "Samples",
+      "enableThrottling": "Enable throttling for this source",
+      "confirmThrottling": "Enable throttling? Low-signal accounts will be fetched less frequently.",
+      "enableBtn": "Enable",
+      "throttlingEnabled": "Throttling enabled",
+      "throttlingFailed": "Failed to enable throttling"
+    }
   },
   "tooltips": {
     "ahaScore": "Your personalized relevance score. Combines AI analysis with freshness, novelty, and your preferences. Higher = more relevant to you right now.",
@@ -871,7 +884,10 @@
     "configTitle": "Source Configuration",
     "xAccountHealth": {
       "title": "Account Health",
-      "description": "Feedback-driven throttling for X accounts",
+      "description": "Feedback-driven stats for X accounts.",
+      "nudgeOnlyNote": "Throttling is disabled. Stats are informational only. Enable throttling to automatically reduce fetch rate for low-signal accounts.",
+      "throttlingEnabled": "Throttling: On",
+      "throttlingDisabled": "Throttling: Off",
       "loadError": "Failed to load account policies",
       "noAccounts": "No accounts configured",
       "mode": "Mode",
@@ -884,7 +900,7 @@
       "score": "Score",
       "sample": "Samples",
       "throttle": "Fetch rate",
-      "throttleTooltip": "How often this account is fetched",
+      "throttleTooltip": "Fetch rate based on account health score",
       "nextEffects": "Next feedback effects:",
       "nextLike": "Like",
       "nextDislike": "Dislike",

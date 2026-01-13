@@ -57,6 +57,12 @@ export interface XPostsConfig {
    * When enabled, treat each account as its own fairness bucket.
    */
   fairnessByAccount?: boolean;
+  /**
+   * Account health gating mode.
+   * - nudge (default): informational only, no automatic fetch reduction
+   * - throttle: enable automatic fetch rate reduction for low-signal accounts
+   */
+  accountHealthMode?: "nudge" | "throttle";
 }
 
 // SEC EDGAR Source Config

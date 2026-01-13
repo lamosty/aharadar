@@ -16,6 +16,15 @@ import {
 
 const log = createLogger({ component: "ingest" });
 
+/**
+ * Check if account health gating is enabled for an x_posts source.
+ * Per ADR 0011: gating is off by default (nudge-only).
+ * Users can opt-in by setting accountHealthMode: "throttle" in source config.
+ */
+function isAccountHealthGatingEnabled(config: Record<string, unknown>): boolean {
+  return config.accountHealthMode === "throttle";
+}
+
 export interface IngestLimits {
   maxItemsPerSource: number;
 }
@@ -420,8 +429,10 @@ export async function ingestEnabledSources(params: {
     }
 
     // X account policy gating: filter accounts based on feedback-driven throttling
+    // Per ADR 0011: gating is off by default (nudge-only).
+    // Users can opt-in by setting accountHealthMode: "throttle" in source config.
     let effectiveFetchParams = fetchParams;
-    if (source.type === "x_posts") {
+    if (source.type === "x_posts" && isAccountHealthGatingEnabled(fetchParams.config)) {
       try {
         const gatingResult = await applyXPostsAccountGating({
           db: params.db,
