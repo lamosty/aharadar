@@ -335,11 +335,7 @@ export function FeedItem({
 
   // Research panel state (for Top Picks view)
   // Initialize with existing preview summary if available
-  const [pastedText, setPastedText] = useState(() => {
-    // If the item already has content, prefill so "Generate" works out of the box.
-    // Users can still overwrite by pasting full article text (better summaries).
-    return item.item.bodyText?.trim() || item.item.title?.trim() || "";
-  });
+  const [pastedText, setPastedText] = useState("");
   const [summary, setSummary] = useState<ManualSummaryOutput | null>(
     item.previewSummaryJson ?? null,
   );
@@ -551,17 +547,15 @@ export function FeedItem({
             <div className={styles.detailResearchPanel}>
               {!summary ? (
                 <>
-                  <div className={styles.detailResearchRow}>
+                  <div className={styles.detailResearchInline}>
                     <textarea
-                      className={styles.detailResearchTextarea}
+                      className={styles.detailResearchTextareaSmall}
                       value={pastedText}
                       onChange={(e) => setPastedText(e.target.value)}
-                      placeholder="Paste article content..."
-                      rows={2}
+                      placeholder="Paste content..."
+                      rows={1}
                       disabled={previewMutation.isPending}
                     />
-                  </div>
-                  <div className={styles.detailResearchActions}>
                     <button
                       type="button"
                       className={styles.generateBtnCompact}
