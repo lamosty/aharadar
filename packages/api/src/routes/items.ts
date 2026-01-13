@@ -55,6 +55,8 @@ interface UnifiedItemRow {
   // Topic fields (for "all topics" mode)
   topic_id: string;
   topic_name: string;
+  // Deep review preview summary (only when status='preview')
+  preview_summary_json: Record<string, unknown> | null;
 }
 
 interface ItemsListQuerystring {
@@ -67,7 +69,8 @@ interface ItemsListQuerystring {
   until?: string;
   sort?: string;
   topicId?: string;
-  view?: "inbox" | "highlights" | "all";
+  // Views: inbox (no feedback), highlights (liked), all (no filter), deep_dive (liked + not promoted/dropped)
+  view?: "inbox" | "highlights" | "all" | "deep_dive";
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -173,8 +176,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Validate sort
-    // "best" = raw score (no decay), "latest" = by publication date, "trending" = decayed score
-    const validSorts = ["best", "latest", "trending"];
+    // "best" = raw score (no decay), "latest" = by publication date, "trending" = decayed score, "ai_score" = raw LLM triage score
+    const validSorts = ["best", "latest", "trending", "ai_score"];
     if (!validSorts.includes(sort)) {
       return reply.code(400).send({
         ok: false,
@@ -236,12 +239,16 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       filterParamIdx++;
     }
 
-    // View filter: inbox (no feedback), highlights (feedback = 'like'), all (no filter)
-    // Note: fe.action is from the LATERAL subquery, so we reference it directly
+    // View filter: inbox (no feedback), highlights (feedback = 'like'), all (no filter), deep_dive (liked + not promoted/dropped)
+    // Note: fe.action is from the LATERAL subquery, dr is from LEFT JOIN content_item_deep_reviews
     if (view === "inbox") {
       filterConditions.push("fe.action IS NULL");
     } else if (view === "highlights") {
       filterConditions.push("fe.action = 'like'");
+    } else if (view === "deep_dive") {
+      // Deep Dive queue: liked items that haven't been promoted or dropped yet
+      filterConditions.push("fe.action = 'like'");
+      filterConditions.push("(dr.status IS NULL OR dr.status = 'preview')");
     }
     // view === 'all' -> no filter
 
@@ -252,22 +259,23 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     // - "latest": by publication date - shows newest items first
     // - "trending": decayed score - balances quality with recency
     // - "ai_score": raw LLM triage score - useful for debugging ranking issues
+    // Note: All modes include li.content_item_id as tie-breaker for deterministic pagination
     let orderBy: string;
     switch (sort) {
       case "latest":
-        orderBy = "ci.published_at DESC NULLS LAST";
+        orderBy = "ci.published_at DESC NULLS LAST, li.content_item_id DESC";
         break;
       case "trending":
         // Order by decayed score (computed in SELECT)
-        orderBy = "trending_score DESC";
+        orderBy = "trending_score DESC, li.content_item_id DESC";
         break;
       case "ai_score":
         // Order by raw LLM triage score (ai_score from triage_json)
-        orderBy = "(li.triage_json->>'ai_score')::numeric DESC NULLS LAST";
+        orderBy = "(li.triage_json->>'ai_score')::numeric DESC NULLS LAST, li.content_item_id DESC";
         break;
       default: // "best"
         // Order by raw score (no decay) - best quality items first
-        orderBy = "li.aha_score DESC";
+        orderBy = "li.aha_score DESC, li.content_item_id DESC";
     }
 
     // Query: Get latest score for each content item
@@ -335,7 +343,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         cluster_members.items_json as cluster_items_json,
         -- Topic fields
         li.digest_topic_id::text as topic_id,
-        t.name as topic_name
+        t.name as topic_name,
+        -- Deep review preview summary (only when status='preview')
+        CASE WHEN dr.status = 'preview' THEN dr.summary_json ELSE NULL END as preview_summary_json
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
       JOIN topics t ON t.id = li.digest_topic_id
@@ -345,6 +355,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
+      LEFT JOIN content_item_deep_reviews dr
+        ON dr.user_id = '${ctx.userId}' AND dr.content_item_id = li.content_item_id
       LEFT JOIN LATERAL (
         SELECT COUNT(*)::int as member_count
         FROM cluster_items cli
@@ -400,6 +412,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
+      LEFT JOIN content_item_deep_reviews dr
+        ON dr.user_id = '${ctx.userId}' AND dr.content_item_id = li.content_item_id
       WHERE ${filterClause}
     `;
 
@@ -468,6 +482,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         // Topic context (for "all topics" mode)
         topicId: row.topic_id,
         topicName: row.topic_name,
+        // Deep review preview summary (only present when status='preview')
+        previewSummaryJson: row.preview_summary_json ?? undefined,
       };
     });
 
