@@ -2020,7 +2020,7 @@ export interface CreateDigestSummaryResponse {
 
 /** Create inbox summary request */
 export interface CreateInboxSummaryRequest {
-  topicId: string | "all";
+  topicId?: string; // Optional UUID, omitted means all topics
   since: string; // ISO timestamp
   until: string; // ISO timestamp
 }

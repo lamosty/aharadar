@@ -33,7 +33,7 @@ export function InboxSummaryModal({ isOpen, topicId, onClose }: InboxSummaryModa
     }
 
     const request: CreateInboxSummaryRequest = {
-      topicId: topicId || "all",
+      ...(topicId && { topicId }),
       since,
       until,
     };

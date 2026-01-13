@@ -208,6 +208,34 @@
   margin-bottom: 0;
 }
 
+/* Pending state */
+.pendingState {
+  text-align: center;
+  padding: 32px 24px;
+  color: var(--color-text-secondary);
+}
+
+.pendingState p {
+  margin: 16px 0 0 0;
+  font-size: 14px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-text-secondary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Error and skipped states */
 .errorState,
 .skippedState {

@@ -117,6 +117,9 @@
     "skipped": {
       "title": "Summary Generation Skipped",
       "message": "Summary generation was skipped due to insufficient credits or budget constraints."
+    },
+    "pending": {
+      "message": "Generating summary..."
     }
   },
   "landing": {

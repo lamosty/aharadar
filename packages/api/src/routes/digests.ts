@@ -174,7 +174,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
             mode: row.mode,
             status: row.status,
             creditsUsed: parseFloat(row.credits_used) || 0,
-            topAhaScore: row.top_aha_score ? parseFloat(row.top_aha_score) : null,
+            topScore: row.top_aha_score ? parseFloat(row.top_aha_score) : null,
             windowStart: row.window_start,
             windowEnd: row.window_end,
             createdAt: row.created_at,

@@ -15,7 +15,7 @@ interface SummaryOutput {
   themes?: Array<{
     title?: string;
     summary?: string;
-    item_count?: number;
+    item_ids?: string[]; // LLM schema uses item_ids array, not item_count
   }>;
   notable_items?: Array<{
     item_id?: string;
@@ -68,8 +68,17 @@ export function AggregateSummaryPanel({ summary, isLoading }: AggregateSummaryPa
   }
 
   const summaryJson = summary.summary_json as SummaryOutput | null;
-  if (!summaryJson) {
-    return null;
+
+  // Show pending state when summary is still being generated
+  if (summary.status === "pending" || !summaryJson) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.pendingState}>
+          <div className={styles.spinner} />
+          <p>{t("summaries.pending.message")}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -114,20 +123,22 @@ export function AggregateSummaryPanel({ summary, isLoading }: AggregateSummaryPa
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>{t("summaries.themes")}</h3>
           <div className={styles.themesList}>
-            {summaryJson.themes.map((theme, idx) => (
-              <details key={idx} className={styles.themeItem}>
-                <summary className={styles.themeSummary}>
-                  <span className={styles.themeTitle}>{theme.title || "Theme"}</span>
-                  {theme.item_count !== undefined && (
-                    <span className={styles.itemCount}>
-                      {theme.item_count}{" "}
-                      {theme.item_count === 1 ? t("summaries.item") : t("summaries.items")}
-                    </span>
-                  )}
-                </summary>
-                {theme.summary && <p className={styles.themeSummaryText}>{theme.summary}</p>}
-              </details>
-            ))}
+            {summaryJson.themes.map((theme, idx) => {
+              const itemCount = theme.item_ids?.length ?? 0;
+              return (
+                <details key={idx} className={styles.themeItem}>
+                  <summary className={styles.themeSummary}>
+                    <span className={styles.themeTitle}>{theme.title || "Theme"}</span>
+                    {itemCount > 0 && (
+                      <span className={styles.itemCount}>
+                        {itemCount} {itemCount === 1 ? t("summaries.item") : t("summaries.items")}
+                      </span>
+                    )}
+                  </summary>
+                  {theme.summary && <p className={styles.themeSummaryText}>{theme.summary}</p>}
+                </details>
+              );
+            })}
           </div>
         </section>
       )}

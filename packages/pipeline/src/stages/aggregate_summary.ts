@@ -97,12 +97,30 @@ async function buildAggregateInputFromDigest(params: {
        COALESCE(ci.body_text, ci_rep.body_text) as item_body_text,
        COALESCE(ci.published_at, ci_rep.published_at)::text as item_published_at,
        di.triage_json,
-       cl.member_count as cluster_member_count,
-       cl.cluster_members as cluster_member_titles
+       cluster_count.member_count as cluster_member_count,
+       cluster_members.items_json as cluster_member_titles
      FROM digest_items di
      LEFT JOIN content_items ci ON ci.id = di.content_item_id
      LEFT JOIN clusters cl ON cl.id = di.cluster_id
      LEFT JOIN content_items ci_rep ON ci_rep.id = cl.representative_content_item_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int as member_count
+       FROM cluster_items cli
+       WHERE cli.cluster_id = di.cluster_id
+     ) cluster_count ON di.cluster_id IS NOT NULL
+     LEFT JOIN LATERAL (
+       SELECT COALESCE(
+         json_agg(
+           json_build_object('title', ci_member.title, 'source_type', ci_member.source_type)
+           ORDER BY cli.similarity DESC NULLS LAST
+         ) FILTER (WHERE ci_member.id IS NOT NULL),
+         '[]'::json
+       ) as items_json
+       FROM cluster_items cli
+       JOIN content_items ci_member ON ci_member.id = cli.content_item_id
+       WHERE cli.cluster_id = di.cluster_id
+         AND ci_member.deleted_at IS NULL
+     ) cluster_members ON di.cluster_id IS NOT NULL
      WHERE di.digest_id = $1
      ORDER BY di.aha_score DESC`,
     [params.digestId],
