@@ -1932,12 +1932,13 @@ export async function postDeepDiveDecision(
 
 /** Get deep dive queue (liked items without decision) */
 export async function getDeepDiveQueue(
-  params?: { limit?: number; offset?: number },
+  params?: { limit?: number; offset?: number; sort?: "best" | "latest" | "oldest" },
   signal?: AbortSignal,
 ): Promise<DeepDiveQueueResponse> {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set("limit", String(params.limit));
   if (params?.offset) searchParams.set("offset", String(params.offset));
+  if (params?.sort) searchParams.set("sort", params.sort);
   const query = searchParams.toString();
   return apiFetch<DeepDiveQueueResponse>(`/deep-dive/queue${query ? `?${query}` : ""}`, { signal });
 }

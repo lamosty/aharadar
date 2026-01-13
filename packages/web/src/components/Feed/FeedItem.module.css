@@ -895,7 +895,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   min-height: 44px;
-  overflow: hidden;
+  /* Note: Don't use overflow: hidden here - it clips tooltips on score/meta elements */
 }
 
 /* Topic badge for "all topics" mode */
@@ -952,6 +952,21 @@
   text-align: right;
   font-weight: var(--font-weight-semibold);
   color: var(--color-primary);
+}
+
+.summaryReadyBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 0.6rem;
+  font-weight: var(--font-weight-bold);
+  color: white;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .scanTime {

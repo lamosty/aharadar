@@ -342,7 +342,7 @@ export function FeedItem({
   onSummaryDecision,
   onNext,
 }: FeedItemProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, _setExpanded] = useState(false);
   const { addToast } = useToast();
 
   // Research panel state (for Top Picks view)
@@ -412,6 +412,8 @@ export function FeedItem({
         summaryJson: summary,
       });
       addToast("Saved to Deep Dives", "success");
+      // Move to next item (fast triage behavior)
+      onNext?.();
     } catch {
       addToast("Failed to save", "error");
     }
@@ -424,6 +426,8 @@ export function FeedItem({
         decision: "drop",
       });
       addToast("Dropped", "info");
+      // Move to next item (fast triage behavior)
+      onNext?.();
     } catch {
       addToast("Failed to drop", "error");
     }
@@ -482,6 +486,13 @@ export function FeedItem({
           {/* Topic badge if showing all topics */}
           {showTopicBadge && item.topicName && (
             <span className={styles.scanTopicBadge}>{item.topicName}</span>
+          )}
+
+          {/* AI summary ready indicator - before title */}
+          {item.previewSummaryJson && (
+            <Tooltip content={t("feed.summaryReady")}>
+              <span className={styles.summaryReadyBadge}>AI</span>
+            </Tooltip>
           )}
 
           {/* Title */}

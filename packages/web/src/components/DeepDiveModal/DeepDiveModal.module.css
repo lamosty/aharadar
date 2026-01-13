@@ -341,6 +341,28 @@
   cursor: not-allowed;
 }
 
+.readNextButton {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.readNextButton:hover:not(:disabled) {
+  color: white;
+  background: var(--color-primary);
+}
+
+.readNextButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .overlay {

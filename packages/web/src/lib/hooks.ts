@@ -1475,7 +1475,11 @@ export function usePageLayout(page: LayoutPage): UsePageLayoutResult {
 // Deep Dive Hooks
 // ============================================================================
 
-export function useDeepDiveQueue(params?: { limit?: number; offset?: number }) {
+export function useDeepDiveQueue(params?: {
+  limit?: number;
+  offset?: number;
+  sort?: "best" | "latest" | "oldest";
+}) {
   return useQuery({
     queryKey: ["deep-dive", "queue", params],
     queryFn: ({ signal }) => getDeepDiveQueue(params, signal),

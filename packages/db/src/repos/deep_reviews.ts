@@ -77,8 +77,17 @@ export function createDeepReviewsRepo(db: Queryable) {
       userId: string;
       limit?: number;
       offset?: number;
+      sort?: "best" | "latest" | "oldest";
     }): Promise<DeepReviewQueueItem[]> {
-      const { userId, limit = 50, offset = 0 } = params;
+      const { userId, limit = 50, offset = 0, sort = "best" } = params;
+
+      // Determine ORDER BY clause based on sort option
+      const orderByClause =
+        sort === "latest"
+          ? "ci.published_at desc nulls last"
+          : sort === "oldest"
+            ? "ci.published_at asc nulls last"
+            : "coalesce(ldi.score, 0) desc, lf.liked_at desc"; // "best" - by score
 
       const res = await db.query<{
         id: string;
@@ -133,7 +142,7 @@ export function createDeepReviewsRepo(db: Queryable) {
          left join latest_digest_item ldi on ldi.content_item_id = ci.id
          where lf.action = 'like'
            and (dr.id is null or dr.status = 'preview')
-         order by lf.liked_at desc
+         order by ${orderByClause}
          limit $2
          offset $3`,
         [userId, Math.max(1, Math.min(100, limit)), Math.max(0, offset)],

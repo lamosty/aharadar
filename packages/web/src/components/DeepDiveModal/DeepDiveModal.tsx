@@ -15,6 +15,10 @@ interface DeepDiveModalProps {
   existingSummary?: ManualSummaryOutput | null;
   onClose: () => void;
   onDecision: () => void;
+  /** Called when user wants to read next item with existing summary */
+  onReadNext?: () => void;
+  /** Whether there's a next item with summary available */
+  hasNextWithSummary?: boolean;
 }
 
 // Helper functions from deep-dive page
@@ -77,6 +81,8 @@ export function DeepDiveModal({
   existingSummary,
   onClose,
   onDecision,
+  onReadNext,
+  hasNextWithSummary,
 }: DeepDiveModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
@@ -107,7 +113,7 @@ export function DeepDiveModal({
       setSummary(null);
       setError(null);
     }
-  }, [item?.id, isOpen]);
+  }, [item, isOpen]);
 
   // Handle click outside
   useEffect(() => {
@@ -362,6 +368,16 @@ export function DeepDiveModal({
               >
                 {decisionMutation.isPending ? "Saving..." : "Save"}
               </button>
+              {hasNextWithSummary && onReadNext && (
+                <button
+                  type="button"
+                  className={styles.readNextButton}
+                  onClick={onReadNext}
+                  disabled={isPending}
+                >
+                  {t("deepDive.readNext")}
+                </button>
+              )}
             </>
           )}
         </div>

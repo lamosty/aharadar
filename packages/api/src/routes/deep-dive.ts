@@ -67,6 +67,7 @@ interface DecisionRequestBody {
 interface PaginationQuery {
   limit?: string;
   offset?: string;
+  sort?: string;
 }
 
 export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
@@ -352,9 +353,11 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
 
     const limitParam = request.query.limit;
     const offsetParam = request.query.offset;
+    const sortParam = request.query.sort;
 
     const limit = limitParam ? Number.parseInt(limitParam, 10) : 50;
     const offset = offsetParam ? Number.parseInt(offsetParam, 10) : 0;
+    const sort = sortParam === "latest" || sortParam === "oldest" ? sortParam : "best";
 
     if (Number.isNaN(limit) || limit < 1 || limit > 100) {
       return reply.code(400).send({
@@ -383,6 +386,7 @@ export async function deepDiveRoutes(fastify: FastifyInstance): Promise<void> {
         userId: ctx.userId,
         limit,
         offset,
+        sort,
       });
 
       return {

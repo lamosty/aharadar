@@ -265,6 +265,7 @@ function FeedPageContent() {
   } = useDeepDiveQueue({
     limit: pageSize,
     offset: (currentPage - 1) * pageSize,
+    sort: sort === "best" || sort === "latest" ? sort : "best",
   });
 
   // Merge data sources based on view
@@ -338,7 +339,33 @@ function FeedPageContent() {
     [],
   );
 
+  // Find items with existing summaries for "Read Next" navigation in modal
+  const itemsWithSummary = (data?.items ?? []).filter((item) => item.previewSummaryJson != null);
+
+  // Get the next item with summary (after current modal item)
+  const getNextItemWithSummary = useCallback(() => {
+    if (!deepDiveItem) return null;
+    const currentIndex = itemsWithSummary.findIndex((i) => i.id === deepDiveItem.id);
+    if (currentIndex >= 0 && currentIndex < itemsWithSummary.length - 1) {
+      return itemsWithSummary[currentIndex + 1];
+    }
+    return null;
+  }, [deepDiveItem, itemsWithSummary]);
+
+  const nextItemWithSummary = getNextItemWithSummary();
+
+  // Handle "Read Next" in modal - navigate to next item with summary
+  const handleReadNextInModal = useCallback(() => {
+    if (nextItemWithSummary?.previewSummaryJson) {
+      setDeepDiveItem(nextItemWithSummary);
+      setDeepDiveSummary(nextItemWithSummary.previewSummaryJson);
+      // Also update the force-expanded ID so when user closes modal, the right item is highlighted
+      setForceExpandedId(nextItemWithSummary.id);
+    }
+  }, [nextItemWithSummary]);
+
   // Handle deep dive decision (refetch top picks queue)
+  // Note: Don't clear forceExpandedId here - onNext/handleDrop will set the next item
   const handleDeepDiveDecision = useCallback(() => {
     topPicksRefetch();
   }, [topPicksRefetch]);
@@ -408,6 +435,21 @@ function FeedPageContent() {
   const totalCount = data?.pagination.total ?? 0;
   const isCondensed = layout === "condensed";
 
+  // Clear selection when clicking outside feed items
+  const handleContainerClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Check if click was inside a feed item
+      const target = e.target as HTMLElement;
+      const feedItem = target.closest("[data-feed-item]");
+
+      // If click was outside any feed item, clear selection
+      if (!feedItem && forceExpandedId) {
+        setForceExpandedId(null);
+      }
+    },
+    [forceExpandedId],
+  );
+
   // Show onboarding when no topics exist
   if (!topicsLoading && !hasTopics) {
     return (
@@ -466,7 +508,7 @@ function FeedPageContent() {
   }
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} onClick={handleContainerClick}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
@@ -650,6 +692,8 @@ function FeedPageContent() {
           setDeepDiveSummary(null);
         }}
         onDecision={handleDeepDiveDecision}
+        onReadNext={handleReadNextInModal}
+        hasNextWithSummary={nextItemWithSummary != null}
       />
     </div>
   );
