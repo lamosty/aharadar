@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use } from "react";
 import { useToast } from "@/components/Toast";
-import type { AbtestItem, AbtestResult, AbtestRunStatus, AbtestVariant } from "@/lib/api";
+import type { AbtestItem, AbtestResult, AbtestRunStatus } from "@/lib/api";
 import { useAdminAbtest } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";

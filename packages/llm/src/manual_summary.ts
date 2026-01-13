@@ -1,6 +1,5 @@
 import type { BudgetTier } from "@aharadar/shared";
 
-import type { DeepSummaryOutput } from "./deep_summary";
 import type { LlmRouter, ModelRef } from "./types";
 
 const PROMPT_ID = "manual_summary_v1";

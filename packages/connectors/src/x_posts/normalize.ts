@@ -17,7 +17,7 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function asIsoDate(value: unknown): string | null {
+function _asIsoDate(value: unknown): string | null {
   const s = asString(value);
   if (!s) return null;
   // Day buckets (YYYY-MM-DD)

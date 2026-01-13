@@ -1,7 +1,5 @@
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
 
-import type { YoutubeRawEntry } from "./fetch";
-
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -32,10 +30,10 @@ function truncateAtWord(text: string, maxChars: number): string {
   const lastSpace = truncated.lastIndexOf(" ");
 
   if (lastSpace > maxChars * 0.7) {
-    return truncated.slice(0, lastSpace) + "...";
+    return `${truncated.slice(0, lastSpace)}...`;
   }
 
-  return truncated + "...";
+  return `${truncated}...`;
 }
 
 export async function normalizeYoutube(

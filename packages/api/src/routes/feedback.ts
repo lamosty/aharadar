@@ -318,7 +318,7 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       const daysParam = request.query.days;
       const days = daysParam ? parseInt(daysParam, 10) : 30;
 
-      if (isNaN(days) || days < 1 || days > 365) {
+      if (Number.isNaN(days) || days < 1 || days > 365) {
         return reply.code(400).send({
           ok: false,
           error: {

@@ -77,13 +77,13 @@ function parseDuration(value: unknown): string | null {
 
   // If it's already a number (seconds)
   const asNum = parseInt(str, 10);
-  if (!isNaN(asNum) && String(asNum) === str) {
+  if (!Number.isNaN(asNum) && String(asNum) === str) {
     return String(asNum);
   }
 
   // Try parsing HH:MM:SS or MM:SS
   const parts = str.split(":").map((p) => parseInt(p, 10));
-  if (parts.some(isNaN)) return null;
+  if (parts.some(Number.isNaN)) return null;
 
   if (parts.length === 3) {
     // HH:MM:SS

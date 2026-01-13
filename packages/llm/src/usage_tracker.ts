@@ -6,12 +6,7 @@
  * Falls back to in-memory tracking when Redis is not initialized.
  */
 
-import {
-  getHourResetTime,
-  getRedisUsage,
-  isRedisQuotaEnabled,
-  recordRedisUsage,
-} from "./redis_quota";
+import { getRedisUsage, isRedisQuotaEnabled, recordRedisUsage } from "./redis_quota";
 
 export interface ClaudeUsageLimits {
   callsPerHour: number;

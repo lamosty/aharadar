@@ -101,7 +101,7 @@ interface FeatureSectionProps {
   children: React.ReactNode;
 }
 
-function FeatureSection({ title, tooltipKey, children }: FeatureSectionProps) {
+function _FeatureSection({ title, tooltipKey, children }: FeatureSectionProps) {
   return (
     <div className={styles.featureSection}>
       <dt className={styles.featureTitle}>

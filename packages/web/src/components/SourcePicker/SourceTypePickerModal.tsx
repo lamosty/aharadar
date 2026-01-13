@@ -94,7 +94,7 @@ export function SourceTypePickerModal({
   // Reset focus when sources change
   useEffect(() => {
     setFocusedIndex(0);
-  }, [filteredSources.length]);
+  }, []);
 
   // Focus search input when modal opens
   useEffect(() => {
@@ -137,6 +137,14 @@ export function SourceTypePickerModal({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
+  const handleSelect = useCallback(
+    (entry: SourceCatalogEntry) => {
+      onSelect(entry.sourceType);
+      onClose();
+    },
+    [onSelect, onClose],
+  );
+
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -159,13 +167,8 @@ export function SourceTypePickerModal({
           break;
       }
     },
-    [flatSources, focusedIndex],
+    [flatSources, focusedIndex, handleSelect],
   );
-
-  const handleSelect = (entry: SourceCatalogEntry) => {
-    onSelect(entry.sourceType);
-    onClose();
-  };
 
   const handleSelectRecipe = (recipe: SourceRecipe) => {
     if (onSelectWithConfig) {

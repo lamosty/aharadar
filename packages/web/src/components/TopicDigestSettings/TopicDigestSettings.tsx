@@ -194,7 +194,7 @@ function estimateMonthlyRuns(intervalMinutes: number): number {
 /**
  * Estimate monthly cost based on runs per month.
  */
-function estimateMonthlyCost(
+function _estimateMonthlyCost(
   triageCalls: number,
   summaryCalls: number,
   intervalMinutes: number,
@@ -235,7 +235,7 @@ export function TopicDigestSettings({
   const [selectedPreset, setSelectedPreset] = useState<CadencePreset>(derivedPreset);
 
   // Custom interval state (value + unit for user-friendly editing)
-  const initialCustom = useMemo(() => minutesToValueAndUnit(intervalMinutes), []);
+  const initialCustom = useMemo(() => minutesToValueAndUnit(intervalMinutes), [intervalMinutes]);
   const [customValue, setCustomValue] = useState(initialCustom.value);
   const [customUnit, setCustomUnit] = useState<IntervalUnit>(initialCustom.unit);
 

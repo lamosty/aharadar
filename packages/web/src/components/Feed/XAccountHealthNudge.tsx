@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
-import type { XAccountPolicyView } from "@/lib/api";
 import { useAdminSourcePatch, useXAccountPolicies } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./XAccountHealthNudge.module.css";

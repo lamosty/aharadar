@@ -221,7 +221,7 @@
 
 .emptyHint {
   font-size: var(--font-size-sm);
-  margin-top: var(--space-2) !important;
+  margin-top: var(--space-2);
 }
 
 /* Category groups */
