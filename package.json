@@ -27,6 +27,7 @@
     "format:check": "biome check",
     "lint:biome": "biome lint .",
     "migrate": "./scripts/migrate.sh",
+    "migrate:status": "./scripts/migrate-status.sh",
     "reset": "./scripts/reset.sh",
     "logs": "./scripts/logs.sh",
     "monitoring:start": "./scripts/monitoring-start.sh",
