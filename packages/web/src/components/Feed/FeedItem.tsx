@@ -393,9 +393,9 @@ export function FeedItem({
         sourceType: item.item.sourceType,
       },
     });
-    // Auto-advance to next item immediately (summary generates in background)
+    // Auto-advance to next item after brief delay (summary generates in background)
     if (onNext) {
-      setTimeout(() => onNext(), 300);
+      setTimeout(() => onNext(), 500);
     }
   };
 
