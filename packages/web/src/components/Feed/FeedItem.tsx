@@ -376,23 +376,6 @@ export function FeedItem({
     }
   };
 
-  // Generate summary from pasted text
-  const handleGenerateSummary = async () => {
-    if (!pastedText.trim()) return;
-    setSummaryError(null);
-
-    summaryMutation.mutate({
-      contentItemId: item.id,
-      pastedText: pastedText.trim(),
-      metadata: {
-        title: item.item.title ?? null,
-        author: item.item.author ?? null,
-        url: item.item.url ?? null,
-        sourceType: item.item.sourceType,
-      },
-    });
-  };
-
   // Auto-generate on paste event (works with both input and textarea)
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text");
@@ -559,7 +542,7 @@ export function FeedItem({
             )}
           </div>
 
-          {/* Actions - feedback buttons and inline paste */}
+          {/* Actions row - feedback buttons + paste input OR view button */}
           <div className={styles.detailActions}>
             <FeedbackButtons
               contentItemId={item.id}
@@ -574,40 +557,8 @@ export function FeedItem({
                 Next
               </button>
             )}
-          </div>
-
-          {/* Inline paste input for summary generation */}
-          {!summary && (
-            <div className={styles.detailPasteInput}>
-              <textarea
-                className={styles.detailPasteTextarea}
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                onPaste={handlePaste}
-                placeholder={t("feed.pasteToSummarize")}
-                rows={1}
-                disabled={summaryMutation.isPending}
-              />
-              {pastedText.trim() && !summaryMutation.isPending && (
-                <button
-                  type="button"
-                  className={styles.generateBtnCompact}
-                  onClick={handleGenerateSummary}
-                >
-                  {t("feed.generate")}
-                </button>
-              )}
-              {summaryMutation.isPending && (
-                <span className={styles.generatingIndicator}>{t("feed.generating")}</span>
-              )}
-            </div>
-          )}
-          {summaryError && <p className={styles.detailError}>{summaryError}</p>}
-
-          {/* Summary preview if available */}
-          {summary && (
-            <div className={styles.detailSummaryPreview}>
-              <p className={styles.detailSummaryOneLiner}>{summary.one_liner}</p>
+            {/* Inline: paste input if no summary, or View button if summary exists */}
+            {summary ? (
               <button
                 type="button"
                 className={styles.viewDetailsBtnCompact}
@@ -615,8 +566,27 @@ export function FeedItem({
               >
                 {t("feed.viewSummary")}
               </button>
-            </div>
-          )}
+            ) : (
+              <>
+                <input
+                  type="text"
+                  className={styles.detailPasteInputInline}
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  onPaste={handlePaste}
+                  placeholder={t("feed.pasteToSummarize")}
+                  disabled={summaryMutation.isPending}
+                />
+                {summaryMutation.isPending && (
+                  <span className={styles.generatingIndicatorSmall}>...</span>
+                )}
+              </>
+            )}
+          </div>
+          {summaryError && <p className={styles.detailError}>{summaryError}</p>}
+
+          {/* Summary one-liner preview (shown below actions when summary exists) */}
+          {summary && <p className={styles.detailSummaryOneLiner}>{summary.one_liner}</p>}
 
           {/* WhyShown */}
           <div className={styles.detailWhyShown}>
