@@ -212,43 +212,31 @@ export function ItemSummaryModal({
 
         {/* Footer with feedback actions */}
         <div className={styles.footer}>
-          {onFeedback && (
-            <div className={styles.feedbackActions}>
-              <button
-                type="button"
-                className={`${styles.feedbackBtn} ${styles.likeBtn} ${currentFeedback === "like" ? styles.active : ""}`}
-                onClick={() => onFeedback("like")}
-              >
-                <ThumbsUpIcon />
-                {t("itemSummary.like")}
-              </button>
-              <button
-                type="button"
-                className={`${styles.feedbackBtn} ${styles.dislikeBtn} ${currentFeedback === "dislike" ? styles.active : ""}`}
-                onClick={() => onFeedback("dislike")}
-              >
-                <ThumbsDownIcon />
-                {t("itemSummary.dislike")}
-              </button>
-              <button
-                type="button"
-                className={`${styles.feedbackBtn} ${styles.skipBtn}`}
-                onClick={() => onFeedback("skip")}
-              >
-                <SkipIcon />
-                {t("itemSummary.skip")}
-              </button>
-            </div>
-          )}
-          <div className={styles.footerRight}>
-            <button type="button" className={styles.closeBtn} onClick={onClose}>
-              {t("itemSummary.close")}
+          <div className={styles.feedbackActions}>
+            <button
+              type="button"
+              className={`${styles.feedbackBtn} ${styles.likeBtn} ${currentFeedback === "like" ? styles.active : ""}`}
+              onClick={() => onFeedback?.("like")}
+            >
+              <ThumbsUpIcon />
+              {t("itemSummary.like")}
             </button>
-            {hasNextWithSummary && onReadNext && (
-              <button type="button" className={styles.readNextButton} onClick={onReadNext}>
-                {t("itemSummary.readNext")}
-              </button>
-            )}
+            <button
+              type="button"
+              className={`${styles.feedbackBtn} ${styles.dislikeBtn} ${currentFeedback === "dislike" ? styles.active : ""}`}
+              onClick={() => onFeedback?.("dislike")}
+            >
+              <ThumbsDownIcon />
+              {t("itemSummary.dislike")}
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedbackBtn} ${styles.skipBtn}`}
+              onClick={() => onFeedback?.("skip")}
+            >
+              <SkipIcon />
+              {t("itemSummary.skip")}
+            </button>
           </div>
         </div>
       </div>
