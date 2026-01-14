@@ -42,7 +42,7 @@ export function InboxSummaryModal({ isOpen, topicId, onClose }: InboxSummaryModa
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
-        setSubmitError(t("deepDive.insufficientCredits"));
+        setSubmitError(t("itemSummary.insufficientCredits"));
         return;
       }
       setSubmitError(err.message);

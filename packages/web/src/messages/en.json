@@ -51,9 +51,6 @@
     "enableInSettings": "Enable the Q&A experimental feature in Settings to start asking questions about your knowledge base.",
     "goToSettings": "Go to Settings"
   },
-  "deepDive": {
-    "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
-  },
   "itemSummary": {
     "openOriginal": "Open original",
     "oneLiner": "One-liner",
@@ -62,7 +59,8 @@
     "risksOrCaveats": "Risks & Caveats",
     "suggestedFollowups": "Suggested Follow-ups",
     "close": "Close",
-    "readNext": "Read Next"
+    "readNext": "Read Next",
+    "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
   },
   "summaries": {
     "title": "Summary",

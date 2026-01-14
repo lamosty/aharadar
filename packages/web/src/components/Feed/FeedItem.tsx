@@ -354,7 +354,7 @@ export function FeedItem({
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
-        setSummaryError(t("deepDive.insufficientCredits"));
+        setSummaryError(t("itemSummary.insufficientCredits"));
       } else {
         setSummaryError(err.message);
       }
