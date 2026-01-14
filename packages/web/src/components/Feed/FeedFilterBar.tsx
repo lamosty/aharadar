@@ -1,8 +1,9 @@
 "use client";
 
-import { SUPPORTED_SOURCE_TYPES, type SupportedSourceType } from "@/lib/api";
+import { Tooltip } from "@/components/Tooltip";
 import type { Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
+import { SourceFilterCombobox } from "./SourceFilterCombobox";
 
 export type SortOption = "best" | "latest" | "trending" | "ai_score";
 
@@ -15,34 +16,34 @@ interface FeedFilterBarProps {
   layout?: Layout;
 }
 
-const SOURCE_LABELS: Record<SupportedSourceType, string> = {
-  hn: "HN",
-  reddit: "Reddit",
-  rss: "RSS",
-  youtube: "YouTube",
-  x_posts: "X",
-  sec_edgar: "SEC",
-  congress_trading: "Congress",
-  polymarket: "Polymarket",
-  options_flow: "Options",
-  market_sentiment: "Sentiment",
-  // RSS-based types
-  podcast: "Podcast",
-  substack: "Substack",
-  medium: "Medium",
-  arxiv: "arXiv",
-  lobsters: "Lobsters",
-  producthunt: "PH",
-  github_releases: "GitHub",
-  telegram: "Telegram",
-};
-
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "best", label: "Best" },
   { value: "latest", label: "Latest" },
   { value: "trending", label: "Trending" },
   { value: "ai_score", label: "AI Score" },
 ];
+
+function SortHelpContent() {
+  return (
+    <div className={styles.sortHelpContent}>
+      <div className={styles.sortHelpTitle}>Sort options</div>
+      <ul className={styles.sortHelpList}>
+        <li className={styles.sortHelpItem}>
+          <strong>Best:</strong> Personalized ranking based on your feedback
+        </li>
+        <li className={styles.sortHelpItem}>
+          <strong>Latest:</strong> Most recent items first
+        </li>
+        <li className={styles.sortHelpItem}>
+          <strong>Trending:</strong> Popular items with recency boost
+        </li>
+        <li className={styles.sortHelpItem}>
+          <strong>AI Score:</strong> Raw AI-assigned relevance score
+        </li>
+      </ul>
+    </div>
+  );
+}
 
 export function FeedFilterBar({
   selectedSources,
@@ -51,40 +52,16 @@ export function FeedFilterBar({
   onSortChange,
   layout = "reader",
 }: FeedFilterBarProps) {
-  const toggleSource = (source: string) => {
-    if (selectedSources.includes(source)) {
-      onSourcesChange(selectedSources.filter((s) => s !== source));
-    } else {
-      onSourcesChange([...selectedSources, source]);
-    }
-  };
-
-  const allSelected = selectedSources.length === 0;
   const isCondensed = layout === "condensed";
 
   return (
     <div className={`${styles.filterBar} ${isCondensed ? styles.filterBarCondensed : ""}`}>
-      <div className={styles.sourceFilters}>
-        <button
-          className={`${styles.sourceButton} ${allSelected ? styles.sourceButtonActive : ""}`}
-          onClick={() => onSourcesChange([])}
-          aria-pressed={allSelected}
-        >
-          All
-        </button>
-        {SUPPORTED_SOURCE_TYPES.map((source) => {
-          const isActive = selectedSources.includes(source);
-          return (
-            <button
-              key={source}
-              className={`${styles.sourceButton} ${isActive ? styles.sourceButtonActive : ""}`}
-              onClick={() => toggleSource(source)}
-              aria-pressed={isActive}
-            >
-              {SOURCE_LABELS[source]}
-            </button>
-          );
-        })}
+      <div className={styles.leftControls}>
+        <SourceFilterCombobox
+          selectedSources={selectedSources}
+          onSourcesChange={onSourcesChange}
+          layout={layout}
+        />
       </div>
 
       <div className={styles.rightControls}>
@@ -100,6 +77,11 @@ export function FeedFilterBar({
             </option>
           ))}
         </select>
+        <Tooltip content={<SortHelpContent />} position="bottom">
+          <button type="button" className={styles.helpButton} aria-label="Sort options help">
+            ?
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
