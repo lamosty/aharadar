@@ -350,10 +350,6 @@ export function FeedItem({
       setPastedText("");
       addToast(t("feed.summaryGenerated"), "success");
       onSummaryGenerated?.();
-      // Auto-advance to next item after brief delay
-      if (onNext) {
-        setTimeout(() => onNext(), 300);
-      }
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
@@ -397,6 +393,10 @@ export function FeedItem({
         sourceType: item.item.sourceType,
       },
     });
+    // Auto-advance to next item immediately (summary generates in background)
+    if (onNext) {
+      setTimeout(() => onNext(), 300);
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
