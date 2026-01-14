@@ -118,7 +118,7 @@ create table if not exists digest_items (
   cluster_id uuid references clusters(id) on delete set null,
   content_item_id uuid references content_items(id) on delete set null,
   rank int not null,
-  score real not null,
+  aha_score real not null,
   triage_json jsonb,
   summary_json jsonb,
   entities_json jsonb,
@@ -129,7 +129,7 @@ create table if not exists digest_items (
     or (cluster_id is null and content_item_id is not null)
   )
 );
-create index if not exists digest_items_digest_score_idx on digest_items(digest_id, score desc);
+create index if not exists digest_items_digest_aha_score_idx on digest_items(digest_id, aha_score desc);
 
 create table if not exists feedback_events (
   id uuid primary key default gen_random_uuid(),

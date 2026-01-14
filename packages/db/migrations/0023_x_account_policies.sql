@@ -1,7 +1,7 @@
 -- x_account_policies: per-account throttling based on feedback
 -- Tracks feedback-derived scores and mode overrides for X accounts
 
-CREATE TABLE x_account_policies (
+CREATE TABLE IF NOT EXISTS x_account_policies (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id uuid NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
     handle text NOT NULL, -- lowercase, without @
@@ -15,14 +15,24 @@ CREATE TABLE x_account_policies (
 );
 
 -- Unique constraint on source + handle
-CREATE UNIQUE INDEX x_account_policies_source_handle_idx
+CREATE UNIQUE INDEX IF NOT EXISTS x_account_policies_source_handle_idx
     ON x_account_policies(source_id, handle);
 
 -- Index for listing policies by source
-CREATE INDEX x_account_policies_source_idx
+CREATE INDEX IF NOT EXISTS x_account_policies_source_idx
     ON x_account_policies(source_id);
 
--- Trigger to auto-update updated_at
+-- Create update_updated_at function if not exists
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to auto-update updated_at (drop and recreate for idempotency)
+DROP TRIGGER IF EXISTS x_account_policies_updated_at ON x_account_policies;
 CREATE TRIGGER x_account_policies_updated_at
     BEFORE UPDATE ON x_account_policies
     FOR EACH ROW
