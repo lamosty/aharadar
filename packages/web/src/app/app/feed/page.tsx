@@ -212,7 +212,6 @@ function FeedPageContent() {
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
-  const isHighlightsView = view === "highlights";
   const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
@@ -568,7 +567,7 @@ function FeedPageContent() {
                 fastTriageMode={fastTriageMode && forceExpandedId !== null}
                 onViewSummary={handleOpenReaderModal}
                 onSummaryGenerated={() => refetch()}
-                onNext={isHighlightsView ? () => handleNextItem(item.id) : undefined}
+                onNext={() => handleNextItem(item.id)}
                 sort={sort}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover

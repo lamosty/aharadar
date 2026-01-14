@@ -350,6 +350,10 @@ export function FeedItem({
       setPastedText("");
       addToast(t("feed.summaryGenerated"), "success");
       onSummaryGenerated?.();
+      // Auto-advance to next item after brief delay
+      if (onNext) {
+        setTimeout(() => onNext(), 300);
+      }
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
