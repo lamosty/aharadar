@@ -61,7 +61,10 @@
     "suggestedFollowups": "Suggested Follow-ups",
     "close": "Close",
     "readNext": "Read Next",
-    "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
+    "insufficientCredits": "You've exhausted your credits for this period. Please try again later.",
+    "like": "Like",
+    "dislike": "Dislike",
+    "skip": "Skip"
   },
   "summaries": {
     "title": "Summary",

@@ -14,6 +14,10 @@ interface ItemSummaryModalProps {
   onReadNext?: () => void;
   /** Whether there's a next item with summary available */
   hasNextWithSummary?: boolean;
+  /** Called when user gives feedback on the item */
+  onFeedback?: (action: "like" | "dislike" | "skip") => Promise<void>;
+  /** Current feedback state for the item */
+  currentFeedback?: "like" | "dislike" | "skip" | null;
 }
 
 // Helper functions
@@ -77,6 +81,8 @@ export function ItemSummaryModal({
   onClose,
   onReadNext,
   hasNextWithSummary,
+  onFeedback,
+  currentFeedback,
 }: ItemSummaryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -204,16 +210,46 @@ export function ItemSummaryModal({
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer with feedback actions */}
         <div className={styles.footer}>
-          <button type="button" className={styles.closeBtn} onClick={onClose}>
-            {t("itemSummary.close")}
-          </button>
-          {hasNextWithSummary && onReadNext && (
-            <button type="button" className={styles.readNextButton} onClick={onReadNext}>
-              {t("itemSummary.readNext")}
-            </button>
+          {onFeedback && (
+            <div className={styles.feedbackActions}>
+              <button
+                type="button"
+                className={`${styles.feedbackBtn} ${styles.likeBtn} ${currentFeedback === "like" ? styles.active : ""}`}
+                onClick={() => onFeedback("like")}
+              >
+                <ThumbsUpIcon />
+                {t("itemSummary.like")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.feedbackBtn} ${styles.dislikeBtn} ${currentFeedback === "dislike" ? styles.active : ""}`}
+                onClick={() => onFeedback("dislike")}
+              >
+                <ThumbsDownIcon />
+                {t("itemSummary.dislike")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.feedbackBtn} ${styles.skipBtn}`}
+                onClick={() => onFeedback("skip")}
+              >
+                <SkipIcon />
+                {t("itemSummary.skip")}
+              </button>
+            </div>
           )}
+          <div className={styles.footerRight}>
+            <button type="button" className={styles.closeBtn} onClick={onClose}>
+              {t("itemSummary.close")}
+            </button>
+            {hasNextWithSummary && onReadNext && (
+              <button type="button" className={styles.readNextButton} onClick={onReadNext}>
+                {t("itemSummary.readNext")}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -253,6 +289,58 @@ function ExternalLinkIcon() {
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function ThumbsUpIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+    </svg>
+  );
+}
+
+function ThumbsDownIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+    </svg>
+  );
+}
+
+function SkipIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="5 4 15 12 5 20 5 4" />
+      <line x1="19" y1="5" x2="19" y2="19" />
     </svg>
   );
 }

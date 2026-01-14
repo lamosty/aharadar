@@ -623,6 +623,15 @@ function FeedPageContent() {
         }}
         onReadNext={handleReadNextInModal}
         hasNextWithSummary={nextItemWithSummary != null}
+        currentFeedback={summaryModalItem?.feedback}
+        onFeedback={async (action) => {
+          if (!summaryModalItem) return;
+          await handleFeedback(summaryModalItem.id, action);
+          // Close modal and move to next after feedback
+          setIsSummaryModalOpen(false);
+          setSummaryModalItem(null);
+          setSummaryModalSummary(null);
+        }}
       />
 
       {/* Inbox Summary Modal */}
