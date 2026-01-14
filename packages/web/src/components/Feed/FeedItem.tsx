@@ -585,9 +585,6 @@ export function FeedItem({
           </div>
           {summaryError && <p className={styles.detailError}>{summaryError}</p>}
 
-          {/* Summary one-liner preview (shown below actions when summary exists) */}
-          {summary && <p className={styles.detailSummaryOneLiner}>{summary.one_liner}</p>}
-
           {/* WhyShown */}
           <div className={styles.detailWhyShown}>
             <WhyShown
