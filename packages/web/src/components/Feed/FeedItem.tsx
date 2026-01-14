@@ -10,6 +10,7 @@ import { useDeepDiveDecision, useDeepDivePreview } from "@/lib/hooks";
 import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
+import type { SortOption } from "./FeedFilterBar";
 import styles from "./FeedItem.module.css";
 import { XAccountHealthNudge } from "./XAccountHealthNudge";
 
@@ -30,6 +31,8 @@ interface FeedItemProps {
   fastTriageMode?: boolean;
   /** Whether this is the Top Picks view (shows inline research UI) */
   isTopPicksView?: boolean;
+  /** Current sort mode (controls score label/tooltip) */
+  sort?: SortOption;
   /** Called when user wants to view full summary (reader modal) */
   onViewSummary?: (item: FeedItemType, summary: ManualSummaryOutput) => void;
   /** Called after a summary decision (save/drop) to refetch */
@@ -328,6 +331,7 @@ export function FeedItem({
   onHover,
   fastTriageMode = false,
   isTopPicksView = false,
+  sort = "best",
   onViewSummary,
   onSummaryDecision,
   onNext,
@@ -423,8 +427,12 @@ export function FeedItem({
     }
   };
 
-  // Prefer ahaScore (raw personalized score) over score (trending/decayed)
-  const displayScore = item.ahaScore ?? item.score ?? 0;
+  const isTrendingSort = sort === "trending";
+  const scoreTooltip = isTrendingSort ? t("tooltips.trendingScore") : t("tooltips.ahaScore");
+  // Prefer Aha Score (raw personalized score) unless sort=trending
+  const displayScore = isTrendingSort
+    ? (item.trendingScore ?? item.score ?? item.ahaScore ?? 0)
+    : (item.ahaScore ?? item.score ?? 0);
   const scorePercent = Math.round(displayScore * 100);
   const isRestricted = item.item.metadata?.is_restricted === true;
   const displayDate = getDisplayDate(item);
@@ -504,7 +512,7 @@ export function FeedItem({
           {/* Trailing metadata */}
           <span className={styles.scanMeta}>
             {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
-            <Tooltip content="Relevance score (0-100) based on your interests">
+            <Tooltip content={scoreTooltip}>
               <span className={styles.scanScore}>{scorePercent}</span>
             </Tooltip>
             <time className={styles.scanTime}>
@@ -725,7 +733,7 @@ export function FeedItem({
               </span>
             </Tooltip>
           )}
-          <Tooltip content={t("tooltips.ahaScore")}>
+          <Tooltip content={scoreTooltip}>
             <div className={styles.score}>
               <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
               <span className={styles.scoreText}>{scorePercent}</span>

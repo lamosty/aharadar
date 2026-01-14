@@ -890,7 +890,8 @@
     }
   },
   "tooltips": {
-    "ahaScore": "Your personalized relevance score. Combines AI analysis with freshness, novelty, and your preferences. Higher = more relevant to you right now.",
+    "ahaScore": "Aha Score (0-100). Combines AI analysis with freshness, novelty, and your preferences. Higher = more relevant to you right now.",
+    "trendingScore": "Trending Score (0-100). Aha Score adjusted by recency decay to surface fresh items.",
     "aiScore": "AI's assessment of how relevant this item is to your topic (0-100). This raw score is then adjusted by freshness, novelty, and your preferences.",
     "novelty": "How unique this content is compared to what you've seen recently. Higher = more novel information.",
     "freshness": "How recent this content is. Older items gradually fade to make room for new ones.",

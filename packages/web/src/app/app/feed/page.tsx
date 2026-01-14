@@ -581,6 +581,7 @@ function FeedPageContent() {
                 onViewSummary={handleOpenReaderModal}
                 onSummaryDecision={handleDeepDiveDecision}
                 onNext={isTopPicksView ? () => handleNextItem(item.id) : undefined}
+                sort={sort}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand
