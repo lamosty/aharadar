@@ -85,6 +85,14 @@ export function ItemSummaryModal({
   currentFeedback,
 }: ItemSummaryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Scroll body to top when item changes (navigating to next summary)
+  useEffect(() => {
+    if (item && bodyRef.current) {
+      bodyRef.current.scrollTop = 0;
+    }
+  }, [item?.id]);
 
   // Handle click outside
   useEffect(() => {
@@ -157,7 +165,7 @@ export function ItemSummaryModal({
         </div>
 
         {/* Body - Summary display */}
-        <div className={styles.body}>
+        <div className={styles.body} ref={bodyRef}>
           <div className={styles.summarySection}>
             <div className={styles.summaryBlock}>
               <h5>{t("itemSummary.oneLiner")}</h5>
