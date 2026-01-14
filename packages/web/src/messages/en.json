@@ -833,7 +833,7 @@
     "pasteToSummarize": "Paste content to generate AI summary...",
     "generate": "Generate",
     "generating": "Generating...",
-    "viewSummary": "View",
+    "viewSummary": "View AI Summary",
     "summaryGenerated": "Summary generated",
     "layout": {
       "condensed": "Condensed",
