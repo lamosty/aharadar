@@ -626,11 +626,19 @@ function FeedPageContent() {
         currentFeedback={summaryModalItem?.feedback}
         onFeedback={async (action) => {
           if (!summaryModalItem) return;
+          // Capture next item before feedback (as current item may be removed from list)
+          const nextItem = nextItemWithSummary;
           await handleFeedback(summaryModalItem.id, action);
-          // Close modal and move to next after feedback
-          setIsSummaryModalOpen(false);
-          setSummaryModalItem(null);
-          setSummaryModalSummary(null);
+          // Show next item with summary if available, otherwise close
+          if (nextItem?.manualSummaryJson) {
+            setSummaryModalItem(nextItem);
+            setSummaryModalSummary(nextItem.manualSummaryJson);
+            setForceExpandedId(nextItem.id);
+          } else {
+            setIsSummaryModalOpen(false);
+            setSummaryModalItem(null);
+            setSummaryModalSummary(null);
+          }
         }}
       />
 
