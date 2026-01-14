@@ -192,23 +192,24 @@ Uses the same output schema as deep_summary, allowing users to create rich summa
 
 ### Key differences from deep_summary
 
-- **Input**: User-pasted text (up to 60,000 characters) instead of pre-fetched bodyText
-- **Prompt note**: "If the content contains comments or discussion threads, surface the most insightful comments in the bullets section."
+- **Input**: User-pasted text (up to 100,000 characters) instead of pre-fetched bodyText
+- **Prompt note**: "If the content contains comments or discussion threads, add up to 10 concise discussion highlights in `discussion_highlights` (otherwise empty array)."
 - **Budget gating**: Uses computeCreditsStatus (402 if exhausted)
 - **Provider call purpose**: `manual_summary`
 
-### Output schema (manual_summary_v1)
+### Output schema (manual_summary_v2)
 
-Same structure as deep_summary_v1:
+Same structure as deep_summary_v1 with an added `discussion_highlights` field:
 
 ```json
 {
-  "schema_version": "manual_summary_v1",
-  "prompt_id": "manual_summary_v1",
+  "schema_version": "manual_summary_v2",
+  "prompt_id": "manual_summary_v2",
   "provider": "<provider-id>",
   "model": "<model-id>",
   "one_liner": "One sentence.",
   "bullets": ["Bullet 1", "Bullet 2"],
+  "discussion_highlights": ["Insight 1", "Insight 2"],
   "why_it_matters": ["Reason 1", "Reason 2"],
   "risks_or_caveats": ["Caveat 1"],
   "suggested_followups": ["If relevant: what to read/check next"]

@@ -124,6 +124,10 @@ export function ItemSummaryModal({
 
   if (!isOpen || !item || !summary) return null;
 
+  const discussionHighlights = Array.isArray(summary.discussion_highlights)
+    ? summary.discussion_highlights
+    : [];
+
   return (
     <div className={styles.overlay} aria-modal="true" role="dialog">
       <div className={styles.modal} ref={modalRef}>
@@ -178,6 +182,17 @@ export function ItemSummaryModal({
                 <ul className={styles.bulletList}>
                   {summary.bullets.map((bullet, i) => (
                     <li key={i}>{bullet}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {discussionHighlights.length > 0 && (
+              <div className={styles.summaryBlock}>
+                <h5>{t("itemSummary.discussionHighlights")}</h5>
+                <ul className={styles.discussionList}>
+                  {discussionHighlights.map((highlight, i) => (
+                    <li key={i}>{highlight}</li>
                   ))}
                 </ul>
               </div>

@@ -1848,7 +1848,7 @@ export async function getAdminAbtest(
 // Item Summaries API
 // ============================================================================
 
-/** Manual summary output (same schema as DeepSummaryOutput) */
+/** Manual summary output (manual_summary_v2) */
 export interface ManualSummaryOutput {
   schema_version: string;
   prompt_id: string;
@@ -1856,6 +1856,7 @@ export interface ManualSummaryOutput {
   model: string;
   one_liner: string;
   bullets: string[];
+  discussion_highlights?: string[];
   why_it_matters: string[];
   risks_or_caveats: string[];
   suggested_followups: string[];
