@@ -261,7 +261,7 @@ test.describe("Highlights View", () => {
     await page.waitForLoadState("networkidle");
 
     // Click on Highlights tab
-    const highlightsTab = page.locator("button", { hasText: "Highlights" });
+    const highlightsTab = page.locator("button", { hasText: "Top Picks" });
     await highlightsTab.click();
     await page.waitForLoadState("networkidle");
 
@@ -288,7 +288,7 @@ test.describe("Highlights View", () => {
     await page.waitForLoadState("networkidle");
 
     // Switch to Highlights tab
-    const highlightsTab = page.locator("button", { hasText: "Highlights" });
+    const highlightsTab = page.locator("button", { hasText: "Top Picks" });
     await highlightsTab.click();
     await page.waitForLoadState("networkidle");
 

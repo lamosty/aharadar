@@ -827,7 +827,7 @@
     "approximateDate": "Approximate date (day-level precision)",
     "view": {
       "inbox": "Inbox",
-      "highlights": "Highlights",
+      "highlights": "Top Picks",
       "all": "All"
     },
     "pasteToSummarize": "Paste content to generate AI summary...",
