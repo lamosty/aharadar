@@ -586,11 +586,6 @@ export function FeedItem({
               onClear={handleClear}
               variant="compact"
             />
-            {onNext && (
-              <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
-                Next
-              </button>
-            )}
             {/* Inline: paste input if no summary, or View button if summary exists */}
             {summary ? (
               <button
