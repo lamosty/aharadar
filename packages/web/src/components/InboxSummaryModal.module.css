@@ -1,22 +1,22 @@
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .modal {
-  background: var(--color-bg-primary);
+  background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
@@ -29,15 +29,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
@@ -53,16 +53,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
 }
 
 .closeButton:hover {
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .content {
-  padding: 24px;
+  padding: var(--space-5);
   flex: 1;
   overflow-y: auto;
 }
@@ -70,27 +71,27 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-5);
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .label {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
 .input {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   font-size: 14px;
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-surface);
   color: var(--color-text-primary);
   font-family: inherit;
 }
@@ -106,17 +107,45 @@
 }
 
 .input:disabled {
-  background-color: var(--color-bg-tertiary);
+  background-color: var(--color-surface-hover, var(--color-surface));
   color: var(--color-text-secondary);
   cursor: not-allowed;
 }
 
 .actions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   justify-content: flex-end;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.submitError {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.errorTitle {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 640px) {
@@ -125,11 +154,11 @@
   }
 
   .header {
-    padding: 16px;
+    padding: var(--space-4);
   }
 
   .content {
-    padding: 16px;
+    padding: var(--space-4);
   }
 
   .actions {

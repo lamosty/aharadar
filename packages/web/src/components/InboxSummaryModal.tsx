@@ -1,8 +1,10 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { AggregateSummaryPanel } from "@/components/AggregateSummaryPanel";
-import type { AggregateSummary, CreateInboxSummaryRequest } from "@/lib/api";
+import type { CreateInboxSummaryRequest } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { useAggregateSummary, useCreateInboxSummary } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./InboxSummaryModal.module.css";
@@ -13,38 +15,73 @@ interface InboxSummaryModalProps {
   onClose: () => void;
 }
 
+function toIsoStartOfDay(dateString: string): string {
+  // `dateString` is expected to be YYYY-MM-DD from <input type="date" />
+  const d = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateString;
+  return d.toISOString();
+}
+
+function toIsoEndOfDay(dateString: string): string {
+  // Inclusive end-of-day in the user's local time.
+  const d = new Date(`${dateString}T23:59:59.999`);
+  if (Number.isNaN(d.getTime())) return dateString;
+  return d.toISOString();
+}
+
 export function InboxSummaryModal({ isOpen, topicId, onClose }: InboxSummaryModalProps) {
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [summaryId, setSummaryId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const createSummaryMutation = useCreateInboxSummary({
     onSuccess: (data) => {
+      setSubmitError(null);
       setSummaryId(data.summary.id);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
+        setSubmitError(t("deepDive.insufficientCredits"));
+        return;
+      }
+      setSubmitError(err.message);
     },
   });
 
-  const { data: summaryData, isLoading: summaryLoading } = useAggregateSummary(summaryId);
+  const {
+    data: summaryData,
+    isLoading: summaryLoading,
+    isError: summaryIsError,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useAggregateSummary(summaryId);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     if (!since || !until) {
+      return;
+    }
+
+    if (new Date(since) > new Date(until)) {
       return;
     }
 
     const request: CreateInboxSummaryRequest = {
       ...(topicId && { topicId }),
-      since,
-      until,
+      since: toIsoStartOfDay(since),
+      until: toIsoEndOfDay(until),
     };
 
-    await createSummaryMutation.mutateAsync(request);
+    createSummaryMutation.mutate(request);
   };
 
   const handleClose = () => {
     setSince("");
     setUntil("");
     setSummaryId(null);
+    setSubmitError(null);
     onClose();
   };
 
@@ -72,7 +109,27 @@ export function InboxSummaryModal({ isOpen, topicId, onClose }: InboxSummaryModa
         </div>
 
         <div className={styles.content}>
-          {summaryData && !summaryLoading ? (
+          {summaryIsError ? (
+            <div className={styles.errorState}>
+              <h3 className={styles.errorTitle}>{t("summaries.error.title")}</h3>
+              <p className={styles.errorMessage}>
+                {summaryError?.message ?? t("summaries.error.message")}
+              </p>
+              <div className={styles.actions}>
+                <button type="button" className="btn btn-secondary" onClick={handleClose}>
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => refetchSummary()}
+                  disabled={!summaryId}
+                >
+                  {t("common.retry")}
+                </button>
+              </div>
+            </div>
+          ) : summaryData && !summaryLoading ? (
             <AggregateSummaryPanel summary={summaryData} />
           ) : summaryLoading ? (
             <AggregateSummaryPanel
@@ -130,6 +187,8 @@ export function InboxSummaryModal({ isOpen, topicId, onClose }: InboxSummaryModa
                 />
               </div>
 
+              {submitError && <p className={styles.submitError}>{submitError}</p>}
+
               <div className={styles.actions}>
                 <button
                   type="button"
@@ -146,7 +205,7 @@ export function InboxSummaryModal({ isOpen, topicId, onClose }: InboxSummaryModa
                     createSummaryMutation.isPending ||
                     !since ||
                     !until ||
-                    new Date(since) >= new Date(until)
+                    new Date(since) > new Date(until)
                   }
                 >
                   {createSummaryMutation.isPending

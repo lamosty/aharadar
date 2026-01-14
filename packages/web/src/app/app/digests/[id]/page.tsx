@@ -51,8 +51,8 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   const [summaryId, setSummaryId] = React.useState<string | null>(null);
   const { data: summaryData, isLoading: summaryLoading } = useAggregateSummary(summaryId);
 
-  const handleGenerateSummary = async () => {
-    await createSummaryMutation.mutateAsync(id);
+  const handleGenerateSummary = () => {
+    createSummaryMutation.mutate(id);
   };
 
   const handleFeedback = async (contentItemId: string, action: "like" | "dislike" | "skip") => {

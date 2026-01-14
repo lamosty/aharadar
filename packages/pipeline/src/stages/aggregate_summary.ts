@@ -276,7 +276,7 @@ async function buildAggregateInputFromInbox(params: {
        AND ci.published_at >= $2::timestamptz AND ci.published_at <= $3::timestamptz
      ORDER BY COALESCE(ldi.aha_score, 0) DESC, ci.published_at DESC
      LIMIT $${params.topicId ? "5" : "4"}`,
-    [...queryParams, params.maxItems],
+    [...queryParams, maxItems],
   );
 
   const items: AggregateSummaryItem[] = [];
