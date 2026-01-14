@@ -374,17 +374,25 @@ export function FeedItem({
   };
 
   // Auto-generate on paste event (works with both input and textarea)
+  const MAX_PASTE_LENGTH = 60000;
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text");
     if (text && text.trim().length > 50) {
-      // Auto-generate after paste if substantial content
-      setPastedText(text);
+      // Auto-trim if too long, with friendly warning
+      const trimmedText = text.trim();
+      let finalText = trimmedText;
+      if (trimmedText.length > MAX_PASTE_LENGTH) {
+        finalText = trimmedText.slice(0, MAX_PASTE_LENGTH);
+        addToast(t("feed.textTrimmedWarning"), "info");
+      }
+
+      setPastedText(finalText);
       setSummaryError(null);
       // Trigger generation after state update
       setTimeout(() => {
         summaryMutation.mutate({
           contentItemId: item.id,
-          pastedText: text.trim(),
+          pastedText: finalText,
           metadata: {
             title: item.item.title ?? null,
             author: item.item.author ?? null,
