@@ -157,28 +157,25 @@ interface SourceSecondaryInfo {
  * Get source-specific secondary info for the second line of source display
  */
 /**
- * Get the primary link URL for an item.
- * For Reddit/HN: link to comments (more useful than linking to random images/articles)
+ * Get the primary link URL for an item (title/body click target).
+ * For Reddit: link to comments (Reddit posts often link to images/external sites)
+ * For HN: link to original article (comments are accessed via comments button)
  * For others: link to original URL
  */
 function getPrimaryLinkUrl(
   sourceType: string,
   originalUrl: string | null | undefined,
   metadata: Record<string, unknown> | null | undefined,
-  externalId: string | null | undefined,
+  _externalId: string | null | undefined,
 ): string | null {
   // Reddit: prefer permalink (comments) over original URL
+  // Reddit posts often link to images or external sites, comments are more useful
   if (sourceType === "reddit" && metadata?.permalink) {
     const permalink = metadata.permalink as string;
     return permalink.startsWith("http") ? permalink : `https://www.reddit.com${permalink}`;
   }
 
-  // HN: prefer comments page over original URL
-  if (sourceType === "hn" && externalId) {
-    return `https://news.ycombinator.com/item?id=${externalId}`;
-  }
-
-  // All others: use original URL
+  // HN and all others: use original URL (comments accessed via comments button)
   return originalUrl || null;
 }
 
