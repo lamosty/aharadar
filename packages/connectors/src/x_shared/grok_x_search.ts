@@ -270,6 +270,13 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   const fromDate = toYYYYMMDD(params.fromDate ?? params.sinceTime);
   const toDate = toYYYYMMDD(params.toDate);
 
+  // NOTE: from_date/to_date tool params are broken (return stale cached data).
+  // Instead, we inject since: into the query string itself, which works with
+  // real-time search. We don't use until: because it's exclusive (posts BEFORE
+  // that date), and same-day since/until returns empty. Deduplication by
+  // external_id handles any overlap from fetching slightly beyond the window.
+  const queryWithDates = fromDate ? `${params.query} since:${fromDate}` : params.query;
+
   const tools = enableXSearchTool
     ? [
         {
@@ -277,8 +284,6 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
           ...(params.allowedXHandles && params.allowedXHandles.length > 0
             ? { allowed_x_handles: params.allowedXHandles }
             : {}),
-          ...(fromDate ? { from_date: fromDate } : {}),
-          ...(toDate ? { to_date: toDate } : {}),
         },
       ]
     : undefined;
@@ -319,7 +324,7 @@ Token safety (critical):
       {
         role: "user",
         content:
-          `Query: ${JSON.stringify(params.query)}\n` +
+          `Query: ${JSON.stringify(queryWithDates)}\n` +
           `Mode: Latest\n` +
           `Return up to ${params.limit} results.`,
       },
