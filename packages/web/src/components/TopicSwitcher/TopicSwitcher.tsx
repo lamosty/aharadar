@@ -51,6 +51,7 @@ export function TopicSwitcher({ className, onTopicChange }: TopicSwitcherProps) 
         className={styles.select}
         value={currentTopicId || "all"}
         onChange={handleChange}
+        title={currentTopic?.description ?? undefined}
       >
         <option value="all">{t("feed.allTopics")}</option>
         {topics.map((topic) => (
@@ -59,9 +60,6 @@ export function TopicSwitcher({ className, onTopicChange }: TopicSwitcherProps) 
           </option>
         ))}
       </select>
-      {currentTopic?.description && (
-        <span className={styles.description}>{currentTopic.description}</span>
-      )}
     </div>
   );
 }

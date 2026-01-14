@@ -485,7 +485,7 @@ function FeedPageContent() {
                 </button>
               </Tooltip>
             )}
-            {items.length > 0 && view === "inbox" && (
+            {items.length > 0 && (
               <button
                 type="button"
                 className="btn btn-secondary"

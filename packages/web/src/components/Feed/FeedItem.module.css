@@ -1562,3 +1562,190 @@
     background-color: transparent;
   }
 }
+
+/* ==========================================
+   Summary Section & Paste Input
+   ========================================== */
+
+/* Summary section - shown on mobile, hidden on larger screens */
+.summarySection {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* Hide summary section on desktop (inline version is in header) */
+@media (min-width: 769px) {
+  .summarySection {
+    display: none;
+  }
+}
+
+.summaryAiBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Mobile paste input section */
+.mobilePasteSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mobilePasteInput {
+  flex: 1;
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.mobilePasteInput::placeholder {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mobilePasteInput:focus {
+  border-color: var(--color-primary);
+}
+
+.mobilePasteInput:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Inline paste wrapper (desktop only) */
+.inlinePasteWrapper {
+  display: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@media (min-width: 769px) {
+  .inlinePasteWrapper {
+    display: flex;
+  }
+}
+
+.inlinePasteInput {
+  width: 140px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.inlinePasteInput::placeholder {
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+}
+
+.inlinePasteInput:focus {
+  border-color: var(--color-primary);
+  width: 200px;
+}
+
+.inlinePasteInput:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.inlineGeneratingIndicator {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Generating indicator */
+.generatingIndicator {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Summary error */
+.summaryError {
+  margin: var(--space-2) 0 0 0;
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-md);
+}
+
+/* Condensed layout paste input */
+.detailPasteInput {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.detailPasteTextarea {
+  flex: 1;
+  min-width: 120px;
+  max-width: 300px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.detailPasteTextarea::placeholder {
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+}
+
+.detailPasteTextarea:focus {
+  border-color: var(--color-primary);
+}
+
+.detailPasteTextarea:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.detailError {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-2);
+}

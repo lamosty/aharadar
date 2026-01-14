@@ -393,8 +393,8 @@ export function FeedItem({
     });
   };
 
-  // Auto-generate on paste event
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  // Auto-generate on paste event (works with both input and textarea)
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text");
     if (text && text.trim().length > 50) {
       // Auto-generate after paste if substantial content
@@ -675,7 +675,7 @@ export function FeedItem({
             </time>
           </span>
 
-          {/* Actions */}
+          {/* Actions + inline paste input on desktop */}
           <div className={styles.headerActions}>
             <FeedbackButtons
               contentItemId={item.id}
@@ -685,6 +685,34 @@ export function FeedItem({
               onClear={handleClear}
               variant="compact"
             />
+            {/* Inline paste input (desktop only) - show if no summary */}
+            {!summary && (
+              <div className={styles.inlinePasteWrapper}>
+                <input
+                  type="text"
+                  className={styles.inlinePasteInput}
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  onPaste={handlePaste}
+                  placeholder={t("feed.pasteToSummarize")}
+                  disabled={summaryMutation.isPending}
+                />
+                {summaryMutation.isPending && (
+                  <span className={styles.inlineGeneratingIndicator}>...</span>
+                )}
+              </div>
+            )}
+            {/* AI badge if summary exists */}
+            {summary && (
+              <button
+                type="button"
+                className={styles.summaryReadyBadge}
+                onClick={() => onViewSummary?.(item, summary)}
+                title={t("feed.viewSummary")}
+              >
+                AI
+              </button>
+            )}
           </div>
         </div>
 
@@ -731,12 +759,11 @@ export function FeedItem({
         clusterItems={item.clusterItems}
       />
 
-      {/* Summary section - shows existing summary or paste input */}
+      {/* Summary section (mobile only - desktop has inline paste in header) */}
       <div className={styles.summarySection}>
         {summary ? (
-          // Show existing summary
+          // Show existing summary preview
           <div className={styles.summaryPreview}>
-            <span className={styles.summaryAiBadge}>AI</span>
             <p className={styles.summaryOneLiner}>{summary.one_liner}</p>
             <button
               type="button"
@@ -747,28 +774,23 @@ export function FeedItem({
             </button>
           </div>
         ) : (
-          // Show paste input for generating summary
-          <div className={styles.pasteInputSection}>
-            <textarea
-              className={styles.pasteTextarea}
+          // Show paste input for generating summary (mobile)
+          <div className={styles.mobilePasteSection}>
+            <input
+              type="text"
+              className={styles.mobilePasteInput}
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
               onPaste={handlePaste}
               placeholder={t("feed.pasteToSummarize")}
-              rows={1}
               disabled={summaryMutation.isPending}
             />
-            {pastedText.trim() && !summaryMutation.isPending && (
-              <button type="button" className={styles.generateBtn} onClick={handleGenerateSummary}>
-                {t("feed.generate")}
-              </button>
-            )}
             {summaryMutation.isPending && (
               <span className={styles.generatingIndicator}>{t("feed.generating")}</span>
             )}
-            {summaryError && <p className={styles.summaryError}>{summaryError}</p>}
           </div>
         )}
+        {summaryError && <p className={styles.summaryError}>{summaryError}</p>}
       </div>
     </article>
   );

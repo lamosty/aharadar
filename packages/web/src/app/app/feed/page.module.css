@@ -2,7 +2,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4);
-  min-height: 100vh;
+  /* Don't set min-height: 100vh - it creates nested scroll contexts with AppShell */
 }
 
 .header {
