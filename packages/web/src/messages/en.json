@@ -835,7 +835,7 @@
     "generating": "Generating...",
     "viewSummary": "View AI Summary",
     "summaryGenerated": "Summary generated",
-    "textTrimmedWarning": "Text was trimmed to 60k characters for processing",
+    "textTrimmedToMax": "Text was trimmed to 100k characters (maximum allowed)",
     "layout": {
       "condensed": "Condensed",
       "reader": "Reader",

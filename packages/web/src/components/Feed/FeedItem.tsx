@@ -374,16 +374,29 @@ export function FeedItem({
   };
 
   // Auto-generate on paste event (works with both input and textarea)
-  const MAX_PASTE_LENGTH = 60000;
+  const SOFT_LIMIT = 60000; // No warning below this
+  const HARD_LIMIT = 100000; // Max allowed
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text");
     if (text && text.trim().length > 50) {
-      // Auto-trim if too long, with friendly warning
       const trimmedText = text.trim();
       let finalText = trimmedText;
-      if (trimmedText.length > MAX_PASTE_LENGTH) {
-        finalText = trimmedText.slice(0, MAX_PASTE_LENGTH);
-        addToast(t("feed.textTrimmedWarning"), "info");
+
+      // Large text handling
+      if (trimmedText.length > HARD_LIMIT) {
+        // Over hard limit: trim and warn
+        finalText = trimmedText.slice(0, HARD_LIMIT);
+        addToast(t("feed.textTrimmedToMax"), "info");
+      } else if (trimmedText.length > SOFT_LIMIT) {
+        // Between soft and hard limit: ask for confirmation
+        const charCount = Math.round(trimmedText.length / 1000);
+        const confirmed = window.confirm(
+          `This text is ${charCount}k characters (about ${Math.round(charCount / 4)}k tokens). Processing longer texts costs more. Continue?`,
+        );
+        if (!confirmed) {
+          setPastedText("");
+          return;
+        }
       }
 
       setPastedText(finalText);
