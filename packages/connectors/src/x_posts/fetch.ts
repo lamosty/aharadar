@@ -6,6 +6,7 @@
  * Cadence gating is handled by the pipeline (ADR 0009), not here.
  */
 import type { FetchParams, FetchResult, ProviderCallDraft } from "@aharadar/shared";
+import { calculateCostUsd, getXaiXSearchCostPerCall } from "@aharadar/shared";
 import { grokXSearch } from "../x_shared/grok_x_search";
 import type { XPostsSourceConfig } from "./config";
 
@@ -333,14 +334,22 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       const resultsCount = getResultsCount(result.assistantJson);
       const toolErrorCode = result.structuredError?.code ?? null;
 
+      // Calculate full USD cost: token cost + x_search tool invocation cost
+      const inputTokens = result.inputTokens ?? 0;
+      const outputTokens = result.outputTokens ?? 0;
+      const tokenCostUsd = calculateCostUsd("xai", result.model, inputTokens, outputTokens);
+      const xSearchToolCostUsd = getXaiXSearchCostPerCall();
+      const costEstimateUsd = tokenCostUsd + xSearchToolCostUsd;
+
       providerCalls.push({
         userId: params.userId,
         purpose: "x_posts_fetch",
         provider: "xai",
         model: result.model,
-        inputTokens: result.inputTokens ?? 0,
-        outputTokens: result.outputTokens ?? 0,
+        inputTokens,
+        outputTokens,
         costEstimateCredits: estimateCreditsPerCall(),
+        costEstimateUsd,
         meta: {
           sourceId: params.sourceId,
           query: job.query,
@@ -387,6 +396,9 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       const responseSnippet =
         typeof errObj.responseSnippet === "string" ? errObj.responseSnippet : undefined;
 
+      // For errors, we may still be charged for the x_search tool invocation
+      const errorCostEstimateUsd = getXaiXSearchCostPerCall();
+
       providerCalls.push({
         userId: params.userId,
         purpose: "x_posts_fetch",
@@ -395,6 +407,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         inputTokens: 0,
         outputTokens: 0,
         costEstimateCredits: estimateCreditsPerCall(),
+        costEstimateUsd: errorCostEstimateUsd,
         meta: {
           sourceId: params.sourceId,
           query: job.query,

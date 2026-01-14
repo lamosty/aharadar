@@ -5,6 +5,34 @@
  * Last updated: 2026-01 (update periodically as prices change)
  */
 
+// ============================================================================
+// xAI Tool Pricing
+// ============================================================================
+
+/**
+ * xAI charges for server-side tool invocations on top of token costs.
+ * Pricing: $5 per 1,000 invocations = $0.005 per call
+ * https://docs.x.ai/docs/models
+ */
+export const XAI_X_SEARCH_COST_PER_CALL = 0.005;
+
+/**
+ * Get the x_search tool cost per invocation.
+ * Configurable via XAI_X_SEARCH_COST_PER_CALL env var.
+ */
+export function getXaiXSearchCostPerCall(): number {
+  const envValue = process.env.XAI_X_SEARCH_COST_PER_CALL;
+  if (envValue) {
+    const parsed = Number.parseFloat(envValue);
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+  return XAI_X_SEARCH_COST_PER_CALL;
+}
+
+// ============================================================================
+// Model Token Pricing
+// ============================================================================
+
 export interface ModelPricing {
   provider: string;
   model: string;
