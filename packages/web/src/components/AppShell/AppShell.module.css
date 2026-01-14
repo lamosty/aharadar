@@ -1,7 +1,8 @@
 .shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   background-color: var(--color-bg);
+  overflow: hidden;
 }
 
 /* Mobile header */
@@ -213,8 +214,8 @@
   margin-left: 260px;
   display: flex;
   flex-direction: column;
-  /* min-height handled by parent .shell - don't duplicate to avoid nested scroll */
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {
