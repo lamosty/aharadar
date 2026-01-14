@@ -65,6 +65,11 @@ export function FeedFilterBar({
       </div>
 
       <div className={styles.rightControls}>
+        <Tooltip content={<SortHelpContent />} position="bottom">
+          <button type="button" className={styles.helpButton} aria-label="Sort options help">
+            ?
+          </button>
+        </Tooltip>
         <select
           className={styles.sortSelect}
           value={sort}
@@ -77,11 +82,6 @@ export function FeedFilterBar({
             </option>
           ))}
         </select>
-        <Tooltip content={<SortHelpContent />} position="bottom">
-          <button type="button" className={styles.helpButton} aria-label="Sort options help">
-            ?
-          </button>
-        </Tooltip>
       </div>
     </div>
   );
