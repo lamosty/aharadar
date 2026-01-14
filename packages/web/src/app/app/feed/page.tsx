@@ -485,15 +485,14 @@ function FeedPageContent() {
                 </button>
               </Tooltip>
             )}
-            {items.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsInboxSummaryModalOpen(true)}
-              >
-                {t("summaries.inboxModal.button")}
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsInboxSummaryModalOpen(true)}
+              disabled={items.length === 0}
+            >
+              {t("summaries.inboxModal.button")}
+            </button>
             <TopicSwitcher onTopicChange={handleTopicChange} />
             {isAllTopicsMode ? (
               <Tooltip content={t("feed.selectTopicForCaughtUp")}>
