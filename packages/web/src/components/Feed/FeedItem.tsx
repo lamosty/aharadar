@@ -336,6 +336,8 @@ export function FeedItem({
   // Inline summary state - for paste input
   const [pastedText, setPastedText] = useState("");
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  // Pending large text confirmation
+  const [pendingLargeText, setPendingLargeText] = useState<string | null>(null);
   // Local summary state for immediate display after generation
   const [localSummary, setLocalSummary] = useState<ManualSummaryOutput | null>(null);
   // Use local summary if just generated, otherwise use server-returned summary
@@ -376,45 +378,55 @@ export function FeedItem({
   // Auto-generate on paste event (works with both input and textarea)
   const SOFT_LIMIT = 60000; // No warning below this
   const HARD_LIMIT = 100000; // Max allowed
+
+  const triggerSummary = (text: string) => {
+    setPastedText(text);
+    setSummaryError(null);
+    setPendingLargeText(null);
+    summaryMutation.mutate({
+      contentItemId: item.id,
+      pastedText: text,
+      metadata: {
+        title: item.item.title ?? null,
+        author: item.item.author ?? null,
+        url: item.item.url ?? null,
+        sourceType: item.item.sourceType,
+      },
+    });
+  };
+
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text");
     if (text && text.trim().length > 50) {
       const trimmedText = text.trim();
-      let finalText = trimmedText;
 
       // Large text handling
       if (trimmedText.length > HARD_LIMIT) {
         // Over hard limit: trim and warn
-        finalText = trimmedText.slice(0, HARD_LIMIT);
+        const finalText = trimmedText.slice(0, HARD_LIMIT);
         addToast(t("feed.textTrimmedToMax"), "info");
+        triggerSummary(finalText);
       } else if (trimmedText.length > SOFT_LIMIT) {
-        // Between soft and hard limit: ask for confirmation
-        const charCount = Math.round(trimmedText.length / 1000);
-        const confirmed = window.confirm(
-          `This text is ${charCount}k characters (about ${Math.round(charCount / 4)}k tokens). Processing longer texts costs more. Continue?`,
-        );
-        if (!confirmed) {
-          setPastedText("");
-          return;
-        }
+        // Between soft and hard limit: show inline confirmation
+        setPastedText(trimmedText);
+        setPendingLargeText(trimmedText);
+        setSummaryError(null);
+      } else {
+        // Under soft limit: process immediately
+        triggerSummary(trimmedText);
       }
-
-      setPastedText(finalText);
-      setSummaryError(null);
-      // Trigger generation after state update
-      setTimeout(() => {
-        summaryMutation.mutate({
-          contentItemId: item.id,
-          pastedText: finalText,
-          metadata: {
-            title: item.item.title ?? null,
-            author: item.item.author ?? null,
-            url: item.item.url ?? null,
-            sourceType: item.item.sourceType,
-          },
-        });
-      }, 0);
     }
+  };
+
+  const handleConfirmLargeText = () => {
+    if (pendingLargeText) {
+      triggerSummary(pendingLargeText);
+    }
+  };
+
+  const handleCancelLargeText = () => {
+    setPendingLargeText(null);
+    setPastedText("");
   };
 
   const isTrendingSort = sort === "trending";
@@ -602,6 +614,22 @@ export function FeedItem({
             )}
           </div>
           {summaryError && <p className={styles.detailError}>{summaryError}</p>}
+
+          {/* Large text confirmation banner */}
+          {pendingLargeText && (
+            <div className={styles.largeTextConfirm}>
+              <span className={styles.largeTextInfo}>
+                {Math.round(pendingLargeText.length / 1000)}k chars (~
+                {Math.round(pendingLargeText.length / 4000)}k tokens) - costs more
+              </span>
+              <button type="button" className={styles.confirmBtn} onClick={handleConfirmLargeText}>
+                {t("common.confirm")}
+              </button>
+              <button type="button" className={styles.cancelBtn} onClick={handleCancelLargeText}>
+                {t("common.cancel")}
+              </button>
+            </div>
+          )}
 
           {/* WhyShown */}
           <div className={styles.detailWhyShown}>

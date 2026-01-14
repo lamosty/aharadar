@@ -37,7 +37,7 @@ function buildLlmRuntimeConfig(settings: LlmSettingsRow): LlmRuntimeConfig {
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_PASTED_TEXT_LENGTH = 60_000;
+const MAX_PASTED_TEXT_LENGTH = 100_000;
 
 function isValidUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_REGEX.test(value);

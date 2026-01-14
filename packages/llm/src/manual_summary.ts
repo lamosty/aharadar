@@ -117,7 +117,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
 }
 
 function buildUserPrompt(input: ManualSummaryInput, tier: BudgetTier): string {
-  const maxBody = parseIntEnv(process.env.MANUAL_SUMMARY_MAX_INPUT_CHARS) ?? 60000;
+  const maxBody = parseIntEnv(process.env.MANUAL_SUMMARY_MAX_INPUT_CHARS) ?? 100000;
   const maxTitle = parseIntEnv(process.env.MANUAL_SUMMARY_MAX_TITLE_CHARS) ?? 240;
 
   const payload = {
