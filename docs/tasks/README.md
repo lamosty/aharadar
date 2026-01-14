@@ -121,3 +121,7 @@ Task files (in recommended order):
 91. `task-143-aggregate-summaries-ui.md` - Web UI for digest + inbox aggregate summaries
 92. `task-144-items-deep-dive-view.md` - API: Deep Dive queue via `GET /items?view=deep_dive` + enable `sort=ai_score`
 93. `task-145-web-feed-deep-dive-use-items.md` - Web: Feed Deep Dive tab uses `/items` (fix score=0 + sort no-op)
+94. `task-146-item-summaries-api-db.md` - Backend: replace Deep Dive storage/endpoints with item summaries
+95. `task-147-feed-inline-auto-summary.md` - Web: inline auto-summary on paste + remove Deep Dive UI
+
+**Note**: Deep Dive UI/terminology is being retired; tasks 146–147 supersede the Deep Dive flow from tasks 137/144/145.
