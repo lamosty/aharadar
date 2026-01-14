@@ -222,22 +222,22 @@ create table feedback_events (
 create index feedback_events_user_created_idx on feedback_events(user_id, created_at desc);
 create index feedback_events_item_idx on feedback_events(content_item_id);
 
--- content_item_deep_reviews: Deep Dive manual summary workflow
--- Users paste content for liked items, generate AI summary, then promote or drop.
--- Raw pasted text is never stored; summaries can be stored as a "preview" and later promoted or dropped.
-create table content_item_deep_reviews (
+-- content_item_summaries: manual paste-and-summarize workflow
+-- Users paste content for items, auto-generate AI summary (saved immediately).
+-- Raw pasted text is never stored; summaries are upserted per user+item.
+create table content_item_summaries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
   content_item_id uuid not null references content_items(id) on delete cascade,
-  status text not null check (status in ('preview', 'promoted', 'dropped')),
-  summary_json jsonb, -- populated when status in ('preview','promoted')
+  summary_json jsonb not null,
+  source text not null default 'manual_paste',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index content_item_deep_reviews_user_item_idx
-  on content_item_deep_reviews(user_id, content_item_id);
-create index content_item_deep_reviews_user_status_idx
-  on content_item_deep_reviews(user_id, status);
+create unique index content_item_summaries_user_item_idx
+  on content_item_summaries(user_id, content_item_id);
+create index content_item_summaries_user_created_idx
+  on content_item_summaries(user_id, created_at desc);
 
 -- provider_calls: accounting + debuggability for metered provider usage (LLM, embeddings, signal search, etc.)
 create table provider_calls (

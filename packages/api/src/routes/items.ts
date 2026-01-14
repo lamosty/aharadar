@@ -55,8 +55,8 @@ interface UnifiedItemRow {
   // Topic fields (for "all topics" mode)
   topic_id: string;
   topic_name: string;
-  // Deep review preview summary (only when status='preview')
-  preview_summary_json: Record<string, unknown> | null;
+  // Manual item summary (stored via POST /item-summaries)
+  manual_summary_json: Record<string, unknown> | null;
 }
 
 interface ItemsListQuerystring {
@@ -69,8 +69,8 @@ interface ItemsListQuerystring {
   until?: string;
   sort?: string;
   topicId?: string;
-  // Views: inbox (no feedback), highlights (liked), all (no filter), deep_dive (liked + not promoted/dropped)
-  view?: "inbox" | "highlights" | "all" | "deep_dive";
+  // Views: inbox (no feedback), highlights (liked), all (no filter)
+  view?: "inbox" | "highlights" | "all";
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -239,16 +239,12 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       filterParamIdx++;
     }
 
-    // View filter: inbox (no feedback), highlights (feedback = 'like'), all (no filter), deep_dive (liked + not promoted/dropped)
-    // Note: fe.action is from the LATERAL subquery, dr is from LEFT JOIN content_item_deep_reviews
+    // View filter: inbox (no feedback), highlights (feedback = 'like'), all (no filter)
+    // Note: fe.action is from the LATERAL subquery
     if (view === "inbox") {
       filterConditions.push("fe.action IS NULL");
     } else if (view === "highlights") {
       filterConditions.push("fe.action = 'like'");
-    } else if (view === "deep_dive") {
-      // Deep Dive queue: liked items that haven't been promoted or dropped yet
-      filterConditions.push("fe.action = 'like'");
-      filterConditions.push("(dr.status IS NULL OR dr.status = 'preview')");
     }
     // view === 'all' -> no filter
 
@@ -344,8 +340,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         -- Topic fields
         li.digest_topic_id::text as topic_id,
         t.name as topic_name,
-        -- Deep review preview summary (only when status='preview')
-        CASE WHEN dr.status = 'preview' THEN dr.summary_json ELSE NULL END as preview_summary_json
+        -- Manual item summary
+        cis.summary_json as manual_summary_json
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
       JOIN topics t ON t.id = li.digest_topic_id
@@ -355,8 +351,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
-      LEFT JOIN content_item_deep_reviews dr
-        ON dr.user_id = '${ctx.userId}' AND dr.content_item_id = li.content_item_id
+      LEFT JOIN content_item_summaries cis
+        ON cis.user_id = '${ctx.userId}' AND cis.content_item_id = li.content_item_id
       LEFT JOIN LATERAL (
         SELECT COUNT(*)::int as member_count
         FROM cluster_items cli
@@ -412,8 +408,6 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
-      LEFT JOIN content_item_deep_reviews dr
-        ON dr.user_id = '${ctx.userId}' AND dr.content_item_id = li.content_item_id
       WHERE ${filterClause}
     `;
 
@@ -482,8 +476,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         // Topic context (for "all topics" mode)
         topicId: row.topic_id,
         topicName: row.topic_name,
-        // Deep review preview summary (only present when status='preview')
-        previewSummaryJson: row.preview_summary_json ?? undefined,
+        // Manual item summary
+        manualSummaryJson: row.manual_summary_json ?? undefined,
       };
     });
 

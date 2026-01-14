@@ -5,12 +5,12 @@ import { createAggregateSummariesRepo } from "./repos/aggregate_summaries";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
-import { createDeepReviewsRepo } from "./repos/deep_reviews";
 import { createDigestItemsRepo } from "./repos/digest_items";
 import { createDigestsRepo } from "./repos/digests";
 import { createEmbeddingsRepo } from "./repos/embeddings";
 import { createFeedbackEventsRepo } from "./repos/feedback_events";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
+import { createItemSummariesRepo } from "./repos/item_summaries";
 import { createLlmSettingsRepo } from "./repos/llm_settings";
 import { createProviderCallsRepo } from "./repos/provider_calls";
 import { createSessionsRepo } from "./repos/sessions";
@@ -47,7 +47,7 @@ export type DbContext = Queryable & {
   llmSettings: ReturnType<typeof createLlmSettingsRepo>;
   abtests: ReturnType<typeof createAbtestsRepo>;
   xAccountPolicies: ReturnType<typeof createXAccountPoliciesRepo>;
-  deepReviews: ReturnType<typeof createDeepReviewsRepo>;
+  itemSummaries: ReturnType<typeof createItemSummariesRepo>;
   aggregateSummaries: ReturnType<typeof createAggregateSummariesRepo>;
 };
 
@@ -77,7 +77,7 @@ function createContext(db: Queryable): DbContext {
     llmSettings: createLlmSettingsRepo(db),
     abtests: createAbtestsRepo(db),
     xAccountPolicies: createXAccountPoliciesRepo(db),
-    deepReviews: createDeepReviewsRepo(db),
+    itemSummaries: createItemSummariesRepo(db),
     aggregateSummaries: createAggregateSummariesRepo(db),
   };
 }

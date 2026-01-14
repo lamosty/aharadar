@@ -182,13 +182,13 @@ Generate a deeper summary for top-ranked candidates, emphasizing:
 }
 ```
 
-## Manual summary task (Deep Dive)
+## Manual item summary task
 
 ### Purpose
 
-Generate a detailed summary from user-pasted full content for Deep Dive workflow.
-Uses the same output schema as deep_summary, allowing users to create rich summaries
-for content they've liked.
+Generate a detailed summary from user-pasted content for any feed item.
+Users can paste content (e.g., full article text) and get an AI-generated summary.
+Uses the same output schema as deep_summary, allowing users to create rich summaries.
 
 ### Key differences from deep_summary
 
@@ -217,7 +217,7 @@ Same structure as deep_summary_v1:
 
 ### Storage
 
-Manual summary outputs are stored in `content_item_deep_reviews.summary_json` (typically first as `status='preview'`, then optionally `status='promoted'`).
+Manual summary outputs are stored in `content_item_summaries.summary_json` via upsert (one summary per user+item).
 Raw pasted text is never stored.
 
 ## Entity extraction (optional MVP)
