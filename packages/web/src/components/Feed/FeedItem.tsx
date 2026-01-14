@@ -140,16 +140,6 @@ function getDisplayTitle(item: FeedItemType): string {
 }
 
 /**
- * Calculate score tier for visual emphasis
- * Uses score value directly (already represents quality 0-1)
- */
-function getScoreTier(score: number): "top10" | "top25" | "rest" {
-  if (score >= 0.7) return "top10";
-  if (score >= 0.5) return "top25";
-  return "rest";
-}
-
-/**
  * Source-specific secondary info for two-line source display
  */
 interface SourceSecondaryInfo {
@@ -436,7 +426,6 @@ export function FeedItem({
   // Prefer ahaScore (raw personalized score) over score (trending/decayed)
   const displayScore = item.ahaScore ?? item.score ?? 0;
   const scorePercent = Math.round(displayScore * 100);
-  const scoreTier = getScoreTier(displayScore);
   const isRestricted = item.item.metadata?.is_restricted === true;
   const displayDate = getDisplayDate(item);
   // For X posts: show display name only (handle is shown in source section)
@@ -480,7 +469,6 @@ export function FeedItem({
         className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
         data-testid={`feed-item-${item.id}`}
         data-feed-item
-        data-tier={scoreTier}
         onMouseEnter={onHover}
       >
         {/* Main row: title + trailing meta */}
