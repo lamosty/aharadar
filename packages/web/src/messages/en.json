@@ -26,8 +26,6 @@
     "dashboard": "Dashboard",
     "feed": "Feed",
     "ask": "Ask",
-    "deepDive": "Deep Dive",
-    "deepDives": "Deep Dives",
     "digests": "Digests",
     "sources": "Sources",
     "topics": "Topics",
@@ -54,41 +52,17 @@
     "goToSettings": "Go to Settings"
   },
   "deepDive": {
-    "title": "Deep Dive",
-    "subtitle": "Create detailed summaries of your favorite content",
-    "tabs": {
-      "queue": "To Review",
-      "promoted": "Promoted"
-    },
-    "queue": {
-      "empty": "No items to review",
-      "emptyDescription": "Like items in your feed to add them to your Deep Dive queue."
-    },
-    "promoted": {
-      "empty": "No promoted summaries yet",
-      "emptyDescription": "Generate and promote summaries to see them here."
-    },
-    "paste": {
-      "label": "Paste full content",
-      "placeholder": "Paste the full article text here...",
-      "charCount": "{count} / 60,000 characters",
-      "charCountError": "Content exceeds 60,000 character limit",
-      "warning": "Only paste content you have the right to use. We never store the raw pasted text."
-    },
-    "summarize": "Generate Summary",
-    "summarizing": "Generating summary...",
-    "preview": {
-      "title": "Summary Preview",
-      "oneLiner": "One-liner",
-      "bullets": "Key Points",
-      "whyItMatters": "Why It Matters",
-      "risksOrCaveats": "Risks & Caveats",
-      "suggestedFollowups": "Suggested Follow-ups"
-    },
-    "promote": "Promote",
-    "drop": "Drop",
-    "readNext": "Read Next",
     "insufficientCredits": "You've exhausted your credits for this period. Please try again later."
+  },
+  "itemSummary": {
+    "openOriginal": "Open original",
+    "oneLiner": "One-liner",
+    "bullets": "Key Points",
+    "whyItMatters": "Why It Matters",
+    "risksOrCaveats": "Risks & Caveats",
+    "suggestedFollowups": "Suggested Follow-ups",
+    "close": "Close",
+    "readNext": "Read Next"
   },
   "summaries": {
     "title": "Summary",
@@ -855,9 +829,14 @@
     "approximateDate": "Approximate date (day-level precision)",
     "view": {
       "inbox": "Inbox",
-      "top_picks": "Deep Dive",
+      "highlights": "Highlights",
       "all": "All"
     },
+    "pasteToSummarize": "Paste content to generate AI summary...",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "viewSummary": "View",
+    "summaryGenerated": "Summary generated",
     "layout": {
       "condensed": "Condensed",
       "reader": "Reader",

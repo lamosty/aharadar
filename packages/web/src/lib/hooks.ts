@@ -42,9 +42,6 @@ import {
   createInboxSummary as createInboxSummaryApi,
   createTopic,
   type DailyUsageResponse,
-  type DeepDiveDecisionRequest,
-  // Deep Dive
-  type DeepDivePreviewRequest,
   type DeleteTopicResponse,
   type DigestDetailResponse,
   type DigestStatsResponse,
@@ -68,8 +65,6 @@ import {
   getAdminSources,
   getAggregateSummary as getAggregateSummaryApi,
   getDailyUsage,
-  getDeepDivePromoted,
-  getDeepDiveQueue,
   getDigest,
   getDigestStats,
   getDigests,
@@ -89,6 +84,8 @@ import {
   getXAccountPolicies,
   type HealthResponse,
   type ItemDetailResponse,
+  type ItemSummaryRequest,
+  type ItemSummaryResponse,
   type ItemsListParams,
   type ItemsListResponse,
   type LlmSettingsResponse,
@@ -109,9 +106,8 @@ import {
   postAdminAbtest,
   postAdminRun,
   postAdminSource,
-  postDeepDiveDecision,
-  postDeepDivePreview,
   postFeedback,
+  postItemSummary,
   postMarkChecked,
   postTopicMarkChecked,
   type QueueActionResponse,
@@ -1483,41 +1479,26 @@ export function usePageLayout(page: LayoutPage): UsePageLayoutResult {
 }
 
 // ============================================================================
-// Deep Dive Hooks
+// Item Summary Hooks
 // ============================================================================
 
-export function useDeepDiveQueue(params?: {
-  limit?: number;
-  offset?: number;
-  sort?: "best" | "latest" | "oldest";
+/**
+ * Mutation to generate and save an item summary from pasted text.
+ * Returns the generated summary and token/credit usage.
+ */
+export function useItemSummary(options?: {
+  onSuccess?: (data: ItemSummaryResponse) => void;
+  onError?: (error: ApiError | NetworkError) => void;
 }) {
-  return useQuery({
-    queryKey: ["deep-dive", "queue", params],
-    queryFn: ({ signal }) => getDeepDiveQueue(params, signal),
-  });
-}
-
-export function useDeepDivePromoted(params?: { limit?: number; offset?: number }) {
-  return useQuery({
-    queryKey: ["deep-dive", "promoted", params],
-    queryFn: ({ signal }) => getDeepDivePromoted(params, signal),
-  });
-}
-
-export function useDeepDivePreview() {
-  return useMutation({
-    mutationFn: (request: DeepDivePreviewRequest) => postDeepDivePreview(request),
-  });
-}
-
-export function useDeepDiveDecision(options?: { onSuccess?: () => void }) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: DeepDiveDecisionRequest) => postDeepDiveDecision(request),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deep-dive"] });
-      options?.onSuccess?.();
+    mutationFn: (request: ItemSummaryRequest) => postItemSummary(request),
+    onSuccess: (data) => {
+      // Invalidate items to refetch with new summary
+      queryClient.invalidateQueries({ queryKey: ["items"] });
+      options?.onSuccess?.(data);
     },
+    onError: options?.onError,
   });
 }
 

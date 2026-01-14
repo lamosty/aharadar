@@ -9,16 +9,7 @@ export interface NavItem {
   id: string;
   href: string;
   labelKey: string; // i18n key
-  icon:
-    | "home"
-    | "feed"
-    | "ask"
-    | "deep-dive"
-    | "digest"
-    | "sources"
-    | "topics"
-    | "settings"
-    | "admin";
+  icon: "home" | "feed" | "ask" | "digest" | "sources" | "topics" | "settings" | "admin";
   /** Whether this item should appear in mobile bottom nav */
   mobileNav?: boolean;
   /** Whether this item requires admin role to see */
@@ -55,13 +46,6 @@ export const mainNavItems: NavItem[] = [
     href: "/app/ask",
     labelKey: "nav.ask",
     icon: "ask",
-    mobileNav: false,
-  },
-  {
-    id: "deep-dives",
-    href: "/app/deep-dives",
-    labelKey: "nav.deepDives",
-    icon: "deep-dive",
     mobileNav: false,
   },
   {

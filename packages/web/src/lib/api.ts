@@ -226,8 +226,8 @@ export interface FeedItem {
   // Topic context (for "all topics" mode)
   topicId: string;
   topicName: string;
-  // Preview summary if already generated (Top Picks)
-  previewSummaryJson?: ManualSummaryOutput | null;
+  // Manual item summary (from POST /item-summaries)
+  manualSummaryJson?: ManualSummaryOutput | null;
 }
 
 /** Pagination info */
@@ -240,11 +240,10 @@ export interface PaginationInfo {
 
 /** Feed view types
  * - inbox: items without feedback
- * - deep_dive: liked items awaiting deep dive review (not promoted/dropped)
+ * - highlights: liked items (formerly top_picks)
  * - all: all items regardless of feedback
- * - top_picks: URL alias for deep_dive (kept for backward compatibility)
  */
-export type FeedView = "inbox" | "deep_dive" | "all" | "top_picks";
+export type FeedView = "inbox" | "highlights" | "all";
 
 /** Items list params */
 export interface ItemsListParams {
@@ -654,9 +653,7 @@ export async function getItems(
   if (params?.sort) searchParams.set("sort", params.sort);
   if (params?.topicId) searchParams.set("topicId", params.topicId);
   if (params?.view) {
-    // Map top_picks (URL alias) to deep_dive for the API
-    const apiView = params.view === "top_picks" ? "deep_dive" : params.view;
-    searchParams.set("view", apiView);
+    searchParams.set("view", params.view);
   }
 
   const query = searchParams.toString();
@@ -1848,7 +1845,7 @@ export async function getAdminAbtest(
 }
 
 // ============================================================================
-// Deep Dive API
+// Item Summaries API
 // ============================================================================
 
 /** Manual summary output (same schema as DeepSummaryOutput) */
@@ -1864,20 +1861,20 @@ export interface ManualSummaryOutput {
   suggested_followups: string[];
 }
 
-/** Deep Dive preview request */
-export interface DeepDivePreviewRequest {
+/** Item summary request */
+export interface ItemSummaryRequest {
   contentItemId: string;
   pastedText: string;
   metadata?: {
-    title?: string;
-    author?: string;
-    url?: string;
-    sourceType?: string;
+    title?: string | null;
+    author?: string | null;
+    url?: string | null;
+    sourceType?: string | null;
   };
 }
 
-/** Deep Dive preview response */
-export interface DeepDivePreviewResponse {
+/** Item summary response */
+export interface ItemSummaryResponse {
   ok: true;
   summary: ManualSummaryOutput;
   inputTokens: number;
@@ -1885,101 +1882,14 @@ export interface DeepDivePreviewResponse {
   costEstimateCredits: number;
 }
 
-/** Deep Dive decision request */
-export interface DeepDiveDecisionRequest {
-  contentItemId: string;
-  decision: "promote" | "drop";
-  summaryJson?: ManualSummaryOutput;
-}
-
-/** Deep Dive decision response */
-export interface DeepDiveDecisionResponse {
-  ok: true;
-}
-
-/** Deep Dive queue item */
-export interface DeepDiveQueueItem {
-  id: string;
-  title: string | null;
-  bodyText: string | null;
-  url: string | null;
-  author: string | null;
-  sourceType: string;
-  publishedAt: string | null;
-  likedAt: string;
-  score: number;
-  triageJson: Record<string, unknown> | null;
-  /** Existing preview summary if already generated */
-  previewSummaryJson: ManualSummaryOutput | null;
-}
-
-/** Deep Dive queue response */
-export interface DeepDiveQueueResponse {
-  ok: true;
-  items: DeepDiveQueueItem[];
-  pagination: { limit: number; offset: number; count: number };
-}
-
-/** Deep Dive promoted item */
-export interface DeepDivePromotedItem extends DeepDiveQueueItem {
-  summaryJson: ManualSummaryOutput;
-  promotedAt: string;
-}
-
-/** Deep Dive promoted response */
-export interface DeepDivePromotedResponse {
-  ok: true;
-  items: DeepDivePromotedItem[];
-  pagination: { limit: number; offset: number; count: number };
-}
-
-/** Generate deep dive summary preview */
-export async function postDeepDivePreview(
-  request: DeepDivePreviewRequest,
+/** Generate and save item summary from pasted text */
+export async function postItemSummary(
+  request: ItemSummaryRequest,
   signal?: AbortSignal,
-): Promise<DeepDivePreviewResponse> {
-  return apiFetch<DeepDivePreviewResponse>("/deep-dive/preview", {
+): Promise<ItemSummaryResponse> {
+  return apiFetch<ItemSummaryResponse>("/item-summaries", {
     method: "POST",
     body: request,
-    signal,
-  });
-}
-
-/** Submit deep dive decision (promote or drop) */
-export async function postDeepDiveDecision(
-  request: DeepDiveDecisionRequest,
-  signal?: AbortSignal,
-): Promise<DeepDiveDecisionResponse> {
-  return apiFetch<DeepDiveDecisionResponse>("/deep-dive/decision", {
-    method: "POST",
-    body: request,
-    signal,
-  });
-}
-
-/** Get deep dive queue (liked items without decision) */
-export async function getDeepDiveQueue(
-  params?: { limit?: number; offset?: number; sort?: "best" | "latest" | "oldest" },
-  signal?: AbortSignal,
-): Promise<DeepDiveQueueResponse> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
-  if (params?.sort) searchParams.set("sort", params.sort);
-  const query = searchParams.toString();
-  return apiFetch<DeepDiveQueueResponse>(`/deep-dive/queue${query ? `?${query}` : ""}`, { signal });
-}
-
-/** Get deep dive promoted items */
-export async function getDeepDivePromoted(
-  params?: { limit?: number; offset?: number },
-  signal?: AbortSignal,
-): Promise<DeepDivePromotedResponse> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
-  const query = searchParams.toString();
-  return apiFetch<DeepDivePromotedResponse>(`/deep-dive/promoted${query ? `?${query}` : ""}`, {
     signal,
   });
 }

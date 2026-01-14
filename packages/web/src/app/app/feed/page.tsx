@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { DeepDiveModal } from "@/components/DeepDiveModal";
 import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
 import { InboxSummaryModal } from "@/components/InboxSummaryModal";
+import { ItemSummaryModal } from "@/components/ItemSummaryModal";
 import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
@@ -87,12 +87,12 @@ function FeedPageContent() {
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
 
-  // Deep dive modal state
-  const [deepDiveItem, setDeepDiveItem] = useState<FeedItemType | null>(null);
-  const [deepDiveSummary, setDeepDiveSummary] = useState<
+  // Item summary modal state (read-only view of generated summary)
+  const [summaryModalItem, setSummaryModalItem] = useState<FeedItemType | null>(null);
+  const [summaryModalSummary, setSummaryModalSummary] = useState<
     import("@/lib/api").ManualSummaryOutput | null
   >(null);
-  const [isDeepDiveModalOpen, setIsDeepDiveModalOpen] = useState(false);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
   // Inbox summary modal state
   const [isInboxSummaryModalOpen, setIsInboxSummaryModalOpen] = useState(false);
@@ -212,15 +212,14 @@ function FeedPageContent() {
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
-  // Note: view=top_picks is mapped to deep_dive in the API client
-  const isTopPicksView = view === "top_picks";
+  const isHighlightsView = view === "highlights";
   const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
     page: currentPage,
     pageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
-    view, // Passes directly; top_picks is mapped to deep_dive in getItems
+    view,
   });
 
   // Feedback mutation
@@ -265,45 +264,39 @@ function FeedPageContent() {
   // Open reader modal for an item with summary
   const handleOpenReaderModal = useCallback(
     (item: FeedItemType, summary: import("@/lib/api").ManualSummaryOutput) => {
-      setDeepDiveItem(item);
-      setDeepDiveSummary(summary);
-      setIsDeepDiveModalOpen(true);
+      setSummaryModalItem(item);
+      setSummaryModalSummary(summary);
+      setIsSummaryModalOpen(true);
     },
     [],
   );
 
   // Find items with existing summaries for "Read Next" navigation in modal
-  const itemsWithSummary = (data?.items ?? []).filter((item) => item.previewSummaryJson != null);
+  const itemsWithSummary = (data?.items ?? []).filter((item) => item.manualSummaryJson != null);
 
   // Get the next item with summary (after current modal item)
   const getNextItemWithSummary = useCallback(() => {
-    if (!deepDiveItem) return null;
-    const currentIndex = itemsWithSummary.findIndex((i) => i.id === deepDiveItem.id);
+    if (!summaryModalItem) return null;
+    const currentIndex = itemsWithSummary.findIndex((i) => i.id === summaryModalItem.id);
     if (currentIndex >= 0 && currentIndex < itemsWithSummary.length - 1) {
       return itemsWithSummary[currentIndex + 1];
     }
     return null;
-  }, [deepDiveItem, itemsWithSummary]);
+  }, [summaryModalItem, itemsWithSummary]);
 
   const nextItemWithSummary = getNextItemWithSummary();
 
   // Handle "Read Next" in modal - navigate to next item with summary
   const handleReadNextInModal = useCallback(() => {
-    if (nextItemWithSummary?.previewSummaryJson) {
-      setDeepDiveItem(nextItemWithSummary);
-      setDeepDiveSummary(nextItemWithSummary.previewSummaryJson);
+    if (nextItemWithSummary?.manualSummaryJson) {
+      setSummaryModalItem(nextItemWithSummary);
+      setSummaryModalSummary(nextItemWithSummary.manualSummaryJson);
       // Also update the force-expanded ID so when user closes modal, the right item is highlighted
       setForceExpandedId(nextItemWithSummary.id);
     }
   }, [nextItemWithSummary]);
 
-  // Handle deep dive decision (refetch items list for Deep Dive view)
-  // Note: Don't clear forceExpandedId here - onNext/handleDrop will set the next item
-  const handleDeepDiveDecision = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  // Handle "Next" button in Top Picks - expand next item's detail panel
+  // Handle "Next" button in Highlights - expand next item's detail panel
   const handleNextItem = useCallback(
     (currentItemId: string) => {
       const allItems = data?.items ?? [];
@@ -449,7 +442,7 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
-            {/* View toggle: Inbox / Top Picks / All */}
+            {/* View toggle: Inbox / Highlights / All */}
             <div className={styles.viewToggle}>
               <button
                 type="button"
@@ -460,10 +453,10 @@ function FeedPageContent() {
               </button>
               <button
                 type="button"
-                className={`${styles.viewToggleBtn} ${view === "top_picks" ? styles.viewToggleBtnActive : ""}`}
-                onClick={() => handleViewChange("top_picks")}
+                className={`${styles.viewToggleBtn} ${view === "highlights" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("highlights")}
               >
-                {t("feed.view.top_picks")}
+                {t("feed.view.highlights")}
               </button>
               <button
                 type="button"
@@ -568,19 +561,15 @@ function FeedPageContent() {
               <FeedItem
                 key={item.id}
                 item={item}
-                onFeedback={isTopPicksView ? undefined : handleFeedback}
-                onClear={isTopPicksView ? undefined : handleClearFeedback}
+                onFeedback={handleFeedback}
+                onClear={handleClearFeedback}
                 layout={layout}
-                showTopicBadge={isAllTopicsMode && !isTopPicksView}
-                forceExpanded={(fastTriageMode || isTopPicksView) && forceExpandedId === item.id}
-                fastTriageMode={
-                  (fastTriageMode && forceExpandedId !== null) ||
-                  (isTopPicksView && forceExpandedId !== null)
-                }
-                isTopPicksView={isTopPicksView}
+                showTopicBadge={isAllTopicsMode}
+                forceExpanded={fastTriageMode && forceExpandedId === item.id}
+                fastTriageMode={fastTriageMode && forceExpandedId !== null}
                 onViewSummary={handleOpenReaderModal}
-                onSummaryDecision={handleDeepDiveDecision}
-                onNext={isTopPicksView ? () => handleNextItem(item.id) : undefined}
+                onSummaryGenerated={() => refetch()}
+                onNext={isHighlightsView ? () => handleNextItem(item.id) : undefined}
                 sort={sort}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
@@ -624,17 +613,16 @@ function FeedPageContent() {
         </>
       )}
 
-      {/* Deep Dive Modal - Reader mode for viewing summary details */}
-      <DeepDiveModal
-        isOpen={isDeepDiveModalOpen}
-        item={deepDiveItem}
-        existingSummary={deepDiveSummary}
+      {/* Item Summary Modal - Read-only view of generated summary */}
+      <ItemSummaryModal
+        isOpen={isSummaryModalOpen}
+        item={summaryModalItem}
+        summary={summaryModalSummary}
         onClose={() => {
-          setIsDeepDiveModalOpen(false);
-          setDeepDiveItem(null);
-          setDeepDiveSummary(null);
+          setIsSummaryModalOpen(false);
+          setSummaryModalItem(null);
+          setSummaryModalSummary(null);
         }}
-        onDecision={handleDeepDiveDecision}
         onReadNext={handleReadNextInModal}
         hasNextWithSummary={nextItemWithSummary != null}
       />

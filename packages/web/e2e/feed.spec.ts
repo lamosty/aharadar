@@ -242,12 +242,12 @@ test.describe("Feed Interactions", () => {
   });
 });
 
-test.describe("Deep Dive View", () => {
+test.describe("Highlights View", () => {
   test.beforeEach(async ({ page }) => {
     await setupFeedMocks(page);
   });
 
-  test("Deep Dive tab uses /api/items with view=deep_dive", async ({ page }) => {
+  test("Highlights tab uses /api/items with view=highlights", async ({ page }) => {
     // Track API requests
     const apiRequests: string[] = [];
     page.on("request", (request) => {
@@ -260,21 +260,21 @@ test.describe("Deep Dive View", () => {
     await page.goto("/app/feed");
     await page.waitForLoadState("networkidle");
 
-    // Click on Deep Dive tab (labeled as "Top Picks" in UI)
-    const deepDiveTab = page.locator("button", { hasText: "Deep Dive" });
-    await deepDiveTab.click();
+    // Click on Highlights tab
+    const highlightsTab = page.locator("button", { hasText: "Highlights" });
+    await highlightsTab.click();
     await page.waitForLoadState("networkidle");
 
-    // Verify the API was called with view=deep_dive
-    const deepDiveRequest = apiRequests.find((url) => url.includes("view=deep_dive"));
-    expect(deepDiveRequest).toBeDefined();
+    // Verify the API was called with view=highlights
+    const highlightsRequest = apiRequests.find((url) => url.includes("view=highlights"));
+    expect(highlightsRequest).toBeDefined();
 
     // Items should still render
     const feedItems = page.locator('[data-testid^="feed-item-"]');
     await expect(feedItems.first()).toBeVisible();
   });
 
-  test("sort dropdown changes include correct sort param in Deep Dive", async ({ page }) => {
+  test("sort dropdown changes include correct sort param in Highlights", async ({ page }) => {
     // Track API requests
     const apiRequests: string[] = [];
     page.on("request", (request) => {
@@ -287,9 +287,9 @@ test.describe("Deep Dive View", () => {
     await page.goto("/app/feed");
     await page.waitForLoadState("networkidle");
 
-    // Switch to Deep Dive tab
-    const deepDiveTab = page.locator("button", { hasText: "Deep Dive" });
-    await deepDiveTab.click();
+    // Switch to Highlights tab
+    const highlightsTab = page.locator("button", { hasText: "Highlights" });
+    await highlightsTab.click();
     await page.waitForLoadState("networkidle");
 
     // Clear previous requests

@@ -6,7 +6,7 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { WhyShown } from "@/components/WhyShown";
 import { ApiError, type FeedItem as FeedItemType, type ManualSummaryOutput } from "@/lib/api";
-import { useDeepDiveDecision, useDeepDivePreview } from "@/lib/hooks";
+import { useItemSummary } from "@/lib/hooks";
 import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
@@ -29,15 +29,13 @@ interface FeedItemProps {
   onHover?: () => void;
   /** Whether fast triage mode is active (disables hover expansion) */
   fastTriageMode?: boolean;
-  /** Whether this is the Top Picks view (shows inline research UI) */
-  isTopPicksView?: boolean;
   /** Current sort mode (controls score label/tooltip) */
   sort?: SortOption;
   /** Called when user wants to view full summary (reader modal) */
   onViewSummary?: (item: FeedItemType, summary: ManualSummaryOutput) => void;
-  /** Called after a summary decision (save/drop) to refetch */
-  onSummaryDecision?: () => void;
-  /** Called when user wants to skip to next item (Top Picks fast triage) */
+  /** Called after a summary is generated (to refetch) */
+  onSummaryGenerated?: () => void;
+  /** Called when user wants to skip to next item (Highlights fast triage) */
   onNext?: () => void;
 }
 
@@ -330,28 +328,36 @@ export function FeedItem({
   forceExpanded = false,
   onHover,
   fastTriageMode = false,
-  isTopPicksView = false,
   sort = "best",
   onViewSummary,
-  onSummaryDecision,
+  onSummaryGenerated,
   onNext,
 }: FeedItemProps) {
   const [expanded, _setExpanded] = useState(false);
   const { addToast } = useToast();
 
-  // Research panel state (for Top Picks view)
-  // Initialize with existing preview summary if available
+  // Inline summary state - for paste input
   const [pastedText, setPastedText] = useState("");
-  const [summary, setSummary] = useState<ManualSummaryOutput | null>(
-    item.previewSummaryJson ?? null,
-  );
-  const [researchError, setResearchError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  // Local summary state for immediate display after generation
+  const [localSummary, setLocalSummary] = useState<ManualSummaryOutput | null>(null);
+  // Use local summary if just generated, otherwise use server-returned summary
+  const summary = localSummary ?? item.manualSummaryJson ?? null;
 
-  // Mutations for research
-  const previewMutation = useDeepDivePreview();
-  const decisionMutation = useDeepDiveDecision({
-    onSuccess: () => {
-      onSummaryDecision?.();
+  // Item summary mutation
+  const summaryMutation = useItemSummary({
+    onSuccess: (data) => {
+      setLocalSummary(data.summary);
+      setPastedText("");
+      addToast(t("feed.summaryGenerated"), "success");
+      onSummaryGenerated?.();
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
+        setSummaryError(t("deepDive.insufficientCredits"));
+      } else {
+        setSummaryError(err.message);
+      }
     },
   });
 
@@ -370,60 +376,43 @@ export function FeedItem({
     }
   };
 
-  // Research handlers
+  // Generate summary from pasted text
   const handleGenerateSummary = async () => {
     if (!pastedText.trim()) return;
-    setResearchError(null);
+    setSummaryError(null);
 
-    try {
-      const result = await previewMutation.mutateAsync({
-        contentItemId: item.id,
-        pastedText: pastedText.trim(),
-        metadata: {
-          title: item.item.title ?? undefined,
-          author: item.item.author ?? undefined,
-          url: item.item.url ?? undefined,
-          sourceType: item.item.sourceType,
-        },
-      });
-      setSummary(result.summary);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to generate summary";
-      if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
-        setResearchError(t("deepDive.insufficientCredits"));
-      } else {
-        setResearchError(message);
-      }
-    }
+    summaryMutation.mutate({
+      contentItemId: item.id,
+      pastedText: pastedText.trim(),
+      metadata: {
+        title: item.item.title ?? null,
+        author: item.item.author ?? null,
+        url: item.item.url ?? null,
+        sourceType: item.item.sourceType,
+      },
+    });
   };
 
-  const handleSave = async () => {
-    if (!summary) return;
-    try {
-      await decisionMutation.mutateAsync({
-        contentItemId: item.id,
-        decision: "promote",
-        summaryJson: summary,
-      });
-      addToast("Saved to Deep Dives", "success");
-      // Move to next item (fast triage behavior)
-      onNext?.();
-    } catch {
-      addToast("Failed to save", "error");
-    }
-  };
-
-  const handleDrop = async () => {
-    try {
-      await decisionMutation.mutateAsync({
-        contentItemId: item.id,
-        decision: "drop",
-      });
-      addToast("Dropped", "info");
-      // Move to next item (fast triage behavior)
-      onNext?.();
-    } catch {
-      addToast("Failed to drop", "error");
+  // Auto-generate on paste event
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text");
+    if (text && text.trim().length > 50) {
+      // Auto-generate after paste if substantial content
+      setPastedText(text);
+      setSummaryError(null);
+      // Trigger generation after state update
+      setTimeout(() => {
+        summaryMutation.mutate({
+          contentItemId: item.id,
+          pastedText: text.trim(),
+          metadata: {
+            title: item.item.title ?? null,
+            author: item.item.author ?? null,
+            url: item.item.url ?? null,
+            sourceType: item.item.sourceType,
+          },
+        });
+      }, 0);
     }
   };
 
@@ -487,9 +476,15 @@ export function FeedItem({
           )}
 
           {/* AI summary ready indicator - before title */}
-          {item.previewSummaryJson && (
+          {summary && (
             <Tooltip content={t("feed.summaryReady")}>
-              <span className={styles.summaryReadyBadge}>AI</span>
+              <button
+                type="button"
+                className={styles.summaryReadyBadge}
+                onClick={() => onViewSummary?.(item, summary)}
+              >
+                AI
+              </button>
             </Tooltip>
           )}
 
@@ -564,90 +559,62 @@ export function FeedItem({
             )}
           </div>
 
-          {/* Actions - research panel for Top Picks, feedback for others */}
-          {isTopPicksView ? (
-            <div className={styles.detailResearchPanel}>
-              {!summary ? (
-                <>
-                  <div className={styles.detailResearchInline}>
-                    <textarea
-                      className={styles.detailResearchTextareaSmall}
-                      value={pastedText}
-                      onChange={(e) => setPastedText(e.target.value)}
-                      placeholder="Paste content..."
-                      rows={1}
-                      disabled={previewMutation.isPending}
-                    />
-                    <button
-                      type="button"
-                      className={styles.generateBtnCompact}
-                      onClick={handleGenerateSummary}
-                      disabled={previewMutation.isPending || !pastedText.trim()}
-                    >
-                      {previewMutation.isPending ? "..." : "Generate"}
-                    </button>
-                    {onNext && (
-                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
-                        Next
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.dropBtnCompact}
-                      onClick={handleDrop}
-                      disabled={decisionMutation.isPending}
-                    >
-                      Drop
-                    </button>
-                  </div>
-                  {researchError && <p className={styles.detailResearchError}>{researchError}</p>}
-                </>
-              ) : (
-                <div className={styles.detailSummaryPreview}>
-                  <p className={styles.detailSummaryOneLiner}>{summary.one_liner}</p>
-                  <div className={styles.detailSummaryActions}>
-                    <button
-                      type="button"
-                      className={styles.viewDetailsBtnCompact}
-                      onClick={() => onViewSummary?.(item, summary)}
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.saveBtnCompact}
-                      onClick={handleSave}
-                      disabled={decisionMutation.isPending}
-                    >
-                      Save
-                    </button>
-                    {onNext && (
-                      <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
-                        Next
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.dropBtnCompact}
-                      onClick={handleDrop}
-                      disabled={decisionMutation.isPending}
-                    >
-                      Drop
-                    </button>
-                  </div>
-                </div>
+          {/* Actions - feedback buttons and inline paste */}
+          <div className={styles.detailActions}>
+            <FeedbackButtons
+              contentItemId={item.id}
+              digestId={item.digestId}
+              currentFeedback={item.feedback}
+              onFeedback={handleFeedback}
+              onClear={handleClear}
+              variant="compact"
+            />
+            {onNext && (
+              <button type="button" className={styles.nextBtnCompact} onClick={onNext}>
+                Next
+              </button>
+            )}
+          </div>
+
+          {/* Inline paste input for summary generation */}
+          {!summary && (
+            <div className={styles.detailPasteInput}>
+              <textarea
+                className={styles.detailPasteTextarea}
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                onPaste={handlePaste}
+                placeholder={t("feed.pasteToSummarize")}
+                rows={1}
+                disabled={summaryMutation.isPending}
+              />
+              {pastedText.trim() && !summaryMutation.isPending && (
+                <button
+                  type="button"
+                  className={styles.generateBtnCompact}
+                  onClick={handleGenerateSummary}
+                >
+                  {t("feed.generate")}
+                </button>
+              )}
+              {summaryMutation.isPending && (
+                <span className={styles.generatingIndicator}>{t("feed.generating")}</span>
               )}
             </div>
-          ) : (
-            <div className={styles.detailActions}>
-              <FeedbackButtons
-                contentItemId={item.id}
-                digestId={item.digestId}
-                currentFeedback={item.feedback}
-                onFeedback={handleFeedback}
-                onClear={handleClear}
-                variant="compact"
-              />
+          )}
+          {summaryError && <p className={styles.detailError}>{summaryError}</p>}
+
+          {/* Summary preview if available */}
+          {summary && (
+            <div className={styles.detailSummaryPreview}>
+              <p className={styles.detailSummaryOneLiner}>{summary.one_liner}</p>
+              <button
+                type="button"
+                className={styles.viewDetailsBtnCompact}
+                onClick={() => onViewSummary?.(item, summary)}
+              >
+                {t("feed.viewSummary")}
+              </button>
             </div>
           )}
 
@@ -708,19 +675,17 @@ export function FeedItem({
             </time>
           </span>
 
-          {/* Actions - hide in Top Picks view (already liked) */}
-          {!isTopPicksView && (
-            <div className={styles.headerActions}>
-              <FeedbackButtons
-                contentItemId={item.id}
-                digestId={item.digestId}
-                currentFeedback={item.feedback}
-                onFeedback={handleFeedback}
-                onClear={handleClear}
-                variant="compact"
-              />
-            </div>
-          )}
+          {/* Actions */}
+          <div className={styles.headerActions}>
+            <FeedbackButtons
+              contentItemId={item.id}
+              digestId={item.digestId}
+              currentFeedback={item.feedback}
+              onFeedback={handleFeedback}
+              onClear={handleClear}
+              variant="compact"
+            />
+          </div>
         </div>
 
         {/* Right section: cluster badge + score */}
@@ -766,85 +731,45 @@ export function FeedItem({
         clusterItems={item.clusterItems}
       />
 
-      {/* Research panel for Top Picks view */}
-      {isTopPicksView && (
-        <div className={styles.researchPanel}>
-          {!summary ? (
-            // Input phase: paste content and generate
-            <>
-              <div className={styles.researchInputRow}>
-                <textarea
-                  className={styles.researchTextarea}
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  placeholder="Paste article content here..."
-                  rows={2}
-                  disabled={previewMutation.isPending}
-                />
-                <div className={styles.researchActions}>
-                  <button
-                    type="button"
-                    className={styles.generateBtn}
-                    onClick={handleGenerateSummary}
-                    disabled={previewMutation.isPending || !pastedText.trim()}
-                  >
-                    {previewMutation.isPending ? "Generating..." : "Generate"}
-                  </button>
-                  {onNext && (
-                    <button type="button" className={styles.nextBtn} onClick={onNext}>
-                      Next
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={styles.dropBtn}
-                    onClick={handleDrop}
-                    disabled={decisionMutation.isPending}
-                  >
-                    Drop
-                  </button>
-                </div>
-              </div>
-              {researchError && <p className={styles.researchError}>{researchError}</p>}
-            </>
-          ) : (
-            // Summary phase: show preview with save/drop
-            <div className={styles.summaryPreview}>
-              <p className={styles.summaryOneLiner}>{summary.one_liner}</p>
-              <div className={styles.summaryActions}>
-                <button
-                  type="button"
-                  className={styles.viewDetailsBtn}
-                  onClick={() => onViewSummary?.(item, summary)}
-                >
-                  View Details
-                </button>
-                <button
-                  type="button"
-                  className={styles.saveBtn}
-                  onClick={handleSave}
-                  disabled={decisionMutation.isPending}
-                >
-                  Save
-                </button>
-                {onNext && (
-                  <button type="button" className={styles.nextBtn} onClick={onNext}>
-                    Next
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={styles.dropBtn}
-                  onClick={handleDrop}
-                  disabled={decisionMutation.isPending}
-                >
-                  Drop
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Summary section - shows existing summary or paste input */}
+      <div className={styles.summarySection}>
+        {summary ? (
+          // Show existing summary
+          <div className={styles.summaryPreview}>
+            <span className={styles.summaryAiBadge}>AI</span>
+            <p className={styles.summaryOneLiner}>{summary.one_liner}</p>
+            <button
+              type="button"
+              className={styles.viewDetailsBtn}
+              onClick={() => onViewSummary?.(item, summary)}
+            >
+              {t("feed.viewSummary")}
+            </button>
+          </div>
+        ) : (
+          // Show paste input for generating summary
+          <div className={styles.pasteInputSection}>
+            <textarea
+              className={styles.pasteTextarea}
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              onPaste={handlePaste}
+              placeholder={t("feed.pasteToSummarize")}
+              rows={1}
+              disabled={summaryMutation.isPending}
+            />
+            {pastedText.trim() && !summaryMutation.isPending && (
+              <button type="button" className={styles.generateBtn} onClick={handleGenerateSummary}>
+                {t("feed.generate")}
+              </button>
+            )}
+            {summaryMutation.isPending && (
+              <span className={styles.generatingIndicator}>{t("feed.generating")}</span>
+            )}
+            {summaryError && <p className={styles.summaryError}>{summaryError}</p>}
+          </div>
+        )}
+      </div>
     </article>
   );
 }
