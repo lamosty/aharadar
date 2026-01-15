@@ -448,6 +448,26 @@ const DEFAULT_DEV_SETTINGS: DevSettings = {
 };
 
 /**
+ * Get the default API URL based on the current hostname.
+ * If accessing via LAN IP, use that IP for API calls too.
+ */
+function getDefaultApiUrl(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_DEV_SETTINGS.apiBaseUrl;
+  }
+
+  const { hostname } = window.location;
+
+  // If accessing via localhost, use localhost for API
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "http://localhost:3001/api";
+  }
+
+  // If accessing via LAN IP or other hostname, use same host for API
+  return `http://${hostname}:3001/api`;
+}
+
+/**
  * Get dev settings from localStorage.
  */
 export function getDevSettings(): DevSettings {
@@ -460,7 +480,7 @@ export function getDevSettings(): DevSettings {
     if (stored) {
       const parsed = JSON.parse(stored) as Partial<DevSettings>;
       return {
-        apiBaseUrl: parsed.apiBaseUrl ?? DEFAULT_DEV_SETTINGS.apiBaseUrl,
+        apiBaseUrl: parsed.apiBaseUrl ?? getDefaultApiUrl(),
         apiKey: parsed.apiKey ?? DEFAULT_DEV_SETTINGS.apiKey,
       };
     }
@@ -468,7 +488,10 @@ export function getDevSettings(): DevSettings {
     // Ignore parse errors
   }
 
-  return DEFAULT_DEV_SETTINGS;
+  return {
+    ...DEFAULT_DEV_SETTINGS,
+    apiBaseUrl: getDefaultApiUrl(),
+  };
 }
 
 /**
