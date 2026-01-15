@@ -229,6 +229,10 @@
         "qa": {
           "label": "Q&A / Ask Your Knowledge Base",
           "description": "Ask natural language questions about your ingested content. Uses cluster-based RAG to search and generate answers with citations."
+        },
+        "score_debug": {
+          "label": "Score Debug Mode",
+          "description": "Show detailed score breakdowns in tooltips. Reveals exact weights, inputs, and multipliers used for ranking."
         }
       }
     },

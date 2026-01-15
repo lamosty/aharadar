@@ -11,11 +11,13 @@ const STORAGE_KEY = "aharadar_experimental_features";
 export interface ExperimentalFeatures {
   /** Q&A / Ask Your Knowledge Base */
   qa: boolean;
-  // Add more experimental features here as needed
+  /** Score debug tooltips showing ranking breakdown */
+  score_debug: boolean;
 }
 
 const DEFAULT_FEATURES: ExperimentalFeatures = {
   qa: false,
+  score_debug: false,
 };
 
 /**
@@ -74,6 +76,25 @@ export function isExperimentalFeatureEnabled(feature: keyof ExperimentalFeatures
 }
 
 /**
+ * Check if score debug feature is enabled via env.
+ * This gates visibility of the toggle itself.
+ */
+export function isScoreDebugEnvEnabled(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return process.env.NEXT_PUBLIC_SCORE_DEBUG_ENABLED === "true";
+}
+
+/**
+ * Check if score debug mode is effectively enabled.
+ * Requires both: env flag AND user toggle.
+ */
+export function isScoreDebugEnabled(): boolean {
+  return isScoreDebugEnvEnabled() && isExperimentalFeatureEnabled("score_debug");
+}
+
+/**
  * Reset all experimental features to defaults.
  */
 export function resetExperimentalFeatures(): ExperimentalFeatures {
@@ -102,5 +123,9 @@ export const EXPERIMENTAL_FEATURES: FeatureMeta[] = [
     descriptionKey: "settings.experimental.features.qa.description",
     href: "/app/ask",
   },
-  // Add more features here
+  {
+    key: "score_debug",
+    labelKey: "settings.experimental.features.score_debug.label",
+    descriptionKey: "settings.experimental.features.score_debug.description",
+  },
 ];

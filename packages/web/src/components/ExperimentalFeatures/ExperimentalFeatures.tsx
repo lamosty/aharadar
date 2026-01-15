@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import {
   EXPERIMENTAL_FEATURES,
   type ExperimentalFeatures,
   getExperimentalFeatures,
+  isScoreDebugEnvEnabled,
   resetExperimentalFeatures,
   toggleExperimentalFeature,
 } from "@/lib/experimental";
@@ -14,9 +15,19 @@ import { t } from "@/lib/i18n";
 import styles from "./ExperimentalFeatures.module.css";
 
 export function ExperimentalFeaturesForm() {
-  const [features, setFeatures] = useState<ExperimentalFeatures>({ qa: false });
+  const [features, setFeatures] = useState<ExperimentalFeatures>({ qa: false, score_debug: false });
   const [isLoaded, setIsLoaded] = useState(false);
   const { addToast } = useToast();
+
+  // Filter features based on env flags (score_debug requires NEXT_PUBLIC_SCORE_DEBUG_ENABLED)
+  const visibleFeatures = useMemo(() => {
+    return EXPERIMENTAL_FEATURES.filter((feature) => {
+      if (feature.key === "score_debug") {
+        return isScoreDebugEnvEnabled();
+      }
+      return true;
+    });
+  }, []);
 
   // Load settings on mount
   useEffect(() => {
@@ -55,7 +66,7 @@ export function ExperimentalFeaturesForm() {
       </div>
 
       <div className={styles.featuresList}>
-        {EXPERIMENTAL_FEATURES.map((feature) => (
+        {visibleFeatures.map((feature) => (
           <div key={feature.key} className={styles.featureCard}>
             <div className={styles.featureHeader}>
               <div className={styles.featureInfo}>
