@@ -4,7 +4,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,6 +26,7 @@
 /* Modal */
 .modal {
   position: relative;
+  z-index: var(--z-modal);
   width: 100%;
   max-width: 560px;
   max-height: calc(100vh - var(--space-8));
