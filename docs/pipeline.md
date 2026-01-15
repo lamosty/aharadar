@@ -219,6 +219,65 @@ Default weights are **TBD**; the only strong constraint is:
 
 - `w_ai` should be largest, because AI Score is the primary LLM-based ranking input (FR‑019a).
 
+**Actual scoring formula (current implementation)**
+
+The actual scoring formula in `rank.ts` is:
+
+```
+baseScore = w_aha * aha01 + w_heuristic * heuristicScore + w_pref * pref
+preWeightScore = baseScore + w_signal * signal01 + w_novelty * novelty01
+finalScore = preWeightScore * effectiveWeight * userPrefWeight * decayMultiplier
+```
+
+Where:
+- `aha01 = ai_score / 100` (0-1 normalized LLM score)
+- `heuristicScore = w_recency * recency01 + w_engagement * engagement01` (computed in digest.ts)
+- `pref = positiveSim - negativeSim` (user preference similarity, -1 to 1)
+- `effectiveWeight` = source type weight × per-source weight (clamped 0.1-3.0)
+- `userPrefWeight` = source preference × author preference (from feedback history, clamped 0.5-2.0)
+- `decayMultiplier = exp(-ageHours / decayHours)` (exponential decay for freshness)
+
+Default weights: `w_aha=0.8`, `w_heuristic=0.15`, `w_pref=0.15`, `w_novelty=0.05`, `w_signal=0` (disabled).
+Heuristic sub-weights: `w_recency=0.6`, `w_engagement=0.4`.
+
+**Score debug feature (`system_features.score_debug_v1`)**
+
+For transparency and debugging, the ranking stage always persists a `score_debug_v1` object inside `triage_json.system_features`. This captures all intermediate values:
+
+```typescript
+score_debug_v1: {
+  weights: { w_aha, w_heuristic, w_pref, w_novelty, w_signal },
+  inputs: {
+    ai_score,         // 0-100 raw LLM score
+    aha01,            // ai_score / 100
+    heuristic_score,  // 0-1 combined recency + engagement
+    recency01,        // 0-1 item freshness within window
+    engagement01,     // 0-1 normalized engagement (upvotes, comments)
+    preference_score, // -1 to 1 (positive_sim - negative_sim)
+    novelty01,        // 0-1 (1 = most novel)
+    signal01,         // 0 or 1 (signal corroboration match)
+  },
+  heuristic_weights: { w_recency, w_engagement },
+  components: {
+    ai: w_aha * aha01,
+    heuristic: w_heuristic * heuristic_score,
+    preference: w_pref * preference_score,
+    novelty: w_novelty * novelty01,
+    signal: w_signal * signal01,
+  },
+  base_score,        // sum of weighted components
+  pre_weight_score,  // base_score + signal + novelty
+  multipliers: {
+    source_weight,           // effective source weight
+    user_preference_weight,  // feedback-derived weight
+    decay_multiplier,        // recency decay factor
+  },
+  final_score,       // pre_weight_score * multipliers
+}
+```
+
+The UI can display this breakdown in a tooltip when the experimental `score_debug` feature is enabled (requires `NEXT_PUBLIC_SCORE_DEBUG_ENABLED=true` env var).
+
 ### 8) Deep enrich (LLM)
 
 **Goal**
