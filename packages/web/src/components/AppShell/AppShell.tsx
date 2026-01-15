@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { UserMenu } from "@/components/UserMenu";
 import { t } from "@/lib/i18n";
 import styles from "./AppShell.module.css";
-import { getMobileNavItemsForRole, getNavItemsForRole, type NavItem } from "./nav-model";
+import { getNavItemsForRole, type NavItem } from "./nav-model";
 
 interface AppShellProps {
   /** Main content slot */
@@ -23,7 +23,6 @@ export function AppShell({ children, header }: AppShellProps) {
 
   // Filter nav items based on user role
   const navItems = getNavItemsForRole(user?.role);
-  const mobileNavItems = getMobileNavItemsForRole(user?.role);
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar = () => setSidebarOpen(false);
@@ -83,17 +82,6 @@ export function AppShell({ children, header }: AppShellProps) {
           {children}
         </main>
       </div>
-
-      {/* Mobile bottom navigation */}
-      <nav className={styles.mobileNav} aria-label="Mobile navigation">
-        <ul className={styles.mobileNavList}>
-          {mobileNavItems.map((item) => (
-            <li key={item.id}>
-              <MobileNavLink item={item} isActive={pathname === item.href} />
-            </li>
-          ))}
-        </ul>
-      </nav>
     </div>
   );
 }
@@ -116,21 +104,6 @@ function NavLink({ item, isActive, onClick }: NavLinkProps) {
         <NavIcon icon={item.icon} />
       </span>
       <span>{t(item.labelKey as Parameters<typeof t>[0])}</span>
-    </Link>
-  );
-}
-
-function MobileNavLink({ item, isActive }: Omit<NavLinkProps, "onClick">) {
-  return (
-    <Link
-      href={item.href}
-      className={`${styles.mobileNavLink} ${isActive ? styles.mobileNavLinkActive : ""}`}
-      aria-current={isActive ? "page" : undefined}
-    >
-      <span className={styles.mobileNavIcon}>
-        <NavIcon icon={item.icon} />
-      </span>
-      <span className={styles.mobileNavLabel}>{t(item.labelKey as Parameters<typeof t>[0])}</span>
     </Link>
   );
 }
