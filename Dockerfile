@@ -26,16 +26,32 @@ COPY --from=deps /app/packages/*/node_modules ./packages/
 COPY . .
 RUN pnpm build
 
+# API target
+FROM base AS api
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+CMD ["node", "packages/api/dist/main.js"]
+
+# Web target
+FROM base AS web
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+WORKDIR /app/packages/web
+ENV NODE_ENV=production
+CMD ["node", "node_modules/next/dist/bin/next", "start"]
+
 # Worker target
 FROM base AS worker
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-CMD ["pnpm", "--filter", "@aharadar/worker", "start"]
+CMD ["node", "packages/worker/dist/main.js"]
 
 # Queue UI target
 FROM base AS queue-ui
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-CMD ["pnpm", "--filter", "@aharadar/queue-ui", "start"]
+CMD ["node", "packages/queue-ui/dist/index.js"]

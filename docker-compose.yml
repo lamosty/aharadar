@@ -59,6 +59,38 @@ services:
 
   # App containers - only start with: docker compose --profile apps up
   # For local dev, run apps via pnpm dev:stack instead (faster iteration)
+  api:
+    profiles: ["apps"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://aharadar:aharadar_dev_password@postgres:5432/aharadar
+      - REDIS_URL=redis://redis:6379
+      - WORKER_HEALTH_URL=http://worker:9091/health
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  web:
+    profiles: ["apps"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
   worker:
     profiles: ["apps"]
     build:
@@ -70,6 +102,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql://aharadar:aharadar_dev_password@postgres:5432/aharadar
       - REDIS_URL=redis://redis:6379
@@ -85,6 +118,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    env_file: .env
     environment:
       - REDIS_URL=redis://redis:6379
       - QUEUE_UI_PORT=3101
