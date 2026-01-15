@@ -943,7 +943,7 @@ export async function persistDigestFromContentItems(params: {
   const scored = base.map((b, idx) => {
     const e = engagementNorm[idx] ?? 0;
     const heuristicScore = wRecency * b.recency + wEngagement * e;
-    return { ...b, heuristicScore };
+    return { ...b, heuristicScore, engagement01: e };
   });
 
   scored.sort((a, b) => b.heuristicScore - a.heuristicScore || b.candidateAtMs - a.candidateAtMs);
@@ -1126,6 +1126,8 @@ export async function persistDigestFromContentItems(params: {
         representativeContentItemId: c.representativeContentItemId,
         candidateAtMs: c.candidateAtMs,
         heuristicScore: c.heuristicScore,
+        recency01: c.recency,
+        engagement01: c.engagement01,
         positiveSim: c.positiveSim,
         negativeSim: c.negativeSim,
         triage: triageMap.get(c.candidateId) ?? null,

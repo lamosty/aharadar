@@ -101,6 +101,10 @@ export interface RankCandidateInput {
   representativeContentItemId: string;
   candidateAtMs: number;
   heuristicScore: number;
+  /** Recency component (0-1) for score debug */
+  recency01?: number;
+  /** Normalized engagement component (0-1) for score debug */
+  engagement01?: number;
   positiveSim: number | null;
   negativeSim: number | null;
   triage: TriageOutput | null;
@@ -300,6 +304,59 @@ export function rankCandidates(params: {
         decay_factor: Math.round(decayFeature.decay_factor * 100) / 100, // Round to 2 decimals
       };
     }
+
+    // Score debug breakdown for UI tooltips
+    // Heuristic subweights are hardcoded in digest.ts
+    const wRecency = 0.6;
+    const wEngagement = 0.4;
+    const recency01 = c.recency01 ?? 0;
+    const engagement01 = c.engagement01 ?? 0;
+
+    // Compute weighted components for transparency
+    const aiComponent = triage ? wAha * aha01 : 0;
+    const heuristicComponent = triage ? wHeuristic * c.heuristicScore : c.heuristicScore;
+    const preferenceComponent = wPref * pref;
+    const noveltyComponent = wNovelty * novelty01;
+    const signalComponent = wSignal * signalCorr01;
+
+    systemFeatures.score_debug_v1 = {
+      weights: {
+        w_aha: wAha,
+        w_heuristic: wHeuristic,
+        w_pref: wPref,
+        w_novelty: wNovelty,
+        w_signal: wSignal,
+      },
+      inputs: {
+        ai_score: triage?.ai_score ?? null,
+        aha01: Math.round(aha01 * 1000) / 1000,
+        heuristic_score: Math.round(c.heuristicScore * 1000) / 1000,
+        recency01: Math.round(recency01 * 1000) / 1000,
+        engagement01: Math.round(engagement01 * 1000) / 1000,
+        preference_score: Math.round(pref * 1000) / 1000,
+        novelty01: Math.round(novelty01 * 1000) / 1000,
+        signal01: signalCorr01,
+      },
+      heuristic_weights: {
+        w_recency: wRecency,
+        w_engagement: wEngagement,
+      },
+      components: {
+        ai: Math.round(aiComponent * 1000) / 1000,
+        heuristic: Math.round(heuristicComponent * 1000) / 1000,
+        preference: Math.round(preferenceComponent * 1000) / 1000,
+        novelty: Math.round(noveltyComponent * 1000) / 1000,
+        signal: Math.round(signalComponent * 1000) / 1000,
+      },
+      base_score: Math.round(baseScore * 1000) / 1000,
+      pre_weight_score: Math.round(preWeightScore * 1000) / 1000,
+      multipliers: {
+        source_weight: Math.round(effectiveWeight * 1000) / 1000,
+        user_preference_weight: Math.round(userPrefWeight * 1000) / 1000,
+        decay_multiplier: Math.round(decayMultiplier * 1000) / 1000,
+      },
+      final_score: Math.round(score * 1000) / 1000,
+    };
 
     // Attach system_features to triageJson if we have any features
     if (Object.keys(systemFeatures).length > 0) {
