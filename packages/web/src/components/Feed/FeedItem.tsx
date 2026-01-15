@@ -330,7 +330,7 @@ export function FeedItem({
   onSummaryGenerated,
   onNext,
 }: FeedItemProps) {
-  const [expanded, _setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const { addToast } = useToast();
 
   // Inline summary state - for paste input
@@ -362,6 +362,23 @@ export function FeedItem({
 
   // Force expanded state (for fast triage mode)
   const isExpanded = forceExpanded || expanded;
+
+  // Toggle expansion (for mobile tap interaction)
+  const toggleExpanded = () => {
+    if (!fastTriageMode) {
+      setExpanded((prev) => !prev);
+    }
+  };
+
+  // Close the detail panel (or skip to next in fast triage mode)
+  const closePanel = () => {
+    if (fastTriageMode && onNext) {
+      // In fast triage mode, "close" means skip to next item
+      onNext();
+    } else {
+      setExpanded(false);
+    }
+  };
 
   const handleFeedback = async (action: "like" | "dislike" | "skip") => {
     if (onFeedback) {
@@ -485,8 +502,8 @@ export function FeedItem({
         data-feed-item
         onMouseEnter={onHover}
       >
-        {/* Main row: title + trailing meta */}
-        <div className={styles.scanRow}>
+        {/* Main row: title + trailing meta - tap to expand on mobile */}
+        <div className={styles.scanRow} onClick={toggleExpanded}>
           {/* Topic badge if showing all topics */}
           {showTopicBadge && item.topicName && (
             <span className={styles.scanTopicBadge}>{item.topicName}</span>
@@ -534,8 +551,35 @@ export function FeedItem({
           </span>
         </div>
 
+        {/* Backdrop for mobile - tap to close */}
+        <div className={styles.detailPanelBackdrop} onClick={closePanel} aria-hidden="true" />
+
         {/* Floating detail panel - appears on hover, doesn't shift layout */}
         <div className={styles.detailPanel}>
+          {/* Mobile header buttons - only visible on mobile */}
+          <div className={styles.detailPanelHeader}>
+            {primaryLinkUrl && (
+              <a
+                href={primaryLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.detailPanelOpenLink}
+                aria-label="Open article"
+              >
+                <ExternalLinkIcon />
+                <span>Open</span>
+              </a>
+            )}
+            <button
+              type="button"
+              className={styles.detailPanelClose}
+              onClick={closePanel}
+              aria-label="Close"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
           {/* Body text - shows full/expanded content, clickable to open the same link as title */}
           {expandedBodyText &&
             (primaryLinkUrl ? (
@@ -836,6 +880,45 @@ function CommentIcon({ size = 14 }: { size?: number }) {
       aria-hidden="true"
     >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
     </svg>
   );
 }
