@@ -123,5 +123,6 @@ Task files (in recommended order):
 93. `task-145-web-feed-deep-dive-use-items.md` - Web: Feed Deep Dive tab uses `/items` (fix score=0 + sort no-op)
 94. `task-146-item-summaries-api-db.md` - Backend: replace Deep Dive storage/endpoints with item summaries
 95. `task-147-feed-inline-auto-summary.md` - Web: inline auto-summary on paste + remove Deep Dive UI
+96. `task-148-score-debug-tooltip.md` - Web/pipeline: debug score breakdown tooltip + experimental toggle
 
 **Note**: Deep Dive UI/terminology is being retired; tasks 146–147 supersede the Deep Dive flow from tasks 137/144/145.
