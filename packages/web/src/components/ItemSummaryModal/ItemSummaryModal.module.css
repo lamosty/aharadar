@@ -216,106 +216,12 @@
 /* Footer */
 .footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
-}
-
-.feedbackActions {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.feedbackBtn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.feedbackBtn:hover {
-  background: var(--color-surface-elevated);
-}
-
-.feedbackBtn svg {
-  flex-shrink: 0;
-}
-
-.likeBtn:hover,
-.likeBtn.active {
-  color: var(--color-success);
-  border-color: var(--color-success);
-  background: color-mix(in srgb, var(--color-success) 10%, transparent);
-}
-
-.likeBtn.active {
-  background: color-mix(in srgb, var(--color-success) 15%, transparent);
-}
-
-.dislikeBtn:hover,
-.dislikeBtn.active {
-  color: var(--color-error);
-  border-color: var(--color-error);
-  background: color-mix(in srgb, var(--color-error) 10%, transparent);
-}
-
-.dislikeBtn.active {
-  background: color-mix(in srgb, var(--color-error) 15%, transparent);
-}
-
-.skipBtn:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-text-muted);
-}
-
-.footerRight {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.closeBtn {
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.closeBtn:hover {
-  color: var(--color-text-primary);
-  background: var(--color-surface-elevated);
-}
-
-.readNextButton {
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-primary);
-  background: transparent;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.readNextButton:hover {
-  color: white;
-  background: var(--color-primary);
 }
 
 /* Responsive */
