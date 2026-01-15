@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Dependencies stage
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/connectors/package.json ./packages/connectors/
@@ -21,9 +21,11 @@ RUN pnpm install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder
+COPY --from=deps /root/.local/share/pnpm /root/.local/share/pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/*/node_modules ./packages/
 COPY . .
+RUN pnpm install --frozen-lockfile --offline
 RUN pnpm build
 
 # API target
