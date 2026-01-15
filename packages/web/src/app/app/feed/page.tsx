@@ -377,6 +377,9 @@ function FeedPageContent() {
 
       if (!currentItem) return;
 
+      // Capture next item BEFORE feedback (list will shift after mutation in inbox view)
+      const nextItem = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
+
       await feedbackMutation.mutateAsync({
         contentItemId: mobileModalItemId,
         digestId: currentItem.digestId,
@@ -384,21 +387,13 @@ function FeedPageContent() {
       });
 
       // Auto-advance to next item (or close if last)
-      // In inbox view, items shift after feedback so we need to handle differently
-      if (view === "inbox") {
-        // After feedback, the item is removed - next item shifts to current position
-        // We need to wait for refetch, but for now just close (user can tap next item)
-        setMobileModalItemId(null);
+      if (nextItem) {
+        setMobileModalItemId(nextItem.id);
       } else {
-        // In highlights/all view, item stays - advance to next
-        if (currentIndex < allItems.length - 1) {
-          setMobileModalItemId(allItems[currentIndex + 1].id);
-        } else {
-          setMobileModalItemId(null);
-        }
+        setMobileModalItemId(null);
       }
     },
-    [mobileModalItemId, data, feedbackMutation, view],
+    [mobileModalItemId, data, feedbackMutation],
   );
 
   const handleMobileModalClear = useCallback(async () => {
