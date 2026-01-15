@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
+import { FeedItemModal } from "@/components/Feed/FeedItemModal";
 import { InboxSummaryModal } from "@/components/InboxSummaryModal";
 import { ItemSummaryModal } from "@/components/ItemSummaryModal";
 import { LayoutToggle } from "@/components/LayoutToggle";
@@ -17,6 +18,7 @@ import {
   useClearFeedback,
   useFeedback,
   useLocalStorage,
+  useMediaQuery,
   usePagedItems,
   usePageLayout,
   useTopicMarkChecked,
@@ -96,6 +98,10 @@ function FeedPageContent() {
 
   // Inbox summary modal state
   const [isInboxSummaryModalOpen, setIsInboxSummaryModalOpen] = useState(false);
+
+  // Mobile modal state
+  const [mobileModalItemId, setMobileModalItemId] = useState<string | null>(null);
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   // Sync URL topic param with TopicProvider on mount
   useEffect(() => {
@@ -356,6 +362,50 @@ function FeedPageContent() {
     [data, clearFeedbackMutation],
   );
 
+  // Mobile modal handlers
+  const handleMobileItemClick = useCallback((itemId: string) => {
+    setMobileModalItemId(itemId);
+  }, []);
+
+  const handleMobileModalFeedback = useCallback(
+    async (action: "like" | "dislike" | "skip") => {
+      if (!mobileModalItemId) return;
+
+      const allItems = data?.items ?? [];
+      const currentIndex = allItems.findIndex((i) => i.id === mobileModalItemId);
+      const currentItem = allItems[currentIndex];
+
+      if (!currentItem) return;
+
+      await feedbackMutation.mutateAsync({
+        contentItemId: mobileModalItemId,
+        digestId: currentItem.digestId,
+        action,
+      });
+
+      // Auto-advance to next item (or close if last)
+      // In inbox view, items shift after feedback so we need to handle differently
+      if (view === "inbox") {
+        // After feedback, the item is removed - next item shifts to current position
+        // We need to wait for refetch, but for now just close (user can tap next item)
+        setMobileModalItemId(null);
+      } else {
+        // In highlights/all view, item stays - advance to next
+        if (currentIndex < allItems.length - 1) {
+          setMobileModalItemId(allItems[currentIndex + 1].id);
+        } else {
+          setMobileModalItemId(null);
+        }
+      }
+    },
+    [mobileModalItemId, data, feedbackMutation, view],
+  );
+
+  const handleMobileModalClear = useCallback(async () => {
+    if (!mobileModalItemId) return;
+    await handleClearFeedback(mobileModalItemId);
+  }, [mobileModalItemId, handleClearFeedback]);
+
   const items = data?.items ?? [];
   const totalCount = data?.pagination.total ?? 0;
   const isCondensed = layout === "condensed";
@@ -572,6 +622,7 @@ function FeedPageContent() {
                 onNext={() => handleNextItem(item.id)}
                 onClose={() => setForceExpandedId(null)}
                 sort={sort}
+                onMobileClick={isMobile ? () => handleMobileItemClick(item.id) : undefined}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand
@@ -650,6 +701,21 @@ function FeedPageContent() {
         isOpen={isInboxSummaryModalOpen}
         topicId={currentTopicId}
         onClose={() => setIsInboxSummaryModalOpen(false)}
+      />
+
+      {/* Mobile Feed Item Modal */}
+      <FeedItemModal
+        isOpen={mobileModalItemId !== null}
+        item={items.find((i) => i.id === mobileModalItemId) || null}
+        onClose={() => setMobileModalItemId(null)}
+        onFeedback={handleMobileModalFeedback}
+        onClear={handleMobileModalClear}
+        sort={sort}
+        onViewSummary={(item, summary) => {
+          setMobileModalItemId(null);
+          handleOpenReaderModal(item, summary);
+        }}
+        onSummaryGenerated={() => refetch()}
       />
     </div>
   );

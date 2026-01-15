@@ -39,6 +39,8 @@ interface FeedItemProps {
   onNext?: () => void;
   /** Called when user closes the panel (to clear force-expanded state) */
   onClose?: () => void;
+  /** Called on mobile when item is tapped (opens full-screen modal) */
+  onMobileClick?: () => void;
 }
 
 interface DisplayDate {
@@ -332,6 +334,7 @@ export function FeedItem({
   onSummaryGenerated,
   onNext,
   onClose,
+  onMobileClick,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { addToast } = useToast();
@@ -368,6 +371,11 @@ export function FeedItem({
 
   // Toggle expansion (for mobile tap interaction)
   const toggleExpanded = () => {
+    // On mobile, open full-screen modal instead of inline expansion
+    if (onMobileClick) {
+      onMobileClick();
+      return;
+    }
     if (!fastTriageMode) {
       setExpanded((prev) => !prev);
     }
