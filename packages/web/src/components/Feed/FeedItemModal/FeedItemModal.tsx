@@ -294,6 +294,7 @@ export function FeedItemModal({
         {/* Footer with feedback actions */}
         <div className={styles.footer}>
           <FeedbackButtons
+            key={item.id}
             contentItemId={item.id}
             digestId={item.digestId}
             currentFeedback={item.feedback}
