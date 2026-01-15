@@ -12,6 +12,7 @@ import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
 import type { SortOption } from "./FeedFilterBar";
 import styles from "./FeedItem.module.css";
+import { ScoreDebugTooltip } from "./ScoreDebugTooltip";
 import { XAccountHealthNudge } from "./XAccountHealthNudge";
 
 interface FeedItemProps {
@@ -461,7 +462,6 @@ export function FeedItem({
   };
 
   const isTrendingSort = sort === "trending";
-  const scoreTooltip = isTrendingSort ? t("tooltips.trendingScore") : t("tooltips.ahaScore");
   // Prefer Aha Score (raw personalized score) unless sort=trending
   const displayScore = isTrendingSort
     ? (item.trendingScore ?? item.score ?? item.ahaScore ?? 0)
@@ -551,7 +551,15 @@ export function FeedItem({
           {/* Trailing metadata */}
           <span className={styles.scanMeta}>
             {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
-            <Tooltip content={scoreTooltip}>
+            <Tooltip
+              content={
+                <ScoreDebugTooltip
+                  isTrendingSort={isTrendingSort}
+                  triageJson={item.triageJson as TriageFeatures | undefined}
+                  displayScore={displayScore}
+                />
+              }
+            >
               <span className={styles.scanScore}>{scorePercent}</span>
             </Tooltip>
             <time className={styles.scanTime}>
@@ -792,7 +800,15 @@ export function FeedItem({
               </span>
             </Tooltip>
           )}
-          <Tooltip content={scoreTooltip}>
+          <Tooltip
+            content={
+              <ScoreDebugTooltip
+                isTrendingSort={isTrendingSort}
+                triageJson={item.triageJson as TriageFeatures | undefined}
+                displayScore={displayScore}
+              />
+            }
+          >
             <div className={styles.score}>
               <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
               <span className={styles.scoreText}>{scorePercent}</span>
