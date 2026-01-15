@@ -92,9 +92,11 @@ async function buildServer() {
   await fastify.register(
     async (api) => {
       api.addHook("onRequest", async (request, reply) => {
-        // Try session cookie first
         const sessionToken = request.cookies?.session;
-        if (sessionToken) {
+        const bypassAuth = request.cookies?.BYPASS_AUTH;
+
+        // Call sessionAuth if session exists OR dev bypass is enabled
+        if (sessionToken || (bypassAuth && process.env.NODE_ENV !== "production")) {
           await sessionAuth(request, reply);
           return;
         }

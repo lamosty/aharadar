@@ -206,6 +206,26 @@
   border-radius: var(--radius-md);
 }
 
+/* Dev bypass button */
+.devBypass {
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-warning);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.devBypass:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-warning-subtle, rgba(234, 179, 8, 0.1));
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .container,

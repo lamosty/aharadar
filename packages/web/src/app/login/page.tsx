@@ -128,6 +128,22 @@ function LoginContent() {
         <Link href="/" className={styles.backLink}>
           {t("common.back")}
         </Link>
+
+        {/* Dev bypass button - only in development */}
+        {process.env.NODE_ENV !== "production" && (
+          <button
+            type="button"
+            className={styles.devBypass}
+            onClick={() => {
+              const bypassUrl = email.trim()
+                ? `/api/dev/bypass?role=admin&email=${encodeURIComponent(email.trim())}`
+                : "/api/dev/bypass?role=admin";
+              window.location.href = bypassUrl;
+            }}
+          >
+            Dev Bypass {email.trim() ? `(${email.trim()})` : "(skip auth)"}
+          </button>
+        )}
       </div>
     </div>
   );

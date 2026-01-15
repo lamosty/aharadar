@@ -22,60 +22,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/**
- * Check if auth bypass is enabled for testing/development.
- * Enable by setting a cookie:
- *   document.cookie = 'BYPASS_AUTH=admin'  // bypass as admin
- *   document.cookie = 'BYPASS_AUTH=user'   // bypass as regular user
- *
- * The middleware (proxy.ts) also checks this cookie to skip redirect.
- */
-function getBypassAuth(): User | null {
-  if (typeof window === "undefined") return null;
-
-  // Check cookie
-  const cookies = document.cookie.split(";").reduce(
-    (acc, c) => {
-      const [key, val] = c.trim().split("=");
-      acc[key] = val;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
-
-  const bypass = cookies.BYPASS_AUTH;
-  if (bypass === "admin") {
-    return {
-      id: "test-user-id",
-      email: "test@example.com",
-      role: "admin",
-      createdAt: new Date().toISOString(),
-    };
-  }
-  if (bypass === "user") {
-    return {
-      id: "test-user-id",
-      email: "test@example.com",
-      role: "user",
-      createdAt: new Date().toISOString(),
-    };
-  }
-  return null;
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    // Check for auth bypass first (for testing/Playwright)
-    const bypassUser = getBypassAuth();
-    if (bypassUser) {
-      setUser(bypassUser);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const settings = getDevSettings();
       const response = await fetch(`${settings.apiBaseUrl}/auth/me`, {

@@ -16,11 +16,32 @@ export async function sessionAuth(request: FastifyRequest, reply: FastifyReply):
   if (process.env.NODE_ENV !== "production") {
     const bypassCookie = request.cookies?.BYPASS_AUTH;
     if (bypassCookie === "admin" || bypassCookie === "user") {
-      const ctx = await getSingletonContext();
-      if (ctx) {
-        (request as AuthenticatedRequest).userId = ctx.userId;
+      const bypassEmail = request.cookies?.BYPASS_EMAIL
+        ? decodeURIComponent(request.cookies.BYPASS_EMAIL)
+        : undefined;
+      let userId: string | null = null;
+
+      // If email specified, look up that user
+      if (bypassEmail) {
+        const db = getDb();
+        const user = await db.users.getByEmail(bypassEmail);
+        if (user) {
+          userId = user.id;
+        }
+      }
+
+      // Fallback to singleton context (first user)
+      if (!userId) {
+        const ctx = await getSingletonContext();
+        if (ctx) {
+          userId = ctx.userId;
+        }
+      }
+
+      if (userId) {
+        (request as AuthenticatedRequest).userId = userId;
         (request as AuthenticatedRequest).sessionId = "dev-bypass-session";
-        console.log("[DEV] Auth bypassed", { userId: ctx.userId, role: bypassCookie });
+        console.log("[DEV] Auth bypassed", { userId, email: bypassEmail, role: bypassCookie });
         return;
       }
     }
