@@ -1231,7 +1231,7 @@
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     max-height: 60vh;
     overflow-y: auto;
-    padding-top: var(--space-5);
+    padding-top: var(--space-12); /* Extra padding for header buttons */
   }
 
   /* Mobile header - contains Open link and Close button */

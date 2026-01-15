@@ -37,6 +37,8 @@ interface FeedItemProps {
   onSummaryGenerated?: () => void;
   /** Called when user wants to skip to next item (Highlights fast triage) */
   onNext?: () => void;
+  /** Called when user closes the panel (to clear force-expanded state) */
+  onClose?: () => void;
 }
 
 interface DisplayDate {
@@ -329,6 +331,7 @@ export function FeedItem({
   onViewSummary,
   onSummaryGenerated,
   onNext,
+  onClose,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { addToast } = useToast();
@@ -370,13 +373,12 @@ export function FeedItem({
     }
   };
 
-  // Close the detail panel (or skip to next in fast triage mode)
+  // Close the detail panel
   const closePanel = () => {
-    if (fastTriageMode && onNext) {
-      // In fast triage mode, "close" means skip to next item
-      onNext();
-    } else {
-      setExpanded(false);
+    setExpanded(false);
+    // In fast triage mode, also notify parent to clear force-expanded state
+    if (forceExpanded && onClose) {
+      onClose();
     }
   };
 

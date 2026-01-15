@@ -465,13 +465,15 @@ function FeedPageContent() {
                 {t("feed.view.all")}
               </button>
             </div>
-            <LayoutToggle
-              layout={layout}
-              onLayoutChange={setLayout}
-              hasOverride={hasOverride}
-              onResetToGlobal={resetToGlobal}
-              size="sm"
-            />
+            <div className={styles.layoutToggleWrapper}>
+              <LayoutToggle
+                layout={layout}
+                onLayoutChange={setLayout}
+                hasOverride={hasOverride}
+                onResetToGlobal={resetToGlobal}
+                size="sm"
+              />
+            </div>
             {layout === "condensed" && (
               <Tooltip content={fastTriageMode ? "Fast triage ON" : "Fast triage OFF"}>
                 <button
@@ -486,7 +488,7 @@ function FeedPageContent() {
             )}
             <button
               type="button"
-              className="btn btn-secondary"
+              className={`btn btn-secondary ${styles.summarizeBtn}`}
               onClick={() => setIsInboxSummaryModalOpen(true)}
               disabled={items.length === 0}
             >
@@ -568,6 +570,7 @@ function FeedPageContent() {
                 onViewSummary={handleOpenReaderModal}
                 onSummaryGenerated={() => refetch()}
                 onNext={() => handleNextItem(item.id)}
+                onClose={() => setForceExpandedId(null)}
                 sort={sort}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
