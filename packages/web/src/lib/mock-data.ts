@@ -68,6 +68,44 @@ export interface TriageFeatures {
       decay_hours: number;
       decay_factor: number;
     };
+    score_debug_v1?: {
+      weights: {
+        w_aha: number;
+        w_heuristic: number;
+        w_pref: number;
+        w_novelty: number;
+        w_signal: number;
+      };
+      inputs: {
+        ai_score: number | null;
+        aha01: number;
+        heuristic_score: number;
+        recency01: number;
+        engagement01: number;
+        preference_score: number;
+        novelty01: number;
+        signal01: number;
+      };
+      heuristic_weights: {
+        w_recency: number;
+        w_engagement: number;
+      };
+      components: {
+        ai: number;
+        heuristic: number;
+        preference: number;
+        novelty: number;
+        signal: number;
+      };
+      base_score: number;
+      pre_weight_score: number;
+      multipliers: {
+        source_weight: number;
+        user_preference_weight: number;
+        decay_multiplier: number;
+      };
+      final_score: number;
+    };
   };
 
   [key: string]: unknown; // Future features
@@ -224,6 +262,25 @@ const mockDigestItems: DigestItem[] = [
           signal_url_sample: [],
         },
         recency_decay_v1: { age_hours: 2.5, decay_hours: 24, decay_factor: 0.9 },
+        score_debug_v1: {
+          weights: { w_aha: 0.8, w_heuristic: 0.15, w_pref: 0.15, w_novelty: 0.05, w_signal: 0 },
+          inputs: {
+            ai_score: 95,
+            aha01: 0.95,
+            heuristic_score: 0.78,
+            recency01: 0.9,
+            engagement01: 0.6,
+            preference_score: 0.12,
+            novelty01: 0.92,
+            signal01: 1,
+          },
+          heuristic_weights: { w_recency: 0.6, w_engagement: 0.4 },
+          components: { ai: 0.76, heuristic: 0.117, preference: 0.018, novelty: 0.046, signal: 0 },
+          base_score: 0.895,
+          pre_weight_score: 0.941,
+          multipliers: { source_weight: 1.5, user_preference_weight: 1.0, decay_multiplier: 0.9 },
+          final_score: 1.27,
+        },
       },
     },
     feedback: null,
@@ -258,6 +315,25 @@ const mockDigestItems: DigestItem[] = [
           source_name: "r/programming",
         },
         recency_decay_v1: { age_hours: 4, decay_hours: 24, decay_factor: 0.85 },
+        score_debug_v1: {
+          weights: { w_aha: 0.8, w_heuristic: 0.15, w_pref: 0.15, w_novelty: 0.05, w_signal: 0 },
+          inputs: {
+            ai_score: 88,
+            aha01: 0.88,
+            heuristic_score: 0.65,
+            recency01: 0.83,
+            engagement01: 0.35,
+            preference_score: 0.08,
+            novelty01: 0.85,
+            signal01: 0,
+          },
+          heuristic_weights: { w_recency: 0.6, w_engagement: 0.4 },
+          components: { ai: 0.704, heuristic: 0.098, preference: 0.012, novelty: 0.043, signal: 0 },
+          base_score: 0.814,
+          pre_weight_score: 0.857,
+          multipliers: { source_weight: 1.2, user_preference_weight: 1.1, decay_multiplier: 0.85 },
+          final_score: 0.96,
+        },
       },
     },
     feedback: "like",
