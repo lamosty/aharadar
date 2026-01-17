@@ -264,7 +264,7 @@ export function FeedItemModal({
     setSwipeOffset(action === "like" ? outDistance : -outDistance);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 160));
+      await new Promise((resolve) => setTimeout(resolve, 140));
       await onFeedback(action);
     } catch {
       setSwipeOffset(0);
