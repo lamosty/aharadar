@@ -73,6 +73,19 @@
   transition: none;
 }
 
+.swipeCard.fadeIn {
+  animation: cardFadeIn 140ms ease-out;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0.96;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .swipeOverlay {
   position: absolute;
   inset: 0;

@@ -104,6 +104,7 @@ export function FeedItemModal({
   const [swipeDirection, setSwipeDirection] = useState<"like" | "dislike" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [disableTransition, setDisableTransition] = useState(false);
+  const [fadeIn, setFadeIn] = useState(false);
 
   const summaryMutation = useItemSummary({
     onSuccess: (data) => {
@@ -138,10 +139,20 @@ export function FeedItemModal({
     setSwipeDirection(null);
     setIsDragging(false);
     setDisableTransition(true);
+    setFadeIn(true);
+    let raf: number | null = null;
     const frame = requestAnimationFrame(() => {
       setDisableTransition(false);
+      raf = requestAnimationFrame(() => {
+        setFadeIn(false);
+      });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (raf !== null) {
+        cancelAnimationFrame(raf);
+      }
+    };
   }, [item?.id, isOpen]);
 
   // Handle click outside
@@ -336,7 +347,7 @@ export function FeedItemModal({
         onClickCapture={handleClickCapture}
       >
         <div
-          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""} ${disableTransition ? styles.noTransition : ""}`}
+          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""} ${disableTransition ? styles.noTransition : ""} ${fadeIn ? styles.fadeIn : ""}`}
           style={{ transform: swipeTransform, transformOrigin: swipeOrigin }}
         >
           <div className={styles.swipeOverlay} aria-hidden="true">
