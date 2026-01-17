@@ -17,6 +17,7 @@ interface FeedItemModalProps {
   sort: SortOption;
   onViewSummary?: (item: FeedItem, summary: ManualSummaryOutput) => void;
   onSummaryGenerated?: () => void;
+  enableSwipe?: boolean;
 }
 
 // Helper functions
@@ -83,6 +84,7 @@ export function FeedItemModal({
   sort,
   onViewSummary,
   onSummaryGenerated,
+  enableSwipe = true,
 }: FeedItemModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -186,6 +188,7 @@ export function FeedItemModal({
   const swipeOpacity = Math.min(Math.abs(swipeOffset) / 120, 1);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!enableSwipe) return;
     if (e.pointerType !== "touch") return;
     if (swipePendingRef.current) return;
 
@@ -204,6 +207,7 @@ export function FeedItemModal({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!enableSwipe) return;
     const start = swipeStartRef.current;
     if (!start.active || start.pointerId !== e.pointerId) return;
 
@@ -257,6 +261,7 @@ export function FeedItemModal({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!enableSwipe) return;
     const start = swipeStartRef.current;
     if (!start.active || start.pointerId !== e.pointerId) return;
 
@@ -291,6 +296,7 @@ export function FeedItemModal({
   };
 
   const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!enableSwipe) return;
     swipeStartRef.current.active = false;
     swipeStartRef.current.pointerId = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {

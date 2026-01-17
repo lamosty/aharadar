@@ -700,6 +700,7 @@ function FeedPageContent() {
         onClose={() => setMobileModalItemId(null)}
         onFeedback={handleMobileModalFeedback}
         sort={sort}
+        enableSwipe={isMobile}
         onViewSummary={(item, summary) => {
           setMobileModalItemId(null);
           handleOpenReaderModal(item, summary);
