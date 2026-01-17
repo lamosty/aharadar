@@ -182,6 +182,11 @@ export function FeedItemModal({
   const displayDate = item.item.publishedAt || item.digestCreatedAt;
   const summary = localSummary || item.manualSummaryJson;
   const swipeOpacity = Math.min(Math.abs(swipeOffset) / 120, 1);
+  const maxRotation = 12;
+  const rotation = Math.max(Math.min(swipeOffset / 12, maxRotation), -maxRotation);
+  const swipeTransform = `translateX(${swipeOffset}px) rotate(${rotation}deg)`;
+  const swipeOrigin =
+    swipeOffset === 0 ? "center center" : swipeOffset > 0 ? "bottom left" : "bottom right";
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!enableSwipe) return;
@@ -326,7 +331,7 @@ export function FeedItemModal({
       >
         <div
           className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""}`}
-          style={{ transform: `translateX(${swipeOffset}px)` }}
+          style={{ transform: swipeTransform, transformOrigin: swipeOrigin }}
         >
           <div className={styles.swipeOverlay} aria-hidden="true">
             <div
