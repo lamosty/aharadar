@@ -69,6 +69,10 @@
   user-select: none;
 }
 
+.swipeCard.noTransition {
+  transition: none;
+}
+
 .swipeOverlay {
   position: absolute;
   inset: 0;

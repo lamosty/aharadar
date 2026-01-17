@@ -103,6 +103,7 @@ export function FeedItemModal({
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<"like" | "dislike" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [disableTransition, setDisableTransition] = useState(false);
 
   const summaryMutation = useItemSummary({
     onSuccess: (data) => {
@@ -136,6 +137,11 @@ export function FeedItemModal({
     setSwipeOffset(0);
     setSwipeDirection(null);
     setIsDragging(false);
+    setDisableTransition(true);
+    const frame = requestAnimationFrame(() => {
+      setDisableTransition(false);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [item?.id, isOpen]);
 
   // Handle click outside
@@ -330,7 +336,7 @@ export function FeedItemModal({
         onClickCapture={handleClickCapture}
       >
         <div
-          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""}`}
+          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""} ${disableTransition ? styles.noTransition : ""}`}
           style={{ transform: swipeTransform, transformOrigin: swipeOrigin }}
         >
           <div className={styles.swipeOverlay} aria-hidden="true">
