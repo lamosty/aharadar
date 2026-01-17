@@ -88,10 +88,11 @@ export function FeedItemModal({
 }: FeedItemModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const swipeStartRef = useRef<{ x: number; y: number; active: boolean }>({
+  const swipeStartRef = useRef<{ x: number; y: number; active: boolean; startTime: number }>({
     x: 0,
     y: 0,
     active: false,
+    startTime: 0,
   });
   const swipePendingRef = useRef(false);
   const suppressClickRef = useRef(false);
@@ -216,10 +217,12 @@ export function FeedItemModal({
     }
 
     suppressClickRef.current = false;
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
     swipeStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
       active: true,
+      startTime: now,
     };
   };
 
@@ -282,10 +285,16 @@ export function FeedItemModal({
     const deltaY = touch.clientY - start.y;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const duration = Math.max(now - start.startTime, 1);
+    const velocity = absX / duration;
 
     swipeStartRef.current.active = false;
 
-    if (absX > 90 && absX > absY * 1.2) {
+    const isLongSwipe = absX > 90 && absX > absY * 1.2;
+    const isFlick = absX > 32 && absX > absY * 1.1 && duration < 260 && velocity > 0.4;
+
+    if (isLongSwipe || isFlick) {
       void triggerSwipeFeedback(deltaX > 0 ? "like" : "dislike");
       setTimeout(() => {
         suppressClickRef.current = false;
