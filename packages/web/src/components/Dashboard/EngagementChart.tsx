@@ -60,7 +60,7 @@ export function EngagementChart() {
       {!hasData ? (
         <div className={styles.chartEmpty}>
           <p>No feedback data yet</p>
-          <span className={styles.chartEmptyHint}>Like or skip items to see trends here</span>
+          <span className={styles.chartEmptyHint}>Like or dislike items to see trends here</span>
         </div>
       ) : (
         <>

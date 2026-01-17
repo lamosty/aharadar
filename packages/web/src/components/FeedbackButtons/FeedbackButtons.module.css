@@ -80,12 +80,6 @@
   box-shadow: 0 2px 8px 0 rgb(79 70 229 / 0.15);
 }
 
-.button.skip.active {
-  color: var(--color-text-secondary);
-  background-color: var(--color-surface);
-  border-color: var(--color-border);
-}
-
 /* Hover states when active - now with visible feedback */
 .button.like.active:hover:not(:disabled) {
   color: var(--color-success-hover, var(--color-success));
@@ -108,18 +102,10 @@
   box-shadow: 0 4px 12px 0 rgb(79 70 229 / 0.25);
 }
 
-.button.skip.active:hover:not(:disabled) {
-  color: var(--color-text-primary);
-  background-color: var(--color-surface-hover, var(--color-surface-elevated));
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
 /* Active state press effect */
 .button.like.active:active:not(:disabled),
 .button.dislike.active:active:not(:disabled),
-.button.save.active:active:not(:disabled),
-.button.skip.active:active:not(:disabled) {
+.button.save.active:active:not(:disabled) {
   transform: scale(0.97) translateY(0);
 }
 
@@ -141,48 +127,4 @@
   .container:not(.compact) .button {
     padding: var(--space-2);
   }
-}
-
-/* Help button */
-.helpButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-1);
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  opacity: 0.5;
-  transition:
-    opacity var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.helpButton:hover {
-  opacity: 1;
-  color: var(--color-text-secondary);
-}
-
-.helpTooltip {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  line-height: 1.4;
-  text-align: left;
-}
-
-.helpRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-
-.helpRow svg {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
 }

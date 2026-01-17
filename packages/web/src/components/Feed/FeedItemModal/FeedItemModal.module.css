@@ -27,10 +27,10 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
-  display: flex;
-  flex-direction: column;
   background: var(--color-surface-elevated);
   animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  touch-action: pan-y;
+  overflow: hidden;
 }
 
 @keyframes slideUp {
@@ -42,6 +42,53 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.swipeCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: transform 0.2s ease;
+}
+
+.swipeCard.swipeDragging {
+  transition: none;
+}
+
+.swipeOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.swipeBadge {
+  position: absolute;
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid currentColor;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.likeBadge {
+  left: var(--space-4);
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.dislikeBadge {
+  right: var(--space-4);
+  color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 /* Header */
@@ -115,6 +162,7 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
 }
 
@@ -279,14 +327,3 @@
 }
 
 /* Footer */
-.footer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
-  border-top: 1px solid var(--color-border-subtle);
-  background: var(--color-surface);
-  flex-shrink: 0;
-}

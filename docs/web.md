@@ -76,7 +76,7 @@ Build a minimal, fast, and accessible web interface that lets users review perso
   - Triage summary (if present)
   - "Why shown" expandable panel
 - Three layout modes matching list page
-- Feedback buttons per item: like/dislike/save/skip
+- Feedback buttons per item: like/dislike
   - Optimistic update on click
   - Rollback on failure with toast
 - Skeleton loading

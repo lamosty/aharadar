@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { WhyShown } from "@/components/WhyShown";
 import { ApiError, type FeedItem, type ManualSummaryOutput } from "@/lib/api";
 import { useItemSummary } from "@/lib/hooks";
@@ -14,8 +13,7 @@ interface FeedItemModalProps {
   isOpen: boolean;
   item: FeedItem | null;
   onClose: () => void;
-  onFeedback: (action: "like" | "dislike" | "skip") => Promise<void>;
-  onClear: () => Promise<void>;
+  onFeedback: (action: "like" | "dislike") => Promise<void>;
   sort: SortOption;
   onViewSummary?: (item: FeedItem, summary: ManualSummaryOutput) => void;
   onSummaryGenerated?: () => void;
@@ -82,18 +80,29 @@ export function FeedItemModal({
   item,
   onClose,
   onFeedback,
-  onClear,
   sort,
   onViewSummary,
   onSummaryGenerated,
 }: FeedItemModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const swipeStartRef = useRef<{ x: number; y: number; active: boolean; pointerId: number | null }>(
+    {
+      x: 0,
+      y: 0,
+      active: false,
+      pointerId: null,
+    },
+  );
+  const swipePendingRef = useRef(false);
 
   // Paste-to-summarize state
   const [pastedText, setPastedText] = useState("");
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [localSummary, setLocalSummary] = useState<ManualSummaryOutput | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swipeDirection, setSwipeDirection] = useState<"like" | "dislike" | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const summaryMutation = useItemSummary({
     onSuccess: (data) => {
@@ -120,6 +129,15 @@ export function FeedItemModal({
       }
     }
   }, [item?.id]);
+
+  useEffect(() => {
+    swipeStartRef.current.active = false;
+    swipeStartRef.current.pointerId = null;
+    swipePendingRef.current = false;
+    setSwipeOffset(0);
+    setSwipeDirection(null);
+    setIsDragging(false);
+  }, [item?.id, isOpen]);
 
   // Handle click outside
   useEffect(() => {
@@ -164,6 +182,99 @@ export function FeedItemModal({
   const primaryUrl = item.item.url;
   const displayDate = item.item.publishedAt || item.digestCreatedAt;
   const summary = localSummary || item.manualSummaryJson;
+  const swipeOpacity = Math.min(Math.abs(swipeOffset) / 120, 1);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "touch") return;
+    if (swipePendingRef.current) return;
+
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("a, button, input, textarea, select, [contenteditable='true']")) {
+      return;
+    }
+
+    swipeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      active: true,
+      pointerId: e.pointerId,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start.active || start.pointerId !== e.pointerId) return;
+
+    const deltaX = e.clientX - start.x;
+    const deltaY = e.clientY - start.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (!isDragging) {
+      if (absY > absX && absY > 12) {
+        start.active = false;
+        setSwipeOffset(0);
+        setSwipeDirection(null);
+        return;
+      }
+      if (absX < 12) return;
+      setIsDragging(true);
+    }
+
+    const maxOffset = 180;
+    const clamped = Math.max(Math.min(deltaX, maxOffset), -maxOffset);
+    setSwipeOffset(clamped);
+    setSwipeDirection(deltaX >= 0 ? "like" : "dislike");
+  };
+
+  const triggerSwipeFeedback = async (action: "like" | "dislike") => {
+    if (swipePendingRef.current) return;
+    swipePendingRef.current = true;
+    setIsDragging(false);
+    setSwipeDirection(action);
+    const outDistance = typeof window !== "undefined" ? window.innerWidth : 360;
+    setSwipeOffset(action === "like" ? outDistance : -outDistance);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 160));
+      await onFeedback(action);
+    } catch {
+      setSwipeOffset(0);
+      setSwipeDirection(null);
+    } finally {
+      swipePendingRef.current = false;
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start.active || start.pointerId !== e.pointerId) return;
+
+    const deltaX = e.clientX - start.x;
+    const deltaY = e.clientY - start.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    swipeStartRef.current.active = false;
+    swipeStartRef.current.pointerId = null;
+
+    if (absX > 90 && absX > absY * 1.2) {
+      void triggerSwipeFeedback(deltaX > 0 ? "like" : "dislike");
+      return;
+    }
+
+    setSwipeOffset(0);
+    setSwipeDirection(null);
+    setIsDragging(false);
+  };
+
+  const handlePointerCancel = () => {
+    swipeStartRef.current.active = false;
+    swipeStartRef.current.pointerId = null;
+    setSwipeOffset(0);
+    setSwipeDirection(null);
+    setIsDragging(false);
+  };
 
   // Handle paste for summary generation
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -183,125 +294,156 @@ export function FeedItemModal({
 
   return (
     <div className={styles.overlay} aria-modal="true" role="dialog">
-      <div className={styles.modal} ref={modalRef}>
-        {/* Header */}
-        <div className={styles.header}>
-          <div className={styles.headerMeta}>
-            <span
-              className={styles.sourceBadge}
-              style={{ backgroundColor: getSourceColor(item.item.sourceType) }}
+      <div
+        className={styles.modal}
+        ref={modalRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        <div
+          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""}`}
+          style={{ transform: `translateX(${swipeOffset}px)` }}
+        >
+          <div className={styles.swipeOverlay} aria-hidden="true">
+            <div
+              className={`${styles.swipeBadge} ${styles.likeBadge}`}
+              style={{ opacity: swipeDirection === "like" ? swipeOpacity : 0 }}
             >
-              {formatSourceType(item.item.sourceType)}
-            </span>
-            {item.item.author && (
-              <span className={styles.author}>
-                {item.item.author.startsWith("@") ? item.item.author : item.item.author}
-              </span>
-            )}
-            {displayDate && <span className={styles.time}>{formatRelativeTime(displayDate)}</span>}
-          </div>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
-        </div>
-
-        {/* Body - Scrollable content */}
-        <div className={styles.body} ref={bodyRef}>
-          {/* Title */}
-          <h2 className={styles.title}>{getDisplayTitle(item.item)}</h2>
-
-          {/* Open link button */}
-          {primaryUrl && (
-            <a
-              href={primaryUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.openLink}
-            >
-              <ExternalLinkIcon />
-              Open article
-            </a>
-          )}
-
-          {/* Body preview */}
-          {item.item.bodyText && <p className={styles.bodyPreview}>{item.item.bodyText}</p>}
-
-          {/* Secondary info (comments link, etc.) */}
-          {secondaryInfo && (
-            <div className={styles.secondaryInfo}>
-              {secondaryInfo.commentsLink && (
-                <a
-                  href={secondaryInfo.commentsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.commentsLink}
-                >
-                  <CommentIcon />
-                  {secondaryInfo.commentCount} comments
-                </a>
-              )}
-              {secondaryInfo.text && !secondaryInfo.commentsLink && (
-                <span className={styles.secondaryText}>{secondaryInfo.text}</span>
-              )}
+              Like
             </div>
-          )}
+            <div
+              className={`${styles.swipeBadge} ${styles.dislikeBadge}`}
+              style={{ opacity: swipeDirection === "dislike" ? swipeOpacity : 0 }}
+            >
+              Nope
+            </div>
+          </div>
 
-          {/* Summary section (if exists) */}
-          {summary && (
-            <div className={styles.summarySection}>
-              <span className={styles.sectionLabel}>AI Summary</span>
-              <p className={styles.summaryText}>{summary.one_liner}</p>
-              <button
-                type="button"
-                className={styles.viewSummaryBtn}
-                onClick={() => onViewSummary?.(item, summary)}
+          <div className="sr-only">
+            <p>Swipe right to like. Swipe left to dislike.</p>
+            <button type="button" onClick={() => onFeedback("like")}>
+              Like
+            </button>
+            <button type="button" onClick={() => onFeedback("dislike")}>
+              Dislike
+            </button>
+          </div>
+
+          {/* Header */}
+          <div className={styles.header}>
+            <div className={styles.headerMeta}>
+              <span
+                className={styles.sourceBadge}
+                style={{ backgroundColor: getSourceColor(item.item.sourceType) }}
               >
-                View full summary
-              </button>
-            </div>
-          )}
-
-          {/* Paste input for summary generation */}
-          {!summary && (
-            <div className={styles.pasteSection}>
-              <input
-                type="text"
-                className={styles.pasteInput}
-                placeholder="Paste article content to generate AI summary..."
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                onPaste={handlePaste}
-                disabled={summaryMutation.isPending}
-              />
-              {summaryMutation.isPending && (
-                <span className={styles.generating}>Generating summary...</span>
+                {formatSourceType(item.item.sourceType)}
+              </span>
+              {item.item.author && (
+                <span className={styles.author}>
+                  {item.item.author.startsWith("@") ? item.item.author : item.item.author}
+                </span>
               )}
-              {summaryError && <span className={styles.error}>{summaryError}</span>}
+              {displayDate && (
+                <span className={styles.time}>{formatRelativeTime(displayDate)}</span>
+              )}
             </div>
-          )}
-
-          {/* Why Shown section */}
-          <div className={styles.whyShownSection}>
-            <WhyShown
-              features={item.triageJson as TriageFeatures | undefined}
-              clusterItems={item.clusterItems}
-              compact={false}
-              defaultExpanded={true}
-            />
+            <button
+              type="button"
+              className={styles.closeButton}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <CloseIcon />
+            </button>
           </div>
-        </div>
 
-        {/* Footer with feedback actions */}
-        <div className={styles.footer}>
-          <FeedbackButtons
-            key={item.id}
-            contentItemId={item.id}
-            digestId={item.digestId}
-            currentFeedback={item.feedback}
-            onFeedback={onFeedback}
-            onClear={onClear}
-            variant="default"
-          />
+          {/* Body - Scrollable content */}
+          <div className={styles.body} ref={bodyRef}>
+            {/* Title */}
+            <h2 className={styles.title}>{getDisplayTitle(item.item)}</h2>
+
+            {/* Open link button */}
+            {primaryUrl && (
+              <a
+                href={primaryUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.openLink}
+              >
+                <ExternalLinkIcon />
+                Open article
+              </a>
+            )}
+
+            {/* Body preview */}
+            {item.item.bodyText && <p className={styles.bodyPreview}>{item.item.bodyText}</p>}
+
+            {/* Secondary info (comments link, etc.) */}
+            {secondaryInfo && (
+              <div className={styles.secondaryInfo}>
+                {secondaryInfo.commentsLink && (
+                  <a
+                    href={secondaryInfo.commentsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.commentsLink}
+                  >
+                    <CommentIcon />
+                    {secondaryInfo.commentCount} comments
+                  </a>
+                )}
+                {secondaryInfo.text && !secondaryInfo.commentsLink && (
+                  <span className={styles.secondaryText}>{secondaryInfo.text}</span>
+                )}
+              </div>
+            )}
+
+            {/* Summary section (if exists) */}
+            {summary && (
+              <div className={styles.summarySection}>
+                <span className={styles.sectionLabel}>AI Summary</span>
+                <p className={styles.summaryText}>{summary.one_liner}</p>
+                <button
+                  type="button"
+                  className={styles.viewSummaryBtn}
+                  onClick={() => onViewSummary?.(item, summary)}
+                >
+                  View full summary
+                </button>
+              </div>
+            )}
+
+            {/* Paste input for summary generation */}
+            {!summary && (
+              <div className={styles.pasteSection}>
+                <input
+                  type="text"
+                  className={styles.pasteInput}
+                  placeholder="Paste article content to generate AI summary..."
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  onPaste={handlePaste}
+                  disabled={summaryMutation.isPending}
+                />
+                {summaryMutation.isPending && (
+                  <span className={styles.generating}>Generating summary...</span>
+                )}
+                {summaryError && <span className={styles.error}>{summaryError}</span>}
+              </div>
+            )}
+
+            {/* Why Shown section */}
+            <div className={styles.whyShownSection}>
+              <WhyShown
+                features={item.triageJson as TriageFeatures | undefined}
+                clusterItems={item.clusterItems}
+                compact={false}
+                defaultExpanded={true}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

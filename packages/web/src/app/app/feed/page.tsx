@@ -368,7 +368,7 @@ function FeedPageContent() {
   }, []);
 
   const handleMobileModalFeedback = useCallback(
-    async (action: "like" | "dislike" | "skip") => {
+    async (action: "like" | "dislike") => {
       if (!mobileModalItemId) return;
 
       const allItems = data?.items ?? [];
@@ -395,11 +395,6 @@ function FeedPageContent() {
     },
     [mobileModalItemId, data, feedbackMutation],
   );
-
-  const handleMobileModalClear = useCallback(async () => {
-    if (!mobileModalItemId) return;
-    await handleClearFeedback(mobileModalItemId);
-  }, [mobileModalItemId, handleClearFeedback]);
 
   const items = data?.items ?? [];
   const totalCount = data?.pagination.total ?? 0;
@@ -704,7 +699,6 @@ function FeedPageContent() {
         item={items.find((i) => i.id === mobileModalItemId) || null}
         onClose={() => setMobileModalItemId(null)}
         onFeedback={handleMobileModalFeedback}
-        onClear={handleMobileModalClear}
         sort={sort}
         onViewSummary={(item, summary) => {
           setMobileModalItemId(null);
