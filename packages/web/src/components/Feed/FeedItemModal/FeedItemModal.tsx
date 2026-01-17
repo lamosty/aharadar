@@ -14,6 +14,8 @@ interface FeedItemModalProps {
   item: FeedItem | null;
   onClose: () => void;
   onFeedback: (action: "like" | "dislike") => Promise<void>;
+  onUndo?: () => void;
+  canUndo?: boolean;
   sort: SortOption;
   onViewSummary?: (item: FeedItem, summary: ManualSummaryOutput) => void;
   onSummaryGenerated?: () => void;
@@ -81,6 +83,8 @@ export function FeedItemModal({
   item,
   onClose,
   onFeedback,
+  onUndo,
+  canUndo = false,
   sort,
   onViewSummary,
   onSummaryGenerated,
@@ -123,15 +127,14 @@ export function FeedItemModal({
 
   // Reset state when item changes
   useEffect(() => {
-    if (item) {
-      setPastedText("");
-      setSummaryError(null);
-      setLocalSummary(null);
-      if (bodyRef.current) {
-        bodyRef.current.scrollTop = 0;
-      }
+    if (!item) return;
+    setPastedText("");
+    setSummaryError(null);
+    setLocalSummary(null);
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = 0;
     }
-  }, [item?.id]);
+  }, [item]);
 
   useEffect(() => {
     swipeStartRef.current.active = false;
@@ -154,7 +157,7 @@ export function FeedItemModal({
         cancelAnimationFrame(raf);
       }
     };
-  }, [item?.id, isOpen]);
+  }, [item?.id]);
 
   // Handle click outside
   useEffect(() => {
@@ -205,6 +208,7 @@ export function FeedItemModal({
   const swipeTransform = `translateX(${swipeOffset}px) rotate(${rotation}deg)`;
   const swipeOrigin =
     swipeOffset === 0 ? "center center" : swipeOffset > 0 ? "bottom left" : "bottom right";
+  const hashtags = extractHashtags(item.item);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!enableSwipe) return;
@@ -402,18 +406,39 @@ export function FeedItemModal({
                 <span className={styles.time}>{formatRelativeTime(displayDate)}</span>
               )}
             </div>
-            <button
-              type="button"
-              className={styles.closeButton}
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <CloseIcon />
-            </button>
+            <div className={styles.headerActions}>
+              {canUndo && (
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={onUndo}
+                  aria-label="Undo"
+                >
+                  <UndoIcon />
+                </button>
+              )}
+              <button
+                type="button"
+                className={styles.iconButton}
+                onClick={onClose}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
           </div>
 
           {/* Body - Scrollable content */}
           <div className={styles.body} ref={bodyRef}>
+            {hashtags.length > 0 && (
+              <div className={styles.hashtagRow}>
+                {hashtags.map((tag) => (
+                  <span key={tag} className={styles.hashtag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
             {/* Title */}
             <h2 className={styles.title}>{getDisplayTitle(item.item)}</h2>
 
@@ -539,6 +564,57 @@ function getSecondaryInfo(item: FeedItem["item"]): {
   return null;
 }
 
+function normalizeHashtag(tag: string): string | null {
+  const trimmed = tag.trim();
+  if (!trimmed) return null;
+  const cleaned = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
+  if (!cleaned) return null;
+  return cleaned.length > 32 ? cleaned.slice(0, 32) : cleaned;
+}
+
+function extractHashtags(item: FeedItem["item"]): string[] {
+  const tags = new Set<string>();
+  const metadata = item.metadata as Record<string, unknown> | null;
+
+  const addTag = (value: string) => {
+    const normalized = normalizeHashtag(value);
+    if (normalized) {
+      tags.add(normalized);
+    }
+  };
+
+  const metaTags = metadata?.tags;
+  if (Array.isArray(metaTags)) {
+    metaTags.forEach((tag) => {
+      if (typeof tag === "string") addTag(tag);
+    });
+  }
+
+  const metaHashtags = metadata?.hashtags;
+  if (Array.isArray(metaHashtags)) {
+    metaHashtags.forEach((tag) => {
+      if (typeof tag === "string") addTag(tag);
+    });
+  } else if (typeof metaHashtags === "string") {
+    metaHashtags.split(/[,\s]+/).forEach((tag) => {
+      addTag(tag);
+    });
+  }
+
+  if (item.bodyText) {
+    const matches = item.bodyText.match(/#[A-Za-z0-9_]+/g);
+    if (matches) {
+      matches.forEach((tag) => {
+        addTag(tag);
+      });
+    }
+  }
+
+  return Array.from(tags)
+    .slice(0, 4)
+    .map((tag) => `#${tag}`);
+}
+
 function CloseIcon() {
   return (
     <svg
@@ -553,6 +629,24 @@ function CloseIcon() {
     >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 14l-4-4 4-4" />
+      <path d="M5 10h9a5 5 0 1 1 0 10h-1" />
     </svg>
   );
 }

@@ -100,7 +100,8 @@ function FeedPageContent() {
   const [isInboxSummaryModalOpen, setIsInboxSummaryModalOpen] = useState(false);
 
   // Mobile modal state
-  const [mobileModalItemId, setMobileModalItemId] = useState<string | null>(null);
+  const [mobileModalItem, setMobileModalItem] = useState<FeedItemType | null>(null);
+  const [mobileModalHistory, setMobileModalHistory] = useState<FeedItemType[]>([]);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   // Sync URL topic param with TopicProvider on mount
@@ -363,38 +364,53 @@ function FeedPageContent() {
   );
 
   // Mobile modal handlers
-  const handleMobileItemClick = useCallback((itemId: string) => {
-    setMobileModalItemId(itemId);
+  const handleMobileItemClick = useCallback((item: FeedItemType) => {
+    setMobileModalItem(item);
+    setMobileModalHistory([]);
   }, []);
 
   const handleMobileModalFeedback = useCallback(
     async (action: "like" | "dislike") => {
-      if (!mobileModalItemId) return;
+      if (!mobileModalItem) return;
 
       const allItems = data?.items ?? [];
-      const currentIndex = allItems.findIndex((i) => i.id === mobileModalItemId);
-      const currentItem = allItems[currentIndex];
+      const currentIndex = allItems.findIndex((i) => i.id === mobileModalItem.id);
+      const currentItem = mobileModalItem;
 
       if (!currentItem) return;
 
       // Capture next item BEFORE feedback (list will shift after mutation in inbox view)
-      const nextItem = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
+      const nextItem =
+        currentIndex >= 0 && currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
 
       await feedbackMutation.mutateAsync({
-        contentItemId: mobileModalItemId,
+        contentItemId: currentItem.id,
         digestId: currentItem.digestId,
         action,
       });
 
       // Auto-advance to next item (or close if last)
       if (nextItem) {
-        setMobileModalItemId(nextItem.id);
+        setMobileModalHistory((prev) => [...prev, currentItem]);
+        setMobileModalItem(nextItem);
       } else {
-        setMobileModalItemId(null);
+        setMobileModalItem(null);
+        setMobileModalHistory([]);
       }
     },
-    [mobileModalItemId, data, feedbackMutation],
+    [mobileModalItem, data, feedbackMutation],
   );
+
+  const handleMobileModalUndo = useCallback(async () => {
+    if (mobileModalHistory.length === 0) return;
+    const previousItem = mobileModalHistory[mobileModalHistory.length - 1];
+    setMobileModalHistory((prev) => prev.slice(0, -1));
+    setMobileModalItem(previousItem);
+    await clearFeedbackMutation.mutateAsync({
+      contentItemId: previousItem.id,
+      digestId: previousItem.digestId,
+    });
+  }, [mobileModalHistory, clearFeedbackMutation]);
 
   const items = data?.items ?? [];
   const totalCount = data?.pagination.total ?? 0;
@@ -612,7 +628,7 @@ function FeedPageContent() {
                 onNext={() => handleNextItem(item.id)}
                 onClose={() => setForceExpandedId(null)}
                 sort={sort}
-                onMobileClick={isMobile ? () => handleMobileItemClick(item.id) : undefined}
+                onMobileClick={isMobile ? () => handleMobileItemClick(item) : undefined}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand
@@ -695,14 +711,20 @@ function FeedPageContent() {
 
       {/* Mobile Feed Item Modal */}
       <FeedItemModal
-        isOpen={mobileModalItemId !== null}
-        item={items.find((i) => i.id === mobileModalItemId) || null}
-        onClose={() => setMobileModalItemId(null)}
+        isOpen={mobileModalItem !== null}
+        item={mobileModalItem}
+        onClose={() => {
+          setMobileModalItem(null);
+          setMobileModalHistory([]);
+        }}
         onFeedback={handleMobileModalFeedback}
+        onUndo={handleMobileModalUndo}
+        canUndo={mobileModalHistory.length > 0}
         sort={sort}
         enableSwipe={isMobile}
         onViewSummary={(item, summary) => {
-          setMobileModalItemId(null);
+          setMobileModalItem(null);
+          setMobileModalHistory([]);
           handleOpenReaderModal(item, summary);
         }}
         onSummaryGenerated={() => refetch()}

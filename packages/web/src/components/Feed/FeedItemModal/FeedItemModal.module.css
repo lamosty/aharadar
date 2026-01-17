@@ -141,6 +141,12 @@
   min-width: 0;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .sourceBadge {
   display: inline-flex;
   align-items: center;
@@ -166,7 +172,7 @@
   flex-shrink: 0;
 }
 
-.closeButton {
+.iconButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,9 +188,14 @@
   flex-shrink: 0;
 }
 
-.closeButton:hover {
+.iconButton:hover:not(:disabled) {
   color: var(--color-text-primary);
   background: var(--color-surface);
+}
+
+.iconButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Body - Scrollable content */
@@ -203,6 +214,24 @@
   color: var(--color-text-primary);
   margin: 0 0 var(--space-3) 0;
   line-height: 1.4;
+}
+
+.hashtagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.hashtag {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 
 /* Open link button */
