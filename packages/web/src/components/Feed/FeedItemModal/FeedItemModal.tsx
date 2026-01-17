@@ -88,14 +88,11 @@ export function FeedItemModal({
 }: FeedItemModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const swipeStartRef = useRef<{ x: number; y: number; active: boolean; pointerId: number | null }>(
-    {
-      x: 0,
-      y: 0,
-      active: false,
-      pointerId: null,
-    },
-  );
+  const swipeStartRef = useRef<{ x: number; y: number; active: boolean }>({
+    x: 0,
+    y: 0,
+    active: false,
+  });
   const swipePendingRef = useRef(false);
   const suppressClickRef = useRef(false);
 
@@ -135,7 +132,6 @@ export function FeedItemModal({
 
   useEffect(() => {
     swipeStartRef.current.active = false;
-    swipeStartRef.current.pointerId = null;
     swipePendingRef.current = false;
     setSwipeOffset(0);
     setSwipeDirection(null);
@@ -187,10 +183,10 @@ export function FeedItemModal({
   const summary = localSummary || item.manualSummaryJson;
   const swipeOpacity = Math.min(Math.abs(swipeOffset) / 120, 1);
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!enableSwipe) return;
-    if (e.pointerType !== "touch") return;
     if (swipePendingRef.current) return;
+    if (e.touches.length !== 1) return;
 
     const target = e.target as HTMLElement | null;
     if (target?.closest("input, textarea, select, [contenteditable='true']")) {
@@ -199,20 +195,19 @@ export function FeedItemModal({
 
     suppressClickRef.current = false;
     swipeStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
       active: true,
-      pointerId: e.pointerId,
     };
   };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!enableSwipe) return;
     const start = swipeStartRef.current;
-    if (!start.active || start.pointerId !== e.pointerId) return;
+    if (!start.active || e.touches.length !== 1) return;
 
-    const deltaX = e.clientX - start.x;
-    const deltaY = e.clientY - start.y;
+    const deltaX = e.touches[0].clientX - start.x;
+    const deltaY = e.touches[0].clientY - start.y;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
@@ -221,17 +216,11 @@ export function FeedItemModal({
         start.active = false;
         setSwipeOffset(0);
         setSwipeDirection(null);
-        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        }
         return;
       }
       if (absX < 12) return;
       setIsDragging(true);
       suppressClickRef.current = true;
-      if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }
       e.preventDefault();
     }
 
@@ -260,22 +249,19 @@ export function FeedItemModal({
     }
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!enableSwipe) return;
     const start = swipeStartRef.current;
-    if (!start.active || start.pointerId !== e.pointerId) return;
+    if (!start.active) return;
 
-    const deltaX = e.clientX - start.x;
-    const deltaY = e.clientY - start.y;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
     swipeStartRef.current.active = false;
-    swipeStartRef.current.pointerId = null;
-
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
 
     if (absX > 90 && absX > absY * 1.2) {
       void triggerSwipeFeedback(deltaX > 0 ? "like" : "dislike");
@@ -295,13 +281,9 @@ export function FeedItemModal({
     }
   };
 
-  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleTouchCancel = () => {
     if (!enableSwipe) return;
     swipeStartRef.current.active = false;
-    swipeStartRef.current.pointerId = null;
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
     setSwipeOffset(0);
     setSwipeDirection(null);
     setIsDragging(false);
@@ -336,10 +318,10 @@ export function FeedItemModal({
       <div
         className={styles.modal}
         ref={modalRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         onClickCapture={handleClickCapture}
       >
         <div
