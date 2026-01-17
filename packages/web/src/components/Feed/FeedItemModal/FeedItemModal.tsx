@@ -95,6 +95,7 @@ export function FeedItemModal({
     },
   );
   const swipePendingRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
   // Paste-to-summarize state
   const [pastedText, setPastedText] = useState("");
@@ -189,10 +190,11 @@ export function FeedItemModal({
     if (swipePendingRef.current) return;
 
     const target = e.target as HTMLElement | null;
-    if (target?.closest("a, button, input, textarea, select, [contenteditable='true']")) {
+    if (target?.closest("input, textarea, select, [contenteditable='true']")) {
       return;
     }
 
+    suppressClickRef.current = false;
     swipeStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -215,10 +217,18 @@ export function FeedItemModal({
         start.active = false;
         setSwipeOffset(0);
         setSwipeDirection(null);
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
         return;
       }
       if (absX < 12) return;
       setIsDragging(true);
+      suppressClickRef.current = true;
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
+      e.preventDefault();
     }
 
     const maxOffset = 180;
@@ -258,22 +268,45 @@ export function FeedItemModal({
     swipeStartRef.current.active = false;
     swipeStartRef.current.pointerId = null;
 
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
     if (absX > 90 && absX > absY * 1.2) {
       void triggerSwipeFeedback(deltaX > 0 ? "like" : "dislike");
+      setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
       return;
     }
 
     setSwipeOffset(0);
     setSwipeDirection(null);
     setIsDragging(false);
+    if (suppressClickRef.current) {
+      setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    }
   };
 
-  const handlePointerCancel = () => {
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
     swipeStartRef.current.active = false;
     swipeStartRef.current.pointerId = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
     setSwipeOffset(0);
     setSwipeDirection(null);
     setIsDragging(false);
+    suppressClickRef.current = false;
+  };
+
+  const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    suppressClickRef.current = false;
   };
 
   // Handle paste for summary generation
@@ -301,6 +334,7 @@ export function FeedItemModal({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onClickCapture={handleClickCapture}
       >
         <div
           className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""}`}

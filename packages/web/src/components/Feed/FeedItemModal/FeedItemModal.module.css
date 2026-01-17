@@ -50,10 +50,12 @@
   flex-direction: column;
   height: 100%;
   transition: transform 0.2s ease;
+  touch-action: pan-y;
 }
 
 .swipeCard.swipeDragging {
   transition: none;
+  user-select: none;
 }
 
 .swipeOverlay {
