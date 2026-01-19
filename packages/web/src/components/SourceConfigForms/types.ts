@@ -32,7 +32,12 @@ export interface YoutubeConfig {
 
 // X Posts Batching Config
 export interface XPostsBatchingConfig {
-  mode: "off" | "manual";
+  mode: "off" | "manual" | "auto";
+  /**
+   * Auto mode: number of accounts per batch (1-10).
+   * In auto mode, the UI generates deterministic `groups` and stores them in config for stability.
+   */
+  batchSize?: number;
   groups?: string[][];
 }
 

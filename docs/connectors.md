@@ -976,6 +976,12 @@ This makes `x_posts` a viable **free alternative to some paid data APIs** when i
   "maxResultsPerQuery": 20,
   "excludeReplies": true,
   "excludeRetweets": true,
+  "batching": {
+    "mode": "auto",
+    "batchSize": 5,
+    "groups": [["someaccount", "anotheraccount"]]
+  },
+  "maxOutputTokensPerAccount": 500,
   "fairnessByAccount": false,
   "accountHealthMode": "nudge",
   "cadence": { "mode": "interval", "every_minutes": 1440 }
@@ -988,6 +994,12 @@ Notes:
 - `accounts`: list of X handles to follow (without `@`).
 - `keywords`: optional topic keywords to monitor.
 - `queries`: advanced escape hatch; if present, used directly instead of compiling from `accounts`/`keywords`.
+- `batching`: optional experimental cost control:
+  - `mode`: `"off"` (default) | `"manual"` | `"auto"`
+  - `groups`: explicit account groups for `"manual"`, or stored generated groups for `"auto"` (used for deterministic runs / testing)
+  - `batchSize`: accounts per group for `"auto"` (1-10)
+  - Constraint: each group must have **<= 10 accounts** (xAI `allowed_x_handles` limit).
+- `maxOutputTokensPerAccount`: optional override; when batching, total output tokens scale by batch size (may increase cost).
 - `fairnessByAccount`: when true, treat each account as its own fairness bucket during sampling/triage (no UI source splitting).
 - `accountHealthMode`: `"nudge"` (default) = informational only; `"throttle"` = enable automatic fetch rate reduction for low-signal accounts.
 - `cadence`: per-source cadence (see ADR 0009); `x_posts` defaults to daily (1440 minutes).

@@ -263,6 +263,25 @@ export function validateSourceConfig(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
+  const validateXPostsBatching = (xConfig: Partial<XPostsConfig>) => {
+    const batching = xConfig.batching;
+    if (!batching || batching.mode === "off") return;
+
+    const groups = batching.groups ?? [];
+    const hasOversizeGroup = groups.some((g) => Array.isArray(g) && g.length > 10);
+    if (hasOversizeGroup) {
+      errors.batching =
+        "Each batch group can have at most 10 accounts (xAI x_search allowed_x_handles limit).";
+    }
+
+    if (batching.mode === "auto") {
+      const size = batching.batchSize;
+      if (typeof size !== "number" || !Number.isFinite(size) || size < 1 || size > 10) {
+        errors.batching = "Auto batch size must be between 1 and 10 accounts.";
+      }
+    }
+  };
+
   switch (sourceType) {
     case "rss": {
       const rssConfig = config as Partial<RssConfig>;
@@ -311,6 +330,7 @@ export function validateSourceConfig(
       if (!hasContent) {
         errors.accounts = "At least one account, keyword, or query is required";
       }
+      validateXPostsBatching(xConfig);
       break;
     }
 

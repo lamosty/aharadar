@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 import type { SourceConfigFormProps, XPostsConfig } from "./types";
+
+const MAX_X_SEARCH_HANDLES_PER_CALL = 10;
 
 /** Serialize groups to textarea format (one line per group, comma-separated) */
 function serializeGroups(groups: string[][] | undefined): string {
@@ -24,6 +26,19 @@ function parseGroups(text: string): string[][] {
     .filter((g) => g.length > 0);
 }
 
+function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, Math.floor(value)));
+}
+
+function buildAutoGroups(accounts: string[], batchSize: number): string[][] {
+  const cleaned = accounts.map((a) => a.trim().replace(/^@/, "")).filter((a) => a.length > 0);
+  const size = clampInt(batchSize, 1, MAX_X_SEARCH_HANDLES_PER_CALL);
+  const out: string[][] = [];
+  for (let i = 0; i < cleaned.length; i += size) out.push(cleaned.slice(i, i + size));
+  return out;
+}
+
 export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormProps<XPostsConfig>) {
   const [accountInput, setAccountInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
@@ -36,20 +51,45 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
     onChange({ ...value, [key]: val });
   };
 
+  const autoBatchSize = value.batching?.mode === "auto" ? (value.batching.batchSize ?? 5) : 5;
+
+  const autoGroups = useMemo(() => {
+    if (value.batching?.mode !== "auto") return [];
+    return buildAutoGroups(value.accounts ?? [], autoBatchSize);
+  }, [value.accounts, value.batching?.mode, autoBatchSize]);
+
+  // Keep stored groups deterministic in auto mode
+  useEffect(() => {
+    if (value.batching?.mode !== "auto") return;
+    const nextGroups = autoGroups;
+    const current = value.batching.groups ?? [];
+    const same =
+      current.length === nextGroups.length &&
+      current.every(
+        (g, i) => g.length === nextGroups[i]?.length && g.every((h, j) => h === nextGroups[i]?.[j]),
+      );
+    if (!same) {
+      handleChange("batching", {
+        mode: "auto",
+        batchSize: clampInt(autoBatchSize, 1, MAX_X_SEARCH_HANDLES_PER_CALL),
+        groups: nextGroups,
+      });
+    }
+  }, [value.batching?.mode, value.batching?.groups, autoBatchSize, autoGroups]);
+
   // Account handling
   const addAccount = () => {
     const trimmed = accountInput.trim().replace(/^@/, "");
     if (trimmed && !value.accounts?.includes(trimmed)) {
-      handleChange("accounts", [...(value.accounts ?? []), trimmed]);
+      const nextAccounts = [...(value.accounts ?? []), trimmed];
+      handleChange("accounts", nextAccounts);
       setAccountInput("");
     }
   };
 
   const removeAccount = (acc: string) => {
-    handleChange(
-      "accounts",
-      (value.accounts ?? []).filter((a) => a !== acc),
-    );
+    const nextAccounts = (value.accounts ?? []).filter((a) => a !== acc);
+    handleChange("accounts", nextAccounts);
   };
 
   // Keyword handling
@@ -100,7 +140,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
     const existing = new Set(value.accounts ?? []);
     const newAccounts = lines.filter((acc) => !existing.has(acc));
     if (newAccounts.length > 0) {
-      handleChange("accounts", [...(value.accounts ?? []), ...newAccounts]);
+      const nextAccounts = [...(value.accounts ?? []), ...newAccounts];
+      handleChange("accounts", nextAccounts);
     }
     setPasteAccountsValue("");
     setShowPasteAccounts(false);
@@ -594,7 +635,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                   <strong>Manual:</strong> Define groups of accounts to query together
                 </p>
                 <p>
-                  <strong>Note:</strong> Per-call results are capped at 200 even when batching.
+                  <strong>Limit:</strong> X search handle filters allow up to{" "}
+                  {MAX_X_SEARCH_HANDLES_PER_CALL} accounts per call.
                 </p>
               </>
             }
@@ -609,22 +651,80 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
             id="x-batchMode"
             value={value.batching?.mode ?? "off"}
             onChange={(e) => {
-              const mode = e.target.value as "off" | "manual";
+              const mode = e.target.value as "off" | "manual" | "auto";
               if (mode === "off") {
                 handleChange("batching", undefined);
               } else {
-                handleChange("batching", {
-                  mode,
-                  groups: parseGroups(groupsText),
-                });
+                if (mode === "manual") {
+                  handleChange("batching", {
+                    mode,
+                    groups: parseGroups(groupsText),
+                  });
+                } else {
+                  const batchSize = clampInt(autoBatchSize, 1, MAX_X_SEARCH_HANDLES_PER_CALL);
+                  handleChange("batching", {
+                    mode: "auto",
+                    batchSize,
+                    groups: buildAutoGroups(value.accounts ?? [], batchSize),
+                  });
+                }
               }
             }}
             className={styles.selectInput}
           >
             <option value="off">Off</option>
+            <option value="auto">Auto (deterministic)</option>
             <option value="manual">Manual Groups</option>
           </select>
         </div>
+
+        {value.batching?.mode === "auto" && (
+          <div className={styles.field}>
+            <label htmlFor="x-autoBatchSize" className={styles.label}>
+              Accounts per batch
+              <HelpTooltip
+                title="Auto Batching"
+                content={
+                  <>
+                    <p>Automatically split your followed accounts into deterministic groups.</p>
+                    <p>
+                      <strong>Determinism:</strong> The computed groups are stored in the source
+                      config so each digest run behaves the same (useful for testing).
+                    </p>
+                    <p>
+                      <strong>Limit:</strong> {MAX_X_SEARCH_HANDLES_PER_CALL} accounts per call.
+                    </p>
+                  </>
+                }
+              />
+            </label>
+            <input
+              type="number"
+              id="x-autoBatchSize"
+              min={1}
+              max={MAX_X_SEARCH_HANDLES_PER_CALL}
+              value={autoBatchSize}
+              onChange={(e) => {
+                const next = clampInt(
+                  parseInt(e.target.value || "5", 10),
+                  1,
+                  MAX_X_SEARCH_HANDLES_PER_CALL,
+                );
+                handleChange("batching", {
+                  mode: "auto",
+                  batchSize: next,
+                  groups: buildAutoGroups(value.accounts ?? [], next),
+                });
+              }}
+              className={styles.numberInput}
+            />
+            <p className={styles.hint}>
+              Auto groups ({autoGroups.length}):{" "}
+              {autoGroups.map((g) => g.join(", ")).join(" | ") || "No accounts yet"}
+            </p>
+            {errors?.batching && <p className={styles.error}>{errors.batching}</p>}
+          </div>
+        )}
 
         {value.batching?.mode === "manual" && (
           <div className={styles.field}>
@@ -666,12 +766,12 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
               className={styles.pasteTextarea}
               rows={4}
             />
-            {parseGroups(groupsText).some((g) => g.length > 5) && (
+            {parseGroups(groupsText).some((g) => g.length > MAX_X_SEARCH_HANDLES_PER_CALL) && (
               <p className={styles.hint} style={{ color: "var(--color-warning)" }}>
-                Large groups may hit the 200 result cap. Consider smaller groups for better
-                coverage.
+                Groups must be {MAX_X_SEARCH_HANDLES_PER_CALL} accounts or fewer.
               </p>
             )}
+            {errors?.batching && <p className={styles.error}>{errors.batching}</p>}
           </div>
         )}
 

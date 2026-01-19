@@ -62,25 +62,48 @@ function asNumber(value: unknown, defaultValue: number): number {
 
 function asBatchingConfig(
   value: unknown,
-): { mode: "off" | "manual"; groups?: string[][] } | undefined {
+): { mode: "off" | "manual" | "auto"; batchSize?: number; groups?: string[][] } | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const obj = value as Record<string, unknown>;
   const mode = obj.mode;
-  if (mode !== "off" && mode !== "manual") return undefined;
+  if (mode !== "off" && mode !== "manual" && mode !== "auto") return undefined;
+  const batchSize =
+    typeof obj.batchSize === "number" && Number.isFinite(obj.batchSize) ? obj.batchSize : undefined;
   const groups = obj.groups;
-  if (mode === "manual" && Array.isArray(groups)) {
+  if ((mode === "manual" || mode === "auto") && Array.isArray(groups)) {
     const parsed = groups
       .filter((g): g is unknown[] => Array.isArray(g))
       .map((g) => g.filter((h): h is string => typeof h === "string" && h.trim().length > 0))
       .filter((g) => g.length > 0);
-    return { mode, groups: parsed.length > 0 ? parsed : undefined };
+    return { mode, batchSize, groups: parsed.length > 0 ? parsed : undefined };
   }
-  return { mode };
+  return { mode, batchSize };
 }
 
 function asPromptProfile(value: unknown): "light" | "heavy" | undefined {
   if (value === "light" || value === "heavy") return value;
   return undefined;
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, Math.floor(value)));
+}
+
+function buildAutoGroups(accounts: string[], batchSize: number): string[][] {
+  const cleaned = accounts.map((a) => a.trim()).filter((a) => a.length > 0);
+  const size = clampInt(batchSize, 1, 10);
+  const out: string[][] = [];
+  for (let i = 0; i < cleaned.length; i += size) out.push(cleaned.slice(i, i + size));
+  return out;
+}
+
+function chunkGroup(group: string[], maxSize: number): string[][] {
+  const size = clampInt(maxSize, 1, 10);
+  if (group.length <= size) return [group];
+  const out: string[][] = [];
+  for (let i = 0; i < group.length; i += size) out.push(group.slice(i, i + size));
+  return out;
 }
 
 /**
@@ -155,9 +178,6 @@ function compileBatchedQuery(
 
   return { query, handles };
 }
-
-/** Cap for batched limit: perAccountLimit * groupSize, capped at 200 */
-const BATCHED_LIMIT_CAP = 200;
 
 function dayBucketFromIso(value: string | undefined): string | null {
   if (!value) return null;
@@ -242,10 +262,36 @@ function buildQueryJobs(config: XPostsSourceConfig): QueryJob[] {
 
   // Check for batching
   if (config.batching?.mode === "manual" && config.batching.groups) {
-    return config.batching.groups.map((group) => {
-      const { query, handles } = compileBatchedQuery(group, config);
-      return { query, handles, groupSize: handles.length };
-    });
+    return config.batching.groups.flatMap((group) =>
+      chunkGroup(group, 10).map((g) => {
+        const { query, handles } = compileBatchedQuery(g, config);
+        return { query, handles, groupSize: handles.length };
+      }),
+    );
+  }
+
+  if (config.batching?.mode === "auto") {
+    const batchSize = clampInt(config.batching.batchSize ?? 5, 1, 10);
+    // Auto batching is account-driven. If there are no accounts configured,
+    // fall back to a normal (non-batched) query compilation (e.g., keywords-only).
+    const accounts = (config.accounts ?? []).map((a) => a.trim()).filter((a) => a.length > 0);
+    if (accounts.length === 0) {
+      const queries = compileQueries(config);
+      return queries.map((q) => {
+        const handle = extractHandleFromFromQuery(q);
+        return { query: q, handles: handle ? [handle] : [], groupSize: 1 };
+      });
+    }
+    const baseGroups =
+      config.batching.groups && config.batching.groups.length > 0
+        ? config.batching.groups
+        : buildAutoGroups(accounts, batchSize);
+    return baseGroups.flatMap((group) =>
+      chunkGroup(group, 10).map((g) => {
+        const { query, handles } = compileBatchedQuery(g, config);
+        return { query, handles, groupSize: handles.length };
+      }),
+    );
   }
 
   // Default: per-account queries (groupSize=1)
@@ -299,12 +345,10 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
     jobsExecuted++;
     const startedAt = new Date().toISOString();
 
-    // Calculate limit: perAccountLimit * groupSize, capped at 200 and maxItems
-    const scaledLimit = Math.min(
-      perAccountLimit * job.groupSize,
-      params.limits.maxItems,
-      BATCHED_LIMIT_CAP,
-    );
+    // Calculate limit: perAccountLimit * groupSize, capped at maxItems.
+    // Note: We do not enforce a fixed per-call cap here; cost is controlled by maxResultsPerQuery,
+    // batch sizing, and token budgets.
+    const scaledLimit = Math.min(perAccountLimit * job.groupSize, params.limits.maxItems);
     const limit = Math.max(1, scaledLimit);
 
     // Calculate max output tokens: maxOutputTokensPerAccount * groupSize if set

@@ -10,9 +10,14 @@
  * Allows grouping multiple accounts into a single Grok call.
  */
 export interface XPostsBatchingConfig {
-  /** Batching mode: off (default), or manual (explicit groups) */
-  mode: "off" | "manual";
-  /** Manual groups: each group is an array of handles queried together */
+  /** Batching mode: off (default), manual (explicit groups), or auto (generated groups) */
+  mode: "off" | "manual" | "auto";
+  /**
+   * Auto mode: number of accounts per batch (1-10).
+   * Auto-batched groups should be persisted in `groups` for deterministic runs.
+   */
+  batchSize?: number;
+  /** Groups: each group is an array of handles queried together */
   groups?: string[][];
 }
 
