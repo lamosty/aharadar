@@ -14,6 +14,14 @@ export interface RetrievedItem {
   id: string;
   title: string;
   bodyText: string;
+  /** Latest manual summary saved by user (if any) */
+  manualSummaryJson?: Record<string, unknown> | null;
+  /** Latest triage JSON from most recent digest (if any) */
+  triageJson?: Record<string, unknown> | null;
+  /** Latest deep summary JSON from most recent digest (if any) */
+  summaryJson?: Record<string, unknown> | null;
+  /** Latest feedback action for this item (if any) */
+  feedbackAction?: string | null;
   url: string;
   sourceType: string;
   publishedAt: string;
@@ -22,6 +30,10 @@ export interface RetrievedItem {
 
 export interface RetrievedCluster {
   id: string;
+  /**
+   * Optional cluster summary (currently empty; schema does not yet store this).
+   * Keep the field for forward compatibility with future cluster summaries.
+   */
   summary: string;
   similarity: number;
   items: RetrievedItem[];
@@ -51,7 +63,6 @@ interface ClusterSearchRow {
   centroid_text: string | null;
   representative_content_item_id: string | null;
   similarity: number;
-  summary: string | null;
 }
 
 interface ClusterItemRow {
@@ -62,6 +73,10 @@ interface ClusterItemRow {
   source_type: string;
   published_at: string | null;
   similarity: number;
+  manual_summary_json: Record<string, unknown> | null;
+  triage_json: Record<string, unknown> | null;
+  summary_json: Record<string, unknown> | null;
+  feedback_action: string | null;
 }
 
 function asVectorLiteral(vector: number[]): string {
@@ -123,8 +138,7 @@ export async function retrieveContext(params: {
        c.id::text as cluster_id,
        c.centroid_vector::text as centroid_text,
        c.representative_content_item_id::text as representative_content_item_id,
-       (1 - (c.centroid_vector <=> $3::vector))::float8 as similarity,
-       c.summary
+       (1 - (c.centroid_vector <=> $3::vector))::float8 as similarity
      from clusters c
      where c.user_id = $1::uuid
        and c.centroid_vector is not null
@@ -157,20 +171,47 @@ export async function retrieveContext(params: {
          ci.canonical_url,
          ci.source_type,
          ci.published_at::text as published_at,
-         cli.similarity
+         cli.similarity,
+         cis.summary_json as manual_summary_json,
+         latest_digest.triage_json,
+         latest_digest.summary_json,
+         fb.action as feedback_action
        from cluster_items cli
        join content_items ci on ci.id = cli.content_item_id
+       left join content_item_summaries cis
+         on cis.user_id = $2::uuid and cis.content_item_id = ci.id
+       left join lateral (
+         select di.triage_json, di.summary_json
+         from digest_items di
+         join digests d on d.id = di.digest_id
+         where d.user_id = $2::uuid
+           and di.content_item_id = ci.id
+         order by d.created_at desc
+         limit 1
+       ) latest_digest on true
+       left join lateral (
+         select fe.action
+         from feedback_events fe
+         where fe.user_id = $2::uuid
+           and fe.content_item_id = ci.id
+         order by fe.created_at desc
+         limit 1
+       ) fb on true
        where cli.cluster_id = $1::uuid
          and ci.deleted_at is null
        order by cli.similarity desc
        limit 3`,
-      [cluster.cluster_id],
+      [cluster.cluster_id, params.userId],
     );
 
     const items: RetrievedItem[] = itemsRes.rows.map((item) => ({
       id: item.content_item_id,
       title: item.title ?? "(no title)",
       bodyText: truncate(item.body_text ?? "", 2000),
+      manualSummaryJson: item.manual_summary_json ?? null,
+      triageJson: item.triage_json ?? null,
+      summaryJson: item.summary_json ?? null,
+      feedbackAction: item.feedback_action ?? null,
       url: item.canonical_url ?? "",
       sourceType: item.source_type,
       publishedAt: item.published_at ?? "",
@@ -181,7 +222,7 @@ export async function retrieveContext(params: {
 
     clustersWithItems.push({
       id: cluster.cluster_id,
-      summary: cluster.summary ?? "",
+      summary: "",
       similarity: cluster.similarity,
       items,
     });

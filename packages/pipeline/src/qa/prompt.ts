@@ -4,6 +4,19 @@
 
 import type { RetrievedContext } from "./retrieval";
 
+function safeJsonSnippet(
+  value: Record<string, unknown> | null | undefined,
+  maxChars: number,
+): string {
+  if (!value) return "";
+  try {
+    const json = JSON.stringify(value);
+    return json.length <= maxChars ? json : `${json.slice(0, maxChars)}...`;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * System prompt for the Q&A assistant.
  */
@@ -16,10 +29,23 @@ export function buildQAPrompt(question: string, context: RetrievedContext): stri
   const contextText = context.clusters
     .map((cluster, i) => {
       const itemsText = cluster.items
-        .map(
-          (item) =>
-            `- **${item.title}** (${item.sourceType}, ${item.publishedAt || "unknown date"})\n  URL: ${item.url || "N/A"}\n  ${item.bodyText}`,
-        )
+        .map((item) => {
+          const feedbackLine =
+            item.feedbackAction && item.feedbackAction.length > 0
+              ? `\n  Feedback: ${item.feedbackAction}`
+              : "";
+
+          const triageSnippet = safeJsonSnippet(item.triageJson ?? null, 900);
+          const triageLine = triageSnippet ? `\n  Triage: ${triageSnippet}` : "";
+
+          const summarySnippet = safeJsonSnippet(item.summaryJson ?? null, 1200);
+          const summaryLine = summarySnippet ? `\n  AI summary: ${summarySnippet}` : "";
+
+          const manualSnippet = safeJsonSnippet(item.manualSummaryJson ?? null, 1200);
+          const manualLine = manualSnippet ? `\n  User summary: ${manualSnippet}` : "";
+
+          return `- **${item.title}** (${item.sourceType}, ${item.publishedAt || "unknown date"})\n  URL: ${item.url || "N/A"}${feedbackLine}${triageLine}${summaryLine}${manualLine}\n  Body: ${item.bodyText}`;
+        })
         .join("\n\n");
 
       const summaryLine = cluster.summary ? `Summary: ${cluster.summary}\n` : "";

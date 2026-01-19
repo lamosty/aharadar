@@ -20,6 +20,38 @@ import type {
 import { buildQAPrompt, QA_SYSTEM_PROMPT } from "./prompt";
 import { type RetrievedContext, retrieveContext } from "./retrieval";
 
+const QA_RESPONSE_JSON_SCHEMA: Record<string, unknown> = {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  type: "object",
+  additionalProperties: false,
+  required: ["answer", "citations", "confidence"],
+  properties: {
+    answer: { type: "string" },
+    citations: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "relevance"],
+        properties: {
+          title: { type: "string" },
+          relevance: { type: "string" },
+        },
+      },
+    },
+    confidence: {
+      type: "object",
+      additionalProperties: false,
+      required: ["score", "reasoning"],
+      properties: {
+        score: { type: "number", minimum: 0, maximum: 1 },
+        reasoning: { type: "string" },
+      },
+    },
+    data_gaps: { type: "array", items: { type: "string" } },
+  },
+};
+
 function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}...`;
@@ -179,6 +211,7 @@ export async function handleAskQuestion(params: {
     maxOutputTokens: 2000,
     temperature: 0.3,
     reasoningEffort: params.llmConfig?.reasoningEffort,
+    jsonSchema: QA_RESPONSE_JSON_SCHEMA,
   });
   const llmDurationMs = Date.now() - llmStart;
 
