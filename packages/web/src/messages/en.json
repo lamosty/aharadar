@@ -42,6 +42,8 @@
     "topic": "Topic",
     "question": "Question",
     "questionPlaceholder": "Ask anything... e.g., What would Warren Buffett think about recent tech layoffs?",
+    "newChat": "New chat",
+    "newChatHint": "Start a new chat thread for this topic (clears Ask memory for this topic only).",
     "submit": "Ask",
     "thinking": "Thinking...",
     "answer": "Answer",

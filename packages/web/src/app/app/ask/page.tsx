@@ -82,6 +82,7 @@ interface DebugInfo {
 
 interface AskResponse {
   ok: boolean;
+  conversationId?: string;
   answer: string;
   citations: Citation[];
   confidence: {
@@ -312,12 +313,43 @@ function DebugPanel({ debug }: { debug: DebugInfo }) {
   );
 }
 
+const ASK_CONVERSATION_STORAGE_KEY = "aharadar-ask-conversations-v1";
+
+function loadConversationId(topicId: string | null | undefined): string | null {
+  if (!topicId) return null;
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ASK_CONVERSATION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const value = parsed[topicId];
+    return typeof value === "string" && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveConversationId(topicId: string, conversationId: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(ASK_CONVERSATION_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    const next: Record<string, unknown> = { ...parsed };
+    if (conversationId) next[topicId] = conversationId;
+    else delete next[topicId];
+    localStorage.setItem(ASK_CONVERSATION_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 const MAX_QUESTION_LENGTH = 2000;
 
 export default function AskPage() {
   const { currentTopicId, setCurrentTopicId } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
   const [question, setQuestion] = useState("");
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [response, setResponse] = useState<AskResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -344,6 +376,19 @@ export default function AskPage() {
         // Ignore errors, will show when user tries to ask
       });
   }, []);
+
+  // Load conversation for current topic (persisted per topic)
+  useEffect(() => {
+    setConversationId(loadConversationId(currentTopicId));
+  }, [currentTopicId]);
+
+  function handleNewChat(): void {
+    if (!currentTopicId) return;
+    saveConversationId(currentTopicId, null);
+    setConversationId(null);
+    setResponse(null);
+    setError(null);
+  }
 
   // Show loading while checking feature status
   if (featureEnabled === null) {
@@ -391,6 +436,7 @@ export default function AskPage() {
         body: JSON.stringify({
           question: question.trim(),
           topicId: currentTopicId,
+          ...(conversationId ? { conversationId } : {}),
           options: {
             debug: debugMode,
             maxClusters,
@@ -404,6 +450,10 @@ export default function AskPage() {
         setError(data.error.message);
       } else {
         setResponse(data);
+        if (data.conversationId && currentTopicId) {
+          setConversationId(data.conversationId);
+          saveConversationId(currentTopicId, data.conversationId);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get answer");
@@ -496,13 +546,25 @@ export default function AskPage() {
             <span>Show debug info</span>
           </label>
 
-          <button
-            type="submit"
-            disabled={loading || !currentTopicId || !question.trim()}
-            className={styles.submitButton}
-          >
-            {loading ? t("ask.thinking") : t("ask.submit")}
-          </button>
+          <div className={styles.actionButtons}>
+            <button
+              type="button"
+              disabled={loading || !currentTopicId}
+              onClick={handleNewChat}
+              className={styles.secondaryButton}
+              title={t("ask.newChatHint")}
+            >
+              {t("ask.newChat")}
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading || !currentTopicId || !question.trim()}
+              className={styles.submitButton}
+            >
+              {loading ? t("ask.thinking") : t("ask.submit")}
+            </button>
+          </div>
         </div>
       </form>
 
