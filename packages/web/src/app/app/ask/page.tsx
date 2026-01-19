@@ -1,20 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTopic } from "@/components/TopicProvider";
 import { isExperimentalFeatureEnabled } from "@/lib/experimental";
 import { useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
-interface Citation {
+// Web-local copies of shared Ask chat types (web package does not import workspace packages).
+interface AskConversationSummary {
   id: string;
-  title: string;
-  url: string;
-  sourceType: string;
-  publishedAt: string;
-  relevance: string;
+  topicId: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AskTurn {
+  id: string;
+  createdAt: string;
+  question: string;
+  answer: string;
+  citations?: { title: string; relevance: string }[];
+  confidence?: { score: number; reasoning: string };
+  dataGaps?: string[];
+}
+
+interface ApiErrorResponse {
+  ok: false;
+  error: { code: string; message: string };
 }
 
 interface DebugCluster {
@@ -80,11 +95,20 @@ interface DebugInfo {
   };
 }
 
-interface AskResponse {
-  ok: boolean;
-  conversationId?: string;
+interface AskCitation {
+  id: string;
+  title: string;
+  url: string;
+  sourceType: string;
+  publishedAt: string;
+  relevance: string;
+}
+
+interface AskApiSuccessResponse {
+  ok: true;
+  conversationId: string;
   answer: string;
-  citations: Citation[];
+  citations: AskCitation[];
   confidence: {
     score: number;
     reasoning: string;
@@ -95,10 +119,24 @@ interface AskResponse {
     tokensUsed: { input: number; output: number };
   };
   debug?: DebugInfo;
-  error?: {
-    code: string;
-    message: string;
-  };
+}
+
+type AskApiResponse = AskApiSuccessResponse | ApiErrorResponse;
+
+interface ListConversationsApiResponse {
+  ok: true;
+  conversations: AskConversationSummary[];
+}
+
+interface CreateConversationApiResponse {
+  ok: true;
+  conversation: AskConversationSummary;
+}
+
+interface GetConversationApiResponse {
+  ok: true;
+  conversation: AskConversationSummary;
+  turns: AskTurn[];
 }
 
 function DebugSection({
@@ -344,19 +382,41 @@ function saveConversationId(topicId: string, conversationId: string | null): voi
 }
 
 const MAX_QUESTION_LENGTH = 2000;
+const HISTORY_RECENT_DAYS = 90;
+
+type HistoryWindow = "recent" | "all";
+
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
+function conversationLabel(c: AskConversationSummary): string {
+  if (c.title && c.title.trim().length > 0) return c.title;
+  const date = new Date(c.updatedAt || c.createdAt).toLocaleDateString();
+  return `Chat • ${date}`;
+}
 
 export default function AskPage() {
   const { currentTopicId, setCurrentTopicId } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
-  const [question, setQuestion] = useState("");
+  const [draft, setDraft] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [response, setResponse] = useState<AskResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [conversations, setConversations] = useState<AskConversationSummary[]>([]);
+  const [turns, setTurns] = useState<AskTurn[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [loadingThread, setLoadingThread] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(true); // Debug on by default for experimentation
   const [maxClusters, setMaxClusters] = useState(5);
   const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
   const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
+  const [historyWindow, setHistoryWindow] = useState<HistoryWindow>("recent");
+  const [lastDebug, setLastDebug] = useState<DebugInfo | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const topics = topicsData?.topics ?? [];
 
@@ -377,17 +437,120 @@ export default function AskPage() {
       });
   }, []);
 
-  // Load conversation for current topic (persisted per topic)
+  async function fetchConversations(topicId: string): Promise<AskConversationSummary[]> {
+    const res = await fetch(`/api/ask/conversations?topicId=${encodeURIComponent(topicId)}`, {
+      credentials: "include",
+    });
+    const data = (await res.json()) as ListConversationsApiResponse | ApiErrorResponse;
+    if (!data.ok) throw new Error(data.error.message);
+    return data.conversations;
+  }
+
+  async function fetchConversation(conversationId: string): Promise<GetConversationApiResponse> {
+    const res = await fetch(`/api/ask/conversations/${encodeURIComponent(conversationId)}`, {
+      credentials: "include",
+    });
+    const data = (await res.json()) as GetConversationApiResponse | ApiErrorResponse;
+    if (!data.ok) throw new Error(data.error.message);
+    return data;
+  }
+
+  async function createConversation(topicId: string): Promise<AskConversationSummary> {
+    const res = await fetch("/api/ask/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ topicId }),
+    });
+    const data = (await res.json()) as CreateConversationApiResponse | ApiErrorResponse;
+    if (!data.ok) throw new Error(data.error.message);
+    return data.conversation;
+  }
+
+  const selectedConversation = useMemo(
+    () => conversations.find((c) => c.id === conversationId) ?? null,
+    [conversations, conversationId],
+  );
+
+  // On topic change: load conversation id from storage and list conversations
   useEffect(() => {
-    setConversationId(loadConversationId(currentTopicId));
+    const topicId = currentTopicId;
+    if (!topicId) {
+      setConversationId(null);
+      setConversations([]);
+      setTurns([]);
+      return;
+    }
+
+    const persisted = loadConversationId(topicId);
+    setConversationId(persisted);
+
+    setLoadingConversations(true);
+    setError(null);
+    fetchConversations(topicId)
+      .then((list) => {
+        setConversations(list);
+        // If persisted id no longer exists, fall back to most recent conversation (if any)
+        if (persisted && !list.some((c) => c.id === persisted)) {
+          const next = list[0]?.id ?? null;
+          setConversationId(next);
+          saveConversationId(topicId, next);
+        }
+        if (!persisted && list.length > 0) {
+          const next = list[0].id;
+          setConversationId(next);
+          saveConversationId(topicId, next);
+        }
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load conversations");
+        setConversations([]);
+      })
+      .finally(() => setLoadingConversations(false));
   }, [currentTopicId]);
 
-  function handleNewChat(): void {
-    if (!currentTopicId) return;
-    saveConversationId(currentTopicId, null);
-    setConversationId(null);
-    setResponse(null);
+  // On conversation change: load thread
+  useEffect(() => {
+    const topicId = currentTopicId;
+    if (!topicId || !conversationId) {
+      setTurns([]);
+      return;
+    }
+
+    saveConversationId(topicId, conversationId);
+    setLoadingThread(true);
     setError(null);
+    fetchConversation(conversationId)
+      .then((data) => setTurns(data.turns))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load conversation");
+        setTurns([]);
+      })
+      .finally(() => setLoadingThread(false));
+  }, [currentTopicId, conversationId]);
+
+  // Keep scrolled to bottom on new turns / while sending
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [turns, sending]);
+
+  async function handleNewChat(): Promise<void> {
+    const topicId = currentTopicId;
+    if (!topicId) return;
+    setError(null);
+    setLastDebug(null);
+    setTurns([]);
+
+    try {
+      const created = await createConversation(topicId);
+      // refresh list so ordering matches server
+      const list = await fetchConversations(topicId);
+      setConversations(list);
+      setConversationId(created.id);
+      saveConversationId(topicId, created.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create conversation");
+    }
   }
 
   // Show loading while checking feature status
@@ -420,66 +583,130 @@ export default function AskPage() {
     );
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!question.trim() || !currentTopicId) return;
+  async function handleSend(): Promise<void> {
+    const topicId = currentTopicId;
+    const question = draft.trim();
+    if (!topicId || !question) return;
 
-    setLoading(true);
+    setSending(true);
     setError(null);
-    setResponse(null);
+    setLastDebug(null);
 
     try {
+      let activeConversationId = conversationId;
+      if (!activeConversationId) {
+        const created = await createConversation(topicId);
+        activeConversationId = created.id;
+        setConversationId(activeConversationId);
+        saveConversationId(topicId, activeConversationId);
+      }
+
+      const timeWindow =
+        historyWindow === "recent"
+          ? { from: isoDaysAgo(HISTORY_RECENT_DAYS), to: new Date().toISOString() }
+          : undefined;
+
+      // Optimistically show the question while waiting
+      const optimisticTurn: AskTurn = {
+        id: `optimistic-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        question,
+        answer: "",
+      };
+      setTurns((prev) => [...prev, optimisticTurn]);
+      setDraft("");
+
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          question: question.trim(),
-          topicId: currentTopicId,
-          ...(conversationId ? { conversationId } : {}),
+          question,
+          topicId,
+          conversationId: activeConversationId,
           options: {
             debug: debugMode,
             maxClusters,
+            ...(timeWindow ? { timeWindow } : {}),
           },
         }),
       });
 
-      const data = (await res.json()) as AskResponse;
-
-      if (!data.ok && data.error) {
-        setError(data.error.message);
-      } else {
-        setResponse(data);
-        if (data.conversationId && currentTopicId) {
-          setConversationId(data.conversationId);
-          saveConversationId(currentTopicId, data.conversationId);
-        }
+      const data = (await res.json()) as AskApiResponse;
+      if (!data.ok) {
+        throw new Error(data.error.message);
       }
+
+      // Replace optimistic turn with the actual answer (and use server conversation id)
+      setTurns((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((t) => t.id === optimisticTurn.id);
+        if (idx >= 0) {
+          next[idx] = {
+            id: optimisticTurn.id,
+            createdAt: optimisticTurn.createdAt,
+            question,
+            answer: data.answer,
+            citations: data.citations.map((c) => ({ title: c.title, relevance: c.relevance })),
+            confidence: data.confidence,
+            dataGaps: data.dataGaps,
+          };
+        }
+        return next;
+      });
+
+      if (data.debug) setLastDebug(data.debug);
+
+      // Refresh list (ordering + newly created conversation visibility)
+      const list = await fetchConversations(topicId);
+      setConversations(list);
+      setConversationId(data.conversationId);
+      saveConversationId(topicId, data.conversationId);
+
+      // Refresh turns from server to ensure persisted thread matches UI
+      const thread = await fetchConversation(data.conversationId);
+      setTurns(thread.turns);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get answer");
+      // Remove optimistic turn if it was appended
+      setTurns((prev) =>
+        prev.filter((t) => !t.id.startsWith("optimistic-") || t.answer.length > 0),
+      );
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   }
 
-  const confidenceLevel =
-    response?.confidence.score !== undefined
-      ? response.confidence.score >= 0.7
-        ? "high"
-        : response.confidence.score >= 0.4
-          ? "medium"
-          : "low"
-      : null;
+  function handleComposerKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void handleSend();
+    }
+  }
+
+  async function handleSelectConversation(id: string): Promise<void> {
+    if (!currentTopicId) return;
+    setConversationId(id);
+    saveConversationId(currentTopicId, id);
+  }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{t("ask.title")}</h1>
-        <p className={styles.subtitle}>{t("ask.subtitle")}</p>
-      </header>
+    <div className={styles.chatLayout}>
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <div className={styles.sidebarTitleRow}>
+            <div className={styles.sidebarTitle}>{t("ask.title")}</div>
+            <button
+              type="button"
+              onClick={() => void handleNewChat()}
+              className={styles.secondaryButton}
+              disabled={!currentTopicId || sending}
+              title={t("ask.newChatHint")}
+            >
+              {t("ask.newChat")}
+            </button>
+          </div>
 
-      <form onSubmit={handleSubmit} className={styles.form}>
-        <div className={styles.formRow}>
           <div className={styles.topicSelect}>
             <label htmlFor="topic">{t("ask.topic")}</label>
             <select
@@ -499,44 +726,36 @@ export default function AskPage() {
             </select>
           </div>
 
-          <div className={styles.maxClustersInput}>
-            <label htmlFor="maxClusters">Max Clusters</label>
-            <input
-              id="maxClusters"
-              type="number"
-              min={1}
-              max={20}
-              value={maxClusters}
-              onChange={(e) =>
-                setMaxClusters(Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 5)))
-              }
-            />
-          </div>
-        </div>
+          <div className={styles.sidebarControls}>
+            <div className={styles.historySelect}>
+              <label htmlFor="historyWindow">History</label>
+              <select
+                id="historyWindow"
+                value={historyWindow}
+                onChange={(e) => setHistoryWindow(e.target.value as HistoryWindow)}
+                disabled={sending}
+              >
+                <option value="recent">Recent ({HISTORY_RECENT_DAYS}d)</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
 
-        <div className={styles.questionInput}>
-          <label htmlFor="question">{t("ask.question")}</label>
-          <textarea
-            id="question"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_LENGTH))}
-            placeholder={t("ask.questionPlaceholder")}
-            rows={3}
-            maxLength={MAX_QUESTION_LENGTH}
-            required
-          />
-          <div className={styles.charCount}>
-            {question.length} / {MAX_QUESTION_LENGTH}
+            <div className={styles.maxClustersInput}>
+              <label htmlFor="maxClusters">Max Clusters</label>
+              <input
+                id="maxClusters"
+                type="number"
+                min={1}
+                max={20}
+                value={maxClusters}
+                onChange={(e) =>
+                  setMaxClusters(Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 5)))
+                }
+                disabled={sending}
+              />
+            </div>
           </div>
-        </div>
 
-        {serverEnabled === false && (
-          <div className={styles.serverWarning}>
-            Server has Q&A disabled (QA_ENABLED=false in .env). Enable it to use this feature.
-          </div>
-        )}
-
-        <div className={styles.formActions}>
           <label className={styles.debugToggle}>
             <input
               type="checkbox"
@@ -546,104 +765,130 @@ export default function AskPage() {
             <span>Show debug info</span>
           </label>
 
-          <div className={styles.actionButtons}>
-            <button
-              type="button"
-              disabled={loading || !currentTopicId}
-              onClick={handleNewChat}
-              className={styles.secondaryButton}
-              title={t("ask.newChatHint")}
-            >
-              {t("ask.newChat")}
-            </button>
+          {serverEnabled === false && (
+            <div className={styles.serverWarning}>
+              Server has Q&A disabled (QA_ENABLED=false in .env). Enable it to use this feature.
+            </div>
+          )}
+        </div>
 
-            <button
-              type="submit"
-              disabled={loading || !currentTopicId || !question.trim()}
-              className={styles.submitButton}
-            >
-              {loading ? t("ask.thinking") : t("ask.submit")}
-            </button>
+        <div className={styles.conversationList}>
+          {loadingConversations ? (
+            <div className={styles.loadingState}>{t("common.loading")}</div>
+          ) : conversations.length === 0 ? (
+            <div className={styles.emptySidebar}>
+              <div className={styles.emptySidebarTitle}>No chats yet</div>
+              <div className={styles.emptySidebarText}>Start a new chat for this topic.</div>
+              <button
+                type="button"
+                onClick={() => void handleNewChat()}
+                className={styles.submitButton}
+                disabled={!currentTopicId || sending}
+              >
+                {t("ask.newChat")}
+              </button>
+            </div>
+          ) : (
+            <ul className={styles.conversationListInner}>
+              {conversations.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className={`${styles.conversationItem} ${c.id === conversationId ? styles.conversationItemActive : ""}`}
+                    onClick={() => void handleSelectConversation(c.id)}
+                    disabled={sending}
+                    title={conversationLabel(c)}
+                  >
+                    <div className={styles.conversationItemTitle}>{conversationLabel(c)}</div>
+                    <div className={styles.conversationItemMeta}>
+                      {new Date(c.updatedAt || c.createdAt).toLocaleString()}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+
+      <main className={styles.main}>
+        <header className={styles.threadHeader}>
+          <div className={styles.threadTitle}>
+            {selectedConversation ? conversationLabel(selectedConversation) : "New chat"}
+          </div>
+          <div className={styles.threadSubtitle}>
+            {currentTopicId ? t("ask.subtitle") : "Select a topic to begin."}
+          </div>
+        </header>
+
+        {error && (
+          <div className={styles.error}>
+            <p>{error}</p>
+          </div>
+        )}
+
+        <div className={styles.thread}>
+          {loadingThread ? (
+            <div className={styles.loadingState}>{t("common.loading")}</div>
+          ) : turns.length === 0 ? (
+            <div className={styles.emptyThread}>
+              <div className={styles.emptyThreadTitle}>No messages yet</div>
+              <div className={styles.emptyThreadText}>
+                Ask a question and we’ll use your topic’s context (bounded by the selected history
+                window).
+              </div>
+            </div>
+          ) : (
+            <div className={styles.messages}>
+              {turns.map((turn) => (
+                <div key={turn.id} className={styles.turn}>
+                  <div className={styles.messageUser}>
+                    <div className={styles.messageRole}>You</div>
+                    <div className={styles.messageText}>{turn.question}</div>
+                  </div>
+                  <div className={styles.messageAssistant}>
+                    <div className={styles.messageRole}>Assistant</div>
+                    <div className={styles.messageText}>
+                      {turn.answer && turn.answer.length > 0 ? turn.answer : "Thinking..."}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        <div className={styles.composer}>
+          <div className={styles.composerInner}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, MAX_QUESTION_LENGTH))}
+              onKeyDown={handleComposerKeyDown}
+              placeholder={t("ask.questionPlaceholder")}
+              rows={3}
+              maxLength={MAX_QUESTION_LENGTH}
+              disabled={!currentTopicId || sending}
+              className={styles.composerTextarea}
+            />
+            <div className={styles.composerFooter}>
+              <div className={styles.charCount}>
+                {draft.length} / {MAX_QUESTION_LENGTH}
+              </div>
+              <button
+                type="button"
+                className={styles.submitButton}
+                disabled={!currentTopicId || sending || !draft.trim()}
+                onClick={() => void handleSend()}
+              >
+                {sending ? t("ask.thinking") : t("ask.submit")}
+              </button>
+            </div>
           </div>
         </div>
-      </form>
 
-      {error && (
-        <div className={styles.error}>
-          <p>{error}</p>
-        </div>
-      )}
-
-      {response?.ok && (
-        <div className={styles.response}>
-          <section className={styles.answerSection}>
-            <h2>{t("ask.answer")}</h2>
-            <div className={styles.answerText}>{response.answer}</div>
-          </section>
-
-          {confidenceLevel && (
-            <section className={styles.confidenceSection}>
-              <h3>{t("ask.confidence")}</h3>
-              <div
-                className={`${styles.confidenceBadge} ${styles[`confidence${confidenceLevel.charAt(0).toUpperCase() + confidenceLevel.slice(1)}`]}`}
-              >
-                {Math.round(response.confidence.score * 100)}%
-              </div>
-              <p className={styles.confidenceReasoning}>{response.confidence.reasoning}</p>
-            </section>
-          )}
-
-          {response.citations.length > 0 && (
-            <section className={styles.citationsSection}>
-              <h3>{t("ask.citations")}</h3>
-              <ul className={styles.citationsList}>
-                {response.citations.map((cite, i) => (
-                  <li key={cite.id || i} className={styles.citation}>
-                    {cite.url ? (
-                      <a
-                        href={cite.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.citationTitle}
-                      >
-                        {cite.title}
-                      </a>
-                    ) : (
-                      <span className={styles.citationTitle}>{cite.title}</span>
-                    )}
-                    <span className={styles.citationSource}>
-                      {cite.sourceType}
-                      {cite.publishedAt && ` • ${new Date(cite.publishedAt).toLocaleDateString()}`}
-                    </span>
-                    {cite.relevance && <p className={styles.citationRelevance}>{cite.relevance}</p>}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {response.dataGaps && response.dataGaps.length > 0 && (
-            <section className={styles.dataGapsSection}>
-              <h3>{t("ask.dataGaps")}</h3>
-              <ul className={styles.dataGapsList}>
-                {response.dataGaps.map((gap, i) => (
-                  <li key={i}>{gap}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <section className={styles.usageSection}>
-            <span>
-              {response.usage.clustersRetrieved} clusters •{" "}
-              {response.usage.tokensUsed.input + response.usage.tokensUsed.output} tokens
-            </span>
-          </section>
-
-          {/* Debug Panel */}
-          {response.debug && <DebugPanel debug={response.debug} />}
-        </div>
-      )}
+        {debugMode && lastDebug && <DebugPanel debug={lastDebug} />}
+      </main>
     </div>
   );
 }

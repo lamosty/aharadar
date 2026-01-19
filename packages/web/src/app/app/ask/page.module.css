@@ -4,6 +4,265 @@
   padding: var(--space-6) var(--space-4);
 }
 
+.chatLayout {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  gap: var(--space-4);
+  /* Don't set min-height: 100vh - it creates nested scroll contexts with AppShell */
+}
+
+.sidebar {
+  width: 340px;
+  flex: 0 0 340px;
+  background: var(--color-surface, var(--surface));
+  border: 1px solid var(--color-border-subtle, var(--border));
+  border-radius: var(--radius-lg, 0.75rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarHeader {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle, var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sidebarTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.sidebarTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text));
+}
+
+.sidebarControls {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.historySelect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.conversationList {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-2);
+}
+
+.conversationListInner {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.conversationItem {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  border-radius: var(--radius-md, 0.5rem);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast, 0.15s),
+    border-color var(--transition-fast, 0.15s);
+}
+
+.conversationItem:hover:not(:disabled) {
+  background: var(--color-surface-hover, var(--surface-elevated));
+  border-color: var(--color-border-subtle, var(--border));
+}
+
+.conversationItemActive {
+  background: var(--color-primary-subtle, var(--primary-alpha));
+  border-color: var(--color-primary, var(--primary));
+}
+
+.conversationItemTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text));
+  margin-bottom: 0.25rem;
+}
+
+.conversationItemMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, var(--text-muted));
+}
+
+.emptySidebar {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted, var(--text-muted));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.emptySidebarTitle {
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text));
+}
+
+.emptySidebarText {
+  font-size: 0.875rem;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-surface, var(--surface));
+  border: 1px solid var(--color-border-subtle, var(--border));
+  border-radius: var(--radius-lg, 0.75rem);
+  overflow: hidden;
+}
+
+.threadHeader {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle, var(--border));
+}
+
+.threadTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text));
+  margin-bottom: 0.25rem;
+}
+
+.threadSubtitle {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, var(--text-muted));
+}
+
+.thread {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--color-surface, var(--surface));
+}
+
+.emptyThread {
+  max-width: 42rem;
+  margin: var(--space-10) auto;
+  text-align: center;
+  color: var(--color-text-muted, var(--text-muted));
+}
+
+.emptyThreadTitle {
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text));
+  margin-bottom: var(--space-2);
+}
+
+.emptyThreadText {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.messageUser,
+.messageAssistant {
+  border: 1px solid var(--color-border-subtle, var(--border));
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-3);
+  background: var(--color-surface-elevated, var(--surface-elevated));
+}
+
+.messageAssistant {
+  background: var(--color-surface, var(--surface));
+}
+
+.messageRole {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, var(--text-muted));
+  margin-bottom: 0.5rem;
+}
+
+.messageText {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: var(--color-text-primary, var(--text));
+  font-size: 0.875rem;
+}
+
+.composer {
+  border-top: 1px solid var(--color-border-subtle, var(--border));
+  padding: var(--space-4);
+  background: var(--color-surface, var(--surface));
+}
+
+.composerInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.composerTextarea {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border-subtle, var(--border));
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-surface, var(--surface));
+  color: var(--color-text-primary, var(--text));
+  font-size: 0.875rem;
+  resize: vertical;
+  min-height: 5.5rem;
+}
+
+.composerTextarea:focus {
+  outline: none;
+  border-color: var(--color-primary, var(--primary));
+  box-shadow: 0 0 0 2px var(--color-primary-subtle, var(--primary-alpha));
+}
+
+.composerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .chatLayout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex: none;
+  }
+}
+
 .header {
   margin-bottom: 1.5rem;
 }

@@ -125,6 +125,46 @@ export interface AskResponse {
 }
 
 /**
+ * Ask conversation/turn thread types for the Chat UI.
+ * Conversations are topic-scoped and user-scoped.
+ */
+export interface AskConversationSummary {
+  id: string;
+  topicId: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AskTurn {
+  id: string;
+  createdAt: string;
+  question: string;
+  answer: string;
+  citations?: { title: string; relevance: string }[];
+  confidence?: { score: number; reasoning: string };
+  dataGaps?: string[];
+}
+
+export interface ListAskConversationsResponse {
+  conversations: AskConversationSummary[];
+}
+
+export interface CreateAskConversationRequest {
+  topicId: string;
+  title?: string;
+}
+
+export interface CreateAskConversationResponse {
+  conversation: AskConversationSummary;
+}
+
+export interface GetAskConversationResponse {
+  conversation: AskConversationSummary;
+  turns: AskTurn[];
+}
+
+/**
  * Internal type for LLM response parsing.
  * The LLM returns JSON matching this shape.
  */

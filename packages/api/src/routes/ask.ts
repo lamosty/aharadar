@@ -9,7 +9,16 @@
 import type { LlmSettingsRow } from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
 import { computeCreditsStatus, handleAskQuestion } from "@aharadar/pipeline";
-import type { AskRequest, AskResponse } from "@aharadar/shared";
+import type {
+  AskConversationSummary,
+  AskRequest,
+  AskResponse,
+  AskTurn,
+  CreateAskConversationRequest,
+  CreateAskConversationResponse,
+  GetAskConversationResponse,
+  ListAskConversationsResponse,
+} from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -17,6 +26,12 @@ import { getDb, getSingletonContext } from "../lib/db.js";
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_REGEX.test(value);
+}
 
 /**
  * Check and update rate limit for a user.
@@ -54,6 +69,77 @@ interface AskRequestBody {
   };
 }
 
+interface ListAskConversationsQuery {
+  topicId?: string;
+}
+
+interface CreateAskConversationBody extends CreateAskConversationRequest {}
+
+function formatConversation(conversation: {
+  id: string;
+  topic_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}): AskConversationSummary {
+  return {
+    id: conversation.id,
+    topicId: conversation.topic_id,
+    title: conversation.title ?? null,
+    createdAt: conversation.created_at,
+    updatedAt: conversation.updated_at,
+  };
+}
+
+function asCitations(value: unknown): AskTurn["citations"] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: Array<{ title: string; relevance: string }> = [];
+  for (const v of value) {
+    if (!v || typeof v !== "object") return undefined;
+    const obj = v as Record<string, unknown>;
+    if (typeof obj.title !== "string" || typeof obj.relevance !== "string") return undefined;
+    out.push({ title: obj.title, relevance: obj.relevance });
+  }
+  return out;
+}
+
+function asConfidence(value: unknown): AskTurn["confidence"] | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const obj = value as Record<string, unknown>;
+  if (typeof obj.score !== "number" || typeof obj.reasoning !== "string") return undefined;
+  return { score: obj.score, reasoning: obj.reasoning };
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: string[] = [];
+  for (const v of value) {
+    if (typeof v !== "string") return undefined;
+    out.push(v);
+  }
+  return out;
+}
+
+function formatTurn(turn: {
+  id: string;
+  created_at: string;
+  question: string;
+  answer: string;
+  citations_json: unknown;
+  confidence_json: unknown;
+  data_gaps_json: unknown;
+}): AskTurn {
+  return {
+    id: turn.id,
+    createdAt: turn.created_at,
+    question: turn.question,
+    answer: turn.answer,
+    citations: asCitations(turn.citations_json),
+    confidence: asConfidence(turn.confidence_json),
+    dataGaps: asStringArray(turn.data_gaps_json),
+  };
+}
+
 function buildLlmRuntimeConfig(settings: LlmSettingsRow): LlmRuntimeConfig {
   return {
     provider: settings.provider,
@@ -83,6 +169,211 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
       },
     };
   });
+
+  // GET /api/ask/conversations?topicId=... - List Ask conversations for a topic
+  fastify.get<{ Querystring: ListAskConversationsQuery }>(
+    "/ask/conversations",
+    async (request, reply) => {
+      const qaEnabled = process.env.QA_ENABLED === "true";
+      if (!qaEnabled) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FEATURE_DISABLED",
+            message: "Q&A feature is not enabled. Set QA_ENABLED=true to enable.",
+          },
+        });
+      }
+
+      const topicId = request.query?.topicId;
+      if (!isValidUuid(topicId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "topicId is required and must be a valid UUID" },
+        });
+      }
+
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const db = getDb();
+
+      // Verify topic belongs to user
+      const topicRes = await db.query<{ id: string }>(
+        `select id::text as id from topics where id = $1::uuid and user_id = $2::uuid limit 1`,
+        [topicId, ctx.userId],
+      );
+      if (topicRes.rows.length === 0) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Topic not found" },
+        });
+      }
+
+      const conversations = await db.qa.listConversationsByTopic({
+        userId: ctx.userId,
+        topicId,
+        limit: 100,
+      });
+
+      const payload: ListAskConversationsResponse = {
+        conversations: conversations.map(formatConversation),
+      };
+
+      return { ok: true, ...payload };
+    },
+  );
+
+  // POST /api/ask/conversations - Create a new Ask conversation
+  fastify.post<{ Body: CreateAskConversationBody }>(
+    "/ask/conversations",
+    async (request, reply) => {
+      const qaEnabled = process.env.QA_ENABLED === "true";
+      if (!qaEnabled) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FEATURE_DISABLED",
+            message: "Q&A feature is not enabled. Set QA_ENABLED=true to enable.",
+          },
+        });
+      }
+
+      const body = request.body;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_REQUEST", message: "Request body is required" },
+        });
+      }
+
+      const { topicId, title } = body;
+      if (!isValidUuid(topicId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "topicId is required and must be a valid UUID" },
+        });
+      }
+
+      if (title !== undefined && title !== null && typeof title !== "string") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "title must be a string if provided" },
+        });
+      }
+
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const db = getDb();
+
+      // Verify topic belongs to user
+      const topicRes = await db.query<{ id: string }>(
+        `select id::text as id from topics where id = $1::uuid and user_id = $2::uuid limit 1`,
+        [topicId, ctx.userId],
+      );
+      if (topicRes.rows.length === 0) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Topic not found" },
+        });
+      }
+
+      const created = await db.qa.createConversation({
+        userId: ctx.userId,
+        topicId,
+        title: typeof title === "string" ? title : null,
+      });
+
+      const conversationRow = await db.qa.getConversation({
+        userId: ctx.userId,
+        conversationId: created.id,
+      });
+      if (!conversationRow) {
+        return reply.code(500).send({
+          ok: false,
+          error: { code: "QA_ERROR", message: "Failed to load created conversation" },
+        });
+      }
+
+      const payload: CreateAskConversationResponse = {
+        conversation: formatConversation(conversationRow),
+      };
+
+      return { ok: true, ...payload };
+    },
+  );
+
+  // GET /api/ask/conversations/:conversationId - Load conversation + turns
+  fastify.get<{ Params: { conversationId: string } }>(
+    "/ask/conversations/:conversationId",
+    async (request, reply) => {
+      const qaEnabled = process.env.QA_ENABLED === "true";
+      if (!qaEnabled) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FEATURE_DISABLED",
+            message: "Q&A feature is not enabled. Set QA_ENABLED=true to enable.",
+          },
+        });
+      }
+
+      const { conversationId } = request.params;
+      if (!isValidUuid(conversationId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "conversationId must be a valid UUID" },
+        });
+      }
+
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const db = getDb();
+
+      const conversation = await db.qa.getConversation({ userId: ctx.userId, conversationId });
+      if (!conversation) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Conversation not found" },
+        });
+      }
+
+      const turns = await db.qa.listTurns({ userId: ctx.userId, conversationId, limit: 300 });
+
+      const payload: GetAskConversationResponse = {
+        conversation: formatConversation(conversation),
+        turns: turns.map(formatTurn),
+      };
+
+      return { ok: true, ...payload };
+    },
+  );
 
   fastify.post<{ Body: AskRequestBody }>("/ask", async (request, reply) => {
     // Check experimental flag

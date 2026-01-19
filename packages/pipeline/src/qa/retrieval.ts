@@ -130,8 +130,9 @@ export async function retrieveContext(params: {
   // 2. Search clusters by centroid similarity (topic-scoped)
   const retrievalStart = Date.now();
 
-  // Build time window filter if provided
-  let timeFilter = "";
+  // Build time window filter (applied to content item timestamps, not cluster updated_at)
+  // Use published_at when present, else fall back to fetched_at.
+  let itemTimeFilterForExists = "";
   const queryArgs: unknown[] = [
     params.userId,
     params.topicId,
@@ -141,11 +142,11 @@ export async function retrieveContext(params: {
 
   if (params.options?.timeWindow?.from) {
     queryArgs.push(params.options.timeWindow.from);
-    timeFilter += ` and c.updated_at >= $${queryArgs.length}::timestamptz`;
+    itemTimeFilterForExists += ` and coalesce(ci.published_at, ci.fetched_at) >= $${queryArgs.length}::timestamptz`;
   }
   if (params.options?.timeWindow?.to) {
     queryArgs.push(params.options.timeWindow.to);
-    timeFilter += ` and c.updated_at <= $${queryArgs.length}::timestamptz`;
+    itemTimeFilterForExists += ` and coalesce(ci.published_at, ci.fetched_at) <= $${queryArgs.length}::timestamptz`;
   }
 
   const clustersRes = await params.db.query<ClusterSearchRow>(
@@ -157,13 +158,15 @@ export async function retrieveContext(params: {
      from clusters c
      where c.user_id = $1::uuid
        and c.centroid_vector is not null
-       ${timeFilter}
        and exists (
          select 1 from cluster_items cli
+         join content_items ci on ci.id = cli.content_item_id
          join content_item_sources cis on cis.content_item_id = cli.content_item_id
          join sources s on s.id = cis.source_id
          where cli.cluster_id = c.id
            and s.topic_id = $2::uuid
+           and ci.deleted_at is null
+           ${itemTimeFilterForExists}
        )
      order by c.centroid_vector <=> $3::vector asc
      limit $4`,
@@ -178,6 +181,18 @@ export async function retrieveContext(params: {
   let totalItems = 0;
 
   for (const cluster of similarClusters) {
+    // Apply the same time window when selecting representative items from the cluster.
+    const itemArgs: unknown[] = [cluster.cluster_id, params.userId];
+    let itemTimeFilter = "";
+    if (params.options?.timeWindow?.from) {
+      itemArgs.push(params.options.timeWindow.from);
+      itemTimeFilter += ` and coalesce(ci.published_at, ci.fetched_at) >= $${itemArgs.length}::timestamptz`;
+    }
+    if (params.options?.timeWindow?.to) {
+      itemArgs.push(params.options.timeWindow.to);
+      itemTimeFilter += ` and coalesce(ci.published_at, ci.fetched_at) <= $${itemArgs.length}::timestamptz`;
+    }
+
     const itemsRes = await params.db.query<ClusterItemRow>(
       `select
          ci.id::text as content_item_id,
@@ -214,9 +229,10 @@ export async function retrieveContext(params: {
        ) fb on true
        where cli.cluster_id = $1::uuid
          and ci.deleted_at is null
+         ${itemTimeFilter}
        order by cli.similarity desc
        limit 3`,
-      [cluster.cluster_id, params.userId],
+      itemArgs,
     );
 
     const items: RetrievedItem[] = itemsRes.rows.map((item) => ({

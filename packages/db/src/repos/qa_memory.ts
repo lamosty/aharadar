@@ -40,6 +40,32 @@ export interface QaTurnSearchHit {
 
 export function createQaMemoryRepo(db: Queryable) {
   return {
+    async listConversationsByTopic(params: {
+      userId: string;
+      topicId: string;
+      limit?: number;
+    }): Promise<QaConversationRow[]> {
+      const limit = Math.max(1, Math.min(200, Math.floor(params.limit ?? 50)));
+      const res = await db.query<QaConversationRow>(
+        `select
+           id::text,
+           user_id::text,
+           topic_id::text,
+           title,
+           summary,
+           summary_updated_at::text,
+           created_at::text,
+           updated_at::text
+         from qa_conversations
+         where user_id = $1::uuid
+           and topic_id = $2::uuid
+         order by updated_at desc
+         limit $3`,
+        [params.userId, params.topicId, limit],
+      );
+      return res.rows;
+    },
+
     async createConversation(params: {
       userId: string;
       topicId: string;
@@ -77,6 +103,34 @@ export function createQaMemoryRepo(db: Queryable) {
         [params.conversationId, params.userId],
       );
       return res.rows[0] ?? null;
+    },
+
+    async listTurns(params: {
+      userId: string;
+      conversationId: string;
+      limit?: number;
+    }): Promise<QaTurnRow[]> {
+      const limit = Math.max(1, Math.min(500, Math.floor(params.limit ?? 200)));
+      const res = await db.query<QaTurnRow>(
+        `select
+           id::text,
+           conversation_id::text,
+           user_id::text,
+           topic_id::text,
+           question,
+           answer,
+           citations_json,
+           confidence_json,
+           data_gaps_json,
+           created_at::text
+         from qa_turns
+         where conversation_id = $1::uuid
+           and user_id = $2::uuid
+         order by created_at asc
+         limit $3`,
+        [params.conversationId, params.userId, limit],
+      );
+      return res.rows;
     },
 
     async touchConversation(conversationId: string): Promise<void> {
