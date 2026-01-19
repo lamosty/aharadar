@@ -367,21 +367,24 @@
 
 .submitButton {
   padding: 0.75rem 1.5rem;
-  background: var(--primary);
-  color: white;
+  background: var(--color-primary, var(--primary, #3b82f6));
+  color: var(--color-text-on-primary, #fff);
   border: none;
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    opacity 0.15s,
+    background 0.15s,
+    transform 0.05s;
 }
 
 .secondaryButton {
   padding: 0.75rem 1.5rem;
   background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
+  color: var(--color-text-primary, var(--text));
+  border: 1px solid var(--color-border-subtle, var(--border));
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -392,7 +395,7 @@
 }
 
 .secondaryButton:hover:not(:disabled) {
-  background: var(--surface-elevated);
+  background: var(--color-surface-hover, var(--surface-elevated));
 }
 
 .secondaryButton:disabled {
@@ -401,12 +404,16 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .submitButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .error {
