@@ -65,7 +65,7 @@ Task files (in recommended order):
 47. `task-083-youtube-connector.md` - Complete YouTube connector with transcript preview
 48. `task-084-rss-connector-types.md` - Add RSS-based connector types (podcast, substack, etc.)
 49. `task-085-telegram-connector.md` - Add Telegram public channel connector
-50. `task-086-docs-refresh.md` - Update outdated docs, create new required docs
+50. `task-149-docs-full-refresh.md` - Docs: full refresh of docs + README files
 51. `task-087-financial-data-research.md` - RESEARCH: Financial/trading data sources
 
 ## Source discovery UX + free alternatives (new)
