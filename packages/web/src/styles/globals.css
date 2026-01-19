@@ -670,3 +670,12 @@ button {
 /* lg: 1024px */
 /* xl: 1280px */
 /* 2xl: 1536px */
+
+/* Hide Next.js dev indicator on mobile */
+@media (max-width: 768px) {
+  [data-nextjs-dialog-overlay],
+  [data-nextjs-toast],
+  nextjs-portal {
+    display: none !important;
+  }
+}
