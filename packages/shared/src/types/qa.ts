@@ -17,6 +17,17 @@ export interface AskRequest {
     maxClusters?: number;
     /** Include verbose debug information in response */
     debug?: boolean;
+    /**
+     * Optional per-call LLM override for Ask only.
+     * Intended for local experimentation (provider/model selection, thinking toggle).
+     */
+    llm?: {
+      provider?: "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
+      /** Model name for the selected provider (e.g. "claude-opus-4-5"). */
+      model?: string;
+      /** Enable "thinking" (subscription provider only; best-effort). */
+      thinking?: boolean;
+    };
   };
 }
 

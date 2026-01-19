@@ -66,6 +66,11 @@ interface AskRequestBody {
     maxClusters?: number;
     /** Include verbose debug information in response */
     debug?: boolean;
+    llm?: {
+      provider?: "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
+      model?: string;
+      thinking?: boolean;
+    };
   };
 }
 
@@ -546,16 +551,34 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
       };
 
       const llmSettings = await db.llmSettings.get();
-      // TEMP: hardcode Ask to use Claude subscription + Opus + thinking for local evaluation.
-      // This avoids .env changes and makes Ask "max quality" for experimentation.
-      const llmConfig: LlmRuntimeConfig = {
-        ...buildLlmRuntimeConfig(llmSettings),
-        provider: "claude-subscription",
-        claudeSubscriptionEnabled: true,
-        claudeTriageThinking: true,
-        // Opus is the target model for Ask experiments. Uses same model names as Anthropic.
-        anthropicModel: "claude-opus-4-5",
-      };
+      const llmConfig: LlmRuntimeConfig = buildLlmRuntimeConfig(llmSettings);
+
+      // Optional per-call overrides for local experimentation.
+      const override = options?.llm;
+      if (override) {
+        if (override.provider) {
+          llmConfig.provider = override.provider;
+          // Ensure subscription flag matches the selected provider to avoid router errors.
+          if (override.provider === "claude-subscription")
+            llmConfig.claudeSubscriptionEnabled = true;
+          if (override.provider === "codex-subscription") llmConfig.codexSubscriptionEnabled = true;
+        }
+
+        if (typeof override.model === "string" && override.model.trim().length > 0) {
+          const model = override.model.trim();
+          const provider = override.provider ?? llmConfig.provider;
+          if (provider === "openai" || provider === "codex-subscription") {
+            llmConfig.openaiModel = model;
+          } else {
+            llmConfig.anthropicModel = model;
+          }
+        }
+
+        if (typeof override.thinking === "boolean") {
+          // Router uses this flag to enable "thinking" hint for subscription calls.
+          llmConfig.claudeTriageThinking = override.thinking;
+        }
+      }
 
       const response: AskResponse = await handleAskQuestion({
         db,

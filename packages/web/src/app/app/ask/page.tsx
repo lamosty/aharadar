@@ -387,6 +387,8 @@ const HISTORY_RECENT_DAYS = 90;
 
 type HistoryWindow = "recent" | "all";
 
+type AskLlmProvider = "claude-subscription" | "anthropic" | "openai" | "codex-subscription";
+
 function apiUrl(path: string): string {
   const base = getDevSettings().apiBaseUrl.replace(/\/$/, "");
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -422,6 +424,9 @@ export default function AskPage() {
   const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
   const [historyWindow, setHistoryWindow] = useState<HistoryWindow>("recent");
   const [lastDebug, setLastDebug] = useState<DebugInfo | null>(null);
+  const [llmProvider, setLlmProvider] = useState<AskLlmProvider>("claude-subscription");
+  const [llmModel, setLlmModel] = useState<string>("claude-opus-4-5");
+  const [llmThinking, setLlmThinking] = useState<boolean>(true);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -635,6 +640,11 @@ export default function AskPage() {
             debug: debugMode,
             maxClusters,
             ...(timeWindow ? { timeWindow } : {}),
+            llm: {
+              provider: llmProvider,
+              ...(llmModel.trim().length > 0 ? { model: llmModel.trim() } : {}),
+              thinking: llmThinking,
+            },
           },
         }),
       });
@@ -762,6 +772,45 @@ export default function AskPage() {
               />
             </div>
           </div>
+
+          <div className={styles.sidebarControls}>
+            <div className={styles.historySelect}>
+              <label htmlFor="askProvider">Provider</label>
+              <select
+                id="askProvider"
+                value={llmProvider}
+                onChange={(e) => setLlmProvider(e.target.value as AskLlmProvider)}
+                disabled={sending}
+              >
+                <option value="claude-subscription">Claude (subscription)</option>
+                <option value="anthropic">Anthropic API</option>
+                <option value="openai">OpenAI API</option>
+                <option value="codex-subscription">Codex (subscription)</option>
+              </select>
+            </div>
+
+            <div className={styles.maxClustersInput}>
+              <label htmlFor="askModel">Model</label>
+              <input
+                id="askModel"
+                type="text"
+                value={llmModel}
+                onChange={(e) => setLlmModel(e.target.value)}
+                disabled={sending}
+                placeholder="claude-opus-4-5"
+              />
+            </div>
+          </div>
+
+          <label className={styles.debugToggle}>
+            <input
+              type="checkbox"
+              checked={llmThinking}
+              onChange={(e) => setLlmThinking(e.target.checked)}
+              disabled={sending || llmProvider !== "claude-subscription"}
+            />
+            <span>Thinking (Claude subscription)</span>
+          </label>
 
           <label className={styles.debugToggle}>
             <input
