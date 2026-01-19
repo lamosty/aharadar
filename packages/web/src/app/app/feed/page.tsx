@@ -383,13 +383,7 @@ function FeedPageContent() {
       const nextItem =
         currentIndex >= 0 && currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
 
-      await feedbackMutation.mutateAsync({
-        contentItemId: currentItem.id,
-        digestId: currentItem.digestId,
-        action,
-      });
-
-      // Auto-advance to next item (or close if last)
+      // OPTIMISTIC: Advance UI immediately, don't wait for network
       if (nextItem) {
         setMobileModalHistory((prev) => [...prev, currentItem]);
         setMobileModalItem(nextItem);
@@ -397,6 +391,14 @@ function FeedPageContent() {
         setMobileModalItem(null);
         setMobileModalHistory([]);
       }
+
+      // Fire feedback in background - don't block UI
+      // If it fails, the item is already in history for undo
+      feedbackMutation.mutate({
+        contentItemId: currentItem.id,
+        digestId: currentItem.digestId,
+        action,
+      });
     },
     [mobileModalItem, data, feedbackMutation],
   );
