@@ -312,6 +312,7 @@
 
 .topicSelect label,
 .maxClustersInput label,
+.historySelect label,
 .questionInput label {
   font-size: 0.875rem;
   font-weight: 500;
@@ -319,6 +320,8 @@
 
 .topicSelect select,
 .maxClustersInput input,
+.historySelect select,
+.historySelect input,
 .questionInput textarea {
   padding: 0.75rem;
   border: 1px solid var(--border);
@@ -330,6 +333,8 @@
 
 .topicSelect select:focus,
 .maxClustersInput input:focus,
+.historySelect select:focus,
+.historySelect input:focus,
 .questionInput textarea:focus {
   outline: none;
   border-color: var(--primary);

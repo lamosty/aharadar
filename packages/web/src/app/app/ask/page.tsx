@@ -389,6 +389,12 @@ type HistoryWindow = "recent" | "all";
 
 type AskLlmProvider = "claude-subscription" | "anthropic" | "openai" | "codex-subscription";
 
+const CLAUDE_MODELS = ["claude-sonnet-4-5", "claude-opus-4-5-20251202"] as const;
+
+function isClaudeProvider(provider: AskLlmProvider): boolean {
+  return provider === "claude-subscription" || provider === "anthropic";
+}
+
 function apiUrl(path: string): string {
   const base = getDevSettings().apiBaseUrl.replace(/\/$/, "");
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -425,7 +431,7 @@ export default function AskPage() {
   const [historyWindow, setHistoryWindow] = useState<HistoryWindow>("recent");
   const [lastDebug, setLastDebug] = useState<DebugInfo | null>(null);
   const [llmProvider, setLlmProvider] = useState<AskLlmProvider>("claude-subscription");
-  const [llmModel, setLlmModel] = useState<string>("claude-opus-4-5");
+  const [llmModel, setLlmModel] = useState<string>(CLAUDE_MODELS[0]);
   const [llmThinking, setLlmThinking] = useState<boolean>(true);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -448,6 +454,13 @@ export default function AskPage() {
         // Ignore errors, will show when user tries to ask
       });
   }, []);
+
+  // Ensure Claude providers always use a supported Claude model.
+  useEffect(() => {
+    if (!isClaudeProvider(llmProvider)) return;
+    if (CLAUDE_MODELS.includes(llmModel as (typeof CLAUDE_MODELS)[number])) return;
+    setLlmModel(CLAUDE_MODELS[0]);
+  }, [llmProvider, llmModel]);
 
   async function fetchConversations(topicId: string): Promise<AskConversationSummary[]> {
     const res = await fetch(apiUrl(`/ask/conversations?topicId=${encodeURIComponent(topicId)}`), {
@@ -789,16 +802,31 @@ export default function AskPage() {
               </select>
             </div>
 
-            <div className={styles.maxClustersInput}>
+            <div className={styles.historySelect}>
               <label htmlFor="askModel">Model</label>
-              <input
-                id="askModel"
-                type="text"
-                value={llmModel}
-                onChange={(e) => setLlmModel(e.target.value)}
-                disabled={sending}
-                placeholder="claude-opus-4-5"
-              />
+              {isClaudeProvider(llmProvider) ? (
+                <select
+                  id="askModel"
+                  value={llmModel}
+                  onChange={(e) => setLlmModel(e.target.value)}
+                  disabled={sending}
+                >
+                  {CLAUDE_MODELS.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="askModel"
+                  type="text"
+                  value={llmModel}
+                  onChange={(e) => setLlmModel(e.target.value)}
+                  disabled={sending}
+                  placeholder="gpt-5.1"
+                />
+              )}
             </div>
           </div>
 
