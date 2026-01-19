@@ -546,7 +546,16 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
       };
 
       const llmSettings = await db.llmSettings.get();
-      const llmConfig = buildLlmRuntimeConfig(llmSettings);
+      // TEMP: hardcode Ask to use Claude subscription + Opus + thinking for local evaluation.
+      // This avoids .env changes and makes Ask "max quality" for experimentation.
+      const llmConfig: LlmRuntimeConfig = {
+        ...buildLlmRuntimeConfig(llmSettings),
+        provider: "claude-subscription",
+        claudeSubscriptionEnabled: true,
+        claudeTriageThinking: true,
+        // Opus is the target model for Ask experiments. Uses same model names as Anthropic.
+        anthropicModel: "claude-opus-4-5",
+      };
 
       const response: AskResponse = await handleAskQuestion({
         db,

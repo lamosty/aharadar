@@ -344,7 +344,9 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
     async call(task: TaskType, ref: ModelRef, request: LlmRequest): Promise<LlmCallResult> {
       if (ref.provider === "claude-subscription") {
         return callClaudeSubscription(ref, request, {
-          enableThinking: task === "triage" && enableThinking,
+          // Treat CLAUDE_TRIAGE_THINKING as a general "thinking" toggle for subscription calls.
+          // Historically only triage used this, but we also enable it for Ask/Q&A.
+          enableThinking: (task === "triage" || task === "qa") && enableThinking,
           jsonSchema: request.jsonSchema,
         });
       }
