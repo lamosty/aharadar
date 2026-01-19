@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTopic } from "@/components/TopicProvider";
+import { getDevSettings } from "@/lib/api";
 import { isExperimentalFeatureEnabled } from "@/lib/experimental";
 import { useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
@@ -386,6 +387,12 @@ const HISTORY_RECENT_DAYS = 90;
 
 type HistoryWindow = "recent" | "all";
 
+function apiUrl(path: string): string {
+  const base = getDevSettings().apiBaseUrl.replace(/\/$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${p}`;
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -425,7 +432,7 @@ export default function AskPage() {
     setFeatureEnabled(isExperimentalFeatureEnabled("qa"));
 
     // Also check server status
-    fetch("/api/ask/status")
+    fetch(apiUrl("/ask/status"), { credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         if (data.ok) {
@@ -438,7 +445,7 @@ export default function AskPage() {
   }, []);
 
   async function fetchConversations(topicId: string): Promise<AskConversationSummary[]> {
-    const res = await fetch(`/api/ask/conversations?topicId=${encodeURIComponent(topicId)}`, {
+    const res = await fetch(apiUrl(`/ask/conversations?topicId=${encodeURIComponent(topicId)}`), {
       credentials: "include",
     });
     const data = (await res.json()) as ListConversationsApiResponse | ApiErrorResponse;
@@ -447,7 +454,7 @@ export default function AskPage() {
   }
 
   async function fetchConversation(conversationId: string): Promise<GetConversationApiResponse> {
-    const res = await fetch(`/api/ask/conversations/${encodeURIComponent(conversationId)}`, {
+    const res = await fetch(apiUrl(`/ask/conversations/${encodeURIComponent(conversationId)}`), {
       credentials: "include",
     });
     const data = (await res.json()) as GetConversationApiResponse | ApiErrorResponse;
@@ -456,7 +463,7 @@ export default function AskPage() {
   }
 
   async function createConversation(topicId: string): Promise<AskConversationSummary> {
-    const res = await fetch("/api/ask/conversations", {
+    const res = await fetch(apiUrl("/ask/conversations"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -616,7 +623,7 @@ export default function AskPage() {
       setTurns((prev) => [...prev, optimisticTurn]);
       setDraft("");
 
-      const res = await fetch("/api/ask", {
+      const res = await fetch(apiUrl("/ask"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
