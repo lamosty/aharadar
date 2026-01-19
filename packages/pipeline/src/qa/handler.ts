@@ -52,9 +52,23 @@ const QA_RESPONSE_JSON_SCHEMA: Record<string, unknown> = {
   },
 };
 
+const QA_MEMORY_MAX_TURNS = 6;
+const QA_MEMORY_MIN_SIMILARITY = 0.35;
+const QA_TURN_EMBED_MAX_CHARS = 6000;
+
 function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}...`;
+}
+
+function clampText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars);
+}
+
+function buildTurnEmbeddingText(params: { question: string; answer: string }): string {
+  // Keep it generic and stable: one vector per turn.
+  return clampText(`Q: ${params.question}\nA: ${params.answer}`, QA_TURN_EMBED_MAX_CHARS);
 }
 
 /**
@@ -91,11 +105,30 @@ export async function handleAskQuestion(params: {
   llmConfig?: LlmRuntimeConfig;
 }): Promise<AskResponse> {
   const { db, request, userId, tier, topicName } = params;
-  const { question, topicId, options } = request;
+  const { question, topicId, conversationId, options } = request;
   const includeDebug = options?.debug ?? false;
   const maxClusters = options?.maxClusters ?? 5;
 
   const totalStart = Date.now();
+
+  // 0. Resolve / create conversation
+  let effectiveConversationId = conversationId;
+  let conversationSummary: string | null = null;
+
+  if (effectiveConversationId) {
+    const convo = await db.qa.getConversation({ userId, conversationId: effectiveConversationId });
+    if (!convo || convo.topic_id !== topicId) {
+      // If client passed a bad/foreign conversation id, create a new one (safe default).
+      // (We avoid throwing so Ask always works.)
+      const created = await db.qa.createConversation({ userId, topicId, title: null });
+      effectiveConversationId = created.id;
+    } else {
+      conversationSummary = convo.summary ?? null;
+    }
+  } else {
+    const created = await db.qa.createConversation({ userId, topicId, title: null });
+    effectiveConversationId = created.id;
+  }
 
   // 1. Retrieve relevant context
   const context = await retrieveContext({
@@ -104,8 +137,41 @@ export async function handleAskQuestion(params: {
     userId,
     topicId,
     tier,
-    options,
+    options: { ...options, conversationId: effectiveConversationId },
   });
+
+  // 1b. Retrieve relevant prior turns (topic-scoped memory)
+  // Use the same question embedding from retrieveContext via a second embed call would be wasteful,
+  // but retrieveContext doesn't currently expose the vector. For now, we embed once more (small cost).
+  // TODO: plumb embedding vector through retrieveContext to reuse it.
+  try {
+    const embeddingsClient = (await import("@aharadar/llm")).createEnvEmbeddingsClient();
+    const ref = embeddingsClient.chooseModel(tier);
+    const embed = await embeddingsClient.embed(ref, [question]);
+    const vec = embed.vectors[0] ?? null;
+    if (vec && vec.length > 0) {
+      const hits = await db.qa.searchTurnsByEmbedding({
+        userId,
+        topicId,
+        embedding: vec,
+        limit: QA_MEMORY_MAX_TURNS,
+        excludeConversationId: effectiveConversationId,
+      });
+      context.memoryTurns = hits
+        .filter((h) => h.similarity >= QA_MEMORY_MIN_SIMILARITY)
+        .map((h) => ({
+          conversationId: h.conversation_id,
+          similarity: h.similarity,
+          createdAt: h.created_at,
+          question: h.question,
+          answer: h.answer,
+        }));
+    }
+  } catch {
+    // Memory retrieval is best-effort; never fail Ask because of it.
+    context.memoryTurns = [];
+  }
+  context.conversationSummary = conversationSummary;
 
   // 2. Handle no-data case
   if (context.clusters.length === 0) {
@@ -136,6 +202,7 @@ export async function handleAskQuestion(params: {
     }
 
     const noDataResponse: AskResponse = {
+      conversationId: effectiveConversationId,
       answer: "I don't have relevant information about this in your knowledge base for this topic.",
       citations: [],
       confidence: { score: 0, reasoning: "No matching sources found" },
@@ -343,6 +410,7 @@ export async function handleAskQuestion(params: {
 
   // 10. Build response
   const response: AskResponse = {
+    conversationId: effectiveConversationId,
     answer: parsed.answer || "",
     citations,
     confidence,
@@ -355,6 +423,38 @@ export async function handleAskQuestion(params: {
       },
     },
   };
+
+  // 10b. Persist Q&A turn + embedding (best-effort, non-blocking)
+  try {
+    const inserted = await db.qa.insertTurn({
+      conversationId: effectiveConversationId,
+      userId,
+      topicId,
+      question,
+      answer: response.answer,
+      citationsJson: response.citations,
+      confidenceJson: response.confidence,
+      dataGapsJson: response.dataGaps ?? [],
+    });
+
+    // Embed the whole turn for later retrieval.
+    const embeddingsClient = (await import("@aharadar/llm")).createEnvEmbeddingsClient();
+    const ref = embeddingsClient.chooseModel(tier);
+    const turnText = buildTurnEmbeddingText({ question, answer: response.answer });
+    const embed = await embeddingsClient.embed(ref, [turnText]);
+    const vec = embed.vectors[0] ?? null;
+    if (vec && vec.length > 0) {
+      await db.qa.upsertTurnEmbedding({
+        qaTurnId: inserted.id,
+        model: embed.model,
+        dims: vec.length,
+        vector: vec,
+      });
+    }
+    await db.qa.touchConversation(effectiveConversationId);
+  } catch (err) {
+    console.error("[qa] Failed to persist memory turn:", err instanceof Error ? err.message : err);
+  }
 
   // 11. Add debug info if requested
   if (includeDebug) {

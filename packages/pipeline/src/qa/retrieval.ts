@@ -42,6 +42,16 @@ export interface RetrievedCluster {
 export interface RetrievedContext {
   clusters: RetrievedCluster[];
   totalItems: number;
+  /** Relevant prior Q&A turns for this topic (bounded), if any */
+  memoryTurns?: Array<{
+    conversationId: string;
+    similarity: number;
+    createdAt: string;
+    question: string;
+    answer: string;
+  }>;
+  /** Optional summary for the active conversation */
+  conversationSummary?: string | null;
   /** Total clusters searched before filtering */
   clustersSearched: number;
   /** Minimum similarity threshold used */
@@ -96,7 +106,12 @@ export async function retrieveContext(params: {
   userId: string;
   topicId: string;
   tier: BudgetTier;
-  options?: { maxClusters?: number; timeWindow?: { from?: string; to?: string } };
+  options?: {
+    maxClusters?: number;
+    timeWindow?: { from?: string; to?: string };
+    /** Conversation ID to optionally exclude from memory retrieval */
+    conversationId?: string;
+  };
 }): Promise<RetrievedContext> {
   const maxClusters = params.options?.maxClusters ?? 5;
   const embeddingsClient = createEnvEmbeddingsClient();
@@ -233,6 +248,8 @@ export async function retrieveContext(params: {
   return {
     clusters: clustersWithItems,
     totalItems,
+    memoryTurns: undefined,
+    conversationSummary: null,
     clustersSearched,
     minSimilarityThreshold: MIN_SIMILARITY_THRESHOLD,
     embeddingCost: {

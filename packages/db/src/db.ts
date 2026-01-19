@@ -13,6 +13,7 @@ import { createFetchRunsRepo } from "./repos/fetch_runs";
 import { createItemSummariesRepo } from "./repos/item_summaries";
 import { createLlmSettingsRepo } from "./repos/llm_settings";
 import { createProviderCallsRepo } from "./repos/provider_calls";
+import { createQaMemoryRepo } from "./repos/qa_memory";
 import { createSessionsRepo } from "./repos/sessions";
 import { createSourcesRepo } from "./repos/sources";
 import { createTopicPreferenceProfilesRepo } from "./repos/topic_preference_profiles";
@@ -41,6 +42,7 @@ export type DbContext = Queryable & {
   digestItems: ReturnType<typeof createDigestItemsRepo>;
   feedbackEvents: ReturnType<typeof createFeedbackEventsRepo>;
   providerCalls: ReturnType<typeof createProviderCallsRepo>;
+  qa: ReturnType<typeof createQaMemoryRepo>;
   authTokens: ReturnType<typeof createAuthTokensRepo>;
   sessions: ReturnType<typeof createSessionsRepo>;
   userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
@@ -71,6 +73,7 @@ function createContext(db: Queryable): DbContext {
     digestItems: createDigestItemsRepo(db),
     feedbackEvents: createFeedbackEventsRepo(db),
     providerCalls: createProviderCallsRepo(db),
+    qa: createQaMemoryRepo(db),
     authTokens: createAuthTokensRepo(db),
     sessions: createSessionsRepo(db),
     userApiKeys: createUserApiKeysRepo(db),

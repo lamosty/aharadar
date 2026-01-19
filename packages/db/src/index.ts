@@ -12,6 +12,7 @@ export * from "./repos/fetch_runs";
 export * from "./repos/item_summaries";
 export * from "./repos/llm_settings";
 export * from "./repos/provider_calls";
+export * from "./repos/qa_memory";
 export * from "./repos/sessions";
 export * from "./repos/sources";
 export * from "./repos/topic_preference_profiles";

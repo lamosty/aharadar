@@ -15,6 +15,6 @@
     "dev": "echo \"pipeline: no dev\"",
     "test": "echo \"pipeline: no tests yet\"",
     "lint": "echo \"pipeline: no lint yet\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -b tsconfig.json"
   }
 }

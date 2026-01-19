@@ -22,10 +22,34 @@ function safeJsonSnippet(
  */
 export const QA_SYSTEM_PROMPT = `You are a helpful analyst. Answer questions based on provided context. Always respond with valid JSON matching the requested schema. Be honest about uncertainty.`;
 
+function buildMemorySection(context: RetrievedContext): string {
+  const summary = context.conversationSummary ? context.conversationSummary.trim() : "";
+  const turns = context.memoryTurns ?? [];
+
+  if (!summary && turns.length === 0) return "";
+
+  const lines: string[] = [];
+  lines.push("## Prior Ask context (memory)");
+  if (summary) {
+    lines.push("");
+    lines.push("Conversation summary:");
+    lines.push(summary);
+  }
+  if (turns.length > 0) {
+    lines.push("");
+    lines.push(`Relevant past turns (${turns.length}):`);
+    for (const t of turns) {
+      lines.push(`- (${new Date(t.createdAt).toISOString()}) Q: ${t.question}\n  A: ${t.answer}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 /**
  * Build the user prompt for Q&A, including retrieved context.
  */
 export function buildQAPrompt(question: string, context: RetrievedContext): string {
+  const memorySection = buildMemorySection(context);
   const contextText = context.clusters
     .map((cluster, i) => {
       const itemsText = cluster.items
@@ -58,6 +82,7 @@ export function buildQAPrompt(question: string, context: RetrievedContext): stri
 ## User's Question
 ${question}
 
+${memorySection}
 ## Available Context (${context.totalItems} items from ${context.clusters.length} source groups)
 
 ${contextText || "No relevant context found."}

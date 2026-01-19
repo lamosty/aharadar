@@ -16,6 +16,7 @@ type AskArgs = {
   question: string;
   topic: string | null;
   maxClusters: number;
+  conversationId: string | null;
 };
 
 function buildLlmRuntimeConfig(settings: LlmSettingsRow) {
@@ -37,6 +38,7 @@ function buildLlmRuntimeConfig(settings: LlmSettingsRow) {
 function parseAskArgs(args: string[]): AskArgs {
   let topic: string | null = null;
   let maxClusters = 5;
+  let conversationId: string | null = null;
   const parts: string[] = [];
 
   for (let i = 0; i < args.length; i += 1) {
@@ -60,6 +62,15 @@ function parseAskArgs(args: string[]): AskArgs {
       i += 1;
       continue;
     }
+    if (a === "--conversation") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --conversation value (expected a conversation id)");
+      }
+      conversationId = String(next).trim();
+      i += 1;
+      continue;
+    }
     if (a === "--help" || a === "-h") {
       throw new Error("help");
     }
@@ -71,17 +82,20 @@ function parseAskArgs(args: string[]): AskArgs {
     throw new Error("Missing question");
   }
 
-  return { question, topic, maxClusters };
+  return { question, topic, maxClusters, conversationId };
 }
 
 function printAskUsage(): void {
   console.log("Usage:");
-  console.log('  ask [--topic <id-or-name>] [--max-clusters N] "<question>"');
+  console.log('  ask [--topic <id-or-name>] [--max-clusters N] [--conversation <id>] "<question>"');
   console.log("");
   console.log("Examples:");
   console.log('  pnpm dev:cli -- ask "What happened with tech layoffs?" --topic default');
   console.log('  pnpm dev:cli -- ask --topic <uuid> "What would Buffett think?"');
   console.log('  pnpm dev:cli -- ask --max-clusters 10 "Is crypto sentiment changing?"');
+  console.log(
+    '  pnpm dev:cli -- ask --conversation <uuid> "Continue: what did we decide last time?"',
+  );
 }
 
 export async function askCommand(args: string[] = []): Promise<void> {
@@ -134,6 +148,7 @@ export async function askCommand(args: string[] = []): Promise<void> {
       request: {
         question: parsed.question,
         topicId: topic.id,
+        conversationId: parsed.conversationId ?? undefined,
         options: { maxClusters: parsed.maxClusters },
       },
       userId: user.id,

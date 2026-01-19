@@ -7,6 +7,11 @@
 export interface AskRequest {
   question: string;
   topicId: string;
+  /**
+   * Optional conversation/thread id for multi-turn Ask.
+   * If omitted, the server will create a new conversation.
+   */
+  conversationId?: string;
   options?: {
     timeWindow?: { from?: string; to?: string };
     maxClusters?: number;
@@ -102,6 +107,8 @@ export interface AskDebugInfo {
 }
 
 export interface AskResponse {
+  /** The conversation id used for this answer (created if absent in request). */
+  conversationId: string;
   answer: string;
   citations: Citation[];
   confidence: {

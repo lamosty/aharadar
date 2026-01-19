@@ -45,6 +45,7 @@ function checkRateLimit(
 interface AskRequestBody {
   question: string;
   topicId: string;
+  conversationId?: string;
   options?: {
     timeWindow?: { from?: string; to?: string };
     maxClusters?: number;
@@ -109,6 +110,8 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const { question, topicId, options } = body;
+    const conversationId =
+      typeof body.conversationId === "string" ? body.conversationId : undefined;
 
     // Validation constants
     const MAX_QUESTION_LENGTH = 2000;
@@ -247,6 +250,7 @@ export async function askRoutes(fastify: FastifyInstance): Promise<void> {
       const askRequest: AskRequest = {
         question: question.trim(),
         topicId,
+        conversationId,
         options,
       };
 
