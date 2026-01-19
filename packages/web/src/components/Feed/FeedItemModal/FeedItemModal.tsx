@@ -1,9 +1,10 @@
 "use client";
 
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { WhyShown } from "@/components/WhyShown";
 import { ApiError, type FeedItem, type ManualSummaryOutput } from "@/lib/api";
-import { useItemSummary } from "@/lib/hooks";
+import { useItemSummary, useLocalStorage } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { SortOption } from "../FeedFilterBar";
@@ -21,6 +22,12 @@ interface FeedItemModalProps {
   onSummaryGenerated?: () => void;
   enableSwipe?: boolean;
 }
+
+// Spring configurations - tuned for snappy Tinder-like feel
+const springs = {
+  snapBack: { type: "spring" as const, stiffness: 500, damping: 30 },
+  swipeOut: { type: "spring" as const, stiffness: 800, damping: 40 },
+};
 
 // Helper functions
 function getDisplayTitle(item: {
@@ -78,6 +85,21 @@ function formatRelativeTime(dateStr: string | null, isApproximate = false): stri
   return `${prefix}${diffDays}d ago`;
 }
 
+// Rubber-band function for elastic feel past threshold
+function rubberBand(value: number, limit: number, elasticity = 0.35): number {
+  if (Math.abs(value) <= limit) return value;
+  const sign = value < 0 ? -1 : 1;
+  const overflow = Math.abs(value) - limit;
+  return sign * (limit + overflow * elasticity);
+}
+
+// Get AI score color based on value
+function getScoreColor(score: number): string {
+  if (score >= 80) return "var(--color-success)";
+  if (score >= 60) return "var(--color-warning)";
+  return "var(--color-text-muted)";
+}
+
 export function FeedItemModal({
   isOpen,
   item,
@@ -105,11 +127,22 @@ export function FeedItemModal({
   const [pastedText, setPastedText] = useState("");
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [localSummary, setLocalSummary] = useState<ManualSummaryOutput | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState<"like" | "dislike" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [disableTransition, setDisableTransition] = useState(false);
-  const [fadeIn, setFadeIn] = useState(false);
+
+  // Settings - persisted in localStorage
+  const [showAdvancedDetails, setShowAdvancedDetails] = useLocalStorage<boolean>(
+    "feedModalShowAdvanced",
+    false,
+  );
+
+  // Framer Motion values
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 0, 200], [-15, 0, 15]);
+  const scale = useTransform(x, [-200, 0, 200], [0.96, 1, 0.96]);
+  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [-100, 0], [1, 0]);
+  const likeBadgeScale = useTransform(x, [0, 100], [0.85, 1.05]);
+  const dislikeBadgeScale = useTransform(x, [-100, 0], [1.05, 0.85]);
 
   const summaryMutation = useItemSummary({
     onSuccess: (data) => {
@@ -136,27 +169,13 @@ export function FeedItemModal({
     }
   }, [item]);
 
+  // Reset motion value when item changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: x is stable from useMotionValue, only reset on item change
   useEffect(() => {
     swipeStartRef.current.active = false;
     swipePendingRef.current = false;
-    setSwipeOffset(0);
-    setSwipeDirection(null);
     setIsDragging(false);
-    setDisableTransition(true);
-    setFadeIn(true);
-    let raf: number | null = null;
-    const frame = requestAnimationFrame(() => {
-      setDisableTransition(false);
-      raf = requestAnimationFrame(() => {
-        setFadeIn(false);
-      });
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-      if (raf !== null) {
-        cancelAnimationFrame(raf);
-      }
-    };
+    x.set(0);
   }, [item?.id]);
 
   // Handle click outside
@@ -202,13 +221,14 @@ export function FeedItemModal({
   const primaryUrl = item.item.url;
   const displayDate = item.item.publishedAt || item.digestCreatedAt;
   const summary = localSummary || item.manualSummaryJson;
-  const swipeOpacity = Math.min(Math.abs(swipeOffset) / 120, 1);
-  const maxRotation = 12;
-  const rotation = Math.max(Math.min(swipeOffset / 12, maxRotation), -maxRotation);
-  const swipeTransform = `translateX(${swipeOffset}px) rotate(${rotation}deg)`;
-  const swipeOrigin =
-    swipeOffset === 0 ? "center center" : swipeOffset > 0 ? "bottom left" : "bottom right";
-  const hashtags = extractHashtags(item.item);
+  const triageFeatures = item.triageJson as TriageFeatures | undefined;
+  const aiScore = triageFeatures?.ai_score;
+  const categories = triageFeatures?.categories || [];
+  const aiReason = triageFeatures?.reason;
+  const isNovel = triageFeatures?.is_novel;
+  const isXPost = item.item.sourceType === "x_posts";
+  // For X posts, author IS the title - don't show it twice
+  const showAuthorInHeader = !isXPost && !!item.item.author;
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!enableSwipe) return;
@@ -243,8 +263,7 @@ export function FeedItemModal({
     if (!isDragging) {
       if (absY > absX && absY > 12) {
         start.active = false;
-        setSwipeOffset(0);
-        setSwipeDirection(null);
+        x.set(0);
         return;
       }
       if (absX < 12) return;
@@ -253,29 +272,33 @@ export function FeedItemModal({
       e.preventDefault();
     }
 
-    const maxOffset = 180;
-    const clamped = Math.max(Math.min(deltaX, maxOffset), -maxOffset);
-    setSwipeOffset(clamped);
-    setSwipeDirection(deltaX >= 0 ? "like" : "dislike");
+    // Apply rubber-banding for elastic feel
+    const rubbered = rubberBand(deltaX, 150);
+    x.set(rubbered);
   };
 
-  const triggerSwipeFeedback = async (action: "like" | "dislike") => {
+  const triggerSwipeFeedback = (action: "like" | "dislike") => {
     if (swipePendingRef.current) return;
     swipePendingRef.current = true;
     setIsDragging(false);
-    setSwipeDirection(action);
-    const outDistance = typeof window !== "undefined" ? window.innerWidth : 360;
-    setSwipeOffset(action === "like" ? outDistance : -outDistance);
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 140));
-      await onFeedback(action);
-    } catch {
-      setSwipeOffset(0);
-      setSwipeDirection(null);
-    } finally {
-      swipePendingRef.current = false;
+    // Haptic feedback
+    if ("vibrate" in navigator) {
+      navigator.vibrate(action === "like" ? [8, 30, 8] : 12);
     }
+
+    // Quick exit animation, THEN fire feedback
+    // This gives visual feedback while keeping things snappy
+    const outDistance = typeof window !== "undefined" ? window.innerWidth + 100 : 500;
+    animate(x, action === "like" ? outDistance : -outDistance, {
+      type: "spring",
+      stiffness: 1200,
+      damping: 50,
+      onComplete: () => {
+        void onFeedback(action);
+        swipePendingRef.current = false;
+      },
+    });
   };
 
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -295,8 +318,10 @@ export function FeedItemModal({
 
     swipeStartRef.current.active = false;
 
-    const isLongSwipe = absX > 90 && absX > absY * 1.2;
-    const isFlick = absX > 32 && absX > absY * 1.1 && duration < 260 && velocity > 0.4;
+    // Use velocity to project final position (momentum-based)
+    const projectedX = x.get() + velocity * 120;
+    const isLongSwipe = Math.abs(projectedX) > 80 && absX > absY * 1.2;
+    const isFlick = absX > 32 && absX > absY * 1.1 && duration < 260 && velocity > 0.35;
 
     if (isLongSwipe || isFlick) {
       void triggerSwipeFeedback(deltaX > 0 ? "like" : "dislike");
@@ -306,8 +331,8 @@ export function FeedItemModal({
       return;
     }
 
-    setSwipeOffset(0);
-    setSwipeDirection(null);
+    // Snap back with spring
+    animate(x, 0, springs.snapBack);
     setIsDragging(false);
     if (suppressClickRef.current) {
       setTimeout(() => {
@@ -319,8 +344,7 @@ export function FeedItemModal({
   const handleTouchCancel = () => {
     if (!enableSwipe) return;
     swipeStartRef.current.active = false;
-    setSwipeOffset(0);
-    setSwipeDirection(null);
+    animate(x, 0, springs.snapBack);
     setIsDragging(false);
     suppressClickRef.current = false;
   };
@@ -348,6 +372,11 @@ export function FeedItemModal({
   // Get secondary info (comments, subreddit, etc.)
   const secondaryInfo = getSecondaryInfo(item.item);
 
+  // Determine transform origin based on x position
+  const currentX = x.get();
+  const transformOrigin =
+    currentX === 0 ? "center center" : currentX > 0 ? "bottom left" : "bottom right";
+
   return (
     <div className={styles.overlay} aria-modal="true" role="dialog">
       <div
@@ -359,23 +388,32 @@ export function FeedItemModal({
         onTouchCancel={handleTouchCancel}
         onClickCapture={handleClickCapture}
       >
-        <div
-          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""} ${disableTransition ? styles.noTransition : ""} ${fadeIn ? styles.fadeIn : ""}`}
-          style={{ transform: swipeTransform, transformOrigin: swipeOrigin }}
+        <motion.div
+          className={`${styles.swipeCard} ${isDragging ? styles.swipeDragging : ""}`}
+          style={{
+            x,
+            rotate,
+            scale,
+            transformOrigin,
+          }}
+          initial={{ opacity: 0.95, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={springs.snapBack}
         >
+          {/* Swipe badges */}
           <div className={styles.swipeOverlay} aria-hidden="true">
-            <div
+            <motion.div
               className={`${styles.swipeBadge} ${styles.likeBadge}`}
-              style={{ opacity: swipeDirection === "like" ? swipeOpacity : 0 }}
+              style={{ opacity: likeOpacity, scale: likeBadgeScale }}
             >
               Like
-            </div>
-            <div
+            </motion.div>
+            <motion.div
               className={`${styles.swipeBadge} ${styles.dislikeBadge}`}
-              style={{ opacity: swipeDirection === "dislike" ? swipeOpacity : 0 }}
+              style={{ opacity: dislikeOpacity, scale: dislikeBadgeScale }}
             >
               Nope
-            </div>
+            </motion.div>
           </div>
 
           <div className="sr-only">
@@ -388,57 +426,75 @@ export function FeedItemModal({
             </button>
           </div>
 
-          {/* Header */}
-          <div className={styles.header}>
-            <div className={styles.headerMeta}>
-              <span
-                className={styles.sourceBadge}
-                style={{ backgroundColor: getSourceColor(item.item.sourceType) }}
-              >
-                {formatSourceType(item.item.sourceType)}
-              </span>
-              {item.item.author && (
-                <span className={styles.author}>
-                  {item.item.author.startsWith("@") ? item.item.author : item.item.author}
+          {/* Compact Header - everything in minimal space */}
+          <div className={styles.compactHeader}>
+            {/* Top row: source, score, time, actions */}
+            <div className={styles.headerRow}>
+              <div className={styles.headerLeft}>
+                <span
+                  className={styles.sourceBadge}
+                  style={{ backgroundColor: getSourceColor(item.item.sourceType) }}
+                >
+                  {formatSourceType(item.item.sourceType)}
                 </span>
-              )}
-              {displayDate && (
-                <span className={styles.time}>{formatRelativeTime(displayDate)}</span>
-              )}
-            </div>
-            <div className={styles.headerActions}>
-              {canUndo && (
+                {typeof aiScore === "number" && (
+                  <span className={styles.aiScore} style={{ color: getScoreColor(aiScore) }}>
+                    {aiScore}
+                  </span>
+                )}
+                {showAuthorInHeader && <span className={styles.author}>{item.item.author}</span>}
+                {displayDate && (
+                  <span className={styles.time}>{formatRelativeTime(displayDate)}</span>
+                )}
+              </div>
+              <div className={styles.headerActions}>
+                <button
+                  type="button"
+                  className={`${styles.iconButton} ${showAdvancedDetails ? styles.iconButtonActive : ""}`}
+                  onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
+                  aria-label={showAdvancedDetails ? "Hide details" : "Show details"}
+                  aria-pressed={showAdvancedDetails}
+                  title={showAdvancedDetails ? "Hide details" : "Show details"}
+                >
+                  <InfoIcon />
+                </button>
+                {canUndo && (
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={onUndo}
+                    aria-label="Undo"
+                  >
+                    <UndoIcon />
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.iconButton}
-                  onClick={onUndo}
-                  aria-label="Undo"
+                  onClick={onClose}
+                  aria-label="Close"
                 >
-                  <UndoIcon />
+                  <CloseIcon />
                 </button>
-              )}
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={onClose}
-                aria-label="Close"
-              >
-                <CloseIcon />
-              </button>
+              </div>
             </div>
-          </div>
-
-          {/* Body - Scrollable content */}
-          <div className={styles.body} ref={bodyRef}>
-            {hashtags.length > 0 && (
-              <div className={styles.hashtagRow}>
-                {hashtags.map((tag) => (
-                  <span key={tag} className={styles.hashtag}>
-                    {tag}
+            {/* Tags row - wraps to show all */}
+            {(isNovel || categories.length > 0) && (
+              <div className={styles.tagsRow}>
+                {isNovel && <span className={styles.novelBadge}>NEW</span>}
+                {categories.map((cat) => (
+                  <span key={cat} className={styles.categoryTag}>
+                    {cat}
                   </span>
                 ))}
               </div>
             )}
+            {/* AI Reason - the key insight for quick decision */}
+            {aiReason && <p className={styles.aiReason}>{aiReason}</p>}
+          </div>
+
+          {/* Body - Scrollable content */}
+          <div className={styles.body} ref={bodyRef}>
             {/* Title */}
             <h2 className={styles.title}>{getDisplayTitle(item.item)}</h2>
 
@@ -493,8 +549,8 @@ export function FeedItemModal({
               </div>
             )}
 
-            {/* Paste input for summary generation */}
-            {!summary && (
+            {/* Paste input for summary generation - only on desktop (not typical mobile UX) */}
+            {!summary && !enableSwipe && (
               <div className={styles.pasteSection}>
                 <input
                   type="text"
@@ -512,17 +568,20 @@ export function FeedItemModal({
               </div>
             )}
 
-            {/* Why Shown section */}
+            {/* Why Shown section - compact mode since everything is in header, no double toggle */}
             <div className={styles.whyShownSection}>
               <WhyShown
                 features={item.triageJson as TriageFeatures | undefined}
                 clusterItems={item.clusterItems}
-                compact={false}
-                defaultExpanded={true}
+                compact={true}
+                hideScore={true}
+                hideCategories={true}
+                hideReason={true}
+                defaultAdvancedExpanded={showAdvancedDetails}
               />
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -562,57 +621,6 @@ function getSecondaryInfo(item: FeedItem["item"]): {
   }
 
   return null;
-}
-
-function normalizeHashtag(tag: string): string | null {
-  const trimmed = tag.trim();
-  if (!trimmed) return null;
-  const cleaned = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
-  if (!cleaned) return null;
-  return cleaned.length > 32 ? cleaned.slice(0, 32) : cleaned;
-}
-
-function extractHashtags(item: FeedItem["item"]): string[] {
-  const tags = new Set<string>();
-  const metadata = item.metadata as Record<string, unknown> | null;
-
-  const addTag = (value: string) => {
-    const normalized = normalizeHashtag(value);
-    if (normalized) {
-      tags.add(normalized);
-    }
-  };
-
-  const metaTags = metadata?.tags;
-  if (Array.isArray(metaTags)) {
-    metaTags.forEach((tag) => {
-      if (typeof tag === "string") addTag(tag);
-    });
-  }
-
-  const metaHashtags = metadata?.hashtags;
-  if (Array.isArray(metaHashtags)) {
-    metaHashtags.forEach((tag) => {
-      if (typeof tag === "string") addTag(tag);
-    });
-  } else if (typeof metaHashtags === "string") {
-    metaHashtags.split(/[,\s]+/).forEach((tag) => {
-      addTag(tag);
-    });
-  }
-
-  if (item.bodyText) {
-    const matches = item.bodyText.match(/#[A-Za-z0-9_]+/g);
-    if (matches) {
-      matches.forEach((tag) => {
-        addTag(tag);
-      });
-    }
-  }
-
-  return Array.from(tags)
-    .slice(0, 4)
-    .map((tag) => `#${tag}`);
 }
 
 function CloseIcon() {
@@ -683,6 +691,25 @@ function CommentIcon() {
       strokeLinejoin="round"
     >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   );
 }
