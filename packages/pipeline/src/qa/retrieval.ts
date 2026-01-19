@@ -163,10 +163,21 @@ export async function retrieveContext(params: {
          join content_items ci on ci.id = cli.content_item_id
          join content_item_sources cis on cis.content_item_id = cli.content_item_id
          join sources s on s.id = cis.source_id
+         left join content_item_summaries cisum
+           on cisum.user_id = $1::uuid and cisum.content_item_id = ci.id
+         left join lateral (
+           select fe.action
+           from feedback_events fe
+           where fe.user_id = $1::uuid
+             and fe.content_item_id = ci.id
+           order by fe.created_at desc
+           limit 1
+         ) fb on true
          where cli.cluster_id = c.id
            and s.topic_id = $2::uuid
            and ci.deleted_at is null
            ${itemTimeFilterForExists}
+           and (fb.action = 'like' or cisum.summary_json is not null)
        )
      order by c.centroid_vector <=> $3::vector asc
      limit $4`,
@@ -229,6 +240,7 @@ export async function retrieveContext(params: {
        ) fb on true
        where cli.cluster_id = $1::uuid
          and ci.deleted_at is null
+         and (fb.action = 'like' or cis.summary_json is not null)
          ${itemTimeFilter}
        order by cli.similarity desc
        limit 3`,

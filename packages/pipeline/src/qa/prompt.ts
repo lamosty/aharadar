@@ -89,11 +89,12 @@ ${contextText || "No relevant context found."}
 
 ## Instructions
 
-1. Answer the question based ONLY on the provided context
-2. If the context doesn't contain enough information, say so clearly
-3. Cite sources by their title when making claims
-4. Assess your confidence: how well does the data support your answer?
-5. Note any gaps in the available information
+1. The context items are sources the user liked or manually summarized; do NOT assume they are about the user.
+2. Answer the question based ONLY on the provided context
+3. If the context doesn't contain enough information, say so clearly
+4. Cite sources by their title when making claims
+5. Assess your confidence: how well does the data support your answer?
+6. Note any gaps in the available information
 
 ## Response Format (JSON)
 
