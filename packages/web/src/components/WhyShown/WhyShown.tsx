@@ -13,6 +13,14 @@ interface WhyShownProps {
   defaultExpanded?: boolean;
   /** Compact variant for condensed layouts - shows content directly, smaller styling */
   compact?: boolean;
+  /** Hide score section (when already shown in parent) */
+  hideScore?: boolean;
+  /** Hide categories section (when already shown in parent) */
+  hideCategories?: boolean;
+  /** Hide reason text (when already shown in parent) */
+  hideReason?: boolean;
+  /** Show advanced details by default (system features like novelty, freshness, etc.) */
+  defaultAdvancedExpanded?: boolean;
 }
 
 function formatSourceType(type: string): string {
@@ -32,6 +40,10 @@ export function WhyShown({
   clusterItems,
   defaultExpanded = false,
   compact = false,
+  hideScore = false,
+  hideCategories = false,
+  hideReason = false,
+  defaultAdvancedExpanded = false,
 }: WhyShownProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || compact);
   const panelId = useId();
@@ -58,7 +70,14 @@ export function WhyShown({
     return (
       <div className={`${styles.container} ${styles.compact}`} data-testid="why-shown">
         <div className={styles.panelCompact} role="region" aria-label={t("digests.whyShown.title")}>
-          <WhyShownContent features={features} clusterItems={clusterItems} />
+          <WhyShownContent
+            features={features}
+            clusterItems={clusterItems}
+            hideScore={hideScore}
+            hideCategories={hideCategories}
+            hideReason={hideReason}
+            defaultAdvancedExpanded={defaultAdvancedExpanded}
+          />
         </div>
       </div>
     );
@@ -88,7 +107,14 @@ export function WhyShown({
           aria-label={t("digests.whyShown.title")}
           data-testid="why-shown-panel"
         >
-          <WhyShownContent features={features} clusterItems={clusterItems} />
+          <WhyShownContent
+            features={features}
+            clusterItems={clusterItems}
+            hideScore={hideScore}
+            hideCategories={hideCategories}
+            hideReason={hideReason}
+            defaultAdvancedExpanded={defaultAdvancedExpanded}
+          />
         </div>
       )}
     </div>
@@ -117,11 +143,19 @@ function _FeatureSection({ title, tooltipKey, children }: FeatureSectionProps) {
 function WhyShownContent({
   features,
   clusterItems,
+  hideScore = false,
+  hideCategories = false,
+  hideReason = false,
+  defaultAdvancedExpanded = false,
 }: {
   features: TriageFeatures;
   clusterItems?: ClusterItem[];
+  hideScore?: boolean;
+  hideCategories?: boolean;
+  hideReason?: boolean;
+  defaultAdvancedExpanded?: boolean;
 }) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(defaultAdvancedExpanded);
 
   // Check if there's any advanced data to show
   const hasAdvancedData =
@@ -135,8 +169,8 @@ function WhyShownContent({
     <div className={styles.featureList}>
       {/* Main section - always visible */}
 
-      {/* AI Score - LLM triage score (main insight) */}
-      {typeof features.ai_score === "number" && (
+      {/* AI Score - LLM triage score (main insight) - hidden if already shown in parent */}
+      {!hideScore && typeof features.ai_score === "number" && (
         <div className={styles.mainScore}>
           <div className={styles.scoreHeader}>
             <span className={styles.scoreLabel}>{t("digests.whyShown.aiScore")}</span>
@@ -145,12 +179,17 @@ function WhyShownContent({
               <span className={styles.scoreMax}>/100</span>
             </div>
           </div>
-          {features.reason && <p className={styles.reason}>{features.reason}</p>}
+          {!hideReason && features.reason && <p className={styles.reason}>{features.reason}</p>}
         </div>
       )}
 
-      {/* Categories from LLM triage */}
-      {features.categories && features.categories.length > 0 && (
+      {/* Show just the reason if score is hidden but reason exists and not hidden */}
+      {hideScore && !hideReason && features.reason && (
+        <p className={styles.reason}>{features.reason}</p>
+      )}
+
+      {/* Categories from LLM triage - hidden if already shown in parent */}
+      {!hideCategories && features.categories && features.categories.length > 0 && (
         <div className={styles.categoriesSection}>
           <div className={styles.tagList}>
             {features.categories.map((cat) => (
