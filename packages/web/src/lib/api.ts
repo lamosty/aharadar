@@ -2007,3 +2007,104 @@ export async function getAggregateSummary(
 ): Promise<GetAggregateSummaryResponse> {
   return apiFetch<GetAggregateSummaryResponse>(`/summaries/${id}`, { signal });
 }
+
+// ============================================================================
+// Bookmarks API
+// ============================================================================
+
+/** Bookmarked item with content details */
+export interface BookmarkedItem {
+  id: string;
+  item: {
+    title: string | null;
+    bodyText: string | null;
+    url: string | null;
+    externalId: string | null;
+    author: string | null;
+    publishedAt: string | null;
+    sourceType: string;
+    sourceId: string;
+    metadata: Record<string, unknown> | null;
+  };
+  bookmarkedAt: string;
+}
+
+/** Toggle bookmark response */
+export interface ToggleBookmarkResponse {
+  ok: true;
+  bookmarked: boolean;
+}
+
+/** Get bookmarks list response */
+export interface BookmarksListResponse {
+  ok: true;
+  items: BookmarkedItem[];
+  pagination: PaginationInfo;
+}
+
+/** Check bookmark status response */
+export interface BookmarkStatusResponse {
+  ok: true;
+  bookmarked: boolean;
+}
+
+/** Bulk bookmark status response */
+export interface BulkBookmarkStatusResponse {
+  ok: true;
+  status: Record<string, boolean>;
+}
+
+/**
+ * Toggle bookmark for a content item.
+ */
+export async function toggleBookmark(
+  contentItemId: string,
+  signal?: AbortSignal,
+): Promise<ToggleBookmarkResponse> {
+  return apiFetch<ToggleBookmarkResponse>("/bookmarks", {
+    method: "POST",
+    body: { contentItemId },
+    signal,
+  });
+}
+
+/**
+ * Get list of bookmarked items with pagination.
+ */
+export async function getBookmarks(
+  params?: { limit?: number; offset?: number },
+  signal?: AbortSignal,
+): Promise<BookmarksListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+
+  const query = searchParams.toString();
+  const path = query ? `/bookmarks?${query}` : "/bookmarks";
+
+  return apiFetch<BookmarksListResponse>(path, { signal });
+}
+
+/**
+ * Check if a content item is bookmarked.
+ */
+export async function isBookmarked(
+  contentItemId: string,
+  signal?: AbortSignal,
+): Promise<BookmarkStatusResponse> {
+  return apiFetch<BookmarkStatusResponse>(`/bookmarks/${contentItemId}`, { signal });
+}
+
+/**
+ * Check bookmark status for multiple items at once.
+ */
+export async function getBulkBookmarkStatus(
+  contentItemIds: string[],
+  signal?: AbortSignal,
+): Promise<BulkBookmarkStatusResponse> {
+  return apiFetch<BulkBookmarkStatusResponse>("/bookmarks/bulk-status", {
+    method: "POST",
+    body: { contentItemIds },
+    signal,
+  });
+}

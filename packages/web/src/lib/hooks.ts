@@ -26,9 +26,11 @@ import {
   type AdminRunResponse,
   type AggregateSummary,
   type ApiError,
+  type BookmarksListResponse,
   type BudgetPeriod,
   type BudgetResetResponse,
   type BudgetsResponse,
+  type BulkBookmarkStatusResponse,
   type ClearFeedbackRequest,
   type ClearFeedbackResponse,
   type CreateDigestSummaryResponse,
@@ -64,6 +66,8 @@ import {
   getAdminLlmSettings,
   getAdminSources,
   getAggregateSummary as getAggregateSummaryApi,
+  getBookmarks,
+  getBulkBookmarkStatus,
   getDailyUsage,
   getDigest,
   getDigestStats,
@@ -88,6 +92,7 @@ import {
   type ItemSummaryResponse,
   type ItemsListParams,
   type ItemsListResponse,
+  isBookmarked as isBookmarkedApi,
   type LlmSettingsResponse,
   type LlmSettingsUpdateRequest,
   type MonthlyUsageResponse,
@@ -123,6 +128,7 @@ import {
   type SourcePatchRequest,
   type SourcePatchResponse,
   type SourcesListResponse,
+  type ToggleBookmarkResponse,
   type TopicCustomSettingsUpdateRequest,
   type TopicCustomSettingsUpdateResponse,
   type TopicDetailResponse,
@@ -130,6 +136,7 @@ import {
   type TopicDigestSettingsUpdateResponse,
   type TopicMarkCheckedResponse,
   type TopicsListResponse,
+  toggleBookmark,
   type UpdateTopicRequest,
   type UpdateTopicResponse,
   updateTopic,
@@ -187,6 +194,12 @@ export const queryKeys = {
     },
   },
   preferences: ["preferences"] as const,
+  bookmarks: {
+    all: ["bookmarks"] as const,
+    list: (params?: { limit?: number; offset?: number }) => ["bookmarks", "list", params] as const,
+    status: (contentItemId: string) => ["bookmarks", "status", contentItemId] as const,
+    bulkStatus: (contentItemIds: string[]) => ["bookmarks", "bulk-status", contentItemIds] as const,
+  },
   topics: {
     all: ["topics"] as const,
     list: () => ["topics", "list"] as const,
@@ -1593,4 +1606,140 @@ export function useMediaQuery(query: string): boolean {
   }, [query]);
 
   return matches;
+}
+
+// ============================================================================
+// Bookmarks Hooks
+// ============================================================================
+
+/**
+ * Query for bookmark status of a single content item.
+ */
+export function useIsBookmarked(
+  contentItemId: string | null,
+  options?: Omit<UseQueryOptions<boolean, ApiError | NetworkError>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: queryKeys.bookmarks.status(contentItemId ?? ""),
+    queryFn: async ({ signal }) => {
+      if (!contentItemId) return false;
+      const res = await isBookmarkedApi(contentItemId, signal);
+      return res.bookmarked;
+    },
+    enabled: !!contentItemId,
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Query for bulk bookmark status of multiple items.
+ */
+export function useBulkBookmarkStatus(
+  contentItemIds: string[],
+  options?: Omit<
+    UseQueryOptions<Record<string, boolean>, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.bookmarks.bulkStatus(contentItemIds),
+    queryFn: async ({ signal }) => {
+      if (contentItemIds.length === 0) return {};
+      const res = await getBulkBookmarkStatus(contentItemIds, signal);
+      return res.status;
+    },
+    enabled: contentItemIds.length > 0,
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Mutation to toggle bookmark with optimistic updates.
+ * Immediately updates UI, rolls back on error.
+ */
+export function useBookmarkToggle(options?: {
+  onSuccess?: (data: ToggleBookmarkResponse) => void;
+  onError?: (error: ApiError | NetworkError) => void;
+}) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ToggleBookmarkResponse,
+    ApiError | NetworkError,
+    string, // contentItemId
+    { previousStatus: boolean | undefined }
+  >({
+    mutationFn: (contentItemId) => toggleBookmark(contentItemId),
+
+    onMutate: async (contentItemId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.bookmarks.status(contentItemId),
+      });
+
+      // Snapshot previous value
+      const previousStatus = queryClient.getQueryData<boolean>(
+        queryKeys.bookmarks.status(contentItemId),
+      );
+
+      // Optimistically toggle
+      queryClient.setQueryData(queryKeys.bookmarks.status(contentItemId), !previousStatus);
+
+      return { previousStatus };
+    },
+
+    onError: (_error, contentItemId, context) => {
+      // Rollback on error
+      if (context?.previousStatus !== undefined) {
+        queryClient.setQueryData(queryKeys.bookmarks.status(contentItemId), context.previousStatus);
+      }
+      options?.onError?.(_error);
+    },
+
+    onSuccess: (data, contentItemId) => {
+      // Set the actual value from server
+      queryClient.setQueryData(queryKeys.bookmarks.status(contentItemId), data.bookmarked);
+      // Invalidate bookmarks list
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookmarks.all });
+      options?.onSuccess?.(data);
+    },
+  });
+}
+
+/**
+ * Query for bookmarks list with pagination.
+ */
+export function useBookmarks(
+  params?: { limit?: number; offset?: number },
+  options?: Omit<
+    UseQueryOptions<BookmarksListResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.bookmarks.list(params),
+    queryFn: ({ signal }) => getBookmarks(params, signal),
+    staleTime: 30 * 1000, // 30 seconds
+    ...options,
+  });
+}
+
+/**
+ * Infinite query for bookmarks list with pagination.
+ */
+export function useBookmarksInfinite(params?: { limit?: number }) {
+  const limit = params?.limit ?? 20;
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.bookmarks.list({ limit }),
+    queryFn: ({ signal, pageParam }) =>
+      getBookmarks({ limit, offset: pageParam as number }, signal),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: BookmarksListResponse) => {
+      if (!lastPage.pagination.hasMore) return undefined;
+      return lastPage.pagination.offset + lastPage.pagination.limit;
+    },
+  });
 }
