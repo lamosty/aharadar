@@ -4,7 +4,7 @@ import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { WhyShown } from "@/components/WhyShown";
 import { ApiError, type FeedItem, type ManualSummaryOutput } from "@/lib/api";
-import { useItemSummary, useLocalStorage } from "@/lib/hooks";
+import { useBookmarkToggle, useIsBookmarked, useItemSummary } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { SortOption } from "../FeedFilterBar";
@@ -129,11 +129,9 @@ export function FeedItemModal({
   const [localSummary, setLocalSummary] = useState<ManualSummaryOutput | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Settings - persisted in localStorage
-  const [showAdvancedDetails, setShowAdvancedDetails] = useLocalStorage<boolean>(
-    "feedModalShowAdvanced",
-    false,
-  );
+  // Bookmark state and mutation
+  const { data: isBookmarked } = useIsBookmarked(item?.id ?? null);
+  const bookmarkMutation = useBookmarkToggle();
 
   // Framer Motion values
   const x = useMotionValue(0);
@@ -450,13 +448,14 @@ export function FeedItemModal({
               <div className={styles.headerActions}>
                 <button
                   type="button"
-                  className={`${styles.iconButton} ${showAdvancedDetails ? styles.iconButtonActive : ""}`}
-                  onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
-                  aria-label={showAdvancedDetails ? "Hide details" : "Show details"}
-                  aria-pressed={showAdvancedDetails}
-                  title={showAdvancedDetails ? "Hide details" : "Show details"}
+                  className={`${styles.iconButton} ${isBookmarked ? styles.iconButtonActive : ""}`}
+                  onClick={() => item && bookmarkMutation.mutate(item.id)}
+                  aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+                  aria-pressed={isBookmarked}
+                  title={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+                  disabled={bookmarkMutation.isPending}
                 >
-                  <InfoIcon />
+                  <BookmarkIcon filled={isBookmarked} />
                 </button>
                 {canUndo && (
                   <button
@@ -577,7 +576,7 @@ export function FeedItemModal({
                 hideScore={true}
                 hideCategories={true}
                 hideReason={true}
-                defaultAdvancedExpanded={showAdvancedDetails}
+                defaultAdvancedExpanded={false}
               />
             </div>
           </div>
@@ -695,21 +694,19 @@ function CommentIcon() {
   );
 }
 
-function InfoIcon() {
+function BookmarkIcon({ filled }: { filled?: boolean }) {
   return (
     <svg
       width="18"
       height="18"
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="16" x2="12" y2="12" />
-      <line x1="12" y1="8" x2="12.01" y2="8" />
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
