@@ -594,29 +594,36 @@ function getSecondaryInfo(item: FeedItem["item"]): {
 } | null {
   const sourceType = item.sourceType;
   const meta = item.metadata as Record<string, unknown> | null;
+  const externalId = item.externalId;
 
-  if (!meta) return null;
-
-  if (sourceType === "hn") {
-    const hnId = meta.hn_id || meta.id;
-    const commentCount = typeof meta.num_comments === "number" ? meta.num_comments : null;
-    if (hnId) {
-      return {
-        commentsLink: `https://news.ycombinator.com/item?id=${hnId}`,
-        commentCount: commentCount ?? undefined,
-      };
-    }
+  if (sourceType === "hn" && externalId) {
+    const descendants = meta?.descendants as number | undefined;
+    return {
+      commentsLink: `https://news.ycombinator.com/item?id=${externalId}`,
+      commentCount: descendants ?? undefined,
+    };
   }
 
-  if (sourceType === "reddit") {
+  if (sourceType === "reddit" && meta) {
     const subreddit = meta.subreddit as string | undefined;
-    const commentCount = typeof meta.num_comments === "number" ? meta.num_comments : null;
+    const numComments = meta.num_comments as number | undefined;
     const permalink = meta.permalink as string | undefined;
-    return {
-      text: subreddit ? `r/${subreddit}` : undefined,
-      commentsLink: permalink ? `https://reddit.com${permalink}` : undefined,
-      commentCount: commentCount ?? undefined,
-    };
+
+    if (subreddit) {
+      // Build full Reddit URL from permalink
+      // Permalink may be full URL or just path
+      const commentsLink = permalink
+        ? permalink.startsWith("http")
+          ? permalink
+          : `https://www.reddit.com${permalink}`
+        : undefined;
+
+      return {
+        text: `r/${subreddit}`,
+        commentsLink,
+        commentCount: numComments ?? undefined,
+      };
+    }
   }
 
   return null;
