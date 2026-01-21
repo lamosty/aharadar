@@ -115,6 +115,8 @@ function NavIcon({ icon }: { icon: NavItem["icon"] }) {
       return <HomeIcon />;
     case "feed":
       return <FeedIcon />;
+    case "bookmarks":
+      return <BookmarksIcon />;
     case "ask":
       return <AskIcon />;
     case "digest":
@@ -224,6 +226,24 @@ function FeedIcon() {
       <path d="M4 11a9 9 0 0 1 9 9" />
       <path d="M4 4a16 16 0 0 1 16 16" />
       <circle cx="5" cy="19" r="1" />
+    </svg>
+  );
+}
+
+function BookmarksIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }

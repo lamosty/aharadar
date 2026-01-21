@@ -9,7 +9,16 @@ export interface NavItem {
   id: string;
   href: string;
   labelKey: string; // i18n key
-  icon: "home" | "feed" | "ask" | "digest" | "sources" | "topics" | "settings" | "admin";
+  icon:
+    | "home"
+    | "feed"
+    | "ask"
+    | "digest"
+    | "sources"
+    | "topics"
+    | "settings"
+    | "admin"
+    | "bookmarks";
   /** Whether this item should appear in mobile bottom nav */
   mobileNav?: boolean;
   /** Whether this item requires admin role to see */
@@ -40,6 +49,13 @@ export const mainNavItems: NavItem[] = [
     labelKey: "nav.feed",
     icon: "feed",
     mobileNav: true,
+  },
+  {
+    id: "bookmarks",
+    href: "/app/bookmarks",
+    labelKey: "nav.bookmarks",
+    icon: "bookmarks",
+    mobileNav: false,
   },
   {
     id: "ask",
