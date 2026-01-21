@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { createAbtestsRepo } from "./repos/abtests";
 import { createAggregateSummariesRepo } from "./repos/aggregate_summaries";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
+import { createBookmarksRepo } from "./repos/bookmarks";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
 import { createDigestItemsRepo } from "./repos/digest_items";
@@ -51,6 +52,7 @@ export type DbContext = Queryable & {
   xAccountPolicies: ReturnType<typeof createXAccountPoliciesRepo>;
   itemSummaries: ReturnType<typeof createItemSummariesRepo>;
   aggregateSummaries: ReturnType<typeof createAggregateSummariesRepo>;
+  bookmarks: ReturnType<typeof createBookmarksRepo>;
 };
 
 export interface Db extends DbContext {
@@ -82,6 +84,7 @@ function createContext(db: Queryable): DbContext {
     xAccountPolicies: createXAccountPoliciesRepo(db),
     itemSummaries: createItemSummariesRepo(db),
     aggregateSummaries: createAggregateSummariesRepo(db),
+    bookmarks: createBookmarksRepo(db),
   };
 }
 
