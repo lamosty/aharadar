@@ -957,12 +957,41 @@ function CatchupViewContent({
       );
     }
 
+    const summary = pack.summaryJson;
+    const themes = summary?.themes ?? [];
+    const notes = summary?.notes;
+
     return (
       <div>
         <button type="button" className={styles.catchupBackBtn} onClick={showGenerationPanel}>
           <ArrowLeftIcon />
           {t("feed.catchup.back")}
         </button>
+
+        {/* AI Summary section */}
+        {(notes || themes.length > 0) && (
+          <div className={styles.catchupSummary}>
+            <div className={styles.catchupSummaryHeader}>
+              <SparklesIcon />
+              AI Summary
+            </div>
+            {notes && <p className={styles.catchupNotes}>{notes}</p>}
+            {themes.length > 0 && (
+              <div className={styles.catchupThemes}>
+                <div className={styles.catchupThemesLabel}>Key Themes</div>
+                {themes.map((theme, idx) => (
+                  <div key={idx} className={styles.catchupTheme}>
+                    <h4 className={styles.catchupThemeTitle}>{theme.title}</h4>
+                    <p className={styles.catchupThemeSummary}>{theme.summary}</p>
+                    <div className={styles.catchupThemeCount}>
+                      {theme.item_ids.length} item{theme.item_ids.length !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Must Read tier */}
         {mustReadItems.length > 0 && (
@@ -1220,6 +1249,28 @@ function FastIcon() {
       aria-hidden="true"
     >
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+      <path d="M5 3v4" />
+      <path d="M3 5h4" />
+      <path d="M19 17v4" />
+      <path d="M17 19h4" />
     </svg>
   );
 }
