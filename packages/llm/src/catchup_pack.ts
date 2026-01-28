@@ -246,7 +246,7 @@ function buildTierSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     ? "The previous response was invalid. Fix it and return ONLY the JSON object."
     : "Return ONLY the JSON object.";
   return (
-    "You are a strict JSON generator for tiered catch-up packs.\n" +
+    "You are creating a catch-up briefing for a busy person who missed recent updates.\n" +
     `${retryNote}\n` +
     "Output must match this schema (no extra keys, no markdown, no code fences):\n" +
     "{\n" +
@@ -260,11 +260,14 @@ function buildTierSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     '    "worth_scanning": [{ "item_id": "id", "why": "short reason", "theme": "short theme" }],\n' +
     '    "headlines": [{ "item_id": "id", "why": "short reason", "theme": "short theme" }]\n' +
     "  },\n" +
-    '  "themes": [{ "title": "Theme", "summary": "Brief summary", "item_ids": ["id"] }],\n' +
-    '  "notes": "Optional guidance"\n' +
-    "}\n" +
-    "Assign items into tiers based on importance and time budget.\n" +
-    "Prefer diversity across sources/authors. Keep themes short and topic-agnostic.\n" +
+    '  "themes": [{ "title": "Theme Name", "summary": "What happened and why it matters", "item_ids": ["id"] }],\n' +
+    '  "notes": "Executive summary of key developments"\n' +
+    "}\n\n" +
+    "CRITICAL - Write for a normal person, NOT a technical system:\n" +
+    "- notes: Write 2-3 sentences summarizing the most important developments. What happened? What should they know? Write like a friend catching them up, not a robot describing categories.\n" +
+    "- themes: Group related items by what's happening (e.g. 'Fed Policy Shift', 'Tech Earnings'). Summary should explain the story, not list items.\n" +
+    "- why: For each item, explain why it matters to them in plain language.\n\n" +
+    "Assign items into tiers: must_read for truly important, worth_scanning for useful context, headlines for awareness.\n" +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
