@@ -13,11 +13,13 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { useTopic } from "@/components/TopicProvider";
 import { TopicSwitcher } from "@/components/TopicSwitcher";
-import type { FeedItem as FeedItemType, FeedView } from "@/lib/api";
+import type { CatchupPackItem, FeedItem as FeedItemType, FeedView } from "@/lib/api";
 import {
+  useCatchupView,
   useClearFeedback,
   useFeedback,
   useLocalStorage,
+  useMarkItemRead,
   useMediaQuery,
   usePagedItems,
   usePageLayout,
@@ -103,6 +105,15 @@ function FeedPageContent() {
   const [mobileModalItem, setMobileModalItem] = useState<FeedItemType | null>(null);
   const [mobileModalHistory, setMobileModalHistory] = useState<FeedItemType[]>([]);
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // Catch-up view state
+  const catchupView = useCatchupView({ topicId: currentTopicId });
+  const [catchupTimeframeDays, setCatchupTimeframeDays] = useState(7);
+  const [catchupTimeBudgetMinutes, setCatchupTimeBudgetMinutes] = useState(60);
+  const [catchupError, setCatchupError] = useState<string | null>(null);
+
+  // Mark item read mutation for catch-up
+  const markItemReadMutation = useMarkItemRead();
 
   // Sync URL topic param with TopicProvider on mount
   useEffect(() => {
@@ -499,7 +510,7 @@ function FeedPageContent() {
             <p className={styles.subtitle}>{t("feed.subtitle")}</p>
           </div>
           <div className={styles.headerActions}>
-            {/* View toggle: Inbox / Highlights / All */}
+            {/* View toggle: Inbox / Highlights / Catch-up / All */}
             <div className={styles.viewToggle}>
               <button
                 type="button"
@@ -514,6 +525,13 @@ function FeedPageContent() {
                 onClick={() => handleViewChange("highlights")}
               >
                 {t("feed.view.highlights")}
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${view === "catchup" ? styles.viewToggleBtnActive : ""}`}
+                onClick={() => handleViewChange("catchup")}
+              >
+                {t("feed.view.catchup")}
               </button>
               <button
                 type="button"
@@ -552,9 +570,6 @@ function FeedPageContent() {
             >
               {t("summaries.inboxModal.button")}
             </button>
-            <Link href="/app/packs" className={`btn btn-secondary ${styles.packsBtn}`}>
-              {t("nav.packs")}
-            </Link>
             <TopicSwitcher onTopicChange={handleTopicChange} />
             {isAllTopicsMode ? (
               <Tooltip content={t("feed.selectTopicForCaughtUp")}>
@@ -577,15 +592,40 @@ function FeedPageContent() {
         </div>
       </header>
 
-      <FeedFilterBar
-        selectedSources={selectedSources}
-        onSourcesChange={handleSourcesChange}
-        sort={sort}
-        onSortChange={handleSortChange}
-        layout={layout}
-      />
+      {view !== "catchup" && (
+        <FeedFilterBar
+          selectedSources={selectedSources}
+          onSourcesChange={handleSourcesChange}
+          sort={sort}
+          onSortChange={handleSortChange}
+          layout={layout}
+        />
+      )}
 
-      {isLoading && (
+      {/* Catch-up View */}
+      {view === "catchup" && (
+        <CatchupViewContent
+          topicId={currentTopicId}
+          catchupView={catchupView}
+          timeframeDays={catchupTimeframeDays}
+          setTimeframeDays={setCatchupTimeframeDays}
+          timeBudgetMinutes={catchupTimeBudgetMinutes}
+          setTimeBudgetMinutes={setCatchupTimeBudgetMinutes}
+          error={catchupError}
+          setError={setCatchupError}
+          layout={layout}
+          onFeedback={handleFeedback}
+          onClearFeedback={handleClearFeedback}
+          markItemReadMutation={markItemReadMutation}
+          onViewSummary={handleOpenReaderModal}
+          onSummaryGenerated={() => refetch()}
+          sort={sort}
+          isMobile={isMobile}
+          onMobileItemClick={handleMobileItemClick}
+        />
+      )}
+
+      {view !== "catchup" && isLoading && (
         <div className={styles.feedList}>
           {Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
             <FeedItemSkeleton key={i} />
@@ -593,7 +633,7 @@ function FeedPageContent() {
         </div>
       )}
 
-      {isError && (
+      {view !== "catchup" && isError && (
         <div className={styles.errorState}>
           <p className={styles.errorTitle}>Failed to load feed</p>
           <p className={styles.errorMessage}>{error?.message || "An error occurred"}</p>
@@ -603,7 +643,7 @@ function FeedPageContent() {
         </div>
       )}
 
-      {!isLoading && !isError && items.length === 0 && (
+      {view !== "catchup" && !isLoading && !isError && items.length === 0 && (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No items yet</p>
           <p className={styles.emptyMessage}>
@@ -612,7 +652,7 @@ function FeedPageContent() {
         </div>
       )}
 
-      {!isLoading && !isError && items.length > 0 && (
+      {view !== "catchup" && !isLoading && !isError && items.length > 0 && (
         <>
           <div
             className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`}
@@ -735,6 +775,434 @@ function FeedPageContent() {
         onSummaryGenerated={() => refetch()}
       />
     </div>
+  );
+}
+
+// ============================================================================
+// Catch-up View Component
+// ============================================================================
+
+interface CatchupViewContentProps {
+  topicId: string | null;
+  catchupView: ReturnType<typeof useCatchupView>;
+  timeframeDays: number;
+  setTimeframeDays: (days: number) => void;
+  timeBudgetMinutes: number;
+  setTimeBudgetMinutes: (minutes: number) => void;
+  error: string | null;
+  setError: (error: string | null) => void;
+  layout: import("@/lib/theme").Layout;
+  onFeedback: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
+  onClearFeedback: (contentItemId: string) => Promise<void>;
+  markItemReadMutation: ReturnType<typeof useMarkItemRead>;
+  onViewSummary: (item: FeedItemType, summary: import("@/lib/api").ManualSummaryOutput) => void;
+  onSummaryGenerated: () => void;
+  sort: SortOption;
+  isMobile: boolean;
+  onMobileItemClick: (item: FeedItemType) => void;
+}
+
+function CatchupViewContent({
+  topicId,
+  catchupView,
+  timeframeDays,
+  setTimeframeDays,
+  timeBudgetMinutes,
+  setTimeBudgetMinutes,
+  error,
+  setError,
+  layout,
+  onFeedback,
+  onClearFeedback,
+  markItemReadMutation,
+  onViewSummary,
+  onSummaryGenerated,
+  sort,
+  isMobile,
+  onMobileItemClick,
+}: CatchupViewContentProps) {
+  const { addToast } = useToast();
+  const {
+    selectedPackId,
+    setSelectedPackId,
+    packs,
+    isLoadingPacks,
+    packDetail,
+    isLoadingPackDetail,
+    createPack,
+    deletePack,
+    showGenerationPanel,
+  } = catchupView;
+
+  // Handle generate
+  const handleGenerate = useCallback(() => {
+    if (!topicId) {
+      setError(t("feed.catchup.selectTopic"));
+      return;
+    }
+    setError(null);
+    createPack.mutate(
+      { topicId, timeframeDays, timeBudgetMinutes },
+      {
+        onError: (err) => {
+          setError(err.message);
+        },
+      },
+    );
+  }, [topicId, timeframeDays, timeBudgetMinutes, createPack, setError]);
+
+  // Convert CatchupPackItem to FeedItemType for FeedItem component
+  const packItemToFeedItem = useCallback(
+    (item: CatchupPackItem, _packId: string): FeedItemType => ({
+      id: item.id,
+      score: 0,
+      rank: 0,
+      digestId: "",
+      digestCreatedAt: "",
+      item: {
+        title: item.title,
+        bodyText: item.bodyText,
+        url: item.url,
+        externalId: item.externalId,
+        author: item.author,
+        publishedAt: item.publishedAt,
+        sourceType: item.sourceType,
+        sourceId: item.sourceId,
+        metadata: item.metadata,
+      },
+      triageJson: null,
+      feedback: item.feedback,
+      clusterItems: undefined,
+      manualSummaryJson: null,
+      topicId: topicId ?? "",
+      topicName: "",
+      readAt: item.readAt,
+    }),
+    [topicId],
+  );
+
+  // Relative time formatting
+  const formatRelativeTime = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  // Get pack item count
+  const getPackItemCount = (pack: (typeof packs)[0]): number => {
+    if (!pack.summaryJson) return 0;
+    return (
+      pack.summaryJson.tiers.must_read.length +
+      pack.summaryJson.tiers.worth_scanning.length +
+      pack.summaryJson.tiers.headlines.length
+    );
+  };
+
+  // If no topic selected
+  if (!topicId) {
+    return (
+      <div className={styles.catchupEmpty}>
+        <p className={styles.catchupEmptyText}>{t("feed.catchup.selectTopic")}</p>
+      </div>
+    );
+  }
+
+  // If viewing a specific pack
+  if (selectedPackId && packDetail) {
+    const pack = packDetail.pack;
+    const items = packDetail.items;
+
+    // Group items by tier
+    const mustReadIds = new Set(pack.summaryJson?.tiers.must_read.map((i) => i.item_id) ?? []);
+    const worthScanningIds = new Set(
+      pack.summaryJson?.tiers.worth_scanning.map((i) => i.item_id) ?? [],
+    );
+    const headlinesIds = new Set(pack.summaryJson?.tiers.headlines.map((i) => i.item_id) ?? []);
+
+    const mustReadItems = items.filter((i) => mustReadIds.has(i.id));
+    const worthScanningItems = items.filter((i) => worthScanningIds.has(i.id));
+    const headlinesItems = items.filter((i) => headlinesIds.has(i.id));
+
+    // Still generating
+    if (pack.status === "pending") {
+      return (
+        <div className={styles.catchupGenerating}>
+          <div className={styles.catchupGeneratingSpinner} />
+          <p className={styles.catchupGeneratingText}>{t("feed.catchup.generating")}</p>
+        </div>
+      );
+    }
+
+    // Error or skipped
+    if (pack.status === "error" || pack.status === "skipped") {
+      return (
+        <div className={styles.catchupPanel}>
+          <button type="button" className={styles.catchupBackBtn} onClick={showGenerationPanel}>
+            <ArrowLeftIcon />
+            {t("feed.catchup.back")}
+          </button>
+          <div className={styles.catchupError}>
+            {pack.errorMessage ||
+              (pack.status === "skipped" ? "Skipped - not enough items" : "Generation failed")}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <button type="button" className={styles.catchupBackBtn} onClick={showGenerationPanel}>
+          <ArrowLeftIcon />
+          {t("feed.catchup.back")}
+        </button>
+
+        {/* Must Read tier */}
+        {mustReadItems.length > 0 && (
+          <div className={styles.catchupTierSection} data-tier="must-read">
+            <div className={styles.catchupTierHeader}>
+              <h3 className={styles.catchupTierTitle}>{t("feed.catchup.tiers.mustRead")}</h3>
+              <span className={styles.catchupTierCount}>{mustReadItems.length}</span>
+            </div>
+            <div className={styles.catchupTierItems}>
+              {mustReadItems.map((item) => (
+                <FeedItem
+                  key={item.id}
+                  item={packItemToFeedItem(item, pack.id)}
+                  onFeedback={onFeedback}
+                  onClear={onClearFeedback}
+                  layout={layout}
+                  showTopicBadge={false}
+                  forceExpanded={false}
+                  fastTriageMode={false}
+                  onViewSummary={onViewSummary}
+                  onSummaryGenerated={onSummaryGenerated}
+                  onNext={() => {}}
+                  onClose={() => {}}
+                  sort={sort}
+                  onMobileClick={
+                    isMobile
+                      ? () => onMobileItemClick(packItemToFeedItem(item, pack.id))
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Worth Scanning tier */}
+        {worthScanningItems.length > 0 && (
+          <div className={styles.catchupTierSection} data-tier="worth-scanning">
+            <div className={styles.catchupTierHeader}>
+              <h3 className={styles.catchupTierTitle}>{t("feed.catchup.tiers.worthScanning")}</h3>
+              <span className={styles.catchupTierCount}>{worthScanningItems.length}</span>
+            </div>
+            <div className={styles.catchupTierItems}>
+              {worthScanningItems.map((item) => (
+                <FeedItem
+                  key={item.id}
+                  item={packItemToFeedItem(item, pack.id)}
+                  onFeedback={onFeedback}
+                  onClear={onClearFeedback}
+                  layout={layout}
+                  showTopicBadge={false}
+                  forceExpanded={false}
+                  fastTriageMode={false}
+                  onViewSummary={onViewSummary}
+                  onSummaryGenerated={onSummaryGenerated}
+                  onNext={() => {}}
+                  onClose={() => {}}
+                  sort={sort}
+                  onMobileClick={
+                    isMobile
+                      ? () => onMobileItemClick(packItemToFeedItem(item, pack.id))
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Headlines tier */}
+        {headlinesItems.length > 0 && (
+          <div className={styles.catchupTierSection} data-tier="headlines">
+            <div className={styles.catchupTierHeader}>
+              <h3 className={styles.catchupTierTitle}>{t("feed.catchup.tiers.headlines")}</h3>
+              <span className={styles.catchupTierCount}>{headlinesItems.length}</span>
+            </div>
+            <div className={styles.catchupTierItems}>
+              {headlinesItems.map((item) => (
+                <FeedItem
+                  key={item.id}
+                  item={packItemToFeedItem(item, pack.id)}
+                  onFeedback={onFeedback}
+                  onClear={onClearFeedback}
+                  layout={layout}
+                  showTopicBadge={false}
+                  forceExpanded={false}
+                  fastTriageMode={false}
+                  onViewSummary={onViewSummary}
+                  onSummaryGenerated={onSummaryGenerated}
+                  onNext={() => {}}
+                  onClose={() => {}}
+                  sort={sort}
+                  onMobileClick={
+                    isMobile
+                      ? () => onMobileItemClick(packItemToFeedItem(item, pack.id))
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {mustReadItems.length === 0 &&
+          worthScanningItems.length === 0 &&
+          headlinesItems.length === 0 && (
+            <div className={styles.catchupEmpty}>
+              <p className={styles.catchupEmptyText}>{t("feed.catchup.noItems")}</p>
+            </div>
+          )}
+      </div>
+    );
+  }
+
+  // Loading pack detail
+  if (selectedPackId && isLoadingPackDetail) {
+    return (
+      <div className={styles.catchupGenerating}>
+        <div className={styles.catchupGeneratingSpinner} />
+        <p className={styles.catchupGeneratingText}>{t("common.loading")}</p>
+      </div>
+    );
+  }
+
+  // Generation panel (default view)
+  return (
+    <div className={styles.catchupPanel}>
+      <div className={styles.catchupPanelHeader}>
+        <h2 className={styles.catchupPanelTitle}>{t("feed.catchup.panelTitle")}</h2>
+      </div>
+
+      <div className={styles.catchupForm}>
+        <div className={styles.catchupFormField}>
+          <label className={styles.catchupFormLabel} htmlFor="catchup-timeframe">
+            {t("feed.catchup.timeRange")}
+          </label>
+          <select
+            id="catchup-timeframe"
+            className={styles.catchupFormSelect}
+            value={timeframeDays}
+            onChange={(e) => setTimeframeDays(Number.parseInt(e.target.value, 10))}
+          >
+            <option value={3}>Last 3 days</option>
+            <option value={7}>Last 7 days</option>
+            <option value={14}>Last 14 days</option>
+          </select>
+        </div>
+
+        <div className={styles.catchupFormField}>
+          <label className={styles.catchupFormLabel} htmlFor="catchup-budget">
+            {t("feed.catchup.readingTime")}
+          </label>
+          <select
+            id="catchup-budget"
+            className={styles.catchupFormSelect}
+            value={timeBudgetMinutes}
+            onChange={(e) => setTimeBudgetMinutes(Number.parseInt(e.target.value, 10))}
+          >
+            <option value={30}>30 minutes</option>
+            <option value={45}>45 minutes</option>
+            <option value={60}>60 minutes</option>
+            <option value={90}>90 minutes</option>
+          </select>
+        </div>
+
+        <button
+          type="button"
+          className={`btn btn-primary ${styles.catchupGenerateBtn}`}
+          onClick={handleGenerate}
+          disabled={createPack.isPending || !topicId}
+        >
+          {createPack.isPending ? t("feed.catchup.generating") : t("feed.catchup.generate")}
+        </button>
+      </div>
+
+      {error && <div className={styles.catchupError}>{error}</div>}
+
+      {/* Previous packs */}
+      {packs.length > 0 && (
+        <div className={styles.catchupPrevious}>
+          <h3 className={styles.catchupPreviousTitle}>{t("feed.catchup.previous")}</h3>
+          <div className={styles.catchupPreviousList}>
+            {packs.map((pack) => {
+              const itemCount = getPackItemCount(pack);
+              return (
+                <button
+                  key={pack.id}
+                  type="button"
+                  className={styles.catchupPreviousItem}
+                  onClick={() => setSelectedPackId(pack.id)}
+                >
+                  <div className={styles.catchupPreviousItemInfo}>
+                    <span>{formatRelativeTime(pack.createdAt)}</span>
+                    {pack.status === "complete" && itemCount > 0 && (
+                      <span>({itemCount} items)</span>
+                    )}
+                  </div>
+                  <span className={styles.catchupPreviousItemStatus} data-status={pack.status}>
+                    {pack.status === "complete"
+                      ? "Ready"
+                      : pack.status === "pending"
+                        ? "Generating"
+                        : pack.status === "error"
+                          ? "Failed"
+                          : "Skipped"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Loading packs */}
+      {isLoadingPacks && packs.length === 0 && (
+        <div className={styles.catchupGenerating}>
+          <div className={styles.catchupGeneratingSpinner} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
   );
 }
 

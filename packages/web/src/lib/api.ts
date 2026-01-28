@@ -244,7 +244,7 @@ export interface PaginationInfo {
  * - highlights: liked items (formerly top_picks)
  * - all: all items regardless of feedback
  */
-export type FeedView = "inbox" | "highlights" | "all";
+export type FeedView = "inbox" | "highlights" | "catchup" | "all";
 
 /** Items list params */
 export interface ItemsListParams {

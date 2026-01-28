@@ -52,13 +52,6 @@ export const mainNavItems: NavItem[] = [
     mobileNav: true,
   },
   {
-    id: "packs",
-    href: "/app/packs",
-    labelKey: "nav.packs",
-    icon: "packs",
-    mobileNav: false,
-  },
-  {
     id: "bookmarks",
     href: "/app/bookmarks",
     labelKey: "nav.bookmarks",

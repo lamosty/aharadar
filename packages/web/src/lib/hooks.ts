@@ -1640,38 +1640,36 @@ export function useCreateCatchupPack(
       ApiError | NetworkError,
       CreateCatchupPackRequest
     >,
-    "mutationFn"
+    "mutationFn" | "onSettled"
   >,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: CreateCatchupPackRequest) => createCatchupPack(request),
-    onSuccess: (data) => {
+    onSettled: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.all });
-      if (data.pack?.id) {
+      if (data?.pack?.id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.detail(data.pack.id) });
       }
-      options?.onSuccess?.(data);
     },
-    onError: options?.onError,
+    ...options,
   });
 }
 
 export function useDeleteCatchupPack(
   options?: Omit<
     UseMutationOptions<DeleteCatchupPackResponse, ApiError | NetworkError, { id: string }>,
-    "mutationFn"
+    "mutationFn" | "onSettled"
   >,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string }) => deleteCatchupPack(id),
-    onSuccess: (data, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.detail(variables.id) });
-      options?.onSuccess?.(data);
     },
-    onError: options?.onError,
+    ...options,
   });
 }
 
@@ -1682,39 +1680,37 @@ export function useMarkItemRead(
       ApiError | NetworkError,
       { contentItemId: string; packId?: string }
     >,
-    "mutationFn"
+    "mutationFn" | "onSettled"
   >,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ contentItemId, packId }) => markItemRead(contentItemId, packId),
-    onSuccess: (_data, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
       if (variables.packId) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.catchupPacks.detail(variables.packId),
         });
       }
-      options?.onSuccess?.(_data);
     },
-    onError: options?.onError,
+    ...options,
   });
 }
 
 export function useClearItemRead(
   options?: Omit<
     UseMutationOptions<ClearItemReadResponse, ApiError | NetworkError, { contentItemId: string }>,
-    "mutationFn"
+    "mutationFn" | "onSettled"
   >,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ contentItemId }) => clearItemRead(contentItemId),
-    onSuccess: (data) => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
-      options?.onSuccess?.(data);
     },
-    onError: options?.onError,
+    ...options,
   });
 }
 
@@ -1880,4 +1876,99 @@ export function useBookmarksInfinite(params?: { limit?: number }) {
       return lastPage.pagination.offset + lastPage.pagination.limit;
     },
   });
+}
+
+// ============================================================================
+// Catch-up View Hook (for Feed integration)
+// ============================================================================
+
+export interface UseCatchupViewOptions {
+  topicId: string | null;
+}
+
+export interface UseCatchupViewResult {
+  /** Current pack being viewed (null = show generation panel) */
+  selectedPackId: string | null;
+  /** Set which pack to view */
+  setSelectedPackId: (id: string | null) => void;
+  /** List of packs for current topic */
+  packs: CatchupPack[];
+  /** Whether packs are loading */
+  isLoadingPacks: boolean;
+  /** Pack detail data */
+  packDetail: CatchupPackDetailResponse | undefined;
+  /** Whether pack detail is loading */
+  isLoadingPackDetail: boolean;
+  /** Create pack mutation */
+  createPack: ReturnType<typeof useCreateCatchupPack>;
+  /** Delete pack mutation */
+  deletePack: ReturnType<typeof useDeleteCatchupPack>;
+  /** Show generation panel */
+  showGenerationPanel: () => void;
+}
+
+/**
+ * Hook to manage catch-up view state within the Feed page.
+ * Handles pack selection, listing, and generation.
+ */
+export function useCatchupView({ topicId }: UseCatchupViewOptions): UseCatchupViewResult {
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
+
+  // Fetch packs for topic
+  const {
+    data: packsData,
+    isLoading: isLoadingPacks,
+    refetch: refetchPacks,
+  } = useCatchupPacks(topicId ? { topicId, limit: 10 } : undefined, {
+    enabled: !!topicId,
+  });
+
+  const packs = packsData?.packs ?? [];
+
+  // Fetch pack detail when selected
+  const { data: packDetail, isLoading: isLoadingPackDetail } = useCatchupPack(selectedPackId, {
+    enabled: !!selectedPackId,
+    // Poll while pending
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.pack.status === "pending" ? 2000 : false;
+    },
+  });
+
+  // Create pack mutation
+  const createPack = useCreateCatchupPack({
+    onSuccess: (data) => {
+      refetchPacks();
+      setSelectedPackId(data.pack.id);
+    },
+  });
+
+  // Delete pack mutation
+  const deletePack = useDeleteCatchupPack({
+    onSuccess: () => {
+      refetchPacks();
+      setSelectedPackId(null);
+    },
+  });
+
+  // Reset selected pack when topic changes
+  useEffect(() => {
+    setSelectedPackId(null);
+  }, [topicId]);
+
+  const showGenerationPanel = useCallback(() => {
+    setSelectedPackId(null);
+  }, []);
+
+  return {
+    selectedPackId,
+    setSelectedPackId,
+    packs,
+    isLoadingPacks,
+    packDetail,
+    isLoadingPackDetail,
+    createPack,
+    deletePack,
+    showGenerationPanel,
+  };
 }

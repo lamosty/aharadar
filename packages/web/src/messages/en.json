@@ -841,7 +841,26 @@
     "view": {
       "inbox": "Inbox",
       "highlights": "Top Picks",
+      "catchup": "Catch-up",
       "all": "All"
+    },
+    "catchup": {
+      "panelTitle": "Catch up on what you missed",
+      "timeRange": "Time range",
+      "readingTime": "Reading time",
+      "generate": "Generate catch-up",
+      "generating": "Generating...",
+      "previous": "Previous",
+      "viewPack": "View",
+      "selectTopic": "Select a topic to generate a catch-up",
+      "noItems": "No items available for this catch-up yet.",
+      "tiers": {
+        "mustRead": "Must Read",
+        "worthScanning": "Worth Scanning",
+        "headlines": "Headlines"
+      },
+      "back": "Back to list",
+      "itemsReady": "{count} items ready"
     },
     "pasteToSummarize": "Paste content to generate AI summary...",
     "generate": "Generate",

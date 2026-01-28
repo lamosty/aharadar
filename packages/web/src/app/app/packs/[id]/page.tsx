@@ -287,7 +287,7 @@ function PackItemCard({
       <div className={styles.itemHeader}>
         <div>
           <div className={styles.itemTitleRow}>
-            <h3 className={styles.itemTitle}>{item.title ?? t("digests.feed.untitled")}</h3>
+            <h3 className={styles.itemTitle}>{item.title ?? t("item.noTitle")}</h3>
             {isRead && <span className={styles.readBadge}>{t("packs.detail.read")}</span>}
           </div>
           <div className={styles.itemMeta}>
