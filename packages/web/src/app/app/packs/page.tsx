@@ -78,20 +78,22 @@ export default function PacksPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.title}>{t("packs.title")}</h1>
-          <p className={styles.subtitle}>{t("packs.subtitle")}</p>
-        </div>
-        <div className={styles.headerActions}>
-          <TopicSwitcher />
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsModalOpen(true)}
-            disabled={!currentTopicId}
-            title={!currentTopicId ? t("packs.selectTopic") : undefined}
-          >
-            {t("packs.create")}
-          </button>
+        <div className={styles.headerTop}>
+          <div>
+            <h1 className={styles.title}>{t("packs.title")}</h1>
+            <p className={styles.subtitle}>{t("packs.subtitle")}</p>
+          </div>
+          <div className={styles.headerActions}>
+            <TopicSwitcher />
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsModalOpen(true)}
+              disabled={!currentTopicId}
+              title={!currentTopicId ? t("packs.selectTopic") : undefined}
+            >
+              {t("packs.create")}
+            </button>
+          </div>
         </div>
       </header>
 
