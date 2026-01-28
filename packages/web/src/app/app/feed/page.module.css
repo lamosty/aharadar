@@ -38,6 +38,10 @@
   flex-shrink: 0;
 }
 
+.packsBtn {
+  flex-shrink: 0;
+}
+
 /* Layout toggle wrapper - allows hiding on mobile */
 .layoutToggleWrapper {
   display: contents;

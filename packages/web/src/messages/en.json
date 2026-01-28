@@ -26,6 +26,7 @@
     "home": "Home",
     "dashboard": "Dashboard",
     "feed": "Feed",
+    "packs": "Packs",
     "bookmarks": "Bookmarks",
     "ask": "Ask",
     "digests": "Digests",
@@ -848,6 +849,7 @@
     "viewSummary": "View AI Summary",
     "summaryGenerated": "Summary generated",
     "textTrimmedToMax": "Text was trimmed to 100k characters (maximum allowed)",
+    "readBadge": "Read",
     "layout": {
       "condensed": "Condensed",
       "reader": "Reader",
@@ -877,6 +879,47 @@
       "enableBtn": "Enable",
       "throttlingEnabled": "Throttling enabled",
       "throttlingFailed": "Failed to enable throttling"
+    }
+  },
+  "packs": {
+    "title": "Catch-up packs",
+    "subtitle": "Time-boxed reading packs from your inbox",
+    "create": "Generate pack",
+    "selectTopic": "Select a topic to generate a pack",
+    "emptyTitle": "No packs yet",
+    "emptyMessage": "Generate a catch-up pack to review older items.",
+    "errorTitle": "Failed to load packs",
+    "detailErrorTitle": "Failed to load pack",
+    "retry": "Retry",
+    "retryStarted": "Retry queued",
+    "deleted": "Pack deleted",
+    "confirmDelete": "Delete this pack? This cannot be undone.",
+    "status": {
+      "pending": "Generating",
+      "complete": "Ready",
+      "error": "Failed",
+      "skipped": "Skipped"
+    },
+    "timeBudget": "{minutes} min pack",
+    "timeframe": "Last {days} days",
+    "itemsCount": "{count} items",
+    "modal": {
+      "title": "Generate catch-up pack",
+      "timeframe": "Timeframe",
+      "budget": "Time budget",
+      "submit": "Generate pack"
+    },
+    "detail": {
+      "title": "Catch-up pack",
+      "back": "Back to packs",
+      "themes": "Themes",
+      "mustRead": "Must-read",
+      "worthScanning": "Worth scanning",
+      "headlines": "Headlines only",
+      "markRead": "Mark read",
+      "read": "Read",
+      "open": "Open",
+      "noItems": "No items available for this pack yet."
     }
   },
   "tooltips": {

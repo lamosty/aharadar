@@ -468,6 +468,7 @@ export function FeedItem({
     : (item.ahaScore ?? item.score ?? 0);
   const scorePercent = Math.round(displayScore * 100);
   const isRestricted = item.item.metadata?.is_restricted === true;
+  const isRead = Boolean(item.readAt);
   const displayDate = getDisplayDate(item);
   // For X posts: show display name only (handle is shown in source section)
   // For other sources: show author as-is
@@ -518,6 +519,7 @@ export function FeedItem({
           {showTopicBadge && item.topicName && (
             <span className={styles.scanTopicBadge}>{item.topicName}</span>
           )}
+          {isRead && <span className={styles.readBadge}>{t("feed.readBadge")}</span>}
 
           {/* AI summary ready indicator - before title */}
           {summary && (
@@ -724,6 +726,7 @@ export function FeedItem({
               )}
               {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
               {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
+              {isRead && <span className={styles.readBadge}>{t("feed.readBadge")}</span>}
             </div>
           ) : null}
 

@@ -12,6 +12,7 @@ export interface NavItem {
   icon:
     | "home"
     | "feed"
+    | "packs"
     | "ask"
     | "digest"
     | "sources"
@@ -49,6 +50,13 @@ export const mainNavItems: NavItem[] = [
     labelKey: "nav.feed",
     icon: "feed",
     mobileNav: true,
+  },
+  {
+    id: "packs",
+    href: "/app/packs",
+    labelKey: "nav.packs",
+    icon: "packs",
+    mobileNav: false,
   },
   {
     id: "bookmarks",

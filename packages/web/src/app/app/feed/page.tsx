@@ -552,6 +552,9 @@ function FeedPageContent() {
             >
               {t("summaries.inboxModal.button")}
             </button>
+            <Link href="/app/packs" className={`btn btn-secondary ${styles.packsBtn}`}>
+              {t("nav.packs")}
+            </Link>
             <TopicSwitcher onTopicChange={handleTopicChange} />
             {isAllTopicsMode ? (
               <Tooltip content={t("feed.selectTopicForCaughtUp")}>

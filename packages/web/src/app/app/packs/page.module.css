@@ -1,0 +1,211 @@
+.container {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.subtitle {
+  margin: var(--space-1) 0 0 0;
+  color: var(--color-text-secondary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.card {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cardActions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.statusBadge {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statusBadge[data-status="complete"] {
+  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.statusBadge[data-status="pending"] {
+  color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+}
+
+.statusBadge[data-status="error"] {
+  color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.statusBadge[data-status="skipped"] {
+  color: var(--color-text-muted);
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-1);
+}
+
+.metaPill {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.metaText {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.errorNote {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.08);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+}
+
+.deleteBtn {
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  background: transparent;
+  color: var(--color-error);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.deleteBtn:hover {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+.emptyState,
+.errorState {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-md);
+}
+
+.emptyMessage {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.errorTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-md);
+  color: var(--color-error);
+}
+
+.errorMessage {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.cardSkeleton {
+  height: 110px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    90deg,
+    var(--color-skeleton-base) 25%,
+    var(--color-skeleton-highlight) 50%,
+    var(--color-skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: var(--space-4);
+  }
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

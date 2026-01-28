@@ -31,8 +31,14 @@ import {
   type BudgetResetResponse,
   type BudgetsResponse,
   type BulkBookmarkStatusResponse,
+  type CatchupPack,
+  type CatchupPackDetailResponse,
+  type CatchupPacksListResponse,
   type ClearFeedbackRequest,
   type ClearFeedbackResponse,
+  type ClearItemReadResponse,
+  type CreateCatchupPackRequest,
+  type CreateCatchupPackResponse,
   type CreateDigestSummaryResponse,
   type CreateInboxSummaryRequest,
   type CreateInboxSummaryResponse,
@@ -40,15 +46,19 @@ import {
   type CreateTopicResponse,
   clearEmergencyStop as clearEmergencyStopApi,
   clearFeedback,
+  clearItemRead,
+  createCatchupPack,
   createDigestSummary as createDigestSummaryApi,
   createInboxSummary as createInboxSummaryApi,
   createTopic,
   type DailyUsageResponse,
+  type DeleteCatchupPackResponse,
   type DeleteTopicResponse,
   type DigestDetailResponse,
   type DigestStatsResponse,
   type DigestsListResponse,
   deleteAdminSource,
+  deleteCatchupPack,
   deleteTopic,
   drainQueue,
   type EmergencyStopStatusResponse,
@@ -68,6 +78,8 @@ import {
   getAggregateSummary as getAggregateSummaryApi,
   getBookmarks,
   getBulkBookmarkStatus,
+  getCatchupPack,
+  getCatchupPacks,
   getDailyUsage,
   getDigest,
   getDigestStats,
@@ -95,7 +107,9 @@ import {
   isBookmarked as isBookmarkedApi,
   type LlmSettingsResponse,
   type LlmSettingsUpdateRequest,
+  type MarkItemReadResponse,
   type MonthlyUsageResponse,
+  markItemRead,
   type NetworkError,
   type OpsStatusResponse,
   obliterateQueue,
@@ -165,6 +179,12 @@ export const queryKeys = {
     all: ["items"] as const,
     list: (params?: Omit<ItemsListParams, "offset">) => ["items", "list", params] as const,
     detail: (id: string) => ["items", id] as const,
+  },
+  catchupPacks: {
+    all: ["catchup-packs"] as const,
+    list: (params?: { topicId?: string; limit?: number; offset?: number }) =>
+      ["catchup-packs", "list", params] as const,
+    detail: (id: string) => ["catchup-packs", id] as const,
   },
   feedback: {
     daily: (days?: number) => ["feedback", "stats", "daily", days] as const,
@@ -1577,6 +1597,124 @@ export function useCreateInboxSummary(
   return useMutation({
     mutationFn: (params: CreateInboxSummaryRequest) => createInboxSummaryApi(params),
     ...options,
+  });
+}
+
+// ============================================================================
+// Catch-up Pack Hooks
+// ============================================================================
+
+export function useCatchupPacks(
+  params?: { topicId?: string; limit?: number; offset?: number },
+  options?: Omit<
+    UseQueryOptions<CatchupPacksListResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.catchupPacks.list(params),
+    queryFn: ({ signal }) => getCatchupPacks(params, signal),
+    ...options,
+  });
+}
+
+export function useCatchupPack(
+  id: string | null,
+  options?: Omit<
+    UseQueryOptions<CatchupPackDetailResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.catchupPacks.detail(id ?? ""),
+    queryFn: ({ signal }) => getCatchupPack(id ?? "", signal),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useCreateCatchupPack(
+  options?: Omit<
+    UseMutationOptions<
+      CreateCatchupPackResponse,
+      ApiError | NetworkError,
+      CreateCatchupPackRequest
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateCatchupPackRequest) => createCatchupPack(request),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.all });
+      if (data.pack?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.detail(data.pack.id) });
+      }
+      options?.onSuccess?.(data);
+    },
+    onError: options?.onError,
+  });
+}
+
+export function useDeleteCatchupPack(
+  options?: Omit<
+    UseMutationOptions<DeleteCatchupPackResponse, ApiError | NetworkError, { id: string }>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => deleteCatchupPack(id),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.catchupPacks.detail(variables.id) });
+      options?.onSuccess?.(data);
+    },
+    onError: options?.onError,
+  });
+}
+
+export function useMarkItemRead(
+  options?: Omit<
+    UseMutationOptions<
+      MarkItemReadResponse,
+      ApiError | NetworkError,
+      { contentItemId: string; packId?: string }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contentItemId, packId }) => markItemRead(contentItemId, packId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+      if (variables.packId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.catchupPacks.detail(variables.packId),
+        });
+      }
+      options?.onSuccess?.(_data);
+    },
+    onError: options?.onError,
+  });
+}
+
+export function useClearItemRead(
+  options?: Omit<
+    UseMutationOptions<ClearItemReadResponse, ApiError | NetworkError, { contentItemId: string }>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contentItemId }) => clearItemRead(contentItemId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+      options?.onSuccess?.(data);
+    },
+    onError: options?.onError,
   });
 }
 

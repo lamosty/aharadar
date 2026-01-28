@@ -206,6 +206,7 @@ export interface FeedItem {
   digestId: string;
   digestCreatedAt: string;
   isNew?: boolean; // True if published after last_checked_at
+  readAt?: string | null; // Read timestamp if marked read
   item: {
     title: string | null;
     bodyText: string | null;
@@ -2006,6 +2007,175 @@ export async function getAggregateSummary(
   signal?: AbortSignal,
 ): Promise<GetAggregateSummaryResponse> {
   return apiFetch<GetAggregateSummaryResponse>(`/summaries/${id}`, { signal });
+}
+
+// ============================================================================
+// Catch-up Packs API
+// ============================================================================
+
+export interface CatchupPackTierItem {
+  item_id: string;
+  why: string;
+  theme: string;
+}
+
+export interface CatchupPackTheme {
+  title: string;
+  summary: string;
+  item_ids: string[];
+}
+
+export interface CatchupPackOutput {
+  schema_version: string;
+  prompt_id: string;
+  provider: string;
+  model: string;
+  time_budget_minutes: number;
+  tiers: {
+    must_read: CatchupPackTierItem[];
+    worth_scanning: CatchupPackTierItem[];
+    headlines: CatchupPackTierItem[];
+  };
+  themes: CatchupPackTheme[];
+  notes?: string | null;
+}
+
+export interface CatchupPack {
+  id: string;
+  topicId: string;
+  scopeType: string;
+  scopeHash: string;
+  status: "pending" | "complete" | "error" | "skipped";
+  summaryJson: CatchupPackOutput | null;
+  promptId: string | null;
+  schemaVersion: string | null;
+  provider: string | null;
+  model: string | null;
+  inputItemCount: number | null;
+  inputCharCount: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  costEstimateCredits: number | null;
+  metaJson: Record<string, unknown> | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CatchupPackItem {
+  id: string;
+  title: string | null;
+  bodyText: string | null;
+  url: string | null;
+  externalId: string | null;
+  author: string | null;
+  publishedAt: string | null;
+  sourceType: string;
+  sourceId: string;
+  metadata: Record<string, unknown> | null;
+  feedback: FeedbackAction | null;
+  readAt: string | null;
+}
+
+export interface CreateCatchupPackRequest {
+  topicId: string;
+  timeframeDays: number;
+  timeBudgetMinutes: number;
+}
+
+export interface CreateCatchupPackResponse {
+  ok: true;
+  pack: CatchupPack;
+}
+
+export interface CatchupPackDetailResponse {
+  ok: true;
+  pack: CatchupPack;
+  items: CatchupPackItem[];
+}
+
+export interface CatchupPacksListResponse {
+  ok: true;
+  packs: CatchupPack[];
+  pagination: PaginationInfo;
+}
+
+export async function createCatchupPack(
+  request: CreateCatchupPackRequest,
+  signal?: AbortSignal,
+): Promise<CreateCatchupPackResponse> {
+  return apiFetch<CreateCatchupPackResponse>("/catchup-packs", {
+    method: "POST",
+    body: request,
+    signal,
+  });
+}
+
+export async function getCatchupPack(
+  id: string,
+  signal?: AbortSignal,
+): Promise<CatchupPackDetailResponse> {
+  return apiFetch<CatchupPackDetailResponse>(`/catchup-packs/${id}`, { signal });
+}
+
+export async function getCatchupPacks(
+  params?: { topicId?: string; limit?: number; offset?: number },
+  signal?: AbortSignal,
+): Promise<CatchupPacksListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.topicId) searchParams.set("topicId", params.topicId);
+  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+  const query = searchParams.toString();
+  const path = query ? `/catchup-packs?${query}` : "/catchup-packs";
+  return apiFetch<CatchupPacksListResponse>(path, { signal });
+}
+
+export interface DeleteCatchupPackResponse {
+  ok: true;
+  deleted: number;
+}
+
+export async function deleteCatchupPack(
+  id: string,
+  signal?: AbortSignal,
+): Promise<DeleteCatchupPackResponse> {
+  return apiFetch<DeleteCatchupPackResponse>(`/catchup-packs/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}
+
+export interface MarkItemReadResponse {
+  ok: true;
+  readAt: string;
+}
+
+export async function markItemRead(
+  contentItemId: string,
+  packId?: string,
+  signal?: AbortSignal,
+): Promise<MarkItemReadResponse> {
+  return apiFetch<MarkItemReadResponse>(`/items/${contentItemId}/read`, {
+    method: "POST",
+    body: packId ? { packId } : {},
+    signal,
+  });
+}
+
+export interface ClearItemReadResponse {
+  ok: true;
+  deleted: number;
+}
+
+export async function clearItemRead(
+  contentItemId: string,
+  signal?: AbortSignal,
+): Promise<ClearItemReadResponse> {
+  return apiFetch<ClearItemReadResponse>(`/items/${contentItemId}/read`, {
+    method: "DELETE",
+    signal,
+  });
 }
 
 // ============================================================================
