@@ -45,119 +45,178 @@
   gap: var(--space-4);
 }
 
+/* Card as clickable link */
 .card {
+  display: block;
+  text-decoration: none;
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
+  cursor: pointer;
 }
 
 .card:hover {
   border-color: var(--color-border);
+  background: var(--color-surface-elevated);
 }
 
-.cardHeader {
+.card[data-status="complete"]:hover {
+  border-color: var(--color-success);
+}
+
+.cardMain {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  flex-wrap: wrap;
+}
+
+.cardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.cardParams {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cardParams span::after {
+  content: "·";
+  margin-left: var(--space-3);
+  color: var(--color-border);
+}
+
+.cardParams span:last-child::after {
+  display: none;
+}
+
+.cardTime {
+  color: var(--color-text-muted);
+}
+
+.cardItemCount {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.cardGenerating {
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cardGenerating::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  border-top-color: var(--color-warning);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cardStuck {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+}
+
+.cardError {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+}
+
+.cardSkipped {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.cardRight {
+  flex-shrink: 0;
+}
+
+/* Status badges */
+.statusReady {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.statusPending {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+}
+
+.statusError {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-error);
+  border: 1px solid color-mix(in srgb, var(--color-error) 40%, transparent);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.statusSkipped {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-elevated);
 }
 
 .cardActions {
   display: flex;
   gap: var(--space-2);
   align-items: center;
-  flex-wrap: wrap;
-}
-
-.cardTitleRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.cardTitle {
-  margin: 0;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.statusBadge {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.statusBadge[data-status="complete"] {
-  color: var(--color-success);
-  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
-  background: color-mix(in srgb, var(--color-success) 10%, transparent);
-}
-
-.statusBadge[data-status="pending"] {
-  color: var(--color-warning);
-  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
-  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-}
-
-.statusBadge[data-status="error"] {
-  color: var(--color-error);
-  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
-  background: color-mix(in srgb, var(--color-error) 10%, transparent);
-}
-
-.statusBadge[data-status="skipped"] {
-  color: var(--color-text-muted);
-}
-
-.cardMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-  margin-top: var(--space-2);
-}
-
-.metaPill {
-  font-size: var(--font-size-xs);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-}
-
-.metaText {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.errorNote {
-  font-size: var(--font-size-sm);
-  color: var(--color-error);
-  background: color-mix(in srgb, var(--color-error) 8%, transparent);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
   margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .deleteBtn {
   border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
   background: transparent;
   color: var(--color-error);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   transition: background var(--transition-fast);
 }
 
