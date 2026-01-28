@@ -132,5 +132,34 @@ export function createCatchupPacksRepo(db: Queryable) {
       );
       return res.rows[0]?.count ?? 0;
     },
+
+    /**
+     * Get item IDs from recent completed catch-up packs for novelty deduplication.
+     * Extracts item_ids from all tiers (must_read, worth_scanning, headlines) in summary_json.
+     */
+    async getRecentPackItemIds(params: {
+      userId: string;
+      topicId: string;
+      withinDays: number;
+    }): Promise<Set<string>> {
+      const res = await db.query<{ item_id: string }>(
+        `select distinct items.item_id
+         from catchup_packs cp,
+         lateral (
+           select jsonb_array_elements(
+             coalesce(cp.summary_json->'tiers'->'must_read', '[]'::jsonb) ||
+             coalesce(cp.summary_json->'tiers'->'worth_scanning', '[]'::jsonb) ||
+             coalesce(cp.summary_json->'tiers'->'headlines', '[]'::jsonb)
+           )->>'item_id' as item_id
+         ) items
+         where cp.user_id = $1
+           and cp.topic_id = $2
+           and cp.status = 'complete'
+           and cp.created_at > now() - interval '1 day' * $3
+           and items.item_id is not null`,
+        [params.userId, params.topicId, params.withinDays],
+      );
+      return new Set(res.rows.map((row) => row.item_id));
+    },
   };
 }

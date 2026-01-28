@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import type { Db } from "@aharadar/db";
+import type { Db, UserPreferences } from "@aharadar/db";
 import {
   catchupPackSelect,
   catchupPackTier,
@@ -116,6 +116,24 @@ function hashTieBreaker(scopeHash: string, itemId: string): string {
   return crypto.createHash("sha256").update(`${scopeHash}:${itemId}`).digest("hex");
 }
 
+/**
+ * Calculate adaptive pool size based on tier targets and available candidates.
+ * Ensures pool is large enough for selection diversity but not wastefully large.
+ */
+function calculateAdaptivePoolSize(params: {
+  tierTargets: PackTargets["tierTargets"];
+  candidateCount: number;
+}): number {
+  const { tierTargets, candidateCount } = params;
+  const totalTierItems = tierTargets.must_read + tierTargets.worth_scanning + tierTargets.headlines;
+
+  const minPool = totalTierItems * 2; // Need at least 2x for selection
+  const idealPool = totalTierItems * 4; // 4x gives good diversity
+  const maxPool = 600;
+
+  return Math.min(maxPool, Math.max(minPool, Math.min(idealPool, candidateCount)));
+}
+
 function toScore01(value: number | null): number {
   if (value === null || !Number.isFinite(value)) return 0;
   if (value > 1) return Math.max(0, Math.min(1, value / 100));
@@ -128,6 +146,36 @@ function computeRecency01(candidateAt: Date, windowStart: Date, windowEnd: Date)
   const ageMs = windowEnd.getTime() - candidateAt.getTime();
   const recency = 1 - ageMs / totalMs;
   return Math.max(0, Math.min(1, recency));
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Compute a preference score [0, 1] for a candidate based on user preferences.
+ * Uses sourceTypeWeights and authorWeights from feedback history.
+ */
+function computePreferenceScore(
+  sourceType: string,
+  author: string | null,
+  preferences: UserPreferences,
+): number {
+  // Weights are in [0.5, 2.0] range, neutral is 1.0
+  // Convert to boost: weight - 1.0 gives range [-0.5, 1.0]
+  const sourceTypeWeight =
+    preferences.sourceTypeWeights[sourceType as keyof typeof preferences.sourceTypeWeights] ?? 1.0;
+  const sourceTypeBoost = sourceTypeWeight - 1.0;
+
+  let authorBoost = 0;
+  if (author && preferences.authorWeights[author] !== undefined) {
+    authorBoost = preferences.authorWeights[author] - 1.0;
+  }
+
+  // Combine boosts and normalize to [0, 1]
+  // Average boost range is [-0.5, 1.0], normalize by adding 0.5 and scaling
+  const combinedBoost = (sourceTypeBoost + authorBoost) / 2;
+  return clamp01(combinedBoost + 0.5);
 }
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
@@ -444,7 +492,16 @@ export async function generateCatchupPack(params: {
       until: params.until,
     });
 
+    // Get items shown in recent packs for novelty deduplication
+    const recentlyShownIds = await params.db.catchupPacks.getRecentPackItemIds({
+      userId: params.userId,
+      topicId: params.topicId,
+      withinDays: 14,
+    });
+
     const filtered = candidates.filter((row) => {
+      // Exclude items that appeared in recent packs
+      if (recentlyShownIds.has(row.content_item_id)) return false;
       const action = row.feedback_action;
       if (action !== null) return false;
       return row.read_at === null;
@@ -472,6 +529,12 @@ export async function generateCatchupPack(params: {
     const windowStart = new Date(params.since);
     const windowEnd = new Date(params.until);
 
+    // Fetch user preferences for personalized scoring
+    const userPreferences = await params.db.feedbackEvents.computeUserPreferences({
+      userId: params.userId,
+      maxFeedbackAgeDays: 90, // Use recent 90 days of feedback
+    });
+
     const scored: ScoredCandidate[] = filtered.map((row) => {
       const triage = row.triage_json ?? {};
       const triageReason =
@@ -485,7 +548,12 @@ export async function generateCatchupPack(params: {
         : new Date(row.digest_created_at);
       const ahaScore01 = toScore01(row.aha_score);
       const recency01 = computeRecency01(candidateAt, windowStart, windowEnd);
-      const score = 0.7 * ahaScore01 + 0.3 * recency01;
+      const preferenceScore = computePreferenceScore(row.source_type, row.author, userPreferences);
+
+      // Personalized scoring formula:
+      // 50% AI relevance + 20% recency + 20% user preferences + 10% novelty
+      // Novelty is always 1 here since we already filtered out recent pack items
+      const score = 0.5 * ahaScore01 + 0.2 * recency01 + 0.2 * preferenceScore + 0.1 * 1.0; // noveltyScore = 1 (non-recent items)
 
       return {
         itemId: row.content_item_id,
@@ -505,9 +573,13 @@ export async function generateCatchupPack(params: {
     });
 
     const targets = getPackTargets(params.timeBudgetMinutes);
+    const adaptivePoolSize = calculateAdaptivePoolSize({
+      tierTargets: targets.tierTargets,
+      candidateCount: scored.length,
+    });
     const poolResult = selectPool({
       candidates: scored,
-      poolTarget: Math.min(targets.poolTarget, scored.length),
+      poolTarget: adaptivePoolSize,
     });
     const pool = poolResult.pool;
 

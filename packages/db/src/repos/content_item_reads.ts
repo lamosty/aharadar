@@ -75,5 +75,30 @@ export function createContentItemReadsRepo(db: Queryable) {
       );
       return res.rows;
     },
+
+    /**
+     * Mark multiple content items as read in a single batch operation.
+     * Uses upsert to update existing records or insert new ones.
+     * Returns the count of affected rows.
+     */
+    async markReadBatch(params: {
+      userId: string;
+      contentItemIds: string[];
+      packId?: string | null;
+    }): Promise<number> {
+      if (params.contentItemIds.length === 0) return 0;
+      const res = await db.query<{ count: number }>(
+        `with inserted as (
+           insert into content_item_reads (user_id, content_item_id, pack_id, read_at)
+           select $1, unnest($2::uuid[]), $3::uuid, now()
+           on conflict (user_id, content_item_id)
+           do update set read_at = now(), pack_id = excluded.pack_id
+           returning 1
+         )
+         select count(*)::int as count from inserted`,
+        [params.userId, params.contentItemIds, params.packId ?? null],
+      );
+      return res.rows[0]?.count ?? 0;
+    },
   };
 }

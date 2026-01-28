@@ -381,6 +381,73 @@ export async function catchupPacksRoutes(fastify: FastifyInstance): Promise<void
     return { ok: true, deleted };
   });
 
+  // POST /catchup-packs/:id/mark-reviewed - mark all pack items as read
+  fastify.post<{ Params: { id: string } }>(
+    "/catchup-packs/:id/mark-reviewed",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "Invalid pack id" },
+        });
+      }
+
+      const db = getDb();
+      const pack = await db.catchupPacks.getById(id);
+      if (!pack) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Catch-up pack not found" },
+        });
+      }
+      if (pack.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: { code: "FORBIDDEN", message: "Catch-up pack does not belong to user" },
+        });
+      }
+
+      // Extract item IDs from all tiers in summary_json
+      const summary = pack.summary_json as CatchupPackOutput | null;
+      if (!summary || !summary.tiers) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_STATE", message: "Pack has no items to mark as reviewed" },
+        });
+      }
+
+      const itemIds = [
+        ...summary.tiers.must_read,
+        ...summary.tiers.worth_scanning,
+        ...summary.tiers.headlines,
+      ].map((item) => item.item_id);
+
+      if (itemIds.length === 0) {
+        return { ok: true, markedCount: 0 };
+      }
+
+      const markedCount = await db.contentItemReads.markReadBatch({
+        userId: ctx.userId,
+        contentItemIds: itemIds,
+        packId: id,
+      });
+
+      return { ok: true, markedCount };
+    },
+  );
+
   // GET /catchup-packs?topicId=... - list packs
   fastify.get<{ Querystring: ListCatchupPacksQuery }>("/catchup-packs", async (request, reply) => {
     const ctx = await getSingletonContext();
