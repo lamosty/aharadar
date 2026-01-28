@@ -48,6 +48,7 @@ interface UnifiedItemRow {
   source_id: string;
   metadata_json: Record<string, unknown> | null;
   feedback_action: FeedbackAction | null;
+  read_at: string | null;
   // Cluster fields
   cluster_id: string | null;
   cluster_member_count: number | null;
@@ -71,6 +72,12 @@ interface ItemsListQuerystring {
   topicId?: string;
   // Views: inbox (no feedback), highlights (liked), all (no filter)
   view?: "inbox" | "highlights" | "all";
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_REGEX.test(value);
 }
 
 function isValidIsoDate(value: unknown): value is string {
@@ -242,7 +249,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     // View filter: inbox (no feedback), highlights (feedback = 'like'), all (no filter)
     // Note: fe.action is from the LATERAL subquery
     if (view === "inbox") {
-      filterConditions.push("fe.action IS NULL");
+      filterConditions.push("fe.action IS NULL AND cir.read_at IS NULL");
     } else if (view === "highlights") {
       filterConditions.push("fe.action = 'like'");
     }
@@ -333,6 +340,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ci.source_id::text,
         ci.metadata_json,
         fe.action as feedback_action,
+        cir.read_at::text as read_at,
         -- Cluster member count (excluding representative)
         cluster_count.member_count as cluster_member_count,
         -- Cluster items (excluding representative, ordered by similarity)
@@ -351,6 +359,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
+      LEFT JOIN content_item_reads cir
+        ON cir.user_id = '${ctx.userId}' AND cir.content_item_id = li.content_item_id
       LEFT JOIN content_item_summaries cis
         ON cis.user_id = '${ctx.userId}' AND cis.content_item_id = li.content_item_id
       LEFT JOIN LATERAL (
@@ -408,6 +418,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         ORDER BY created_at DESC
         LIMIT 1
       ) fe ON true
+      LEFT JOIN content_item_reads cir
+        ON cir.user_id = '${ctx.userId}' AND cir.content_item_id = li.content_item_id
       WHERE ${filterClause}
     `;
 
@@ -456,6 +468,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         digestId: row.digest_id,
         digestCreatedAt: row.digest_created_at,
         isNew,
+        readAt: row.read_at ?? null,
         item: {
           title: row.title,
           bodyText: row.body_text,
@@ -566,6 +579,118 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         language: item.language,
         metadata: item.metadata_json,
       },
+    };
+  });
+
+  // POST /items/:id/read - Mark item as read (no preference impact)
+  fastify.post<{ Params: { id: string }; Body?: { packId?: string } }>(
+    "/items/:id/read",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "Invalid item id" },
+        });
+      }
+
+      const packId = request.body?.packId;
+      if (packId !== undefined && packId !== null && !isValidUuid(packId)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "Invalid packId" },
+        });
+      }
+
+      const db = getDb();
+      const itemRes = await db.query<{ user_id: string }>(
+        `select user_id::text as user_id from content_items where id = $1 and deleted_at is null limit 1`,
+        [id],
+      );
+      const item = itemRes.rows[0];
+      if (!item) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Content item not found" },
+        });
+      }
+      if (item.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: { code: "FORBIDDEN", message: "Content item does not belong to current user" },
+        });
+      }
+
+      if (packId) {
+        const pack = await db.catchupPacks.getById(packId);
+        if (!pack) {
+          return reply.code(404).send({
+            ok: false,
+            error: { code: "NOT_FOUND", message: "Catch-up pack not found" },
+          });
+        }
+        if (pack.user_id !== ctx.userId) {
+          return reply.code(403).send({
+            ok: false,
+            error: { code: "FORBIDDEN", message: "Catch-up pack does not belong to user" },
+          });
+        }
+      }
+
+      const read = await db.contentItemReads.markRead({
+        userId: ctx.userId,
+        contentItemId: id,
+        packId: packId ?? null,
+      });
+
+      return {
+        ok: true,
+        readAt: read.read_at,
+      };
+    },
+  );
+
+  // DELETE /items/:id/read - Clear read state
+  fastify.delete<{ Params: { id: string } }>("/items/:id/read", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: { code: "INVALID_PARAM", message: "Invalid item id" },
+      });
+    }
+
+    const db = getDb();
+    const deleted = await db.contentItemReads.deleteByContentItem({
+      userId: ctx.userId,
+      contentItemId: id,
+    });
+
+    return {
+      ok: true,
+      deleted,
     };
   });
 }
