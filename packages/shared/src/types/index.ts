@@ -1,5 +1,6 @@
 export * from "./aggregate_summary";
 export * from "./budget";
+export * from "./catchup_pack";
 export * from "./connector";
 export * from "./content";
 export * from "./feedback";
