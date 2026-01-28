@@ -291,6 +291,12 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   const startedAt = Date.now();
   // System prompt optimized for canonical data + token safety
   // Let downstream triage decide relevance; only light noise filtering here
+  const groupSize = params.allowedXHandles?.length || 1;
+  const perAccountTarget = Math.floor(params.limit / groupSize);
+  const batchingHint =
+    groupSize > 1
+      ? `\nThis query covers ${groupSize} accounts. Aim for ~${perAccountTarget} results per account, distributed fairly across all accounts.`
+      : "";
   const systemPrompt = `Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array.
 Use the x_search tool if available to fetch real posts. If you cannot access real posts, return [].
 Do NOT fabricate. If a field is unavailable from the tool results, use null (or omit optional keys).
@@ -304,14 +310,14 @@ Each array item MUST be an object with ONLY these keys:
 - user_display_name (string|null): display name shown on profile
 - metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
 
-Ordering: newest first. Return at most the requested limit.
+Ordering: newest first. Return at most the requested limit.${batchingHint}
 
 Light filtering (cost + quality):
 - Exclude only obvious low-information noise (emoji-only, single-word reactions like "lol"/"true"/"yes", or empty text).
 - Do NOT do "semantic" high-signal judging here; downstream triage handles relevance.
 
 Token safety (critical):
-- If returning N results would exceed the output token budget, return fewer results rather than truncating or emitting invalid JSON.`;
+- Your output budget is ~${maxTokens} tokens. If returning N results would exceed this, return fewer results rather than truncating or emitting invalid JSON.`;
 
   const body = {
     model,
