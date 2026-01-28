@@ -20,6 +20,8 @@ Build a minimal, fast, and accessible web interface that lets users review perso
 | `/app`               | Dashboard shell / home (redirects to digests)  |
 | `/app/digests`       | List of recent digests                         |
 | `/app/digests/:id`   | Digest detail with ranked items                |
+| `/app/packs`         | Catch-up packs list                            |
+| `/app/packs/:id`     | Catch-up pack detail                           |
 | `/app/items/:id`     | Content item detail                            |
 | `/app/topics`        | Topics management (digest settings)            |
 | `/app/admin`         | Admin section home                             |
@@ -79,6 +81,23 @@ Build a minimal, fast, and accessible web interface that lets users review perso
 - Feedback buttons per item: like/dislike
   - Optimistic update on click
   - Rollback on failure with toast
+
+### Catch-up Packs List (`/app/packs`)
+
+- List recent packs for the selected topic
+- Show status (pending/ready/error/skipped), timeframe, time budget, item count
+- Button to generate a new pack (timeframe + time budget)
+- Allow retry/delete for failed packs
+- Empty state when no packs yet
+
+### Catch-up Pack Detail (`/app/packs/:id`)
+
+- Show pack metadata (status, timeframe, time budget)
+- Render themes with brief summaries
+- Tiered sections: Must-read, Worth scanning, Headlines only
+- Item cards show title, source, author, and "why"
+- Read status badge and "Mark read" action (removes from inbox)
+- Feedback buttons (like/dislike) for personalization
 - Skeleton loading
 - Cached/stale indicator when offline
 
@@ -354,6 +373,11 @@ t("digests.empty"); // "No digests yet"
 - `GET /api/digests/:id` - digest detail with items
 - `GET /api/items/:id` - item detail
 - `POST /api/feedback` - submit feedback
+- `POST /api/items/:id/read` - mark item as read
+- `DELETE /api/items/:id/read` - clear read state
+- `POST /api/catchup-packs` - generate pack
+- `GET /api/catchup-packs/:id` - pack detail
+- `GET /api/catchup-packs?topicId=` - pack list
 - `POST /api/admin/run` - trigger pipeline run
 
 ### Required Endpoints (to add)

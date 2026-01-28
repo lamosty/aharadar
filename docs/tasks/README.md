@@ -124,5 +124,6 @@ Task files (in recommended order):
 94. `task-146-item-summaries-api-db.md` - Backend: replace Deep Dive storage/endpoints with item summaries
 95. `task-147-feed-inline-auto-summary.md` - Web: inline auto-summary on paste + remove Deep Dive UI
 96. `task-148-score-debug-tooltip.md` - Web/pipeline: debug score breakdown tooltip + experimental toggle
+97. `task-150-ask-chat-ui.md` - Web/API: ChatGPT-style Ask UI with topic-scoped conversations
 
 **Note**: Deep Dive UI/terminology is being retired; tasks 146–147 supersede the Deep Dive flow from tasks 137/144/145.

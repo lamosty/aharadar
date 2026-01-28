@@ -58,6 +58,64 @@ Response:
 { "ok": true }
 ```
 
+### `POST /api/items/:id/read`
+
+Marks an item as read (used to keep inbox clean without feedback).
+
+Request (optional pack association):
+
+```json
+{ "packId": "uuid" }
+```
+
+Response:
+
+```json
+{ "ok": true, "readAt": "2026-01-26T12:34:56Z" }
+```
+
+### `DELETE /api/items/:id/read`
+
+Clears read state for an item.
+
+Response:
+
+```json
+{ "ok": true, "deleted": 1 }
+```
+
+### `POST /api/catchup-packs`
+
+Generate (or fetch existing) catch-up pack for a topic + timeframe.
+
+Request:
+
+```json
+{
+  "topicId": "uuid",
+  "timeframeDays": 7,
+  "timeBudgetMinutes": 60
+}
+```
+
+Response:
+
+```json
+{ "ok": true, "pack": { "id": "uuid", "status": "pending" } }
+```
+
+### `GET /api/catchup-packs/:id`
+
+Returns a pack with tiers + item details when ready.
+
+### `GET /api/catchup-packs?topicId=<uuid>`
+
+Returns recent packs for a topic (default: current topic).
+
+### `DELETE /api/catchup-packs/:id`
+
+Delete a catch-up pack record.
+
 ### `POST /api/admin/run`
 
 Triggers a pipeline run (async) for a window.

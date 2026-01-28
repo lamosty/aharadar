@@ -222,6 +222,46 @@ create table feedback_events (
 create index feedback_events_user_created_idx on feedback_events(user_id, created_at desc);
 create index feedback_events_item_idx on feedback_events(content_item_id);
 
+-- catchup_packs: on-demand listwise catch-up packs
+create table catchup_packs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  topic_id uuid not null references topics(id) on delete cascade,
+  scope_type text not null check (scope_type in ('range')),
+  scope_hash text not null,
+  status text not null default 'pending' check (status in ('pending', 'complete', 'error', 'skipped')),
+  summary_json jsonb,
+  prompt_id text,
+  schema_version text,
+  provider text,
+  model text,
+  input_item_count int,
+  input_char_count int,
+  input_tokens int,
+  output_tokens int,
+  cost_estimate_credits numeric,
+  meta_json jsonb,
+  error_message text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index catchup_packs_user_scope_hash on catchup_packs(user_id, scope_hash);
+create index catchup_packs_topic_created on catchup_packs(topic_id, created_at desc);
+create index catchup_packs_user_created on catchup_packs(user_id, created_at desc);
+
+-- content_item_reads: per-user read receipts for inbox filtering
+create table content_item_reads (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  content_item_id uuid not null references content_items(id) on delete cascade,
+  pack_id uuid references catchup_packs(id) on delete set null,
+  read_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create unique index content_item_reads_user_item_uniq on content_item_reads(user_id, content_item_id);
+create index content_item_reads_user_read_at_idx on content_item_reads(user_id, read_at desc);
+create index content_item_reads_pack_idx on content_item_reads(pack_id);
+
 -- content_item_summaries: manual paste-and-summarize workflow
 -- Users paste content for items, auto-generate AI summary (saved immediately).
 -- Raw pasted text is never stored; summaries are upserted per user+item.
