@@ -1,5 +1,6 @@
 export * from "./aggregate_summary";
 export * from "./anthropic";
+export * from "./catchup_pack";
 export * from "./claude_subscription";
 export * from "./codex_subscription";
 export * from "./codex_usage_tracker";

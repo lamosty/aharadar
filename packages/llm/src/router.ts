@@ -37,6 +37,8 @@ const TASKS: TaskType[] = [
   "signal_parse",
   "qa",
   "aggregate_summary",
+  "catchup_pack_select",
+  "catchup_pack_tier",
 ];
 const TIERS: BudgetTier[] = ["low", "normal", "high"];
 

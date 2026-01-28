@@ -6,7 +6,9 @@ export type TaskType =
   | "entity_extract"
   | "signal_parse"
   | "qa"
-  | "aggregate_summary";
+  | "aggregate_summary"
+  | "catchup_pack_select"
+  | "catchup_pack_tier";
 
 export interface ModelRef {
   provider: string;

@@ -1,5 +1,6 @@
 import type { BudgetTier } from "@aharadar/shared";
 
+import { extractJsonObject } from "./json";
 import type { LlmRouter, ModelRef } from "./types";
 
 const PROMPT_ID = "aggregate_summary_v1";
@@ -87,10 +88,14 @@ function clampText(value: string | null | undefined, maxChars: number): string |
   return trimmed.slice(0, maxChars);
 }
 
-function buildSystemPrompt(ref: ModelRef): string {
+function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
+  const retryNote = isRetry
+    ? "The previous response was invalid. Fix it and return ONLY the JSON object."
+    : "Return ONLY the JSON object.";
   return (
     "You are an expert content analyst and JSON generator for aggregate summaries.\n" +
-    "Return ONLY the JSON object (no markdown, no extra keys).\n" +
+    `${retryNote}\n` +
+    "Return ONLY the JSON object (no markdown, no extra keys, no code fences).\n" +
     "Output must match this schema:\n" +
     "{\n" +
     '  "schema_version": "aggregate_summary_v1",\n' +
@@ -120,7 +125,8 @@ function buildSystemPrompt(ref: ModelRef): string {
     '  "open_questions": ["Question 1"],\n' +
     '  "suggested_followups": ["Followup 1"]\n' +
     "}\n" +
-    "Be topic-agnostic, mention cluster sizes when present, and cite specific item IDs."
+    "Be topic-agnostic, mention cluster sizes when present, and cite specific item IDs.\n" +
+    "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
 
@@ -152,17 +158,6 @@ function buildUserPrompt(input: AggregateSummaryInput, tier: BudgetTier): string
   };
 
   return `Input JSON:\n${JSON.stringify(payload)}`;
-}
-
-function tryParseJsonObject(text: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
-      return parsed as Record<string, unknown>;
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 function asString(value: unknown): string | null {
@@ -297,38 +292,45 @@ export async function aggregateSummary(params: {
   const maxOutputTokens =
     parseIntEnv(process.env.OPENAI_AGGREGATE_SUMMARY_MAX_OUTPUT_TOKENS) ?? 2000;
 
-  const call = await params.router.call("aggregate_summary", ref, {
-    system: buildSystemPrompt(ref),
-    user: buildUserPrompt(params.input, params.tier),
-    maxOutputTokens,
-  });
+  const runOnce = async (isRetry: boolean): Promise<AggregateSummaryCallResult> => {
+    const call = await params.router.call("aggregate_summary", ref, {
+      system: buildSystemPrompt(ref, isRetry),
+      user: buildUserPrompt(params.input, params.tier),
+      maxOutputTokens,
+    });
 
-  // Parse JSON from output
-  const parsed = tryParseJsonObject(call.outputText);
-  if (!parsed) {
-    throw new Error(
-      `Failed to parse aggregate summary JSON output:\n${call.outputText.slice(0, 200)}...`,
-    );
-  }
+    const parsed = extractJsonObject(call.outputText);
+    if (!parsed) {
+      throw new Error(
+        `Failed to parse aggregate summary JSON output:\n${call.outputText.slice(0, 200)}...`,
+      );
+    }
 
-  // Normalize and validate
-  const output = normalizeAggregateSummaryOutput(parsed, ref);
-  if (!output) {
-    throw new Error(
-      `Aggregate summary output failed validation:\n${JSON.stringify(parsed, null, 2).slice(0, 200)}...`,
-    );
-  }
+    const output = normalizeAggregateSummaryOutput(parsed, ref);
+    if (!output) {
+      throw new Error(
+        `Aggregate summary output failed validation:\n${JSON.stringify(parsed, null, 2).slice(0, 200)}...`,
+      );
+    }
 
-  return {
-    output,
-    inputTokens: call.inputTokens,
-    outputTokens: call.outputTokens,
-    costEstimateCredits: estimateCredits({
+    return {
+      output,
       inputTokens: call.inputTokens,
       outputTokens: call.outputTokens,
-    }),
-    provider: ref.provider,
-    model: ref.model,
-    endpoint: call.endpoint,
+      costEstimateCredits: estimateCredits({
+        inputTokens: call.inputTokens,
+        outputTokens: call.outputTokens,
+      }),
+      provider: ref.provider,
+      model: ref.model,
+      endpoint: call.endpoint,
+    };
   };
+
+  try {
+    return await runOnce(false);
+  } catch (err) {
+    // Retry once with stricter prompt
+    return await runOnce(true);
+  }
 }

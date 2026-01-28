@@ -95,7 +95,7 @@ export async function callClaudeSubscription(
       log.debug("Using structured output with schema");
     }
 
-    const timeoutMs = Number.parseInt(process.env.CLAUDE_SUBSCRIPTION_TIMEOUT_MS ?? "120000", 10);
+    const timeoutMs = Number.parseInt(process.env.CLAUDE_SUBSCRIPTION_TIMEOUT_MS ?? "240000", 10);
     const response = query({ prompt: request.user, options });
 
     // Collect all messages and extract final result
