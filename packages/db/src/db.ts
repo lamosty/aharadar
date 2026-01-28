@@ -4,6 +4,8 @@ import { createAbtestsRepo } from "./repos/abtests";
 import { createAggregateSummariesRepo } from "./repos/aggregate_summaries";
 import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createBookmarksRepo } from "./repos/bookmarks";
+import { createCatchupPacksRepo } from "./repos/catchup_packs";
+import { createContentItemReadsRepo } from "./repos/content_item_reads";
 import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
 import { createDigestItemsRepo } from "./repos/digest_items";
@@ -37,6 +39,7 @@ export type DbContext = Queryable & {
   fetchRuns: ReturnType<typeof createFetchRunsRepo>;
   contentItems: ReturnType<typeof createContentItemsRepo>;
   contentItemSources: ReturnType<typeof createContentItemSourcesRepo>;
+  contentItemReads: ReturnType<typeof createContentItemReadsRepo>;
   embeddings: ReturnType<typeof createEmbeddingsRepo>;
   topicPreferenceProfiles: ReturnType<typeof createTopicPreferenceProfilesRepo>;
   digests: ReturnType<typeof createDigestsRepo>;
@@ -53,6 +56,7 @@ export type DbContext = Queryable & {
   itemSummaries: ReturnType<typeof createItemSummariesRepo>;
   aggregateSummaries: ReturnType<typeof createAggregateSummariesRepo>;
   bookmarks: ReturnType<typeof createBookmarksRepo>;
+  catchupPacks: ReturnType<typeof createCatchupPacksRepo>;
 };
 
 export interface Db extends DbContext {
@@ -69,6 +73,7 @@ function createContext(db: Queryable): DbContext {
     fetchRuns: createFetchRunsRepo(db),
     contentItems: createContentItemsRepo(db),
     contentItemSources: createContentItemSourcesRepo(db),
+    contentItemReads: createContentItemReadsRepo(db),
     embeddings: createEmbeddingsRepo(db),
     topicPreferenceProfiles: createTopicPreferenceProfilesRepo(db),
     digests: createDigestsRepo(db),
@@ -85,6 +90,7 @@ function createContext(db: Queryable): DbContext {
     itemSummaries: createItemSummariesRepo(db),
     aggregateSummaries: createAggregateSummariesRepo(db),
     bookmarks: createBookmarksRepo(db),
+    catchupPacks: createCatchupPacksRepo(db),
   };
 }
 

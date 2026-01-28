@@ -2,6 +2,8 @@ export * from "./db";
 export * from "./repos/abtests";
 export * from "./repos/aggregate_summaries";
 export * from "./repos/auth_tokens";
+export * from "./repos/catchup_packs";
+export * from "./repos/content_item_reads";
 export * from "./repos/content_item_sources";
 export * from "./repos/content_items";
 export * from "./repos/digest_items";
