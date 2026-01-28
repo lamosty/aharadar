@@ -8,8 +8,10 @@ export {
   parseRedisConnection,
   RUN_ABTEST_JOB_NAME,
   RUN_AGGREGATE_SUMMARY_JOB_NAME,
+  RUN_CATCHUP_PACK_JOB_NAME,
   RUN_WINDOW_JOB_NAME,
   type RunAbtestJobData,
   type RunAggregateSummaryJob,
+  type RunCatchupPackJobData,
   type RunWindowJobData,
 } from "@aharadar/queues";

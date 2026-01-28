@@ -1,5 +1,6 @@
 export * from "./abtests/run_abtest";
 export * from "./budgets/credits";
+export * from "./catchup_pack";
 export * from "./lib/digest_plan";
 export * from "./qa";
 export * from "./scheduler/cron";

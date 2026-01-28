@@ -24,6 +24,11 @@ export const RUN_ABTEST_JOB_NAME = "run_abtest";
 export const RUN_AGGREGATE_SUMMARY_JOB_NAME = "run_aggregate_summary";
 
 /**
+ * Job name for catch-up pack jobs.
+ */
+export const RUN_CATCHUP_PACK_JOB_NAME = "run_catchup_pack";
+
+/**
  * Per-run LLM provider override for manual runs.
  */
 export interface ProviderOverride {
@@ -86,6 +91,18 @@ export interface RunAggregateSummaryJob {
 }
 
 /**
+ * Job payload for catch-up pack runs.
+ */
+export interface RunCatchupPackJobData {
+  userId: string;
+  topicId: string;
+  scopeHash: string;
+  since: string;
+  until: string;
+  timeBudgetMinutes: number;
+}
+
+/**
  * Parse Redis URL into BullMQ connection options.
  * Supports: redis://[:password@]host:port[/db]
  *           rediss://... (TLS)
@@ -111,8 +128,12 @@ export function parseRedisConnection(redisUrl: string): ConnectionOptions {
  * Create the pipeline queue.
  * Use this from the scheduler or API to enqueue jobs.
  */
-export function createPipelineQueue(redisUrl: string): Queue<RunWindowJobData> {
-  return new Queue<RunWindowJobData>(PIPELINE_QUEUE_NAME, {
+export function createPipelineQueue(
+  redisUrl: string,
+): Queue<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob | RunCatchupPackJobData> {
+  return new Queue<
+    RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob | RunCatchupPackJobData
+  >(PIPELINE_QUEUE_NAME, {
     connection: parseRedisConnection(redisUrl),
   });
 }

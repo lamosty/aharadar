@@ -10,8 +10,10 @@ import {
   parseRedisConnection,
   RUN_ABTEST_JOB_NAME,
   RUN_AGGREGATE_SUMMARY_JOB_NAME,
+  RUN_CATCHUP_PACK_JOB_NAME,
   type RunAbtestJobData,
   type RunAggregateSummaryJob,
+  type RunCatchupPackJobData,
   type RunWindowJobData,
 } from "../queues";
 
@@ -285,24 +287,163 @@ async function handleRunAggregateSummaryJob(
 }
 
 /**
+ * Handle a run_catchup_pack job.
+ */
+async function handleRunCatchupPackJob(
+  db: Db,
+  job: Job<RunCatchupPackJobData>,
+  _env: ReturnType<typeof loadRuntimeEnv>,
+): Promise<{ status: string }> {
+  const jobLog = createJobLogger(job.id ?? "unknown");
+  const { userId, topicId, scopeHash, since, until, timeBudgetMinutes } = job.data;
+
+  jobLog.info(
+    {
+      scopeHash: scopeHash.slice(0, 8),
+      topicId: topicId.slice(0, 8),
+      timeBudgetMinutes,
+    },
+    "Starting catch-up pack generation",
+  );
+
+  const user = await db.users.getById(userId);
+  if (!user) {
+    jobLog.warn({ userId: userId.slice(0, 8) }, "User not found, skipping catch-up pack");
+    await db.catchupPacks.upsert({
+      userId,
+      topicId,
+      scopeType: "range",
+      scopeHash,
+      status: "skipped",
+      errorMessage: "User not found",
+    });
+    return { status: "skipped" };
+  }
+
+  const topic = await db.topics.getById(topicId);
+  if (!topic || topic.user_id !== userId) {
+    jobLog.warn({ topicId: topicId.slice(0, 8) }, "Topic not found or not owned by user");
+    await db.catchupPacks.upsert({
+      userId,
+      topicId,
+      scopeType: "range",
+      scopeHash,
+      status: "skipped",
+      errorMessage: "Topic not found",
+    });
+    return { status: "skipped" };
+  }
+
+  try {
+    // Import here to avoid circular dependency
+    const { computeCreditsStatus, generateCatchupPack } = await import("@aharadar/pipeline");
+
+    const monthlyCredits = Number.parseInt(process.env.MONTHLY_CREDITS ?? "10000", 10);
+    const dailyThrottleCreditsStr = process.env.DAILY_THROTTLE_CREDITS;
+    const dailyThrottleCredits = dailyThrottleCreditsStr
+      ? Number.parseInt(dailyThrottleCreditsStr, 10)
+      : undefined;
+
+    const creditsStatus = await computeCreditsStatus({
+      db,
+      userId,
+      monthlyCredits,
+      dailyThrottleCredits,
+      windowEnd: new Date().toISOString(),
+    });
+
+    if (!creditsStatus.paidCallsAllowed) {
+      await db.catchupPacks.upsert({
+        userId,
+        topicId,
+        scopeType: "range",
+        scopeHash,
+        status: "skipped",
+        errorMessage: "Insufficient credits",
+      });
+      jobLog.warn(
+        { userId: userId.slice(0, 8), scopeHash: scopeHash.slice(0, 8) },
+        "Catch-up pack skipped due to insufficient credits",
+      );
+      return { status: "skipped" };
+    }
+
+    const tier = creditsStatus.warningLevel === "critical" ? "low" : "normal";
+
+    const llmSettings = await db.llmSettings.get();
+    const llmConfig: LlmRuntimeConfig = {
+      provider: llmSettings.provider,
+      anthropicModel: llmSettings.anthropic_model,
+      openaiModel: llmSettings.openai_model,
+      claudeSubscriptionEnabled: llmSettings.claude_subscription_enabled,
+      claudeTriageThinking: llmSettings.claude_triage_thinking,
+      claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+      codexSubscriptionEnabled: llmSettings.codex_subscription_enabled,
+      codexCallsPerHour: llmSettings.codex_calls_per_hour,
+      reasoningEffort: llmSettings.reasoning_effort,
+      triageBatchEnabled: llmSettings.triage_batch_enabled,
+      triageBatchSize: llmSettings.triage_batch_size,
+    };
+
+    const pack = await generateCatchupPack({
+      db,
+      userId,
+      topicId,
+      since,
+      until,
+      timeBudgetMinutes,
+      tier,
+      llmConfig,
+    });
+
+    jobLog.info(
+      { packId: pack.id.slice(0, 8), status: pack.status },
+      "Catch-up pack generation completed",
+    );
+
+    return { status: pack.status };
+  } catch (err) {
+    jobLog.error(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        scopeHash: scopeHash.slice(0, 8),
+      },
+      "Catch-up pack generation failed",
+    );
+    throw err;
+  }
+}
+
+/**
  * Create the pipeline worker that processes run_window, run_abtest, and run_aggregate_summary jobs.
  */
 export function createPipelineWorker(redisUrl: string): {
-  worker: Worker<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob>;
+  worker: Worker<
+    RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob | RunCatchupPackJobData
+  >;
   db: Db;
 } {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);
 
-  const worker = new Worker<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob>(
+  const worker = new Worker<
+    RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob | RunCatchupPackJobData
+  >(
     PIPELINE_QUEUE_NAME,
-    async (job: Job<RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob>) => {
+    async (
+      job: Job<
+        RunWindowJobData | RunAbtestJobData | RunAggregateSummaryJob | RunCatchupPackJobData
+      >,
+    ) => {
       // Route to appropriate handler based on job name
       if (job.name === RUN_ABTEST_JOB_NAME) {
         return handleRunAbtestJob(db, job as Job<RunAbtestJobData>);
       }
       if (job.name === RUN_AGGREGATE_SUMMARY_JOB_NAME) {
         return handleRunAggregateSummaryJob(db, job as Job<RunAggregateSummaryJob>, env);
+      }
+      if (job.name === RUN_CATCHUP_PACK_JOB_NAME) {
+        return handleRunCatchupPackJob(db, job as Job<RunCatchupPackJobData>, env);
       }
       // Default to run_window job (for backwards compatibility)
       return handleRunWindowJob(db, job as Job<RunWindowJobData>, env);
