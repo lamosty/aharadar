@@ -614,6 +614,7 @@ function FeedPageContent() {
           error={catchupError}
           setError={setCatchupError}
           layout={layout}
+          fastTriageMode={fastTriageMode}
           onFeedback={handleFeedback}
           onClearFeedback={handleClearFeedback}
           markItemReadMutation={markItemReadMutation}
@@ -792,6 +793,7 @@ interface CatchupViewContentProps {
   error: string | null;
   setError: (error: string | null) => void;
   layout: import("@/lib/theme").Layout;
+  fastTriageMode: boolean;
   onFeedback: (contentItemId: string, action: "like" | "dislike" | "skip") => Promise<void>;
   onClearFeedback: (contentItemId: string) => Promise<void>;
   markItemReadMutation: ReturnType<typeof useMarkItemRead>;
@@ -812,6 +814,7 @@ function CatchupViewContent({
   error,
   setError,
   layout,
+  fastTriageMode,
   onFeedback,
   onClearFeedback,
   markItemReadMutation,
@@ -822,6 +825,8 @@ function CatchupViewContent({
   onMobileItemClick,
 }: CatchupViewContentProps) {
   const { addToast } = useToast();
+  // Track items hidden after feedback (for fast triage behavior)
+  const [hiddenItemIds, setHiddenItemIds] = useState<Set<string>>(new Set());
   const {
     selectedPackId,
     setSelectedPackId,
@@ -850,6 +855,21 @@ function CatchupViewContent({
       },
     );
   }, [topicId, timeframeDays, timeBudgetMinutes, createPack, setError]);
+
+  // Reset hidden items when switching packs
+  useEffect(() => {
+    setHiddenItemIds(new Set());
+  }, [selectedPackId]);
+
+  // Wrap feedback to also hide the item
+  const handleCatchupFeedback = useCallback(
+    async (contentItemId: string, action: "like" | "dislike" | "skip") => {
+      await onFeedback(contentItemId, action);
+      // Hide item after feedback
+      setHiddenItemIds((prev) => new Set([...prev, contentItemId]));
+    },
+    [onFeedback],
+  );
 
   // Convert CatchupPackItem to FeedItemType for FeedItem component
   const packItemToFeedItem = useCallback(
@@ -927,9 +947,11 @@ function CatchupViewContent({
     );
     const headlinesIds = new Set(pack.summaryJson?.tiers.headlines.map((i) => i.item_id) ?? []);
 
-    const mustReadItems = items.filter((i) => mustReadIds.has(i.id));
-    const worthScanningItems = items.filter((i) => worthScanningIds.has(i.id));
-    const headlinesItems = items.filter((i) => headlinesIds.has(i.id));
+    const mustReadItems = items.filter((i) => mustReadIds.has(i.id) && !hiddenItemIds.has(i.id));
+    const worthScanningItems = items.filter(
+      (i) => worthScanningIds.has(i.id) && !hiddenItemIds.has(i.id),
+    );
+    const headlinesItems = items.filter((i) => headlinesIds.has(i.id) && !hiddenItemIds.has(i.id));
 
     // Still generating
     if (pack.status === "pending") {
@@ -1005,12 +1027,12 @@ function CatchupViewContent({
                 <FeedItem
                   key={item.id}
                   item={packItemToFeedItem(item, pack.id)}
-                  onFeedback={onFeedback}
+                  onFeedback={handleCatchupFeedback}
                   onClear={onClearFeedback}
                   layout={layout}
                   showTopicBadge={false}
                   forceExpanded={false}
-                  fastTriageMode={false}
+                  fastTriageMode={fastTriageMode}
                   onViewSummary={onViewSummary}
                   onSummaryGenerated={onSummaryGenerated}
                   onNext={() => {}}
@@ -1039,12 +1061,12 @@ function CatchupViewContent({
                 <FeedItem
                   key={item.id}
                   item={packItemToFeedItem(item, pack.id)}
-                  onFeedback={onFeedback}
+                  onFeedback={handleCatchupFeedback}
                   onClear={onClearFeedback}
                   layout={layout}
                   showTopicBadge={false}
                   forceExpanded={false}
-                  fastTriageMode={false}
+                  fastTriageMode={fastTriageMode}
                   onViewSummary={onViewSummary}
                   onSummaryGenerated={onSummaryGenerated}
                   onNext={() => {}}
@@ -1073,12 +1095,12 @@ function CatchupViewContent({
                 <FeedItem
                   key={item.id}
                   item={packItemToFeedItem(item, pack.id)}
-                  onFeedback={onFeedback}
+                  onFeedback={handleCatchupFeedback}
                   onClear={onClearFeedback}
                   layout={layout}
                   showTopicBadge={false}
                   forceExpanded={false}
-                  fastTriageMode={false}
+                  fastTriageMode={fastTriageMode}
                   onViewSummary={onViewSummary}
                   onSummaryGenerated={onSummaryGenerated}
                   onNext={() => {}}
