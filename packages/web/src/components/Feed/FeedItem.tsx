@@ -622,12 +622,28 @@ export function FeedItem({
               </span>
             )}
             {/* Source + author (subreddit/HN first, then author) */}
-            {secondaryInfo?.text && <span>{secondaryInfo.text}</span>}
-            {author && (
-              <>
-                {secondaryInfo?.text && <span className={styles.detailSep}>·</span>}
-                <span className={styles.detailAuthor}>{author}</span>
-              </>
+            {(secondaryInfo?.text || author) && (
+              <span className={styles.actionBarSourceAuthor}>
+                {secondaryInfo?.text &&
+                  (primaryLinkUrl ? (
+                    <a
+                      href={primaryLinkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.actionBarSource}
+                    >
+                      {secondaryInfo.text}
+                    </a>
+                  ) : (
+                    <span className={styles.actionBarSource}>{secondaryInfo.text}</span>
+                  ))}
+                {author && (
+                  <>
+                    {secondaryInfo?.text && <span className={styles.detailSep}>·</span>}
+                    <span className={styles.actionBarAuthor}>{author}</span>
+                  </>
+                )}
+              </span>
             )}
           </span>
 
