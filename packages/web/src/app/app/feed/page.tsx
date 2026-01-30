@@ -4,7 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/components/Feed";
+import {
+  FeedFilterBar,
+  FeedItem,
+  FeedItemSkeleton,
+  groupItemsByTheme,
+  type SortOption,
+  ThemeRow,
+} from "@/components/Feed";
 import { FeedItemModal } from "@/components/Feed/FeedItemModal";
 import { InboxSummaryModal } from "@/components/InboxSummaryModal";
 import { ItemSummaryModal } from "@/components/ItemSummaryModal";
@@ -88,6 +95,9 @@ function FeedPageContent() {
   const [fastTriageMode, setFastTriageMode] = useLocalStorage<boolean>("feedFastTriage", false);
   const [forceExpandedId, setForceExpandedId] = useState<string | null>(null);
   const hoverClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Theme grouping mode - group items by theme for reduced visual density
+  const [groupByTheme, setGroupByTheme] = useLocalStorage<boolean>("feedGroupByTheme", false);
 
   // Desktop undo history - tracks items after feedback for undo
   const [desktopHistory, setDesktopHistory] = useState<FeedItemType[]>([]);
@@ -633,6 +643,16 @@ function FeedPageContent() {
                 <FastIcon />
               </button>
             </Tooltip>
+            <Tooltip content={groupByTheme ? "Theme grouping ON" : "Theme grouping OFF"}>
+              <button
+                type="button"
+                className={`${styles.fastTriageBtn} ${groupByTheme ? styles.fastTriageBtnActive : ""}`}
+                onClick={() => setGroupByTheme(!groupByTheme)}
+                aria-pressed={groupByTheme}
+              >
+                <GroupIcon />
+              </button>
+            </Tooltip>
             <button
               type="button"
               className={`btn btn-secondary ${styles.summarizeBtn}`}
@@ -738,53 +758,71 @@ function FeedPageContent() {
             className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`}
             data-layout={layout}
           >
-            {items.map((item) => (
-              <FeedItem
-                key={item.id}
-                item={item}
-                onFeedback={handleFeedback}
-                onClear={handleClearFeedback}
-                layout={layout}
-                showTopicBadge={isAllTopicsMode}
-                forceExpanded={!isSummaryModalOpen && forceExpandedId === item.id}
-                fastTriageMode={fastTriageMode && forceExpandedId !== null}
-                onViewSummary={handleOpenReaderModal}
-                onSummaryGenerated={() => refetch()}
-                onNext={() => handleNextItem(item.id)}
-                onClose={() => setForceExpandedId(null)}
-                sort={sort}
-                onMobileClick={isMobile ? () => handleMobileItemClick(item) : undefined}
-                onUndo={!isMobile ? handleDesktopUndo : undefined}
-                canUndo={!isMobile && desktopHistory.length > 0}
-                onSelect={() => setForceExpandedId(item.id)}
-                onHover={() => {
-                  // In fast triage mode, don't clear force-expanded on hover
-                  // CSS disables hover expansion, users click to manually expand
-                  if (fastTriageMode) {
-                    return;
-                  }
+            {groupByTheme
+              ? // Render items grouped by theme
+                groupItemsByTheme(items).map((themeGroup) => (
+                  <ThemeRow
+                    key={themeGroup.themeId}
+                    theme={themeGroup}
+                    onFeedback={handleFeedback}
+                    onClear={handleClearFeedback}
+                    layout={layout}
+                    showTopicBadge={isAllTopicsMode}
+                    sort={sort}
+                    onViewSummary={handleOpenReaderModal}
+                    onSummaryGenerated={() => refetch()}
+                    onMobileClick={isMobile ? handleMobileItemClick : undefined}
+                    fastTriageMode={fastTriageMode}
+                  />
+                ))
+              : // Render flat list of items
+                items.map((item) => (
+                  <FeedItem
+                    key={item.id}
+                    item={item}
+                    onFeedback={handleFeedback}
+                    onClear={handleClearFeedback}
+                    layout={layout}
+                    showTopicBadge={isAllTopicsMode}
+                    forceExpanded={!isSummaryModalOpen && forceExpandedId === item.id}
+                    fastTriageMode={fastTriageMode && forceExpandedId !== null}
+                    onViewSummary={handleOpenReaderModal}
+                    onSummaryGenerated={() => refetch()}
+                    onNext={() => handleNextItem(item.id)}
+                    onClose={() => setForceExpandedId(null)}
+                    sort={sort}
+                    onMobileClick={isMobile ? () => handleMobileItemClick(item) : undefined}
+                    onUndo={!isMobile ? handleDesktopUndo : undefined}
+                    canUndo={!isMobile && desktopHistory.length > 0}
+                    onSelect={() => setForceExpandedId(item.id)}
+                    onHover={() => {
+                      // In fast triage mode, don't clear force-expanded on hover
+                      // CSS disables hover expansion, users click to manually expand
+                      if (fastTriageMode) {
+                        return;
+                      }
 
-                  // Clear any pending timeout
-                  if (hoverClearTimeoutRef.current) {
-                    clearTimeout(hoverClearTimeoutRef.current);
-                    hoverClearTimeoutRef.current = null;
-                  }
+                      // Clear any pending timeout
+                      if (hoverClearTimeoutRef.current) {
+                        clearTimeout(hoverClearTimeoutRef.current);
+                        hoverClearTimeoutRef.current = null;
+                      }
 
-                  // If hovering the force-expanded item, don't clear
-                  if (forceExpandedId === item.id) {
-                    return;
-                  }
+                      // If hovering the force-expanded item, don't clear
+                      if (forceExpandedId === item.id) {
+                        return;
+                      }
 
-                  // Clear force-expanded after a delay when hovering a different item
-                  // This gives leeway for small mouse movements
-                  if (forceExpandedId) {
-                    hoverClearTimeoutRef.current = setTimeout(() => {
-                      setForceExpandedId(null);
-                    }, 300);
-                  }
-                }}
-              />
-            ))}
+                      // Clear force-expanded after a delay when hovering a different item
+                      // This gives leeway for small mouse movements
+                      if (forceExpandedId) {
+                        hoverClearTimeoutRef.current = setTimeout(() => {
+                          setForceExpandedId(null);
+                        }, 300);
+                      }
+                    }}
+                  />
+                ))}
           </div>
 
           <Pagination
@@ -1355,6 +1393,28 @@ function FastIcon() {
       aria-hidden="true"
     >
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+function GroupIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* Stacked cards icon representing grouping */}
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   );
 }
