@@ -385,8 +385,9 @@ function FeedPageContent() {
 
   // Desktop undo handler - pops from history, clears feedback, and expands the restored item
   // Optimistic: show immediately, API call in background
+  // Returns the restored item so callers can use it
   const handleDesktopUndo = useCallback(() => {
-    if (desktopHistory.length === 0) return;
+    if (desktopHistory.length === 0) return null;
     const previousItem = desktopHistory[desktopHistory.length - 1];
     setDesktopHistory((prev) => prev.slice(0, -1));
 
@@ -413,7 +414,20 @@ function FeedPageContent() {
       contentItemId: previousItem.id,
       digestId: previousItem.digestId,
     });
+
+    return restoredItem;
   }, [desktopHistory, clearFeedbackMutation, queryClient]);
+
+  // Modal undo handler - also restores the modal with the item's summary
+  const handleModalUndo = useCallback(() => {
+    const restoredItem = handleDesktopUndo();
+    if (restoredItem?.manualSummaryJson) {
+      // Re-open modal with the restored item's summary
+      setSummaryModalItem(restoredItem);
+      setSummaryModalSummary(restoredItem.manualSummaryJson);
+      setIsSummaryModalOpen(true);
+    }
+  }, [handleDesktopUndo]);
 
   // Mobile modal handlers
   const handleMobileItemClick = useCallback((item: FeedItemType) => {
@@ -778,7 +792,7 @@ function FeedPageContent() {
             setSummaryModalSummary(null);
           }
         }}
-        onUndo={!isMobile ? handleDesktopUndo : undefined}
+        onUndo={!isMobile ? handleModalUndo : undefined}
         canUndo={!isMobile && desktopHistory.length > 0}
       />
 
