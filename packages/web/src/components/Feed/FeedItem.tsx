@@ -579,7 +579,19 @@ export function FeedItem({
           <time className={styles.scanTime}>
             {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
           </time>
-          <span className={styles.scanSourceLabel}>{formatSourceType(item.item.sourceType)}</span>
+          {primaryLinkUrl ? (
+            <a
+              href={primaryLinkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.scanSourceLabel}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {formatSourceType(item.item.sourceType)}
+            </a>
+          ) : (
+            <span className={styles.scanSourceLabel}>{formatSourceType(item.item.sourceType)}</span>
+          )}
         </span>
       </div>
 
@@ -611,6 +623,25 @@ export function FeedItem({
                 <span>{secondaryInfo.commentCount ?? 0}</span>
               </a>
             )}
+            {/* Source context: subreddit (with author on hover) or @username for X */}
+            {secondaryInfo?.text && (
+              <Tooltip
+                content={secondaryInfo.type === "reddit" && author ? `by u/${author}` : undefined}
+              >
+                {primaryLinkUrl ? (
+                  <a
+                    href={primaryLinkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.actionBarSource}
+                  >
+                    {secondaryInfo.text}
+                  </a>
+                ) : (
+                  <span className={styles.actionBarSource}>{secondaryInfo.text}</span>
+                )}
+              </Tooltip>
+            )}
             {/* Category tags */}
             {triageFeatures?.categories && triageFeatures.categories.length > 0 && (
               <span className={styles.actionBarTags}>
@@ -619,30 +650,6 @@ export function FeedItem({
                     {cat}
                   </span>
                 ))}
-              </span>
-            )}
-            {/* Source + author (subreddit/HN first, then author) */}
-            {(secondaryInfo?.text || author) && (
-              <span className={styles.actionBarSourceAuthor}>
-                {secondaryInfo?.text &&
-                  (primaryLinkUrl ? (
-                    <a
-                      href={primaryLinkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.actionBarSource}
-                    >
-                      {secondaryInfo.text}
-                    </a>
-                  ) : (
-                    <span className={styles.actionBarSource}>{secondaryInfo.text}</span>
-                  ))}
-                {author && (
-                  <>
-                    {secondaryInfo?.text && <span className={styles.detailSep}>·</span>}
-                    <span className={styles.actionBarAuthor}>{author}</span>
-                  </>
-                )}
               </span>
             )}
           </span>

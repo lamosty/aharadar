@@ -986,6 +986,11 @@
   text-align: right;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.scanSourceLabel:hover {
+  color: var(--color-primary);
 }
 
 /* ==========================================
@@ -1143,42 +1148,21 @@
   color: var(--color-text-muted);
   min-width: 0; /* Allow shrinking */
   flex: 1;
-  overflow: hidden;
+  /* Note: no overflow:hidden - it clips tooltips */
 }
 
-/* Source + author container - handles overflow gracefully */
-.actionBarSourceAuthor {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0; /* Allow shrinking */
-  flex-shrink: 1;
-  overflow: hidden;
-}
-
-/* Source link (e.g., r/subreddit) - shrinks second priority */
+/* Source link (e.g., r/subreddit, @username) */
 .actionBarSource {
   color: var(--color-text-secondary);
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 40px;
-  flex-shrink: 1;
+  max-width: 150px;
 }
 
 .actionBarSource:hover {
   color: var(--color-primary);
-}
-
-/* Author - shrinks first priority (lower min-width) */
-.actionBarAuthor {
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 20px;
-  flex-shrink: 2; /* Shrinks before source */
 }
 
 /* AI Score badge in action bar */
