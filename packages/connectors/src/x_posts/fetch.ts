@@ -404,6 +404,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           vendor: config.vendor,
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
+          assistant_parse_error: result.assistantParseError ?? false,
           maxSearchCallsPerRun,
           // Batching experiment metadata
           batch_mode: batchMode,

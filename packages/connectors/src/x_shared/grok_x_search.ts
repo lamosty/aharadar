@@ -43,6 +43,8 @@ export interface GrokXSearchResult {
    * When present, callers can inspect `results`/`error` without re-parsing.
    */
   assistantJson?: Record<string, unknown>;
+  /** True if assistant text existed but JSON parsing failed. */
+  assistantParseError?: boolean;
   structuredError?: { code: string; message: string | null };
 }
 
@@ -137,12 +139,42 @@ function tryParseJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
-function extractStructuredErrorCode(
-  response: unknown,
+function stripMarkdownFence(text: string): string {
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  return match ? (match[1]?.trim() ?? "") : text;
+}
+
+function extractBracketedChunk(text: string, open: string, close: string): string | null {
+  const start = text.indexOf(open);
+  const end = text.lastIndexOf(close);
+  if (start === -1 || end === -1 || end <= start) return null;
+  return text.slice(start, end + 1);
+}
+
+function parseAssistantJsonFromText(text: string): Record<string, unknown> | null {
+  const stripped = stripMarkdownFence(text).trim();
+  const direct = tryParseJsonObject(stripped);
+  if (direct) return direct;
+
+  const arrayChunk = extractBracketedChunk(stripped, "[", "]");
+  if (arrayChunk) {
+    const parsed = tryParseJsonObject(arrayChunk);
+    if (parsed) return parsed;
+  }
+
+  const objectChunk = extractBracketedChunk(stripped, "{", "}");
+  if (objectChunk) {
+    const parsed = tryParseJsonObject(objectChunk);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
+function extractStructuredErrorCodeFromText(
+  text: string,
 ): { code: string; message: string | null } | null {
-  const content = extractAssistantContent(response);
-  if (!content) return null;
-  const obj = tryParseJsonObject(content);
+  const obj = parseAssistantJsonFromText(text);
   if (!obj) return null;
   const err = obj.error;
   if (!err || typeof err !== "object" || Array.isArray(err)) return null;
@@ -150,12 +182,6 @@ function extractStructuredErrorCode(
   const message = (err as Record<string, unknown>).message;
   if (typeof code !== "string" || code.length === 0) return null;
   return { code, message: typeof message === "string" && message.length > 0 ? message : null };
-}
-
-function extractAssistantJson(response: unknown): Record<string, unknown> | null {
-  const content = extractAssistantContent(response);
-  if (!content) return null;
-  return tryParseJsonObject(content);
 }
 
 function responseSnippet(response: unknown): string | null {
@@ -379,8 +405,14 @@ Token safety (critical):
   }
 
   const usage = extractUsageTokens(response);
-  const assistantJson = extractAssistantJson(response) ?? undefined;
-  const structuredError = extractStructuredErrorCode(response) ?? undefined;
+  const assistantText = extractAssistantContent(response);
+  const assistantJson = assistantText
+    ? (parseAssistantJsonFromText(assistantText) ?? undefined)
+    : undefined;
+  const assistantParseError = !!assistantText && !assistantJson;
+  const structuredError = assistantText
+    ? (extractStructuredErrorCodeFromText(assistantText) ?? undefined)
+    : undefined;
   return {
     response,
     endpoint,
@@ -388,6 +420,7 @@ Token safety (critical):
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,
     assistantJson,
+    assistantParseError,
     structuredError,
   };
 }
