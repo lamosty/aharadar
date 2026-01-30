@@ -381,11 +381,13 @@ function FeedPageContent() {
     [data, clearFeedbackMutation],
   );
 
-  // Desktop undo handler - pops from history and clears feedback
+  // Desktop undo handler - pops from history, clears feedback, and expands the restored item
   const handleDesktopUndo = useCallback(async () => {
     if (desktopHistory.length === 0) return;
     const previousItem = desktopHistory[desktopHistory.length - 1];
     setDesktopHistory((prev) => prev.slice(0, -1));
+    // Expand the restored item so user can see it
+    setForceExpandedId(previousItem.id);
     await clearFeedbackMutation.mutateAsync({
       contentItemId: previousItem.id,
       digestId: previousItem.digestId,
@@ -674,7 +676,7 @@ function FeedPageContent() {
                 onClear={handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode}
-                forceExpanded={fastTriageMode && forceExpandedId === item.id}
+                forceExpanded={forceExpandedId === item.id}
                 fastTriageMode={fastTriageMode && forceExpandedId !== null}
                 onViewSummary={handleOpenReaderModal}
                 onSummaryGenerated={() => refetch()}
