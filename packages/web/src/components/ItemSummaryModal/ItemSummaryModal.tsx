@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import type { FeedItem, ManualSummaryOutput } from "@/lib/api";
+import { useBookmarkToggle, useIsBookmarked } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./ItemSummaryModal.module.css";
 
@@ -19,6 +20,10 @@ interface ItemSummaryModalProps {
   onFeedback?: (action: "like" | "dislike" | "skip") => Promise<void>;
   /** Current feedback state for the item */
   currentFeedback?: "like" | "dislike" | "skip" | null;
+  /** Called when user wants to undo last feedback */
+  onUndo?: () => void;
+  /** Whether undo is available */
+  canUndo?: boolean;
 }
 
 // Helper functions
@@ -84,9 +89,15 @@ export function ItemSummaryModal({
   hasNextWithSummary,
   onFeedback,
   currentFeedback,
+  onUndo,
+  canUndo,
 }: ItemSummaryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Bookmark state and mutation
+  const { data: isBookmarked } = useIsBookmarked(item?.id ?? null);
+  const bookmarkMutation = useBookmarkToggle();
 
   // Scroll body to top when item changes (navigating to next summary)
   useEffect(() => {
@@ -244,6 +255,28 @@ export function ItemSummaryModal({
             onFeedback={onFeedback}
             variant="default"
           />
+          {canUndo && (
+            <button
+              type="button"
+              className={styles.actionButton}
+              onClick={onUndo}
+              aria-label={t("feed.undo")}
+              title={t("feed.undo")}
+            >
+              <UndoIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className={`${styles.actionButton} ${isBookmarked ? styles.actionButtonActive : ""}`}
+            onClick={() => item && bookmarkMutation.mutate(item.id)}
+            aria-label={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
+            aria-pressed={isBookmarked}
+            title={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
+            disabled={bookmarkMutation.isPending}
+          >
+            <BookmarkIcon filled={isBookmarked} />
+          </button>
         </div>
       </div>
     </div>
@@ -283,6 +316,41 @@ function ExternalLinkIcon() {
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 14l-4-4 4-4" />
+      <path d="M5 10h9a5 5 0 1 1 0 10h-1" />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled }: { filled?: boolean }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }

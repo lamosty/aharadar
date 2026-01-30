@@ -6,7 +6,7 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { WhyShown } from "@/components/WhyShown";
 import { ApiError, type FeedItem as FeedItemType, type ManualSummaryOutput } from "@/lib/api";
-import { useItemSummary } from "@/lib/hooks";
+import { useBookmarkToggle, useIsBookmarked, useItemSummary } from "@/lib/hooks";
 import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
@@ -42,6 +42,10 @@ interface FeedItemProps {
   onClose?: () => void;
   /** Called on mobile when item is tapped (opens full-screen modal) */
   onMobileClick?: () => void;
+  /** Called when user wants to undo last feedback (desktop only) */
+  onUndo?: () => void;
+  /** Whether undo is available (desktop only) */
+  canUndo?: boolean;
 }
 
 interface DisplayDate {
@@ -336,9 +340,15 @@ export function FeedItem({
   onNext,
   onClose,
   onMobileClick,
+  onUndo,
+  canUndo,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { addToast } = useToast();
+
+  // Bookmark state and mutation
+  const { data: isBookmarked } = useIsBookmarked(item.id);
+  const bookmarkMutation = useBookmarkToggle();
 
   // Inline summary state - for paste input
   const [pastedText, setPastedText] = useState("");
@@ -576,6 +586,42 @@ export function FeedItem({
 
         {/* Floating detail panel - appears on hover, doesn't shift layout */}
         <div className={styles.detailPanel}>
+          {/* Fixed action bar (top-right) - desktop only */}
+          <div className={styles.detailPanelActions}>
+            <FeedbackButtons
+              contentItemId={item.id}
+              digestId={item.digestId}
+              currentFeedback={item.feedback}
+              onFeedback={handleFeedback}
+              onClear={handleClear}
+              variant="compact"
+            />
+            {canUndo && (
+              <Tooltip content={t("feed.undo")}>
+                <button
+                  type="button"
+                  className={styles.actionIconButton}
+                  onClick={onUndo}
+                  aria-label={t("feed.undo")}
+                >
+                  <UndoIcon />
+                </button>
+              </Tooltip>
+            )}
+            <Tooltip content={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}>
+              <button
+                type="button"
+                className={`${styles.actionIconButton} ${isBookmarked ? styles.actionIconButtonActive : ""}`}
+                onClick={() => bookmarkMutation.mutate(item.id)}
+                aria-label={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
+                aria-pressed={isBookmarked}
+                disabled={bookmarkMutation.isPending}
+              >
+                <BookmarkIcon filled={isBookmarked} />
+              </button>
+            </Tooltip>
+          </div>
+
           {/* Mobile header buttons - only visible on mobile */}
           <div className={styles.detailPanelHeader}>
             {primaryLinkUrl && (
@@ -640,16 +686,8 @@ export function FeedItem({
             )}
           </div>
 
-          {/* Actions row - feedback buttons + paste input OR view button */}
+          {/* Actions row - paste input OR view button (feedback buttons moved to fixed action bar) */}
           <div className={styles.detailActions}>
-            <FeedbackButtons
-              contentItemId={item.id}
-              digestId={item.digestId}
-              currentFeedback={item.feedback}
-              onFeedback={handleFeedback}
-              onClear={handleClear}
-              variant="compact"
-            />
             {/* Inline: paste input if no summary, or View button if summary exists */}
             {summary ? (
               <button
@@ -948,6 +986,43 @@ function ExternalLinkIcon() {
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 14l-4-4 4-4" />
+      <path d="M5 10h9a5 5 0 1 1 0 10h-1" />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled }: { filled?: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }

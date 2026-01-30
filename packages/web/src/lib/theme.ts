@@ -17,7 +17,7 @@ export const LAYOUTS: Layout[] = ["condensed", "reader", "timeline"];
 
 export const DEFAULT_THEME: Theme = "professional";
 export const DEFAULT_COLOR_MODE: ColorMode = "system";
-export const DEFAULT_LAYOUT: Layout = "reader";
+export const DEFAULT_LAYOUT: Layout = "condensed";
 
 const STORAGE_KEY_THEME = "aharadar-theme";
 const STORAGE_KEY_MODE = "aharadar-color-mode";

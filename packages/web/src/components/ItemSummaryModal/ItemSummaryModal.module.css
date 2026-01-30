@@ -224,6 +224,42 @@
   background: var(--color-surface);
 }
 
+/* Action buttons (undo, bookmark) */
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionButtonActive {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.actionButtonActive:hover:not(:disabled) {
+  color: var(--color-primary);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .overlay {

@@ -88,6 +88,9 @@ function FeedPageContent() {
   const [forceExpandedId, setForceExpandedId] = useState<string | null>(null);
   const hoverClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Desktop undo history - tracks items after feedback for undo
+  const [desktopHistory, setDesktopHistory] = useState<FeedItemType[]>([]);
+
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
 
@@ -340,6 +343,11 @@ function FeedPageContent() {
       const item = items.find((i) => i.id === contentItemId);
       const currentIndex = items.findIndex((i) => i.id === contentItemId);
 
+      // Track in desktop history for undo (only on desktop, not mobile)
+      if (item && !isMobile) {
+        setDesktopHistory((prev) => [...prev, item]);
+      }
+
       await feedbackMutation.mutateAsync({
         contentItemId,
         digestId: item?.digestId,
@@ -360,7 +368,7 @@ function FeedPageContent() {
         }
       }
     },
-    [data, feedbackMutation, fastTriageMode, view],
+    [data, feedbackMutation, fastTriageMode, view, isMobile],
   );
 
   const handleClearFeedback = useCallback(
@@ -373,6 +381,17 @@ function FeedPageContent() {
     },
     [data, clearFeedbackMutation],
   );
+
+  // Desktop undo handler - pops from history and clears feedback
+  const handleDesktopUndo = useCallback(async () => {
+    if (desktopHistory.length === 0) return;
+    const previousItem = desktopHistory[desktopHistory.length - 1];
+    setDesktopHistory((prev) => prev.slice(0, -1));
+    await clearFeedbackMutation.mutateAsync({
+      contentItemId: previousItem.id,
+      digestId: previousItem.digestId,
+    });
+  }, [desktopHistory, clearFeedbackMutation]);
 
   // Mobile modal handlers
   const handleMobileItemClick = useCallback((item: FeedItemType) => {
@@ -675,6 +694,8 @@ function FeedPageContent() {
                 onClose={() => setForceExpandedId(null)}
                 sort={sort}
                 onMobileClick={isMobile ? () => handleMobileItemClick(item) : undefined}
+                onUndo={!isMobile ? handleDesktopUndo : undefined}
+                canUndo={!isMobile && desktopHistory.length > 0}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand
@@ -746,6 +767,8 @@ function FeedPageContent() {
             setSummaryModalSummary(null);
           }
         }}
+        onUndo={!isMobile ? handleDesktopUndo : undefined}
+        canUndo={!isMobile && desktopHistory.length > 0}
       />
 
       {/* Inbox Summary Modal */}

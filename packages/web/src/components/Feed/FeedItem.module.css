@@ -1000,6 +1000,7 @@
   right: 0;
   z-index: 50;
   padding: var(--space-3) var(--space-4);
+  padding-top: var(--space-10); /* Extra padding for fixed action bar */
   background: var(--color-surface-elevated);
   border-bottom: 1px solid var(--color-border-subtle);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -1010,6 +1011,53 @@
     opacity 0.15s ease,
     transform 0.15s ease,
     visibility 0.15s;
+}
+
+/* Fixed action bar - positioned top-right of detail panel */
+.detailPanelActions {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  z-index: 10;
+}
+
+/* Icon buttons for action bar */
+.actionIconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionIconButton:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.actionIconButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionIconButtonActive {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.actionIconButtonActive:hover:not(:disabled) {
+  color: var(--color-primary);
 }
 
 .scanItem:hover .detailPanel {
@@ -1232,6 +1280,11 @@
   .scanTitleLink {
     pointer-events: none;
     color: inherit;
+  }
+
+  /* Hide fixed action bar on mobile - swipe is used instead */
+  .detailPanelActions {
+    display: none;
   }
 
   /* On mobile, show detail panel on tap instead of hover */
