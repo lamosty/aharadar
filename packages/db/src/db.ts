@@ -13,6 +13,7 @@ import { createDigestsRepo } from "./repos/digests";
 import { createEmbeddingsRepo } from "./repos/embeddings";
 import { createFeedbackEventsRepo } from "./repos/feedback_events";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
+import { createIngestionHealthRepo } from "./repos/ingestion_health";
 import { createItemSummariesRepo } from "./repos/item_summaries";
 import { createLlmSettingsRepo } from "./repos/llm_settings";
 import { createProviderCallsRepo } from "./repos/provider_calls";
@@ -57,6 +58,7 @@ export type DbContext = Queryable & {
   aggregateSummaries: ReturnType<typeof createAggregateSummariesRepo>;
   bookmarks: ReturnType<typeof createBookmarksRepo>;
   catchupPacks: ReturnType<typeof createCatchupPacksRepo>;
+  ingestionHealth: ReturnType<typeof createIngestionHealthRepo>;
 };
 
 export interface Db extends DbContext {
@@ -91,6 +93,7 @@ function createContext(db: Queryable): DbContext {
     aggregateSummaries: createAggregateSummariesRepo(db),
     bookmarks: createBookmarksRepo(db),
     catchupPacks: createCatchupPacksRepo(db),
+    ingestionHealth: createIngestionHealthRepo(db),
   };
 }
 

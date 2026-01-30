@@ -69,11 +69,17 @@ import {
   type FeedbackRequest,
   type FeedbackResponse,
   type FeedbackSummaryResponse,
+  type FetchRunsLogResponse,
   getAdminAbtest,
   getAdminAbtests,
   getAdminBudgets,
   getAdminLlmQuota,
   getAdminLlmSettings,
+  getAdminLogsFetchRuns,
+  getAdminLogsHandleHealth,
+  getAdminLogsProviderCallErrors,
+  getAdminLogsProviderCalls,
+  getAdminLogsSourceHealth,
   getAdminSources,
   getAggregateSummary as getAggregateSummaryApi,
   getBookmarks,
@@ -98,6 +104,7 @@ import {
   getTopic,
   getTopics,
   getXAccountPolicies,
+  type HandleHealthResponse,
   type HealthResponse,
   type ItemDetailResponse,
   type ItemSummaryRequest,
@@ -116,6 +123,8 @@ import {
   type PreferencesGetResponse,
   type PreferencesMarkCheckedResponse,
   type PreferencesUpdateResponse,
+  type ProviderCallErrorsResponse,
+  type ProviderCallsLogResponse,
   patchAdminLlmSettings,
   patchAdminSource,
   patchPreferences,
@@ -139,6 +148,7 @@ import {
   type SourceCreateRequest,
   type SourceCreateResponse,
   type SourceDeleteResponse,
+  type SourceHealthResponse,
   type SourcePatchRequest,
   type SourcePatchResponse,
   type SourcesListResponse,
@@ -1971,4 +1981,56 @@ export function useCatchupView({ topicId }: UseCatchupViewOptions): UseCatchupVi
     deletePack,
     showGenerationPanel,
   };
+}
+
+// ============================================================================
+// Admin Logs Hooks
+// ============================================================================
+
+export function useAdminLogsProviderCalls(params?: {
+  limit?: number;
+  offset?: number;
+  purpose?: string;
+  status?: string;
+  sourceId?: string;
+  hoursAgo?: number;
+}) {
+  return useQuery({
+    queryKey: ["admin", "logs", "provider-calls", params],
+    queryFn: ({ signal }) => getAdminLogsProviderCalls(params, signal),
+  });
+}
+
+export function useAdminLogsProviderCallErrors(params?: { hoursAgo?: number }) {
+  return useQuery({
+    queryKey: ["admin", "logs", "provider-calls", "errors", params],
+    queryFn: ({ signal }) => getAdminLogsProviderCallErrors(params, signal),
+  });
+}
+
+export function useAdminLogsFetchRuns(params?: {
+  limit?: number;
+  offset?: number;
+  sourceId?: string;
+  status?: string;
+  hoursAgo?: number;
+}) {
+  return useQuery({
+    queryKey: ["admin", "logs", "fetch-runs", params],
+    queryFn: ({ signal }) => getAdminLogsFetchRuns(params, signal),
+  });
+}
+
+export function useAdminLogsSourceHealth() {
+  return useQuery({
+    queryKey: ["admin", "logs", "ingestion", "sources"],
+    queryFn: ({ signal }) => getAdminLogsSourceHealth(signal),
+  });
+}
+
+export function useAdminLogsHandleHealth(params?: { sourceId?: string }) {
+  return useQuery({
+    queryKey: ["admin", "logs", "ingestion", "handles", params],
+    queryFn: ({ signal }) => getAdminLogsHandleHealth(params, signal),
+  });
 }

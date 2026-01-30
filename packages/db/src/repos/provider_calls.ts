@@ -30,6 +30,42 @@ export interface DailyUsage {
   callCount: number;
 }
 
+export interface ProviderCallListItem {
+  id: string;
+  purpose: string;
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  status: string;
+  error: Record<string, unknown> | null;
+  meta: Record<string, unknown>;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
+export interface ProviderCallListRecentParams {
+  userId: string;
+  limit?: number;
+  offset?: number;
+  purpose?: string;
+  status?: string;
+  sourceId?: string;
+  hoursAgo?: number;
+}
+
+export interface ErrorSummaryItem {
+  purpose: string;
+  errorCount: number;
+  totalCount: number;
+}
+
+export interface ProviderCallErrorSummaryParams {
+  userId: string;
+  hoursAgo?: number;
+}
+
 export function createProviderCallsRepo(db: Queryable) {
   return {
     async insert(draft: ProviderCallDraft): Promise<{ id: string }> {
@@ -236,6 +272,118 @@ export function createProviderCallsRepo(db: Queryable) {
         totalUsd: parseFloat(row?.totalUsd ?? "0"),
         callCount: parseInt(row?.callCount ?? "0", 10),
       };
+    },
+
+    /**
+     * List recent provider calls with filtering.
+     * For admin logs page.
+     */
+    async listRecent(params: ProviderCallListRecentParams): Promise<ProviderCallListItem[]> {
+      const { userId, limit = 100, offset = 0, purpose, status, sourceId, hoursAgo = 24 } = params;
+
+      const conditions: string[] = ["user_id = $1", "started_at >= NOW() - $2 * INTERVAL '1 hour'"];
+      const values: unknown[] = [userId, hoursAgo];
+      let paramIndex = 3;
+
+      if (purpose) {
+        conditions.push(`purpose = $${paramIndex}`);
+        values.push(purpose);
+        paramIndex++;
+      }
+
+      if (status) {
+        conditions.push(`status = $${paramIndex}`);
+        values.push(status);
+        paramIndex++;
+      }
+
+      if (sourceId) {
+        conditions.push(`meta_json->>'sourceId' = $${paramIndex}`);
+        values.push(sourceId);
+        paramIndex++;
+      }
+
+      values.push(limit, offset);
+
+      const result = await db.query<{
+        id: string;
+        purpose: string;
+        provider: string;
+        model: string;
+        inputTokens: string;
+        outputTokens: string;
+        costUsd: string;
+        status: string;
+        error: Record<string, unknown> | null;
+        meta: Record<string, unknown>;
+        startedAt: Date;
+        endedAt: Date | null;
+      }>(
+        `SELECT
+           id,
+           purpose,
+           provider,
+           model,
+           input_tokens as "inputTokens",
+           output_tokens as "outputTokens",
+           COALESCE(cost_estimate_usd, 0) as "costUsd",
+           status,
+           error_json as error,
+           meta_json as meta,
+           started_at as "startedAt",
+           ended_at as "endedAt"
+         FROM provider_calls
+         WHERE ${conditions.join(" AND ")}
+         ORDER BY started_at DESC
+         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        values,
+      );
+
+      return result.rows.map((r) => ({
+        id: r.id,
+        purpose: r.purpose,
+        provider: r.provider,
+        model: r.model,
+        inputTokens: parseInt(r.inputTokens, 10),
+        outputTokens: parseInt(r.outputTokens, 10),
+        costUsd: parseFloat(r.costUsd),
+        status: r.status,
+        error: r.error,
+        meta: r.meta,
+        startedAt: r.startedAt,
+        endedAt: r.endedAt,
+      }));
+    },
+
+    /**
+     * Get error count by purpose.
+     * For admin error summary.
+     */
+    async getErrorSummary(params: ProviderCallErrorSummaryParams): Promise<ErrorSummaryItem[]> {
+      const { userId, hoursAgo = 24 } = params;
+
+      const result = await db.query<{
+        purpose: string;
+        errorCount: string;
+        totalCount: string;
+      }>(
+        `SELECT
+           purpose,
+           COUNT(*) FILTER (WHERE status = 'error') as "errorCount",
+           COUNT(*) as "totalCount"
+         FROM provider_calls
+         WHERE user_id = $1 AND started_at >= NOW() - $2 * INTERVAL '1 hour'
+         GROUP BY purpose
+         HAVING COUNT(*) FILTER (WHERE status = 'error') > 0
+         ORDER BY "errorCount" DESC`,
+        [userId, hoursAgo],
+      );
+
+      return result.rows.map((r) => ({
+        purpose: r.purpose,
+        errorCount: parseInt(r.errorCount, 10),
+        totalCount: parseInt(r.totalCount, 10),
+      }));
     },
   };
 }

@@ -2,6 +2,27 @@ import type { Queryable } from "../db";
 
 export type FetchRunStatus = "ok" | "partial" | "error";
 
+export interface FetchRunWithSource {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  status: FetchRunStatus;
+  startedAt: string;
+  endedAt: string | null;
+  counts: Record<string, unknown>;
+  error: Record<string, unknown> | null;
+}
+
+export interface ListRecentFetchRunsParams {
+  userId: string;
+  limit?: number;
+  offset?: number;
+  sourceId?: string;
+  status?: string;
+  hoursAgo?: number;
+}
+
 export interface FetchRunRow {
   id: string;
   source_id: string;
@@ -44,6 +65,51 @@ export function createFetchRunsRepo(db: Queryable) {
           params.error ? JSON.stringify(params.error) : null,
         ],
       );
+    },
+
+    async listRecent(params: ListRecentFetchRunsParams): Promise<FetchRunWithSource[]> {
+      const limit = params.limit ?? 50;
+      const offset = params.offset ?? 0;
+      const hoursAgo = params.hoursAgo ?? 48;
+
+      const conditions: string[] = ["s.user_id = $1", "fr.started_at > now() - $2::interval"];
+      const values: unknown[] = [params.userId, `${hoursAgo} hours`];
+      let paramIndex = 3;
+
+      if (params.sourceId) {
+        conditions.push(`fr.source_id = $${paramIndex}`);
+        values.push(params.sourceId);
+        paramIndex++;
+      }
+
+      if (params.status) {
+        conditions.push(`fr.status = $${paramIndex}`);
+        values.push(params.status);
+        paramIndex++;
+      }
+
+      values.push(limit, offset);
+
+      const sql = `
+        select
+          fr.id,
+          fr.source_id as "sourceId",
+          s.name as "sourceName",
+          s.type as "sourceType",
+          fr.status,
+          fr.started_at as "startedAt",
+          fr.ended_at as "endedAt",
+          fr.counts_json as "counts",
+          fr.error_json as "error"
+        from fetch_runs fr
+        join sources s on s.id = fr.source_id
+        where ${conditions.join(" and ")}
+        order by fr.started_at desc
+        limit $${paramIndex} offset $${paramIndex + 1}
+      `;
+
+      const res = await db.query<FetchRunWithSource>(sql, values);
+      return res.rows;
     },
   };
 }

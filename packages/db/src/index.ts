@@ -11,6 +11,7 @@ export * from "./repos/digests";
 export * from "./repos/embeddings";
 export * from "./repos/feedback_events";
 export * from "./repos/fetch_runs";
+export * from "./repos/ingestion_health";
 export * from "./repos/item_summaries";
 export * from "./repos/llm_settings";
 export * from "./repos/provider_calls";

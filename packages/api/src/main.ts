@@ -9,6 +9,7 @@ import { sessionAuth } from "./auth/session.js";
 import { closePipelineQueue } from "./lib/queue.js";
 import { registerMetricsHooks } from "./metrics.js";
 import { adminRoutes } from "./routes/admin.js";
+import { adminLogsRoutes } from "./routes/admin_logs.js";
 import { askRoutes } from "./routes/ask.js";
 import { authRoutes } from "./routes/auth.js";
 import { bookmarksRoutes } from "./routes/bookmarks.js";
@@ -106,6 +107,7 @@ async function buildServer() {
         apiKeyAuth(request, reply, () => {});
       });
       await api.register(adminRoutes);
+      await api.register(adminLogsRoutes);
       await api.register(askRoutes);
       await api.register(bookmarksRoutes);
       await api.register(catchupPacksRoutes);

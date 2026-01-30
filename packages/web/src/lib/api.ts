@@ -2287,3 +2287,197 @@ export async function getBulkBookmarkStatus(
     signal,
   });
 }
+
+// ============================================================================
+// Admin Logs API
+// ============================================================================
+
+/** Provider call from logs */
+export interface ProviderCallLogItem {
+  id: string;
+  purpose: string;
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  status: string;
+  error: Record<string, unknown> | null;
+  meta: Record<string, unknown>;
+  startedAt: string;
+  endedAt: string | null;
+}
+
+/** Provider calls log response */
+export interface ProviderCallsLogResponse {
+  ok: true;
+  calls: ProviderCallLogItem[];
+}
+
+/** Provider call error summary */
+export interface ProviderCallErrorSummary {
+  purpose: string;
+  errorCount: number;
+  totalCount: number;
+}
+
+/** Provider call errors response */
+export interface ProviderCallErrorsResponse {
+  ok: true;
+  errors: ProviderCallErrorSummary[];
+}
+
+/** Fetch run from logs */
+export interface FetchRunLogItem {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  status: string;
+  startedAt: string;
+  endedAt: string | null;
+  counts: Record<string, unknown>;
+  error: Record<string, unknown> | null;
+}
+
+/** Fetch runs log response */
+export interface FetchRunsLogResponse {
+  ok: true;
+  runs: FetchRunLogItem[];
+}
+
+/** Source health item */
+export interface SourceHealthItem {
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  totalItems: number;
+  itemsLast24h: number;
+  itemsLast7d: number;
+  lastFetchedAt: string | null;
+  isEnabled: boolean;
+}
+
+/** Source health response */
+export interface SourceHealthResponse {
+  ok: true;
+  sources: SourceHealthItem[];
+}
+
+/** Handle health item */
+export interface HandleHealthItem {
+  handle: string;
+  sourceId: string;
+  sourceName: string;
+  totalItems: number;
+  itemsLast7d: number;
+  lastFetchedAt: string | null;
+  lastPostDate: string | null;
+}
+
+/** Handle health response */
+export interface HandleHealthResponse {
+  ok: true;
+  handles: HandleHealthItem[];
+}
+
+/**
+ * Get provider call logs with optional filters.
+ */
+export async function getAdminLogsProviderCalls(
+  params?: {
+    limit?: number;
+    offset?: number;
+    purpose?: string;
+    status?: string;
+    sourceId?: string;
+    hoursAgo?: number;
+  },
+  signal?: AbortSignal,
+): Promise<ProviderCallsLogResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+  if (params?.purpose) searchParams.set("purpose", params.purpose);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.sourceId) searchParams.set("sourceId", params.sourceId);
+  if (params?.hoursAgo !== undefined) searchParams.set("hoursAgo", String(params.hoursAgo));
+
+  const query = searchParams.toString();
+  const path = query ? `/admin/logs/provider-calls?${query}` : "/admin/logs/provider-calls";
+
+  return apiFetch<ProviderCallsLogResponse>(path, { signal });
+}
+
+/**
+ * Get provider call error summaries by purpose.
+ */
+export async function getAdminLogsProviderCallErrors(
+  params?: {
+    hoursAgo?: number;
+  },
+  signal?: AbortSignal,
+): Promise<ProviderCallErrorsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.hoursAgo !== undefined) searchParams.set("hoursAgo", String(params.hoursAgo));
+
+  const query = searchParams.toString();
+  const path = query
+    ? `/admin/logs/provider-calls/errors?${query}`
+    : "/admin/logs/provider-calls/errors";
+
+  return apiFetch<ProviderCallErrorsResponse>(path, { signal });
+}
+
+/**
+ * Get fetch run logs with optional filters.
+ */
+export async function getAdminLogsFetchRuns(
+  params?: {
+    limit?: number;
+    offset?: number;
+    sourceId?: string;
+    status?: string;
+    hoursAgo?: number;
+  },
+  signal?: AbortSignal,
+): Promise<FetchRunsLogResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+  if (params?.sourceId) searchParams.set("sourceId", params.sourceId);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.hoursAgo !== undefined) searchParams.set("hoursAgo", String(params.hoursAgo));
+
+  const query = searchParams.toString();
+  const path = query ? `/admin/logs/fetch-runs?${query}` : "/admin/logs/fetch-runs";
+
+  return apiFetch<FetchRunsLogResponse>(path, { signal });
+}
+
+/**
+ * Get source health metrics.
+ */
+export async function getAdminLogsSourceHealth(
+  signal?: AbortSignal,
+): Promise<SourceHealthResponse> {
+  return apiFetch<SourceHealthResponse>("/admin/logs/ingestion/sources", { signal });
+}
+
+/**
+ * Get handle health metrics for X posts sources.
+ */
+export async function getAdminLogsHandleHealth(
+  params?: {
+    sourceId?: string;
+  },
+  signal?: AbortSignal,
+): Promise<HandleHealthResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.sourceId) searchParams.set("sourceId", params.sourceId);
+
+  const query = searchParams.toString();
+  const path = query ? `/admin/logs/ingestion/handles?${query}` : "/admin/logs/ingestion/handles";
+
+  return apiFetch<HandleHealthResponse>(path, { signal });
+}
