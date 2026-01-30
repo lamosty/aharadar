@@ -329,7 +329,7 @@ export function FeedItem({
   item,
   onFeedback,
   onClear,
-  layout = "reader",
+  layout = "condensed",
   showTopicBadge = false,
   forceExpanded = false,
   onHover,
@@ -513,81 +513,82 @@ export function FeedItem({
     item.item.author,
   );
 
-  // For condensed layout, render clean scannable row with floating detail panel on hover
-  if (layout === "condensed") {
-    return (
-      <article
-        id={`feed-item-${item.id}`}
-        className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
-        data-testid={`feed-item-${item.id}`}
-        data-feed-item
-        onMouseEnter={onHover}
-      >
-        {/* Main row: title + trailing meta - tap to expand on mobile */}
-        <div className={styles.scanRow} onClick={toggleExpanded}>
-          {/* Topic badge if showing all topics */}
-          {showTopicBadge && item.topicName && (
-            <span className={styles.scanTopicBadge}>{item.topicName}</span>
-          )}
-          {isRead && <span className={styles.readBadge}>{t("feed.readBadge")}</span>}
+  // Condensed layout: clean scannable row with floating detail panel on hover
+  return (
+    <article
+      id={`feed-item-${item.id}`}
+      className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
+      data-testid={`feed-item-${item.id}`}
+      data-feed-item
+      onMouseEnter={onHover}
+    >
+      {/* Main row: title + trailing meta - tap to expand on mobile */}
+      <div className={styles.scanRow} onClick={toggleExpanded}>
+        {/* Topic badge if showing all topics */}
+        {showTopicBadge && item.topicName && (
+          <span className={styles.scanTopicBadge}>{item.topicName}</span>
+        )}
+        {isRead && <span className={styles.readBadge}>{t("feed.readBadge")}</span>}
 
-          {/* AI summary ready indicator - before title */}
-          {summary && (
-            <Tooltip content={t("feed.summaryReady")}>
-              <button
-                type="button"
-                className={styles.summaryReadyBadge}
-                onClick={() => onViewSummary?.(item, summary)}
-              >
-                AI
-              </button>
-            </Tooltip>
-          )}
-
-          {/* Title */}
-          <span className={styles.scanTitle}>
-            {primaryLinkUrl ? (
-              <a
-                href={primaryLinkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.scanTitleLink}
-              >
-                {getDisplayTitle(item)}
-              </a>
-            ) : (
-              getDisplayTitle(item)
-            )}
-          </span>
-
-          {/* Trailing metadata */}
-          <span className={styles.scanMeta}>
-            {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
-            <Tooltip
-              content={
-                <ScoreDebugTooltip
-                  isTrendingSort={isTrendingSort}
-                  triageJson={item.triageJson as TriageFeatures | undefined}
-                  displayScore={displayScore}
-                />
-              }
+        {/* AI summary ready indicator - before title */}
+        {summary && (
+          <Tooltip content={t("feed.summaryReady")}>
+            <button
+              type="button"
+              className={styles.summaryReadyBadge}
+              onClick={() => onViewSummary?.(item, summary)}
             >
-              <span className={styles.scanScore}>{scorePercent}</span>
-            </Tooltip>
-            <time className={styles.scanTime}>
-              {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
-            </time>
-            <span className={styles.scanSourceLabel}>{formatSourceType(item.item.sourceType)}</span>
-          </span>
-        </div>
+              AI
+            </button>
+          </Tooltip>
+        )}
 
-        {/* Backdrop for mobile - tap to close */}
-        <div className={styles.detailPanelBackdrop} onClick={closePanel} aria-hidden="true" />
+        {/* Title */}
+        <span className={styles.scanTitle}>
+          {primaryLinkUrl ? (
+            <a
+              href={primaryLinkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.scanTitleLink}
+            >
+              {getDisplayTitle(item)}
+            </a>
+          ) : (
+            getDisplayTitle(item)
+          )}
+        </span>
 
-        {/* Floating detail panel - appears on hover, doesn't shift layout */}
-        <div className={styles.detailPanel}>
-          {/* Fixed action bar (top-left) - desktop only */}
-          <div className={styles.detailPanelActions}>
+        {/* Trailing metadata */}
+        <span className={styles.scanMeta}>
+          {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
+          <Tooltip
+            content={
+              <ScoreDebugTooltip
+                isTrendingSort={isTrendingSort}
+                triageJson={item.triageJson as TriageFeatures | undefined}
+                displayScore={displayScore}
+              />
+            }
+          >
+            <span className={styles.scanScore}>{scorePercent}</span>
+          </Tooltip>
+          <time className={styles.scanTime}>
+            {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
+          </time>
+          <span className={styles.scanSourceLabel}>{formatSourceType(item.item.sourceType)}</span>
+        </span>
+      </div>
+
+      {/* Backdrop for mobile - tap to close */}
+      <div className={styles.detailPanelBackdrop} onClick={closePanel} aria-hidden="true" />
+
+      {/* Floating detail panel - appears on hover, doesn't shift layout */}
+      <div className={styles.detailPanel}>
+        {/* Action bar - desktop only */}
+        <div className={styles.detailPanelActions}>
+          {/* Primary actions: feedback + undo */}
+          <div className={styles.actionGroup}>
             <FeedbackButtons
               contentItemId={item.id}
               digestId={item.digestId}
@@ -608,6 +609,10 @@ export function FeedItem({
                 </button>
               </Tooltip>
             )}
+          </div>
+
+          {/* Secondary actions: bookmark, summary, comments */}
+          <div className={styles.actionGroup}>
             <Tooltip content={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}>
               <button
                 type="button"
@@ -645,271 +650,101 @@ export function FeedItem({
                 )}
               </>
             )}
-            {/* Metadata inline in action bar */}
-            <span className={styles.actionBarMeta}>
-              {author && <span className={styles.detailAuthor}>{author}</span>}
-              {secondaryInfo?.text && (
-                <>
-                  {author && <span className={styles.detailSep}>·</span>}
-                  <span>{secondaryInfo.text}</span>
-                </>
-              )}
-              {secondaryInfo?.commentsLink && (
-                <>
-                  <span className={styles.detailSep}>·</span>
-                  <a
-                    href={secondaryInfo.commentsLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.detailCommentsLink}
-                  >
-                    <CommentIcon size={12} />
-                    <span>{secondaryInfo.commentCount}</span>
-                  </a>
-                </>
-              )}
-            </span>
-          </div>
-
-          {/* Mobile header buttons - only visible on mobile */}
-          <div className={styles.detailPanelHeader}>
-            {primaryLinkUrl && (
-              <a
-                href={primaryLinkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.detailPanelOpenLink}
-                aria-label="Open article"
-              >
-                <ExternalLinkIcon />
-                <span>Open</span>
-              </a>
+            {/* Comments link as button */}
+            {secondaryInfo?.commentsLink && (
+              <Tooltip content={`${secondaryInfo.commentCount ?? 0} comments`}>
+                <a
+                  href={secondaryInfo.commentsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.actionIconButton}
+                >
+                  <CommentIcon size={14} />
+                  {secondaryInfo.commentCount != null && secondaryInfo.commentCount > 0 && (
+                    <span className={styles.commentCount}>{secondaryInfo.commentCount}</span>
+                  )}
+                </a>
+              </Tooltip>
             )}
-            <button
-              type="button"
-              className={styles.detailPanelClose}
-              onClick={closePanel}
-              aria-label="Close"
-            >
-              <CloseIcon />
-            </button>
           </div>
 
-          {/* Body text - shows full/expanded content, clickable to open the same link as title */}
-          {expandedBodyText &&
-            (primaryLinkUrl ? (
-              <a
-                href={primaryLinkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.detailPreviewLink}
-              >
-                {expandedBodyText}
-              </a>
-            ) : (
-              <p className={styles.detailPreview}>{expandedBodyText}</p>
-            ))}
-
-          {summaryError && <p className={styles.detailError}>{summaryError}</p>}
-
-          {/* Large text confirmation banner */}
-          {pendingLargeText && (
-            <div className={styles.largeTextConfirm}>
-              <span className={styles.largeTextInfo}>
-                {Math.round(pendingLargeText.length / 1000)}k chars (~
-                {Math.round(pendingLargeText.length / 4000)}k tokens) - costs more
-              </span>
-              <button type="button" className={styles.confirmBtn} onClick={handleConfirmLargeText}>
-                {t("common.confirm")}
-              </button>
-              <button type="button" className={styles.cancelBtn} onClick={handleCancelLargeText}>
-                {t("common.cancel")}
-              </button>
-            </div>
-          )}
-
-          {/* WhyShown */}
-          <div className={styles.detailWhyShown}>
-            <WhyShown
-              features={item.triageJson as TriageFeatures | undefined}
-              clusterItems={item.clusterItems}
-              compact={true}
-            />
-          </div>
-        </div>
-      </article>
-    );
-  }
-
-  // Default: reader/timeline layout (card-based)
-  return (
-    <article
-      id={`feed-item-${item.id}`}
-      className={styles.card}
-      data-testid={`feed-item-${item.id}`}
-      data-feed-item
-    >
-      <div className={styles.header}>
-        {/* Left section: badges + source + meta + actions */}
-        <div className={styles.headerLeft}>
-          {/* Top badges row: topic + new + restricted */}
-          {(showTopicBadge && item.topicName) || item.isNew || isRestricted ? (
-            <div className={styles.headerBadges}>
-              {showTopicBadge && item.topicName && (
-                <span className={styles.topicBadge}>{item.topicName}</span>
-              )}
-              {item.isNew && <span className={styles.newBadge}>{t("digests.feed.newBadge")}</span>}
-              {isRestricted && <span className={styles.restrictedBadge}>Restricted</span>}
-              {isRead && <span className={styles.readBadge}>{t("feed.readBadge")}</span>}
-            </div>
-          ) : null}
-
-          {/* Two-line source section */}
-          <SourceSection
-            sourceType={item.item.sourceType}
-            sourceId={item.item.sourceId}
-            metadata={item.item.metadata}
-            externalId={item.item.externalId}
-            author={item.item.author}
-          />
-
-          {/* Meta: author, date */}
-          <span className={styles.meta}>
-            {author && <span className={styles.author}>{author}</span>}
-            {author && <span className={styles.separator}>·</span>}
-            <time
-              className={`${styles.time} ${displayDate.isApproximate ? styles.timeApprox : ""}`}
-              dateTime={displayDate.dateStr}
-              title={displayDate.isApproximate ? t("feed.approximateDate") : undefined}
-            >
-              {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
-            </time>
+          {/* Metadata on far right */}
+          <span className={styles.actionBarMeta}>
+            {author && <span className={styles.detailAuthor}>{author}</span>}
+            {secondaryInfo?.text && (
+              <>
+                {author && <span className={styles.detailSep}>·</span>}
+                <span>{secondaryInfo.text}</span>
+              </>
+            )}
           </span>
-
-          {/* Actions + inline paste input on desktop */}
-          <div className={styles.headerActions}>
-            <FeedbackButtons
-              contentItemId={item.id}
-              digestId={item.digestId}
-              currentFeedback={item.feedback}
-              onFeedback={handleFeedback}
-              onClear={handleClear}
-              variant="compact"
-            />
-            {/* Inline paste input (desktop only) - show if no summary */}
-            {!summary && (
-              <div className={styles.inlinePasteWrapper}>
-                <input
-                  type="text"
-                  className={styles.inlinePasteInput}
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  onPaste={handlePaste}
-                  placeholder={t("feed.pasteToSummarize")}
-                  disabled={summaryMutation.isPending}
-                />
-                {summaryMutation.isPending && (
-                  <span className={styles.inlineGeneratingIndicator}>...</span>
-                )}
-              </div>
-            )}
-            {/* AI badge if summary exists */}
-            {summary && (
-              <button
-                type="button"
-                className={styles.summaryReadyBadge}
-                onClick={() => onViewSummary?.(item, summary)}
-                title={t("feed.viewSummary")}
-              >
-                AI
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* Right section: cluster badge + score */}
-        <div className={styles.headerRight}>
-          {item.clusterMemberCount && item.clusterMemberCount > 1 && (
-            <Tooltip content={t("tooltips.clusterSources", { count: item.clusterMemberCount })}>
-              <span className={styles.clusterBadge}>
-                +{item.clusterMemberCount - 1}{" "}
-                {item.clusterMemberCount === 2 ? t("feed.source") : t("feed.sources")}
-              </span>
-            </Tooltip>
-          )}
-          <Tooltip
-            content={
-              <ScoreDebugTooltip
-                isTrendingSort={isTrendingSort}
-                triageJson={item.triageJson as TriageFeatures | undefined}
-                displayScore={displayScore}
-              />
-            }
-          >
-            <div className={styles.score}>
-              <div className={styles.scoreBar} style={{ width: `${scorePercent}%` }} />
-              <span className={styles.scoreText}>{scorePercent}</span>
-            </div>
-          </Tooltip>
-        </div>
-      </div>
-
-      <h3 className={styles.title}>
-        {primaryLinkUrl ? (
-          <a
-            href={primaryLinkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.titleLink}
-          >
-            {getDisplayTitle(item)}
-          </a>
-        ) : (
-          <span>{getDisplayTitle(item)}</span>
-        )}
-      </h3>
-
-      {/* Body text preview - shows body as additional context for items with title */}
-      {/* For items without title (X posts): title already shows full content, no need for body */}
-      {hasRealTitle && expandedBodyText && <p className={styles.bodyPreview}>{expandedBodyText}</p>}
-
-      <WhyShown
-        features={item.triageJson as TriageFeatures | undefined}
-        clusterItems={item.clusterItems}
-      />
-
-      {/* Summary section (mobile only - desktop has inline paste in header) */}
-      <div className={styles.summarySection}>
-        {summary ? (
-          // Show existing summary preview
-          <div className={styles.summaryPreview}>
-            <p className={styles.summaryOneLiner}>{summary.one_liner}</p>
-            <button
-              type="button"
-              className={styles.viewDetailsBtn}
-              onClick={() => onViewSummary?.(item, summary)}
+        {/* Mobile header buttons - only visible on mobile */}
+        <div className={styles.detailPanelHeader}>
+          {primaryLinkUrl && (
+            <a
+              href={primaryLinkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.detailPanelOpenLink}
+              aria-label="Open article"
             >
-              {t("feed.viewSummary")}
+              <ExternalLinkIcon />
+              <span>Open</span>
+            </a>
+          )}
+          <button
+            type="button"
+            className={styles.detailPanelClose}
+            onClick={closePanel}
+            aria-label="Close"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        {/* Body text - shows full/expanded content, clickable to open the same link as title */}
+        {expandedBodyText &&
+          (primaryLinkUrl ? (
+            <a
+              href={primaryLinkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.detailPreviewLink}
+            >
+              {expandedBodyText}
+            </a>
+          ) : (
+            <p className={styles.detailPreview}>{expandedBodyText}</p>
+          ))}
+
+        {summaryError && <p className={styles.detailError}>{summaryError}</p>}
+
+        {/* Large text confirmation banner */}
+        {pendingLargeText && (
+          <div className={styles.largeTextConfirm}>
+            <span className={styles.largeTextInfo}>
+              {Math.round(pendingLargeText.length / 1000)}k chars (~
+              {Math.round(pendingLargeText.length / 4000)}k tokens) - costs more
+            </span>
+            <button type="button" className={styles.confirmBtn} onClick={handleConfirmLargeText}>
+              {t("common.confirm")}
+            </button>
+            <button type="button" className={styles.cancelBtn} onClick={handleCancelLargeText}>
+              {t("common.cancel")}
             </button>
           </div>
-        ) : (
-          // Show paste input for generating summary (mobile)
-          <div className={styles.mobilePasteSection}>
-            <input
-              type="text"
-              className={styles.mobilePasteInput}
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              onPaste={handlePaste}
-              placeholder={t("feed.pasteToSummarize")}
-              disabled={summaryMutation.isPending}
-            />
-            {summaryMutation.isPending && (
-              <span className={styles.generatingIndicator}>{t("feed.generating")}</span>
-            )}
-          </div>
         )}
-        {summaryError && <p className={styles.summaryError}>{summaryError}</p>}
+
+        {/* WhyShown */}
+        <div className={styles.detailWhyShown}>
+          <WhyShown
+            features={item.triageJson as TriageFeatures | undefined}
+            clusterItems={item.clusterItems}
+            compact={true}
+          />
+        </div>
       </div>
     </article>
   );

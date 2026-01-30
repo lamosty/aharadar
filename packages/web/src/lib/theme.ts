@@ -9,11 +9,11 @@
 export type Theme = "professional" | "warm" | "minimal";
 export type ColorMode = "light" | "dark" | "system";
 export type ResolvedColorMode = "light" | "dark";
-export type Layout = "condensed" | "reader" | "timeline";
+export type Layout = "condensed";
 
 export const THEMES: Theme[] = ["professional", "warm", "minimal"];
 export const COLOR_MODES: ColorMode[] = ["light", "dark", "system"];
-export const LAYOUTS: Layout[] = ["condensed", "reader", "timeline"];
+export const LAYOUTS: Layout[] = ["condensed"];
 
 export const DEFAULT_THEME: Theme = "professional";
 export const DEFAULT_COLOR_MODE: ColorMode = "system";

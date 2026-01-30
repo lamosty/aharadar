@@ -50,7 +50,7 @@ export function FeedFilterBar({
   onSourcesChange,
   sort,
   onSortChange,
-  layout = "reader",
+  layout = "condensed",
 }: FeedFilterBarProps) {
   const isCondensed = layout === "condensed";
 

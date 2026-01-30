@@ -7,7 +7,6 @@ import { FeedFilterBar, FeedItem, FeedItemSkeleton, type SortOption } from "@/co
 import { FeedItemModal } from "@/components/Feed/FeedItemModal";
 import { InboxSummaryModal } from "@/components/InboxSummaryModal";
 import { ItemSummaryModal } from "@/components/ItemSummaryModal";
-import { LayoutToggle } from "@/components/LayoutToggle";
 import { type PageSize, Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
@@ -22,7 +21,6 @@ import {
   useMarkItemRead,
   useMediaQuery,
   usePagedItems,
-  usePageLayout,
   useTopicMarkChecked,
   useTopics,
 } from "@/lib/hooks";
@@ -62,7 +60,8 @@ function FeedPageContent() {
   const { addToast } = useToast();
   const { currentTopicId, setCurrentTopicId, isReady: topicReady } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
-  const { layout, setLayout, hasOverride, resetToGlobal } = usePageLayout("feed");
+  // Always use condensed layout
+  const layout = "condensed" as const;
 
   const hasTopics = topicsData?.topics && topicsData.topics.length > 0;
 
@@ -560,27 +559,16 @@ function FeedPageContent() {
                 {t("feed.view.all")}
               </button>
             </div>
-            <div className={styles.layoutToggleWrapper}>
-              <LayoutToggle
-                layout={layout}
-                onLayoutChange={setLayout}
-                hasOverride={hasOverride}
-                onResetToGlobal={resetToGlobal}
-                size="sm"
-              />
-            </div>
-            {layout === "condensed" && (
-              <Tooltip content={fastTriageMode ? "Fast triage ON" : "Fast triage OFF"}>
-                <button
-                  type="button"
-                  className={`${styles.fastTriageBtn} ${fastTriageMode ? styles.fastTriageBtnActive : ""}`}
-                  onClick={() => setFastTriageMode(!fastTriageMode)}
-                  aria-pressed={fastTriageMode}
-                >
-                  <FastIcon />
-                </button>
-              </Tooltip>
-            )}
+            <Tooltip content={fastTriageMode ? "Fast triage ON" : "Fast triage OFF"}>
+              <button
+                type="button"
+                className={`${styles.fastTriageBtn} ${fastTriageMode ? styles.fastTriageBtnActive : ""}`}
+                onClick={() => setFastTriageMode(!fastTriageMode)}
+                aria-pressed={fastTriageMode}
+              >
+                <FastIcon />
+              </button>
+            </Tooltip>
             <button
               type="button"
               className={`btn btn-secondary ${styles.summarizeBtn}`}

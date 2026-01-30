@@ -58,7 +58,7 @@ const SOURCE_SHORT_LABELS: Record<SupportedSourceType, string> = {
 export function SourceFilterCombobox({
   selectedSources,
   onSourcesChange,
-  layout = "reader",
+  layout = "condensed",
 }: SourceFilterComboboxProps) {
   const [query, setQuery] = useState("");
 

@@ -26,8 +26,6 @@ export function ThemeSwitcher({ showLayout = true }: ThemeSwitcherProps) {
 
   const layoutLabels: Record<Layout, string> = {
     condensed: t("settings.appearance.layouts.condensed"),
-    reader: t("settings.appearance.layouts.reader"),
-    timeline: t("settings.appearance.layouts.timeline"),
   };
 
   return (
