@@ -598,33 +598,29 @@ export function FeedItem({
               variant="compact"
             />
             {canUndo && (
-              <Tooltip content={t("feed.undo")}>
-                <button
-                  type="button"
-                  className={styles.actionIconButtonGhost}
-                  onClick={onUndo}
-                  aria-label={t("feed.undo")}
-                >
-                  <UndoIcon />
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                className={styles.actionIconButtonGhost}
+                onClick={onUndo}
+                aria-label={t("feed.undo")}
+              >
+                <UndoIcon />
+              </button>
             )}
           </div>
 
           {/* Secondary actions: bookmark, summary, comments */}
           <div className={styles.actionGroup}>
-            <Tooltip content={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}>
-              <button
-                type="button"
-                className={`${styles.actionIconButton} ${isBookmarked ? styles.actionIconButtonActive : ""}`}
-                onClick={() => bookmarkMutation.mutate(item.id)}
-                aria-label={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
-                aria-pressed={isBookmarked}
-                disabled={bookmarkMutation.isPending}
-              >
-                <BookmarkIcon filled={isBookmarked} />
-              </button>
-            </Tooltip>
+            <button
+              type="button"
+              className={`${styles.actionIconButton} ${isBookmarked ? styles.actionIconButtonActive : ""}`}
+              onClick={() => bookmarkMutation.mutate(item.id)}
+              aria-label={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
+              aria-pressed={isBookmarked}
+              disabled={bookmarkMutation.isPending}
+            >
+              <BookmarkIcon filled={isBookmarked} />
+            </button>
             {/* Paste input or AI summary button */}
             {summary ? (
               <button

@@ -1040,24 +1040,36 @@
   margin-left: var(--space-2);
 }
 
-/* Icon buttons for action bar - no background (primary actions) */
+/* Icon buttons for action bar - no background at rest, bg on hover (primary actions) */
 .actionIconButtonGhost {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  padding: 0;
+  padding: var(--space-1);
   color: var(--color-text-muted);
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .actionIconButtonGhost:hover:not(:disabled) {
   color: var(--color-text-primary);
+  background-color: var(--color-surface-hover, var(--color-surface-elevated));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.actionIconButtonGhost:active:not(:disabled) {
+  transform: scale(0.97) translateY(0);
+  box-shadow: none;
 }
 
 .actionIconButtonGhost:disabled {
