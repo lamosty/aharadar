@@ -896,6 +896,11 @@
   z-index: 45; /* Above other items when detail panel shows */
 }
 
+/* In fast triage mode, don't raise non-expanded items on hover */
+.scanItemFastTriage:not(.scanItemExpanded):hover {
+  z-index: auto;
+}
+
 .scanRow {
   display: flex;
   align-items: center;
