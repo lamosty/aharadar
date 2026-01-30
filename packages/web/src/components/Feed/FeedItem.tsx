@@ -586,7 +586,7 @@ export function FeedItem({
 
         {/* Floating detail panel - appears on hover, doesn't shift layout */}
         <div className={styles.detailPanel}>
-          {/* Fixed action bar (top-right) - desktop only */}
+          {/* Fixed action bar (top-left) - desktop only */}
           <div className={styles.detailPanelActions}>
             <FeedbackButtons
               contentItemId={item.id}
@@ -620,6 +620,55 @@ export function FeedItem({
                 <BookmarkIcon filled={isBookmarked} />
               </button>
             </Tooltip>
+            {/* Paste input or AI summary button */}
+            {summary ? (
+              <button
+                type="button"
+                className={styles.viewDetailsBtnCompact}
+                onClick={() => onViewSummary?.(item, summary)}
+              >
+                {t("feed.viewSummary")}
+              </button>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  className={styles.detailPasteInputInline}
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  onPaste={handlePaste}
+                  placeholder={t("feed.pasteToSummarize")}
+                  disabled={summaryMutation.isPending}
+                />
+                {summaryMutation.isPending && (
+                  <span className={styles.generatingIndicatorSmall}>...</span>
+                )}
+              </>
+            )}
+            {/* Metadata inline in action bar */}
+            <span className={styles.actionBarMeta}>
+              {author && <span className={styles.detailAuthor}>{author}</span>}
+              {secondaryInfo?.text && (
+                <>
+                  {author && <span className={styles.detailSep}>·</span>}
+                  <span>{secondaryInfo.text}</span>
+                </>
+              )}
+              {secondaryInfo?.commentsLink && (
+                <>
+                  <span className={styles.detailSep}>·</span>
+                  <a
+                    href={secondaryInfo.commentsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.detailCommentsLink}
+                  >
+                    <CommentIcon size={12} />
+                    <span>{secondaryInfo.commentCount}</span>
+                  </a>
+                </>
+              )}
+            </span>
           </div>
 
           {/* Mobile header buttons - only visible on mobile */}
@@ -661,59 +710,6 @@ export function FeedItem({
               <p className={styles.detailPreview}>{expandedBodyText}</p>
             ))}
 
-          {/* Metadata line */}
-          <div className={styles.detailMeta}>
-            {author && <span className={styles.detailAuthor}>{author}</span>}
-            {secondaryInfo?.text && (
-              <>
-                {author && <span className={styles.detailSep}>·</span>}
-                <span>{secondaryInfo.text}</span>
-              </>
-            )}
-            {secondaryInfo?.commentsLink && (
-              <>
-                <span className={styles.detailSep}>·</span>
-                <a
-                  href={secondaryInfo.commentsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.detailCommentsLink}
-                >
-                  <CommentIcon size={12} />
-                  <span>{secondaryInfo.commentCount}</span>
-                </a>
-              </>
-            )}
-          </div>
-
-          {/* Actions row - paste input OR view button (feedback buttons moved to fixed action bar) */}
-          <div className={styles.detailActions}>
-            {/* Inline: paste input if no summary, or View button if summary exists */}
-            {summary ? (
-              <button
-                type="button"
-                className={styles.viewDetailsBtnCompact}
-                onClick={() => onViewSummary?.(item, summary)}
-              >
-                {t("feed.viewSummary")}
-              </button>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  className={styles.detailPasteInputInline}
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  onPaste={handlePaste}
-                  placeholder={t("feed.pasteToSummarize")}
-                  disabled={summaryMutation.isPending}
-                />
-                {summaryMutation.isPending && (
-                  <span className={styles.generatingIndicatorSmall}>...</span>
-                )}
-              </>
-            )}
-          </div>
           {summaryError && <p className={styles.detailError}>{summaryError}</p>}
 
           {/* Large text confirmation banner */}
