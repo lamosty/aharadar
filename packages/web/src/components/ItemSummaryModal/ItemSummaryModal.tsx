@@ -141,7 +141,7 @@ export function ItemSummaryModal({
     : [];
 
   return (
-    <div className={styles.overlay} aria-modal="true" role="dialog">
+    <div className={styles.overlay} aria-modal="true" role="dialog" data-modal>
       <div className={styles.modal} ref={modalRef}>
         {/* Header */}
         <div className={styles.header}>

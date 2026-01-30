@@ -509,16 +509,21 @@ function FeedPageContent() {
   // Clear selection when clicking outside feed items
   const handleContainerClick = useCallback(
     (e: React.MouseEvent) => {
-      // Check if click was inside a feed item
-      const target = e.target as HTMLElement;
-      const feedItem = target.closest("[data-feed-item]");
+      // Only handle when in fast triage mode with a selected item
+      if (!fastTriageMode || !forceExpandedId) return;
 
-      // If click was outside any feed item, clear selection
-      if (!feedItem && forceExpandedId) {
-        setForceExpandedId(null);
-      }
+      const target = e.target as HTMLElement;
+
+      // Don't clear if clicking inside a feed item (let item handle selection)
+      if (target.closest("[data-feed-item]")) return;
+
+      // Don't clear if clicking inside a modal
+      if (target.closest("[data-modal]")) return;
+
+      // Click was outside feed items and modals - clear selection
+      setForceExpandedId(null);
     },
-    [forceExpandedId],
+    [fastTriageMode, forceExpandedId],
   );
 
   // Show onboarding when no topics exist
@@ -724,12 +729,6 @@ function FeedPageContent() {
           <div
             className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`}
             data-layout={layout}
-            onClick={(e) => {
-              // Clear selection when clicking on the feed list background (not on items)
-              if (e.target === e.currentTarget && forceExpandedId) {
-                setForceExpandedId(null);
-              }
-            }}
           >
             {items.map((item) => (
               <FeedItem
