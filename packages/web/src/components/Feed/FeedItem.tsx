@@ -590,8 +590,36 @@ export function FeedItem({
       <div className={styles.detailPanel}>
         {/* Action bar - desktop only */}
         <div className={styles.detailPanelActions}>
-          {/* Primary actions: feedback + undo */}
-          <div className={styles.actionGroup}>
+          {/* Left side: AI score + tags + metadata (for scanning with eyes) */}
+          <span className={styles.actionBarMeta}>
+            {/* AI Score badge */}
+            {triageFeatures?.ai_score != null && (
+              <Tooltip content={`AI Score: ${triageFeatures.ai_score}/100`}>
+                <span className={styles.aiScoreBadge}>AI: {triageFeatures.ai_score}</span>
+              </Tooltip>
+            )}
+            {/* Category tags */}
+            {triageFeatures?.categories && triageFeatures.categories.length > 0 && (
+              <span className={styles.actionBarTags}>
+                {triageFeatures.categories.slice(0, 3).map((cat) => (
+                  <span key={cat} className={styles.actionBarTag}>
+                    {cat}
+                  </span>
+                ))}
+              </span>
+            )}
+            {/* Author + source */}
+            {author && <span className={styles.detailAuthor}>{author}</span>}
+            {secondaryInfo?.text && (
+              <>
+                {author && <span className={styles.detailSep}>·</span>}
+                <span>{secondaryInfo.text}</span>
+              </>
+            )}
+          </span>
+
+          {/* Right side: All action buttons (mouse stays here) */}
+          <div className={styles.actionGroupRight}>
             <FeedbackButtons
               contentItemId={item.id}
               digestId={item.digestId}
@@ -610,10 +638,6 @@ export function FeedItem({
                 <UndoIcon />
               </button>
             )}
-          </div>
-
-          {/* Secondary actions: bookmark, summary, comments */}
-          <div className={styles.actionGroup}>
             <button
               type="button"
               className={`${styles.actionIconButton} ${isBookmarked ? styles.actionIconButtonActive : ""}`}
@@ -663,34 +687,6 @@ export function FeedItem({
               </a>
             )}
           </div>
-
-          {/* AI score + tags + metadata on right */}
-          <span className={styles.actionBarMeta}>
-            {/* AI Score badge */}
-            {triageFeatures?.ai_score != null && (
-              <Tooltip content={`AI Score: ${triageFeatures.ai_score}/100`}>
-                <span className={styles.aiScoreBadge}>AI: {triageFeatures.ai_score}</span>
-              </Tooltip>
-            )}
-            {/* Category tags */}
-            {triageFeatures?.categories && triageFeatures.categories.length > 0 && (
-              <span className={styles.actionBarTags}>
-                {triageFeatures.categories.slice(0, 3).map((cat) => (
-                  <span key={cat} className={styles.actionBarTag}>
-                    {cat}
-                  </span>
-                ))}
-              </span>
-            )}
-            {/* Author + source */}
-            {author && <span className={styles.detailAuthor}>{author}</span>}
-            {secondaryInfo?.text && (
-              <>
-                {author && <span className={styles.detailSep}>·</span>}
-                <span>{secondaryInfo.text}</span>
-              </>
-            )}
-          </span>
         </div>
 
         {/* Mobile header buttons - only visible on mobile */}

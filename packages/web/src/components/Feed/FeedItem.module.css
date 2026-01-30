@@ -1023,21 +1023,12 @@
   flex-wrap: wrap;
 }
 
-/* Action group - clusters related buttons together */
-.actionGroup {
+/* Action group on right side - all buttons together */
+.actionGroupRight {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-/* Add separator after primary action group */
-.actionGroup:first-child::after {
-  content: "";
-  display: block;
-  width: 1px;
-  height: 20px;
-  background: var(--color-border);
-  margin-left: var(--space-2);
+  margin-left: auto; /* Push to right */
 }
 
 /* Icon buttons for action bar - no background at rest, bg on hover (primary actions) */
@@ -1135,15 +1126,13 @@
   border-color: var(--color-border);
 }
 
-/* Metadata inline in action bar */
+/* Metadata on left side of action bar (for scanning) */
 .actionBarMeta {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-left: auto; /* Push to right side */
-  padding-left: var(--space-2);
 }
 
 /* AI Score badge in action bar */
