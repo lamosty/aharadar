@@ -53,6 +53,10 @@ interface UnifiedItemRow {
   cluster_id: string | null;
   cluster_member_count: number | null;
   cluster_items_json: ClusterItemRow[] | null;
+  // Theme fields
+  theme_id: string | null;
+  theme_label: string | null;
+  theme_item_count: number | null;
   // Topic fields (for "all topics" mode)
   topic_id: string;
   topic_name: string;
@@ -349,7 +353,11 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         li.digest_topic_id::text as topic_id,
         t.name as topic_name,
         -- Manual item summary
-        cis.summary_json as manual_summary_json
+        cis.summary_json as manual_summary_json,
+        -- Theme fields
+        theme_info.theme_id::text as theme_id,
+        theme_info.theme_label as theme_label,
+        theme_info.theme_item_count as theme_item_count
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
       JOIN topics t ON t.id = li.digest_topic_id
@@ -387,6 +395,13 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         WHERE cli.cluster_id = li.cluster_id
           AND ci_member.deleted_at IS NULL
       ) cluster_members ON li.cluster_id IS NOT NULL
+      LEFT JOIN LATERAL (
+        SELECT th.id as theme_id, th.label as theme_label, th.item_count as theme_item_count
+        FROM theme_items ti
+        JOIN themes th ON th.id = ti.theme_id
+        WHERE ti.content_item_id = li.content_item_id
+        LIMIT 1
+      ) theme_info ON true
       WHERE ${filterClause}
       ORDER BY ${orderBy}
       LIMIT $${filterParamIdx}
@@ -486,6 +501,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         clusterId: row.cluster_id,
         clusterMemberCount: row.cluster_member_count ?? undefined,
         clusterItems: clusterItems?.length ? clusterItems : undefined,
+        // Theme data
+        themeId: row.theme_id ?? undefined,
+        themeLabel: row.theme_label ?? undefined,
+        themeItemCount: row.theme_item_count ?? undefined,
         // Topic context (for "all topics" mode)
         topicId: row.topic_id,
         topicName: row.topic_name,

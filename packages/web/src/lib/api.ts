@@ -224,6 +224,10 @@ export interface FeedItem {
   clusterId?: string | null;
   clusterMemberCount?: number;
   clusterItems?: ClusterItem[];
+  // Theme information for topic-level grouping
+  themeId?: string;
+  themeLabel?: string;
+  themeItemCount?: number;
   // Topic context (for "all topics" mode)
   topicId: string;
   topicName: string;
