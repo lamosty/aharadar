@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -57,6 +58,7 @@ function FeedPageSkeleton() {
 function FeedPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { currentTopicId, setCurrentTopicId, isReady: topicReady } = useTopic();
   const { data: topicsData, isLoading: topicsLoading } = useTopics();
@@ -382,17 +384,36 @@ function FeedPageContent() {
   );
 
   // Desktop undo handler - pops from history, clears feedback, and expands the restored item
-  const handleDesktopUndo = useCallback(async () => {
+  // Optimistic: show immediately, API call in background
+  const handleDesktopUndo = useCallback(() => {
     if (desktopHistory.length === 0) return;
     const previousItem = desktopHistory[desktopHistory.length - 1];
     setDesktopHistory((prev) => prev.slice(0, -1));
-    // Expand the restored item so user can see it
+
+    // Optimistically add item back to cache immediately
+    // Clear its feedback state so it appears in inbox
+    const restoredItem = { ...previousItem, feedback: null };
+    queryClient.setQueriesData<{ items: FeedItemType[]; pagination: unknown }>(
+      { queryKey: ["items", "paged"] },
+      (old) => {
+        if (!old) return old;
+        // Add item back at the top of the list
+        return {
+          ...old,
+          items: [restoredItem, ...old.items.filter((i) => i.id !== restoredItem.id)],
+        };
+      },
+    );
+
+    // Expand the restored item immediately
     setForceExpandedId(previousItem.id);
-    await clearFeedbackMutation.mutateAsync({
+
+    // API call in background - don't await
+    clearFeedbackMutation.mutate({
       contentItemId: previousItem.id,
       digestId: previousItem.digestId,
     });
-  }, [desktopHistory, clearFeedbackMutation]);
+  }, [desktopHistory, clearFeedbackMutation, queryClient]);
 
   // Mobile modal handlers
   const handleMobileItemClick = useCallback((item: FeedItemType) => {
