@@ -72,6 +72,15 @@
   border-color: var(--color-warning);
 }
 
+/* Backdrop for fast triage mode - click to deselect current item */
+.fastTriageBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40; /* Below detail panel (50) but above other content */
+  background: transparent;
+  cursor: default;
+}
+
 /* View toggle (Inbox / Saved / All) */
 .viewToggle {
   display: flex;

@@ -726,6 +726,14 @@ function FeedPageContent() {
 
       {view !== "catchup" && !isLoading && !isError && items.length > 0 && (
         <>
+          {/* Backdrop for fast triage mode - click to deselect */}
+          {fastTriageMode && forceExpandedId && (
+            <div
+              className={styles.fastTriageBackdrop}
+              onClick={() => setForceExpandedId(null)}
+              aria-hidden="true"
+            />
+          )}
           <div
             className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`}
             data-layout={layout}
