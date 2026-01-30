@@ -601,7 +601,7 @@ export function FeedItem({
               <Tooltip content={t("feed.undo")}>
                 <button
                   type="button"
-                  className={styles.actionIconButton}
+                  className={styles.actionIconButtonGhost}
                   onClick={onUndo}
                   aria-label={t("feed.undo")}
                 >

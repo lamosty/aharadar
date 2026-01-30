@@ -1040,7 +1040,32 @@
   margin-left: var(--space-2);
 }
 
-/* Icon buttons for action bar */
+/* Icon buttons for action bar - no background (primary actions) */
+.actionIconButtonGhost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionIconButtonGhost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.actionIconButtonGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Icon buttons with background (secondary actions) */
 .actionIconButton {
   display: flex;
   align-items: center;
