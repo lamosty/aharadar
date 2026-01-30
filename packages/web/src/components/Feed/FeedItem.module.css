@@ -888,12 +888,12 @@
 .scanItem {
   position: relative;
   border-bottom: 1px solid var(--color-border-subtle);
-  z-index: 45; /* Above backdrop (z-index: 40), below detail panel (z-index: 50) */
 }
 
 .scanItem:hover {
   background: var(--color-surface-elevated);
   border-bottom-color: transparent; /* Hide bottom border when detail panel shows */
+  z-index: 45; /* Above other items when detail panel shows */
 }
 
 .scanRow {
@@ -1215,6 +1215,7 @@
 .scanItemExpanded {
   background: var(--color-surface-elevated);
   border-bottom-color: transparent;
+  z-index: 45; /* Above backdrop (40), below detail panel (50/100) */
 }
 
 .scanItemExpanded .detailPanel {
