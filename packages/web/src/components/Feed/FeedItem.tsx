@@ -631,10 +631,16 @@ export function FeedItem({
                 <span>{secondaryInfo.commentCount ?? 0}</span>
               </a>
             )}
-            {/* Source context: subreddit (with author on hover) or @username for X */}
+            {/* Source context: subreddit (with author on hover) or @username (with display name on hover) */}
             {secondaryInfo?.text && (
               <Tooltip
-                content={secondaryInfo.type === "reddit" && author ? `by u/${author}` : undefined}
+                content={
+                  secondaryInfo.type === "reddit" && author
+                    ? `by u/${author}`
+                    : secondaryInfo.type === "x" && author
+                      ? author // Show display name for X
+                      : undefined
+                }
               >
                 {primaryLinkUrl ? (
                   <a
