@@ -17,11 +17,29 @@ const PERSONALIZATION_TUNING_RANGES = {
   feedbackWeightDelta: { min: 0.0, max: 0.2 },
 } as const;
 
+// Theme tuning defaults and ranges
+const THEME_TUNING_DEFAULTS = {
+  enabled: true,
+  similarityThreshold: 0.65,
+  lookbackDays: 3,
+};
+
+const THEME_TUNING_RANGES = {
+  similarityThreshold: { min: 0.5, max: 0.9 },
+  lookbackDays: { min: 1, max: 7 },
+} as const;
+
 interface PersonalizationTuningResolved {
   prefBiasSamplingWeight: number;
   prefBiasTriageWeight: number;
   rankPrefWeight: number;
   feedbackWeightDelta: number;
+}
+
+interface ThemeTuningResolved {
+  enabled: boolean;
+  similarityThreshold: number;
+  lookbackDays: number;
 }
 
 /** Parse personalization tuning from custom_settings with defaults and clamping */
@@ -76,6 +94,50 @@ function parsePersonalizationTuning(raw: unknown): PersonalizationTuningResolved
   };
 }
 
+/** Parse theme tuning from custom_settings with defaults and clamping */
+function parseThemeTuning(raw: unknown): ThemeTuningResolved {
+  const defaults = THEME_TUNING_DEFAULTS;
+  const ranges = THEME_TUNING_RANGES;
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ...defaults };
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  function extractClampedNum(key: string, defaultValue: number, min: number, max: number): number {
+    const value = obj[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return defaultValue;
+    }
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function extractBool(key: string, defaultValue: boolean): boolean {
+    const value = obj[key];
+    if (typeof value !== "boolean") {
+      return defaultValue;
+    }
+    return value;
+  }
+
+  return {
+    enabled: extractBool("enabled", defaults.enabled),
+    similarityThreshold: extractClampedNum(
+      "similarityThreshold",
+      defaults.similarityThreshold,
+      ranges.similarityThreshold.min,
+      ranges.similarityThreshold.max,
+    ),
+    lookbackDays: extractClampedNum(
+      "lookbackDays",
+      defaults.lookbackDays,
+      ranges.lookbackDays.min,
+      ranges.lookbackDays.max,
+    ),
+  };
+}
+
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useTopics, useUpdateTopicCustomSettings } from "@/lib/hooks";
@@ -90,7 +152,7 @@ export default function AdminTuningPage() {
   // Selected topic
   const [selectedTopicId, setSelectedTopicId] = useState<string>("");
 
-  // Form state for tuning params
+  // Form state for personalization tuning params
   const [prefBiasSamplingWeight, setPrefBiasSamplingWeight] = useState(
     PERSONALIZATION_TUNING_DEFAULTS.prefBiasSamplingWeight,
   );
@@ -103,6 +165,13 @@ export default function AdminTuningPage() {
   const [feedbackWeightDelta, setFeedbackWeightDelta] = useState(
     PERSONALIZATION_TUNING_DEFAULTS.feedbackWeightDelta,
   );
+
+  // Form state for theme tuning params
+  const [themeEnabled, setThemeEnabled] = useState(THEME_TUNING_DEFAULTS.enabled);
+  const [themeSimilarityThreshold, setThemeSimilarityThreshold] = useState(
+    THEME_TUNING_DEFAULTS.similarityThreshold,
+  );
+  const [themeLookbackDays, setThemeLookbackDays] = useState(THEME_TUNING_DEFAULTS.lookbackDays);
 
   // Auto-select first topic when loaded
   useEffect(() => {
@@ -118,11 +187,20 @@ export default function AdminTuningPage() {
     const topic = topics.find((t) => t.id === selectedTopicId);
     if (!topic) return;
 
-    const tuning = parsePersonalizationTuning(topic.customSettings?.personalization_tuning_v1);
-    setPrefBiasSamplingWeight(tuning.prefBiasSamplingWeight);
-    setPrefBiasTriageWeight(tuning.prefBiasTriageWeight);
-    setRankPrefWeight(tuning.rankPrefWeight);
-    setFeedbackWeightDelta(tuning.feedbackWeightDelta);
+    // Load personalization tuning
+    const personalTuning = parsePersonalizationTuning(
+      topic.customSettings?.personalization_tuning_v1,
+    );
+    setPrefBiasSamplingWeight(personalTuning.prefBiasSamplingWeight);
+    setPrefBiasTriageWeight(personalTuning.prefBiasTriageWeight);
+    setRankPrefWeight(personalTuning.rankPrefWeight);
+    setFeedbackWeightDelta(personalTuning.feedbackWeightDelta);
+
+    // Load theme tuning
+    const themeTuning = parseThemeTuning(topic.customSettings?.theme_tuning_v1);
+    setThemeEnabled(themeTuning.enabled);
+    setThemeSimilarityThreshold(themeTuning.similarityThreshold);
+    setThemeLookbackDays(themeTuning.lookbackDays);
   }, [selectedTopicId, topics]);
 
   const updateMutation = useUpdateTopicCustomSettings(selectedTopicId, {
@@ -145,36 +223,65 @@ export default function AdminTuningPage() {
         rankPrefWeight,
         feedbackWeightDelta,
       },
+      theme_tuning_v1: {
+        enabled: themeEnabled,
+        similarityThreshold: themeSimilarityThreshold,
+        lookbackDays: themeLookbackDays,
+      },
     });
   };
 
   const handleReset = () => {
+    // Reset personalization tuning
     setPrefBiasSamplingWeight(PERSONALIZATION_TUNING_DEFAULTS.prefBiasSamplingWeight);
     setPrefBiasTriageWeight(PERSONALIZATION_TUNING_DEFAULTS.prefBiasTriageWeight);
     setRankPrefWeight(PERSONALIZATION_TUNING_DEFAULTS.rankPrefWeight);
     setFeedbackWeightDelta(PERSONALIZATION_TUNING_DEFAULTS.feedbackWeightDelta);
+    // Reset theme tuning
+    setThemeEnabled(THEME_TUNING_DEFAULTS.enabled);
+    setThemeSimilarityThreshold(THEME_TUNING_DEFAULTS.similarityThreshold);
+    setThemeLookbackDays(THEME_TUNING_DEFAULTS.lookbackDays);
   };
 
   const isSaving = updateMutation.isPending;
 
   // Check if current values differ from saved values
   const selectedTopic = topics.find((t) => t.id === selectedTopicId);
-  const savedTuning = selectedTopic
+  const savedPersonalTuning = selectedTopic
     ? parsePersonalizationTuning(selectedTopic.customSettings?.personalization_tuning_v1)
     : null;
-  const hasChanges =
-    savedTuning &&
-    (prefBiasSamplingWeight !== savedTuning.prefBiasSamplingWeight ||
-      prefBiasTriageWeight !== savedTuning.prefBiasTriageWeight ||
-      rankPrefWeight !== savedTuning.rankPrefWeight ||
-      feedbackWeightDelta !== savedTuning.feedbackWeightDelta);
+  const savedThemeTuning = selectedTopic
+    ? parseThemeTuning(selectedTopic.customSettings?.theme_tuning_v1)
+    : null;
+
+  const hasPersonalChanges =
+    savedPersonalTuning &&
+    (prefBiasSamplingWeight !== savedPersonalTuning.prefBiasSamplingWeight ||
+      prefBiasTriageWeight !== savedPersonalTuning.prefBiasTriageWeight ||
+      rankPrefWeight !== savedPersonalTuning.rankPrefWeight ||
+      feedbackWeightDelta !== savedPersonalTuning.feedbackWeightDelta);
+
+  const hasThemeChanges =
+    savedThemeTuning &&
+    (themeEnabled !== savedThemeTuning.enabled ||
+      themeSimilarityThreshold !== savedThemeTuning.similarityThreshold ||
+      themeLookbackDays !== savedThemeTuning.lookbackDays);
+
+  const hasChanges = hasPersonalChanges || hasThemeChanges;
 
   // Check if current values differ from defaults
-  const isDefault =
+  const isPersonalDefault =
     prefBiasSamplingWeight === PERSONALIZATION_TUNING_DEFAULTS.prefBiasSamplingWeight &&
     prefBiasTriageWeight === PERSONALIZATION_TUNING_DEFAULTS.prefBiasTriageWeight &&
     rankPrefWeight === PERSONALIZATION_TUNING_DEFAULTS.rankPrefWeight &&
     feedbackWeightDelta === PERSONALIZATION_TUNING_DEFAULTS.feedbackWeightDelta;
+
+  const isThemeDefault =
+    themeEnabled === THEME_TUNING_DEFAULTS.enabled &&
+    themeSimilarityThreshold === THEME_TUNING_DEFAULTS.similarityThreshold &&
+    themeLookbackDays === THEME_TUNING_DEFAULTS.lookbackDays;
+
+  const isDefault = isPersonalDefault && isThemeDefault;
 
   if (isLoading) {
     return (
@@ -365,6 +472,100 @@ export default function AdminTuningPage() {
             </div>
             <p className={styles.sliderDescription}>
               {t("admin.tuning.feedbackWeightDelta.description")}
+            </p>
+          </div>
+        </div>
+
+        {/* Theme Grouping Section */}
+        <div className={styles.sectionDivider}>
+          <h2 className={styles.sectionTitle}>Theme Grouping</h2>
+          <p className={styles.sectionSubtitle}>
+            Group similar items into collapsible themes to reduce feed visual density.
+          </p>
+        </div>
+
+        {/* Theme Enabled Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="themeEnabled" className={styles.toggleLabel}>
+              Enable Theme Grouping
+            </label>
+            <button
+              id="themeEnabled"
+              type="button"
+              role="switch"
+              aria-checked={themeEnabled}
+              className={`${styles.toggle} ${themeEnabled ? styles.toggleOn : ""}`}
+              onClick={() => setThemeEnabled(!themeEnabled)}
+              disabled={isSaving}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            When enabled, the pipeline will compute themes for items. Disable to skip theme
+            computation entirely.
+          </p>
+        </div>
+
+        {/* Theme Similarity Threshold */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="themeSimilarityThreshold" className={styles.sliderLabel}>
+                Similarity Threshold
+              </label>
+              <span className={styles.sliderValue}>{themeSimilarityThreshold.toFixed(2)}</span>
+            </div>
+            <input
+              id="themeSimilarityThreshold"
+              type="range"
+              min={THEME_TUNING_RANGES.similarityThreshold.min}
+              max={THEME_TUNING_RANGES.similarityThreshold.max}
+              step={0.01}
+              value={themeSimilarityThreshold}
+              onChange={(e) => setThemeSimilarityThreshold(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !themeEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{THEME_TUNING_RANGES.similarityThreshold.min}</span>
+              <span>{THEME_TUNING_RANGES.similarityThreshold.max}</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              How similar items must be to group into the same theme. Lower = bigger themes with
+              more items, Higher = smaller themes with tighter grouping. 0.65 recommended.
+            </p>
+          </div>
+        </div>
+
+        {/* Theme Lookback Days */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="themeLookbackDays" className={styles.sliderLabel}>
+                Lookback Window (days)
+              </label>
+              <span className={styles.sliderValue}>{themeLookbackDays}</span>
+            </div>
+            <input
+              id="themeLookbackDays"
+              type="range"
+              min={THEME_TUNING_RANGES.lookbackDays.min}
+              max={THEME_TUNING_RANGES.lookbackDays.max}
+              step={1}
+              value={themeLookbackDays}
+              onChange={(e) => setThemeLookbackDays(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !themeEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{THEME_TUNING_RANGES.lookbackDays.min} day</span>
+              <span>{THEME_TUNING_RANGES.lookbackDays.max} days</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              How many days to look back when assigning items to existing themes. Shorter = more
+              ephemeral themes, Longer = themes persist across news cycles.
             </p>
           </div>
         </div>

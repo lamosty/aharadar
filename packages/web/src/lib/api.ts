@@ -1305,6 +1305,11 @@ export interface TopicCustomSettingsUpdateRequest {
     rankPrefWeight?: number;
     feedbackWeightDelta?: number;
   };
+  theme_tuning_v1?: {
+    enabled?: boolean;
+    similarityThreshold?: number;
+    lookbackDays?: number;
+  };
 }
 
 /** Topic custom settings update response */
