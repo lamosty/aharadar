@@ -590,13 +590,26 @@ export function FeedItem({
       <div className={styles.detailPanel}>
         {/* Action bar - desktop only */}
         <div className={styles.detailPanelActions}>
-          {/* Left side: AI score + tags + metadata (for scanning with eyes) */}
+          {/* Left side: AI score + comments + tags + metadata (for scanning with eyes) */}
           <span className={styles.actionBarMeta}>
             {/* AI Score badge */}
             {triageFeatures?.ai_score != null && (
               <Tooltip content={`AI Score: ${triageFeatures.ai_score}/100`}>
                 <span className={styles.aiScoreBadge}>AI: {triageFeatures.ai_score}</span>
               </Tooltip>
+            )}
+            {/* Comments link - after AI score so action buttons stay stable */}
+            {secondaryInfo?.commentsLink && (
+              <a
+                href={secondaryInfo.commentsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.commentsButton}
+                title={`${secondaryInfo.commentCount ?? 0} comments`}
+              >
+                <CommentIcon size={12} />
+                <span>{secondaryInfo.commentCount ?? 0}</span>
+              </a>
             )}
             {/* Category tags */}
             {triageFeatures?.categories && triageFeatures.categories.length > 0 && (
@@ -608,12 +621,12 @@ export function FeedItem({
                 ))}
               </span>
             )}
-            {/* Author + source */}
-            {author && <span className={styles.detailAuthor}>{author}</span>}
-            {secondaryInfo?.text && (
+            {/* Source + author (subreddit/HN first, then author) */}
+            {secondaryInfo?.text && <span>{secondaryInfo.text}</span>}
+            {author && (
               <>
-                {author && <span className={styles.detailSep}>·</span>}
-                <span>{secondaryInfo.text}</span>
+                {secondaryInfo?.text && <span className={styles.detailSep}>·</span>}
+                <span className={styles.detailAuthor}>{author}</span>
               </>
             )}
           </span>
@@ -672,19 +685,6 @@ export function FeedItem({
                   <span className={styles.generatingIndicatorSmall}>...</span>
                 )}
               </>
-            )}
-            {/* Comments link */}
-            {secondaryInfo?.commentsLink && (
-              <a
-                href={secondaryInfo.commentsLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.commentsButton}
-                title={`${secondaryInfo.commentCount ?? 0} comments`}
-              >
-                <CommentIcon size={12} />
-                <span>{secondaryInfo.commentCount ?? 0}</span>
-              </a>
             )}
           </div>
         </div>
