@@ -21,12 +21,12 @@ const PERSONALIZATION_TUNING_RANGES = {
 const THEME_TUNING_DEFAULTS = {
   enabled: true,
   similarityThreshold: 0.65,
-  lookbackDays: 3,
+  lookbackDays: 7,
 };
 
 const THEME_TUNING_RANGES = {
   similarityThreshold: { min: 0.5, max: 0.9 },
-  lookbackDays: { min: 1, max: 7 },
+  lookbackDays: { min: 1, max: 14 },
 } as const;
 
 interface PersonalizationTuningResolved {
@@ -140,7 +140,7 @@ function parseThemeTuning(raw: unknown): ThemeTuningResolved {
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
-import { useTopics, useUpdateTopicCustomSettings } from "@/lib/hooks";
+import { useRegenerateThemes, useTopics, useUpdateTopicCustomSettings } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -211,6 +211,20 @@ export default function AdminTuningPage() {
       addToast(err.message || t("admin.tuning.saveFailed"), "error");
     },
   });
+
+  const regenerateThemesMutation = useRegenerateThemes(selectedTopicId, {
+    onSuccess: (data) => {
+      addToast(data.message, "success");
+    },
+    onError: (err) => {
+      addToast(err.message || "Failed to regenerate themes", "error");
+    },
+  });
+
+  const handleRegenerateThemes = () => {
+    if (!selectedTopicId) return;
+    regenerateThemesMutation.mutate();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -480,7 +494,8 @@ export default function AdminTuningPage() {
         <div className={styles.sectionDivider}>
           <h2 className={styles.sectionTitle}>Theme Grouping</h2>
           <p className={styles.sectionSubtitle}>
-            Group similar items into collapsible themes to reduce feed visual density.
+            Group similar inbox items into collapsible themes. Only items without feedback are
+            grouped - processed items are excluded from themes.
           </p>
         </div>
 
@@ -564,10 +579,37 @@ export default function AdminTuningPage() {
               <span>{THEME_TUNING_RANGES.lookbackDays.max} days</span>
             </div>
             <p className={styles.sliderDescription}>
-              How many days to look back when assigning items to existing themes. Shorter = more
-              ephemeral themes, Longer = themes persist across news cycles.
+              Themes older than this won't accept new items. Shorter = more ephemeral themes, Longer
+              = themes accumulate across digests. Items can group across multiple digests within
+              this window.
             </p>
           </div>
+        </div>
+
+        {/* Regenerate Themes */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <span className={styles.toggleLabel}>Regenerate Themes</span>
+            <button
+              type="button"
+              className={styles.resetButton}
+              onClick={handleRegenerateThemes}
+              disabled={isSaving || regenerateThemesMutation.isPending || !themeEnabled}
+            >
+              {regenerateThemesMutation.isPending ? (
+                <>
+                  <LoadingSpinner />
+                  <span>Regenerating...</span>
+                </>
+              ) : (
+                <span>Regenerate Now</span>
+              )}
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            Delete all existing themes and rebuild from current inbox items. Use this if themes seem
+            stale or after changing settings.
+          </p>
         </div>
 
         {/* Form Actions */}

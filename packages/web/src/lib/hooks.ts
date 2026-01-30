@@ -132,6 +132,7 @@ import {
   patchTopicDigestSettings,
   pauseQueue,
   postAdminAbtest,
+  postAdminRegenerateThemes,
   postAdminRun,
   postAdminSource,
   postFeedback,
@@ -141,6 +142,7 @@ import {
   type QueueActionResponse,
   type QueueStatusResponse,
   type QuotaStatusResponse,
+  type RegenerateThemesResponse,
   removeQueueJob,
   resetAdminBudget,
   resetXAccountPolicy,
@@ -821,6 +823,23 @@ export function useResetBudget(
       // Invalidate budgets query to refetch updated status
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.budgets });
     },
+    ...options,
+  });
+}
+
+/**
+ * Mutation to regenerate themes for a topic.
+ * Deletes all existing themes and rebuilds from inbox items.
+ */
+export function useRegenerateThemes(
+  topicId: string,
+  options?: Omit<
+    UseMutationOptions<RegenerateThemesResponse, ApiError | NetworkError, void>,
+    "mutationFn"
+  >,
+) {
+  return useMutation({
+    mutationFn: () => postAdminRegenerateThemes(topicId),
     ...options,
   });
 }

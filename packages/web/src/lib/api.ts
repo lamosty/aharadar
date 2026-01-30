@@ -2481,3 +2481,34 @@ export async function getAdminLogsHandleHealth(
 
   return apiFetch<HandleHealthResponse>(path, { signal });
 }
+
+// ============================================================================
+// Theme Management API
+// ============================================================================
+
+/** Response from regenerating themes */
+export interface RegenerateThemesResponse {
+  ok: true;
+  message: string;
+  result: {
+    attempted: number;
+    attachedToExisting: number;
+    created: number;
+    skipped: number;
+    errors: number;
+  };
+}
+
+/**
+ * Regenerate themes for a topic.
+ * Deletes all existing themes and rebuilds from inbox items.
+ */
+export async function postAdminRegenerateThemes(
+  topicId: string,
+  signal?: AbortSignal,
+): Promise<RegenerateThemesResponse> {
+  return apiFetch<RegenerateThemesResponse>(`/admin/topics/${topicId}/regenerate-themes`, {
+    method: "POST",
+    signal,
+  });
+}

@@ -12,6 +12,12 @@ export interface ThemeLimits {
   similarityThreshold: number;
   /** Whether to update centroid vectors as themes grow. */
   updateCentroid: boolean;
+  /** Max items per theme before creating a new one. */
+  maxItemsPerTheme: number;
+  /** Age threshold (days) after which stricter similarity is required. */
+  stricterThresholdAfterDays: number;
+  /** Stricter threshold for older themes. */
+  stricterSimilarityThreshold: number;
 }
 
 export interface ThemeRunResult {
@@ -32,8 +38,10 @@ type NearestThemeRow = {
   theme_id: string;
   centroid_text: string | null;
   member_count: number;
+  inbox_count: number;
   similarity: number;
   representative_content_item_id: string | null;
+  updated_at: string;
 };
 
 function parseIntEnv(value: string | undefined): number | null {
@@ -80,16 +88,23 @@ function asVectorLiteral(vector: number[]): string {
 }
 
 /**
- * Group topic-scoped content items into themes.
+ * Group topic-scoped inbox items into themes.
  *
  * Themes use a looser similarity threshold (0.65) than clusters (0.86)
- * to create broader topic-level groupings. This reduces ~200 items/day
- * to ~20 collapsible themes in the UI.
+ * to create broader topic-level groupings. Only inbox items (no feedback)
+ * are themed - processed items are excluded from theming.
+ *
+ * Safeguards against theme ballooning:
+ * - Lookback window: themes older than N days won't accept new items (default: 7)
+ * - Size cap: themes with >= maxItemsPerTheme items create new theme (default: 100)
+ * - Stricter threshold: older themes (>3 days) require higher similarity (0.70 vs 0.65)
+ * - Inbox-only: only themes with at least 1 inbox item are candidates
  *
  * Algorithm:
- * 1. Select items with embeddings that don't have a theme (within topic/user scope)
+ * 1. Select inbox items with embeddings that don't have a theme
  * 2. For each item:
- *    - Query nearest theme centroid (within lookback window)
+ *    - Query nearest theme centroid from eligible themes (has inbox items, within lookback, under size cap)
+ *    - Apply stricter threshold for older themes
  *    - If similarity >= threshold: assign to theme, update centroid incrementally
  *    - Else: create new theme with item as seed
  * 3. Update item_count on affected themes
@@ -105,11 +120,21 @@ export async function themeTopicContentItems(params: {
   const maxItems =
     params.limits?.maxItems ?? parseIntEnv(process.env.THEME_MAX_ITEMS_PER_RUN) ?? 500;
   const themeLookbackDays =
-    params.limits?.themeLookbackDays ?? parseIntEnv(process.env.THEME_LOOKBACK_DAYS) ?? 3;
+    params.limits?.themeLookbackDays ?? parseIntEnv(process.env.THEME_LOOKBACK_DAYS) ?? 7;
   const similarityThreshold =
     params.limits?.similarityThreshold ?? parseFloatEnv(process.env.THEME_SIM_THRESHOLD) ?? 0.65;
   const updateCentroid =
     params.limits?.updateCentroid ?? process.env.THEME_UPDATE_CENTROID !== "false";
+  const maxItemsPerTheme =
+    params.limits?.maxItemsPerTheme ?? parseIntEnv(process.env.THEME_MAX_ITEMS_PER_THEME) ?? 100;
+  const stricterThresholdAfterDays =
+    params.limits?.stricterThresholdAfterDays ??
+    parseIntEnv(process.env.THEME_STRICTER_AFTER_DAYS) ??
+    3;
+  const stricterSimilarityThreshold =
+    params.limits?.stricterSimilarityThreshold ??
+    parseFloatEnv(process.env.THEME_STRICTER_THRESHOLD) ??
+    0.7;
 
   const limit = Math.max(0, Math.min(5_000, Math.floor(maxItems)));
   if (limit === 0)
@@ -125,6 +150,7 @@ export async function themeTopicContentItems(params: {
   // - have embeddings
   // - are not marked duplicates
   // - have not yet been themed
+  // - have no feedback (inbox items only)
   const candidatesRes = await params.db.query<CandidateRow>(
     `with topic_membership as (
        select distinct cis.content_item_id
@@ -148,6 +174,11 @@ export async function themeTopicContentItems(params: {
        and not exists (
          select 1 from theme_items ti
          where ti.content_item_id = ci.id
+       )
+       and not exists (
+         select 1 from feedback_events fe
+         where fe.content_item_id = ci.id
+           and fe.user_id = $1
        )
      order by coalesce(ci.published_at, ci.fetched_at) desc
      limit $5`,
@@ -175,21 +206,51 @@ export async function themeTopicContentItems(params: {
 
       try {
         // Find nearest theme centroid within lookback window
+        // Only consider themes that:
+        // - Have at least 1 inbox item (not "dead" themes)
+        // - Updated within lookback window
+        // - Have fewer than maxItemsPerTheme items
         const nearest = await tx.query<NearestThemeRow>(
           `select
              t.id::text as theme_id,
              t.centroid_vector::text as centroid_text,
              t.item_count as member_count,
+             (
+               select count(*)::int
+               from theme_items ti_inbox
+               join content_items ci_inbox on ci_inbox.id = ti_inbox.content_item_id
+               where ti_inbox.theme_id = t.id
+                 and ci_inbox.deleted_at is null
+                 and not exists (
+                   select 1 from feedback_events fe_inbox
+                   where fe_inbox.content_item_id = ci_inbox.id
+                     and fe_inbox.user_id = $1
+                 )
+             ) as inbox_count,
              (1 - (t.centroid_vector <=> $2::vector))::float8 as similarity,
-             t.representative_content_item_id::text as representative_content_item_id
+             t.representative_content_item_id::text as representative_content_item_id,
+             t.updated_at::text as updated_at
            from themes t
            where t.user_id = $1
              and t.topic_id = $3::uuid
              and t.centroid_vector is not null
              and t.updated_at >= $4::timestamptz
+             and t.item_count < $5
+             and exists (
+               select 1
+               from theme_items ti_check
+               join content_items ci_check on ci_check.id = ti_check.content_item_id
+               where ti_check.theme_id = t.id
+                 and ci_check.deleted_at is null
+                 and not exists (
+                   select 1 from feedback_events fe_check
+                   where fe_check.content_item_id = ci_check.id
+                     and fe_check.user_id = $1
+                 )
+             )
            order by t.centroid_vector <=> $2::vector asc
            limit 1`,
-          [params.userId, vectorText, params.topicId, lookbackStartIso],
+          [params.userId, vectorText, params.topicId, lookbackStartIso, maxItemsPerTheme],
         );
 
         const best = nearest.rows[0] ?? null;
@@ -199,7 +260,17 @@ export async function themeTopicContentItems(params: {
             : 0
           : 0;
 
-        if (!best || bestSim < threshold) {
+        // Apply stricter threshold for older themes
+        let effectiveThreshold = threshold;
+        if (best?.updated_at) {
+          const themeAgeMs = Date.now() - new Date(best.updated_at).getTime();
+          const themeAgeDays = themeAgeMs / (24 * 60 * 60 * 1000);
+          if (themeAgeDays > stricterThresholdAfterDays) {
+            effectiveThreshold = stricterSimilarityThreshold;
+          }
+        }
+
+        if (!best || bestSim < effectiveThreshold) {
           // Create a new theme anchored by this item
           const label = row.title ? row.title.slice(0, 200) : null;
           const inserted = await tx.query<{ id: string }>(
