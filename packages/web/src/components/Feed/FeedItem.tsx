@@ -513,6 +513,9 @@ export function FeedItem({
     item.item.author,
   );
 
+  // Get triage features for AI score and categories
+  const triageFeatures = item.triageJson as TriageFeatures | undefined;
+
   // Condensed layout: clean scannable row with floating detail panel on hover
   return (
     <article
@@ -661,8 +664,25 @@ export function FeedItem({
             )}
           </div>
 
-          {/* Metadata on far right */}
+          {/* AI score + tags + metadata on right */}
           <span className={styles.actionBarMeta}>
+            {/* AI Score badge */}
+            {triageFeatures?.ai_score != null && (
+              <Tooltip content={`AI Score: ${triageFeatures.ai_score}/100`}>
+                <span className={styles.aiScoreBadge}>AI: {triageFeatures.ai_score}</span>
+              </Tooltip>
+            )}
+            {/* Category tags */}
+            {triageFeatures?.categories && triageFeatures.categories.length > 0 && (
+              <span className={styles.actionBarTags}>
+                {triageFeatures.categories.slice(0, 3).map((cat) => (
+                  <span key={cat} className={styles.actionBarTag}>
+                    {cat}
+                  </span>
+                ))}
+              </span>
+            )}
+            {/* Author + source */}
             {author && <span className={styles.detailAuthor}>{author}</span>}
             {secondaryInfo?.text && (
               <>
@@ -733,9 +753,11 @@ export function FeedItem({
         {/* WhyShown */}
         <div className={styles.detailWhyShown}>
           <WhyShown
-            features={item.triageJson as TriageFeatures | undefined}
+            features={triageFeatures}
             clusterItems={item.clusterItems}
             compact={true}
+            hideScore={true}
+            hideCategories={true}
           />
         </div>
       </div>
