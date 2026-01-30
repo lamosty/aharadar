@@ -888,6 +888,7 @@
 .scanItem {
   position: relative;
   border-bottom: 1px solid var(--color-border-subtle);
+  z-index: 45; /* Above backdrop (z-index: 40), below detail panel (z-index: 50) */
 }
 
 .scanItem:hover {
