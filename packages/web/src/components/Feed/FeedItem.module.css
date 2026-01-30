@@ -1010,11 +1010,13 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   opacity: 0;
   visibility: hidden;
+  pointer-events: none; /* No interaction when hidden */
   transform: translateY(-4px);
   transition:
     opacity 0.15s ease,
     transform 0.15s ease,
     visibility 0.15s;
+  /* Note: pointer-events not transitioned - immediate */
 }
 
 /* Action bar - flex row at top of detail panel */
@@ -1201,6 +1203,7 @@
 .scanItem:hover .detailPanel {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto; /* Enable interaction immediately */
   transform: translateY(0);
   /* Delay before showing - prevents accidental triggers after layout shifts */
   transition-delay: 200ms;
@@ -1215,6 +1218,7 @@
 .scanItemExpanded .detailPanel {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto; /* Enable interaction immediately */
   transform: translateY(0);
   transition-delay: 0ms;
   z-index: 100; /* Higher than pagination to overlay */
@@ -1224,6 +1228,7 @@
 .scanItemFastTriage:not(.scanItemExpanded):hover .detailPanel {
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
 }
 
 .detailPreview {
