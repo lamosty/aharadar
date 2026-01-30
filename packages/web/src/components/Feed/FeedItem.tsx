@@ -46,6 +46,8 @@ interface FeedItemProps {
   onUndo?: () => void;
   /** Whether undo is available (desktop only) */
   canUndo?: boolean;
+  /** Called when item is clicked to select it (fast triage mode) */
+  onSelect?: () => void;
 }
 
 interface DisplayDate {
@@ -342,6 +344,7 @@ export function FeedItem({
   onMobileClick,
   onUndo,
   canUndo,
+  onSelect,
 }: FeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { addToast } = useToast();
@@ -385,6 +388,11 @@ export function FeedItem({
     // On mobile, open full-screen modal instead of inline expansion
     if (onMobileClick) {
       onMobileClick();
+      return;
+    }
+    // In fast triage mode, clicking selects this item
+    if (fastTriageMode && onSelect) {
+      onSelect();
       return;
     }
     if (!fastTriageMode) {

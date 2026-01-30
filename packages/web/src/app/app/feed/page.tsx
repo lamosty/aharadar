@@ -724,6 +724,12 @@ function FeedPageContent() {
           <div
             className={`${styles.feedList} ${isFetching ? styles.feedListLoading : ""}`}
             data-layout={layout}
+            onClick={(e) => {
+              // Clear selection when clicking on the feed list background (not on items)
+              if (e.target === e.currentTarget && forceExpandedId) {
+                setForceExpandedId(null);
+              }
+            }}
           >
             {items.map((item) => (
               <FeedItem
@@ -743,6 +749,7 @@ function FeedPageContent() {
                 onMobileClick={isMobile ? () => handleMobileItemClick(item) : undefined}
                 onUndo={!isMobile ? handleDesktopUndo : undefined}
                 canUndo={!isMobile && desktopHistory.length > 0}
+                onSelect={() => setForceExpandedId(item.id)}
                 onHover={() => {
                   // In fast triage mode, don't clear force-expanded on hover
                   // CSS disables hover expansion, users click to manually expand
