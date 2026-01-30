@@ -1030,6 +1030,16 @@
   gap: var(--space-2);
 }
 
+/* Add separator after primary action group */
+.actionGroup:first-child::after {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin-left: var(--space-2);
+}
+
 /* Icon buttons for action bar */
 .actionIconButton {
   display: flex;
@@ -1066,11 +1076,26 @@
   color: var(--color-primary);
 }
 
-/* Comment count badge inside action button */
-.commentCount {
+/* Comments link button - styled differently from icon buttons */
+.commentsButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  margin-left: 2px;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.commentsButton:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
 }
 
 /* Metadata inline in action bar */

@@ -650,21 +650,18 @@ export function FeedItem({
                 )}
               </>
             )}
-            {/* Comments link as button */}
+            {/* Comments link */}
             {secondaryInfo?.commentsLink && (
-              <Tooltip content={`${secondaryInfo.commentCount ?? 0} comments`}>
-                <a
-                  href={secondaryInfo.commentsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.actionIconButton}
-                >
-                  <CommentIcon size={14} />
-                  {secondaryInfo.commentCount != null && secondaryInfo.commentCount > 0 && (
-                    <span className={styles.commentCount}>{secondaryInfo.commentCount}</span>
-                  )}
-                </a>
-              </Tooltip>
+              <a
+                href={secondaryInfo.commentsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.commentsButton}
+                title={`${secondaryInfo.commentCount ?? 0} comments`}
+              >
+                <CommentIcon size={12} />
+                <span>{secondaryInfo.commentCount ?? 0}</span>
+              </a>
             )}
           </div>
 
