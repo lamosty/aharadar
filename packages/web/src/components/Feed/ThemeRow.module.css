@@ -1,0 +1,151 @@
+.themeContainer {
+  position: relative;
+}
+
+.themeContainer[data-expanded="true"] {
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-subtle);
+  padding: var(--space-2);
+}
+
+.themeHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast);
+}
+
+.themeHeader:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Hide header for single-item ungrouped themes */
+.themeContainer:has(.themeItems > *:only-child) .themeHeader {
+  display: none;
+}
+
+.expandToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.expandToggle:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.expandIcon {
+  transition: transform var(--transition-fast);
+}
+
+.themeContainer[data-expanded="true"] .expandIcon {
+  transform: rotate(180deg);
+}
+
+.themeInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.themeLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.itemCountBadge {
+  font-size: 0.7rem;
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  white-space: nowrap;
+}
+
+.bulkActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.bulkActionButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bulkActionButton:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border-color: var(--color-border-emphasis);
+}
+
+.bulkActionButton:first-of-type:hover {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.bulkActionButton:nth-of-type(2):hover {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.themeItems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Indent nested items when expanded */
+.themeContainer[data-expanded="true"] .themeItems {
+  padding-left: var(--space-4);
+}
+
+/* Add connecting line for nested items */
+.themeContainer[data-expanded="true"] .themeItems > *:not(:first-child) {
+  position: relative;
+}
+
+.themeContainer[data-expanded="true"] .themeItems > *:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-3));
+  top: 50%;
+  width: var(--space-2);
+  height: 1px;
+  background: var(--color-border-subtle);
+}
