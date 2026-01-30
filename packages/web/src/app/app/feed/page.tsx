@@ -418,16 +418,38 @@ function FeedPageContent() {
     return restoredItem;
   }, [desktopHistory, clearFeedbackMutation, queryClient]);
 
-  // Modal undo handler - also restores the modal with the item's summary
+  // Modal undo handler - restores modal with item's summary, without expanding feed item
   const handleModalUndo = useCallback(() => {
-    const restoredItem = handleDesktopUndo();
-    if (restoredItem?.manualSummaryJson) {
-      // Re-open modal with the restored item's summary
+    if (desktopHistory.length === 0) return;
+    const previousItem = desktopHistory[desktopHistory.length - 1];
+    setDesktopHistory((prev) => prev.slice(0, -1));
+
+    // Optimistically add item back to cache
+    const restoredItem = { ...previousItem, feedback: null };
+    queryClient.setQueriesData<{ items: FeedItemType[]; pagination: unknown }>(
+      { queryKey: ["items", "paged"] },
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: [restoredItem, ...old.items.filter((i) => i.id !== restoredItem.id)],
+        };
+      },
+    );
+
+    // Don't expand feed item - modal is open
+    // Just restore the modal with the item's summary
+    if (restoredItem.manualSummaryJson) {
       setSummaryModalItem(restoredItem);
       setSummaryModalSummary(restoredItem.manualSummaryJson);
-      setIsSummaryModalOpen(true);
     }
-  }, [handleDesktopUndo]);
+
+    // API call in background
+    clearFeedbackMutation.mutate({
+      contentItemId: previousItem.id,
+      digestId: previousItem.digestId,
+    });
+  }, [desktopHistory, clearFeedbackMutation, queryClient]);
 
   // Mobile modal handlers
   const handleMobileItemClick = useCallback((item: FeedItemType) => {
@@ -711,7 +733,7 @@ function FeedPageContent() {
                 onClear={handleClearFeedback}
                 layout={layout}
                 showTopicBadge={isAllTopicsMode}
-                forceExpanded={forceExpandedId === item.id}
+                forceExpanded={!isSummaryModalOpen && forceExpandedId === item.id}
                 fastTriageMode={fastTriageMode && forceExpandedId !== null}
                 onViewSummary={handleOpenReaderModal}
                 onSummaryGenerated={() => refetch()}
