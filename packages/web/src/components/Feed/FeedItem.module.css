@@ -1031,6 +1031,14 @@
   margin-left: auto; /* Push to right */
 }
 
+/* Vertical separator between variable and fixed buttons */
+.actionSeparator {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 var(--space-1);
+}
+
 /* Icon buttons for action bar - no background at rest, bg on hover (primary actions) */
 .actionIconButtonGhost {
   display: flex;

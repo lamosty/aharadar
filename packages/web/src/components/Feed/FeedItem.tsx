@@ -631,37 +631,9 @@ export function FeedItem({
             )}
           </span>
 
-          {/* Right side: All action buttons (mouse stays here) */}
+          {/* Right side: Action buttons - ordered so thumbs up/down never move */}
           <div className={styles.actionGroupRight}>
-            <FeedbackButtons
-              contentItemId={item.id}
-              digestId={item.digestId}
-              currentFeedback={item.feedback}
-              onFeedback={handleFeedback}
-              onClear={handleClear}
-              variant="compact"
-            />
-            {canUndo && (
-              <button
-                type="button"
-                className={styles.actionIconButtonGhost}
-                onClick={onUndo}
-                aria-label={t("feed.undo")}
-              >
-                <UndoIcon />
-              </button>
-            )}
-            <button
-              type="button"
-              className={`${styles.actionIconButton} ${isBookmarked ? styles.actionIconButtonActive : ""}`}
-              onClick={() => bookmarkMutation.mutate(item.id)}
-              aria-label={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
-              aria-pressed={isBookmarked}
-              disabled={bookmarkMutation.isPending}
-            >
-              <BookmarkIcon filled={isBookmarked} />
-            </button>
-            {/* Paste input or AI summary button */}
+            {/* Variable width elements first */}
             {summary ? (
               <button
                 type="button"
@@ -686,6 +658,37 @@ export function FeedItem({
                 )}
               </>
             )}
+            <button
+              type="button"
+              className={`${styles.actionIconButton} ${isBookmarked ? styles.actionIconButtonActive : ""}`}
+              onClick={() => bookmarkMutation.mutate(item.id)}
+              aria-label={isBookmarked ? t("feed.removeBookmark") : t("feed.addBookmark")}
+              aria-pressed={isBookmarked}
+              disabled={bookmarkMutation.isPending}
+            >
+              <BookmarkIcon filled={isBookmarked} />
+            </button>
+            {/* Separator before stable buttons */}
+            <span className={styles.actionSeparator} />
+            {/* Fixed position buttons - these never move */}
+            {canUndo && (
+              <button
+                type="button"
+                className={styles.actionIconButtonGhost}
+                onClick={onUndo}
+                aria-label={t("feed.undo")}
+              >
+                <UndoIcon />
+              </button>
+            )}
+            <FeedbackButtons
+              contentItemId={item.id}
+              digestId={item.digestId}
+              currentFeedback={item.feedback}
+              onFeedback={handleFeedback}
+              onClear={handleClear}
+              variant="compact"
+            />
           </div>
         </div>
 
