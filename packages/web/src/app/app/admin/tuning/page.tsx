@@ -25,7 +25,7 @@ const THEME_TUNING_DEFAULTS = {
 };
 
 const THEME_TUNING_RANGES = {
-  similarityThreshold: { min: 0.5, max: 0.9 },
+  similarityThreshold: { min: 0.3, max: 0.9 },
   lookbackDays: { min: 1, max: 14 },
 } as const;
 
