@@ -648,6 +648,7 @@ export function FeedItem({
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.actionBarSource}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {secondaryInfo.text}
                   </a>
