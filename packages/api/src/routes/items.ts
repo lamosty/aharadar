@@ -399,19 +399,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         SELECT
           th.id as theme_id,
           th.label as theme_label,
-          -- Count only inbox items (no feedback) in this theme
-          (
-            SELECT COUNT(*)::int
-            FROM theme_items ti2
-            JOIN content_items ci2 ON ci2.id = ti2.content_item_id
-            WHERE ti2.theme_id = th.id
-              AND ci2.deleted_at IS NULL
-              AND NOT EXISTS (
-                SELECT 1 FROM feedback_events fe2
-                WHERE fe2.content_item_id = ci2.id
-                  AND fe2.user_id = '${ctx.userId}'
-              )
-          ) as theme_item_count
+          th.item_count as theme_item_count
         FROM theme_items ti
         JOIN themes th ON th.id = ti.theme_id
         WHERE ti.content_item_id = li.content_item_id
