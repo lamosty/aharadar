@@ -244,11 +244,15 @@ function FeedPageContent() {
 
   // Fetch items using paged query
   // Pass "all" for all topics mode, otherwise the topic ID
+  // When theme grouping is enabled, fetch all items to ensure complete theme groupings
+  // (themes can span across normal page boundaries)
+  const effectivePageSize = groupByTheme ? 2000 : pageSize;
+  const effectivePage = groupByTheme ? 1 : currentPage;
   const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
-    page: currentPage,
-    pageSize,
+    page: effectivePage,
+    pageSize: effectivePageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
     view,
   });
@@ -391,6 +395,14 @@ function FeedPageContent() {
       });
     },
     [data, clearFeedbackMutation],
+  );
+
+  // Bulk feedback handler for theme rows
+  const handleBulkFeedback = useCallback(
+    async (contentItemIds: string[], action: "like" | "dislike") => {
+      await Promise.all(contentItemIds.map((id) => handleFeedback(id, action)));
+    },
+    [handleFeedback],
   );
 
   // Desktop undo handler - pops from history, clears feedback, and expands the restored item
@@ -766,6 +778,7 @@ function FeedPageContent() {
                     theme={themeGroup}
                     onFeedback={handleFeedback}
                     onClear={handleClearFeedback}
+                    onBulkFeedback={handleBulkFeedback}
                     layout={layout}
                     showTopicBadge={isAllTopicsMode}
                     sort={sort}
@@ -773,6 +786,33 @@ function FeedPageContent() {
                     onSummaryGenerated={() => refetch()}
                     onMobileClick={isMobile ? handleMobileItemClick : undefined}
                     fastTriageMode={fastTriageMode}
+                    forceExpandedId={!isSummaryModalOpen ? forceExpandedId : null}
+                    onHover={(itemId) => {
+                      // In fast triage mode, don't clear force-expanded on hover
+                      if (fastTriageMode) {
+                        return;
+                      }
+                      // Clear any pending timeout
+                      if (hoverClearTimeoutRef.current) {
+                        clearTimeout(hoverClearTimeoutRef.current);
+                        hoverClearTimeoutRef.current = null;
+                      }
+                      // If hovering the force-expanded item, don't clear
+                      if (forceExpandedId === itemId) {
+                        return;
+                      }
+                      // Clear force-expanded after a delay when hovering a different item
+                      if (forceExpandedId) {
+                        hoverClearTimeoutRef.current = setTimeout(() => {
+                          setForceExpandedId(null);
+                        }, 300);
+                      }
+                    }}
+                    onSelect={(itemId) => setForceExpandedId(itemId)}
+                    onClose={() => setForceExpandedId(null)}
+                    onNext={(currentId) => handleNextItem(currentId)}
+                    onUndo={!isMobile ? handleDesktopUndo : undefined}
+                    canUndo={!isMobile && desktopHistory.length > 0}
                   />
                 ))
               : // Render flat list of items
@@ -825,15 +865,18 @@ function FeedPageContent() {
                 ))}
           </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalCount}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            isLoading={isFetching}
-            compact={isCondensed}
-          />
+          {/* Hide pagination when theme grouping is on (all items fetched for complete groupings) */}
+          {!groupByTheme && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalCount}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              isLoading={isFetching}
+              compact={isCondensed}
+            />
+          )}
         </>
       )}
 

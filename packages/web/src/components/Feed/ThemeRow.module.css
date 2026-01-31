@@ -23,8 +23,8 @@
   background: var(--color-surface-hover);
 }
 
-/* Hide header for single-item ungrouped themes */
-.themeContainer:has(.themeItems > *:only-child) .themeHeader {
+/* Hide header for single-item themes (no need to expand/collapse) */
+.themeContainer[data-single-item="true"] .themeHeader {
   display: none;
 }
 
@@ -96,13 +96,13 @@
 .bulkActionButton {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
