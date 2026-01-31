@@ -51,6 +51,7 @@ type RunNowOptions = {
 
 type DigestNowOptions = {
   maxItems: number | null;
+  candidatePool: number | null;
   sourceTypes: string[];
   sourceIds: string[];
   topic: string | null;
@@ -73,6 +74,7 @@ function splitCsv(value: string): string[] {
 
 function parseDigestNowArgs(args: string[]): DigestNowOptions {
   let maxItems: number | null = null;
+  let candidatePool: number | null = null;
   const sourceTypes: string[] = [];
   const sourceIds: string[] = [];
   let topic: string | null = null;
@@ -89,6 +91,16 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
         throw new Error("Invalid --max-items (expected a positive integer)");
       }
       maxItems = parsed;
+      i += 1;
+      continue;
+    }
+    if (a === "--candidate-pool") {
+      const next = args[i + 1];
+      const parsed = next ? Number.parseInt(next, 10) : Number.NaN;
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error("Invalid --candidate-pool (expected a positive integer)");
+      }
+      candidatePool = parsed;
       i += 1;
       continue;
     }
@@ -146,7 +158,16 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
     }
   }
 
-  return { maxItems, sourceTypes, sourceIds, topic, windowStart, windowEnd, inboxOnly };
+  return {
+    maxItems,
+    candidatePool,
+    sourceTypes,
+    sourceIds,
+    topic,
+    windowStart,
+    windowEnd,
+    inboxOnly,
+  };
 }
 
 function parseEmbedNowArgs(args: string[]): EmbedNowOptions {
@@ -275,9 +296,8 @@ function printEmbedNowUsage(): void {
 
 function printDigestNowUsage(): void {
   console.log("Usage:");
-  console.log(
-    "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]",
-  );
+  console.log("  admin:digest-now [--topic <id-or-name>] [--max-items N] [--candidate-pool N]");
+  console.log("                  [--source-type <type>[,<type>...]] [--source-id <uuid>]");
   console.log("                  [--window-start <ISO>] [--window-end <ISO>] [--inbox-only]");
   console.log("");
   console.log("Notes:");
@@ -285,6 +305,9 @@ function printDigestNowUsage(): void {
     "- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.",
   );
   console.log("- If --max-items is omitted, uses a dev-friendly default: all candidates (capped).");
+  console.log(
+    "- --candidate-pool overrides the default 500 cap on candidates for backfill scenarios.",
+  );
   console.log("- --window-start/--window-end override the default 24h window.");
   console.log("- --inbox-only skips items that already have feedback (liked/disliked).");
   console.log("");
@@ -295,6 +318,11 @@ function printDigestNowUsage(): void {
   console.log('  pnpm dev:cli -- admin:digest-now --topic "Investing & Finances" \\');
   console.log('    --window-start "2026-01-07T00:00:00Z" --window-end "2026-01-31T23:59:59Z" \\');
   console.log("    --inbox-only");
+  console.log("");
+  console.log("  # Backfill with larger candidate pool:");
+  console.log('  pnpm dev:cli -- admin:digest-now --topic "Investing & Finances" \\');
+  console.log('    --window-start "2026-01-07T00:00:00Z" --window-end "2026-01-31T23:59:59Z" \\');
+  console.log("    --inbox-only --candidate-pool 800");
 }
 
 export async function adminRunNowCommand(args: string[] = []): Promise<void> {
@@ -670,7 +698,10 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
       windowStart,
       windowEnd,
       mode: env.defaultTier,
-      limits: { maxItems: digestMaxItems },
+      limits: {
+        maxItems: digestMaxItems,
+        candidatePoolMax: opts.candidatePool ?? undefined,
+      },
       filter:
         opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
           ? {
