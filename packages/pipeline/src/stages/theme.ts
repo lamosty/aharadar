@@ -42,6 +42,7 @@ type NearestThemeRow = {
   similarity: number;
   representative_content_item_id: string | null;
   updated_at: string;
+  created_at: string;
 };
 
 function parseIntEnv(value: string | undefined): number | null {
@@ -229,7 +230,8 @@ export async function themeTopicContentItems(params: {
              ) as inbox_count,
              (1 - (t.centroid_vector <=> $2::vector))::float8 as similarity,
              t.representative_content_item_id::text as representative_content_item_id,
-             t.updated_at::text as updated_at
+             t.updated_at::text as updated_at,
+             t.created_at::text as created_at
            from themes t
            where t.user_id = $1
              and t.topic_id = $3::uuid
@@ -260,10 +262,11 @@ export async function themeTopicContentItems(params: {
             : 0
           : 0;
 
-        // Apply stricter threshold for older themes
+        // Apply stricter threshold for older themes (based on creation time, not last update)
+        // This prevents themes from growing indefinitely by resetting their "age" with each new item
         let effectiveThreshold = threshold;
-        if (best?.updated_at) {
-          const themeAgeMs = Date.now() - new Date(best.updated_at).getTime();
+        if (best?.created_at) {
+          const themeAgeMs = Date.now() - new Date(best.created_at).getTime();
           const themeAgeDays = themeAgeMs / (24 * 60 * 60 * 1000);
           if (themeAgeDays > stricterThresholdAfterDays) {
             effectiveThreshold = stricterSimilarityThreshold;
