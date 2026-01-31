@@ -93,6 +93,7 @@ export async function callOpenAiEmbeddingsCompat(params: {
   const body = {
     model: params.model,
     input: params.input,
+    dimensions: 1536, // Fixed dimensions to match DB schema (required for text-embedding-3-large)
   };
 
   const res = await fetch(params.endpoint, {
