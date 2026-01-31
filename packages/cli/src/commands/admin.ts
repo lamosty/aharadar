@@ -54,6 +54,9 @@ type DigestNowOptions = {
   sourceTypes: string[];
   sourceIds: string[];
   topic: string | null;
+  windowStart: string | null;
+  windowEnd: string | null;
+  inboxOnly: boolean;
 };
 
 type EmbedNowOptions = {
@@ -73,6 +76,9 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
   const sourceTypes: string[] = [];
   const sourceIds: string[] = [];
   let topic: string | null = null;
+  let windowStart: string | null = null;
+  let windowEnd: string | null = null;
+  let inboxOnly = false;
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
@@ -113,12 +119,34 @@ function parseDigestNowArgs(args: string[]): DigestNowOptions {
       i += 1;
       continue;
     }
+    if (a === "--window-start") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --window-start value (expected an ISO timestamp)");
+      }
+      windowStart = String(next).trim();
+      i += 1;
+      continue;
+    }
+    if (a === "--window-end") {
+      const next = args[i + 1];
+      if (!next || String(next).trim().length === 0) {
+        throw new Error("Missing --window-end value (expected an ISO timestamp)");
+      }
+      windowEnd = String(next).trim();
+      i += 1;
+      continue;
+    }
+    if (a === "--inbox-only") {
+      inboxOnly = true;
+      continue;
+    }
     if (a === "--help" || a === "-h") {
       throw new Error("help");
     }
   }
 
-  return { maxItems, sourceTypes, sourceIds, topic };
+  return { maxItems, sourceTypes, sourceIds, topic, windowStart, windowEnd, inboxOnly };
 }
 
 function parseEmbedNowArgs(args: string[]): EmbedNowOptions {
@@ -250,15 +278,23 @@ function printDigestNowUsage(): void {
   console.log(
     "  admin:digest-now [--topic <id-or-name>] [--max-items N] [--source-type <type>[,<type>...]] [--source-id <uuid>]",
   );
+  console.log("                  [--window-start <ISO>] [--window-end <ISO>] [--inbox-only]");
   console.log("");
   console.log("Notes:");
   console.log(
     "- Does NOT run ingest (no connector fetch). Uses existing content_items already in the DB.",
   );
   console.log("- If --max-items is omitted, uses a dev-friendly default: all candidates (capped).");
+  console.log("- --window-start/--window-end override the default 24h window.");
+  console.log("- --inbox-only skips items that already have feedback (liked/disliked).");
   console.log("");
-  console.log("Example:");
+  console.log("Examples:");
   console.log("  pnpm dev:cli -- admin:digest-now --source-type reddit");
+  console.log("");
+  console.log("  # Re-triage inbox items from a wide window:");
+  console.log('  pnpm dev:cli -- admin:digest-now --topic "Investing & Finances" \\');
+  console.log('    --window-start "2026-01-07T00:00:00Z" --window-end "2026-01-31T23:59:59Z" \\');
+  console.log("    --inbox-only");
 }
 
 export async function adminRunNowCommand(args: string[] = []): Promise<void> {
@@ -548,9 +584,11 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
     const user = await db.users.getOrCreateSingleton();
     const topic = await resolveTopicForUser({ db, userId: user.id, topicArg: opts.topic });
 
+    // Use provided window or default to last 24 hours
     const now = new Date();
-    const windowEnd = now.toISOString();
-    const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const windowEnd = opts.windowEnd ?? now.toISOString();
+    const windowStart =
+      opts.windowStart ?? new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
     // Dev-friendly default: include "all candidates (capped)" so review/search doesn't feel broken.
     // Candidate definition matches the digest stage (topic-scoped via content_item_sources).
@@ -563,6 +601,15 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
     if (opts.sourceIds.length > 0) {
       candidateCountArgs.push(opts.sourceIds);
       filterSql += ` and s.id = any($${candidateCountArgs.length}::uuid[])`;
+    }
+    if (opts.inboxOnly) {
+      candidateCountArgs.push(user.id);
+      filterSql += ` and not exists (
+        select 1 from feedback_events fe
+        where fe.content_item_id = ci.id
+          and fe.user_id = $${candidateCountArgs.length}
+          and fe.action in ('like', 'dislike')
+      )`;
     }
 
     const candidateCountRes = await db.query<{ candidate_count: number }>(
@@ -592,8 +639,9 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
     const digestMaxItemsDefault = Math.min(500, Math.max(20, candidateCount));
     const digestMaxItems = opts.maxItems ?? digestMaxItemsDefault;
 
+    const inboxOnlyLabel = opts.inboxOnly ? ", inboxOnly=true" : "";
     console.log(
-      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${digestMaxItems})...`,
+      `Building digest (no ingest) (user=${user.id}, topic=${topic.name}, window=${windowStart} → ${windowEnd}, maxItems=${digestMaxItems}${inboxOnlyLabel})...`,
     );
 
     // Keep clustering/dedupe reasonably fresh even when re-running digest without ingest.
@@ -631,6 +679,7 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
             }
           : undefined,
       llmConfig,
+      inboxOnly: opts.inboxOnly,
     });
 
     console.log("");

@@ -158,7 +158,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Parse and validate limit
-    const limit = Math.min(200, Math.max(1, parseInt(limitStr ?? "50", 10) || 50));
+    // Allow up to 2000 items for theme grouping mode (when frontend requests large pageSize)
+    const MAX_LIMIT = 2000;
+    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(limitStr ?? "50", 10) || 50));
     const offset = Math.max(0, parseInt(offsetStr ?? "0", 10) || 0);
 
     // Parse filters

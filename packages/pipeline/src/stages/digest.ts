@@ -288,26 +288,47 @@ function resolveTriageLimit(params: {
   return defaultLimit;
 }
 
-function applyCandidateFilterSql(params: { filter?: IngestSourceFilter; args: unknown[] }): {
-  whereSql: string;
+function applyCandidateFilterSql(params: {
+  filter?: IngestSourceFilter;
+  args: unknown[];
+  inboxOnly?: boolean;
+  userId?: string;
+}): {
+  /** SQL for filtering sources (in CTEs where only `s` is available) */
+  sourceWhereSql: string;
+  /** SQL for filtering content items (in queries where `ci` is available) */
+  itemWhereSql: string;
   args: unknown[];
 } {
   const onlyTypes = (params.filter?.onlySourceTypes ?? []).filter((t) => t.trim().length > 0);
   const onlyIds = (params.filter?.onlySourceIds ?? []).filter((id) => id.trim().length > 0);
 
-  let whereSql = "";
+  let sourceWhereSql = "";
+  let itemWhereSql = "";
   const args = [...params.args];
 
   if (onlyTypes.length > 0) {
     args.push(onlyTypes);
-    whereSql += ` and s.type = any($${args.length}::text[])`;
+    sourceWhereSql += ` and s.type = any($${args.length}::text[])`;
   }
   if (onlyIds.length > 0) {
     args.push(onlyIds);
-    whereSql += ` and s.id = any($${args.length}::uuid[])`;
+    sourceWhereSql += ` and s.id = any($${args.length}::uuid[])`;
   }
 
-  return { whereSql, args };
+  // Filter out items that have feedback when inboxOnly is true
+  // This needs to be applied where `ci` is in scope
+  if (params.inboxOnly && params.userId) {
+    args.push(params.userId);
+    itemWhereSql += ` and not exists (
+      select 1 from feedback_events fe
+      where fe.content_item_id = ci.id
+        and fe.user_id = $${args.length}
+        and fe.action in ('like', 'dislike')
+    )`;
+  }
+
+  return { sourceWhereSql, itemWhereSql, args };
 }
 
 interface TriageableCandidate {
@@ -718,6 +739,8 @@ export async function persistDigestFromContentItems(params: {
     skipReason?: string;
     itemsFetched: number;
   }>;
+  /** If true, skip items that already have feedback (liked/disliked) */
+  inboxOnly?: boolean;
 }): Promise<DigestRunResult | null> {
   // Track when this digest run starts for cost aggregation
   const runStartedAt = new Date();
@@ -737,7 +760,12 @@ export async function persistDigestFromContentItems(params: {
     params.windowEnd,
     candidatePoolSize,
   ];
-  const filtered = applyCandidateFilterSql({ filter: params.filter, args: baseArgs });
+  const filtered = applyCandidateFilterSql({
+    filter: params.filter,
+    args: baseArgs,
+    inboxOnly: params.inboxOnly,
+    userId: params.userId,
+  });
 
   const candidates = await params.db.query<CandidateRow>(
     `with topic_membership as (
@@ -746,7 +774,7 @@ export async function persistDigestFromContentItems(params: {
        join sources s on s.id = cis.source_id
        where s.user_id = $1
          and s.topic_id = $2::uuid
-         ${filtered.whereSql}
+         ${filtered.sourceWhereSql}
      ),
      topic_item_source as (
        select distinct on (cis.content_item_id)
@@ -756,7 +784,7 @@ export async function persistDigestFromContentItems(params: {
        join sources s on s.id = cis.source_id
        where s.user_id = $1
          and s.topic_id = $2::uuid
-         ${filtered.whereSql}
+         ${filtered.sourceWhereSql}
        order by cis.content_item_id, cis.added_at desc
      ),
      window_topic_items as (
@@ -770,6 +798,7 @@ export async function persistDigestFromContentItems(params: {
          and ci.duplicate_of_content_item_id is null
          and coalesce(ci.published_at, ci.fetched_at) >= $3::timestamptz
          and coalesce(ci.published_at, ci.fetched_at) < $4::timestamptz
+         ${filtered.itemWhereSql}
      ),
      cluster_candidates as (
        select
