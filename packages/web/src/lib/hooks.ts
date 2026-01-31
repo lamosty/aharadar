@@ -360,36 +360,41 @@ export function usePagedItems(params: UsePagedItemsParams) {
 
 /**
  * LocalStorage hook for persisting values across sessions.
+ * Uses initialValue for SSR/first render to avoid hydration mismatch,
+ * then reads from localStorage after mount.
  */
 export function useLocalStorage<T>(
   key: string,
   initialValue: T,
 ): [T, (value: T | ((prev: T) => T)) => void] {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    if (typeof window === "undefined") {
-      return initialValue;
-    }
+  // Always start with initialValue to match server render
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+  // Read from localStorage after mount to avoid hydration mismatch
+  useEffect(() => {
     try {
       const item = window.localStorage.getItem(key);
-      return item ? (JSON.parse(item) as T) : initialValue;
+      if (item !== null) {
+        setStoredValue(JSON.parse(item) as T);
+      }
     } catch {
-      return initialValue;
+      // Ignore errors, keep initialValue
     }
-  });
+  }, [key]);
 
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
-      try {
-        const valueToStore = value instanceof Function ? value(storedValue) : value;
-        setStoredValue(valueToStore);
-        if (typeof window !== "undefined") {
+      setStoredValue((prev) => {
+        const valueToStore = value instanceof Function ? value(prev) : value;
+        try {
           window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.warn(`Error setting localStorage key "${key}":`, error);
         }
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
-      }
+        return valueToStore;
+      });
     },
-    [key, storedValue],
+    [key],
   );
 
   return [storedValue, setValue];
