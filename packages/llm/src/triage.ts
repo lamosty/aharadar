@@ -22,6 +22,9 @@ export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
     is_novel: { type: "boolean" },
     categories: { type: "array", items: { type: "string" } },
     should_deep_summarize: { type: "boolean" },
+    // New fields for topic-based grouping
+    topic: { type: "string" },
+    one_liner: { type: "string" },
   },
   required: [
     "schema_version",
@@ -34,6 +37,8 @@ export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
     "is_novel",
     "categories",
     "should_deep_summarize",
+    "topic",
+    "one_liner",
   ],
   additionalProperties: false,
 };
@@ -62,6 +67,10 @@ export interface TriageOutput {
   is_novel: boolean;
   categories: string[];
   should_deep_summarize: boolean;
+  /** Main topic for grouping similar items (2-4 words, specific enough to distinguish) */
+  topic: string;
+  /** Brief content summary - what the item is about, not why it's relevant */
+  one_liner: string;
 }
 
 export interface TriageCallResult {
@@ -150,10 +159,16 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     '  "is_relevant": true,\n' +
     '  "is_novel": true,\n' +
     '  "categories": ["topic1", "topic2"],\n' +
-    '  "should_deep_summarize": false\n' +
+    '  "should_deep_summarize": false,\n' +
+    '  "topic": "Main Subject",\n' +
+    '  "one_liner": "Brief summary of the content."\n' +
     "}\n" +
-    "AI score range: 0-100 (0=low-signal noise, 100=rare high-signal). " +
-    "Keep reason concise and topic-agnostic. Categories should be short, generic labels.\n" +
+    "Rules:\n" +
+    "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
+    "- reason: concise, topic-agnostic explanation\n" +
+    "- categories: short generic labels\n" +
+    "- topic: 2-4 words identifying the main subject (e.g. 'SPY options', 'React hooks', 'Bitcoin price'). Specific enough to group similar items, not too generic.\n" +
+    "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
@@ -295,6 +310,10 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
   const shouldDeepSummarize = asBoolean(value.should_deep_summarize);
   if (isRelevant === null || isNovel === null || shouldDeepSummarize === null) return null;
 
+  // New fields - provide defaults for backward compatibility with older model outputs
+  const topic = asString(value.topic) ?? "Uncategorized";
+  const oneLiner = asString(value.one_liner) ?? reason; // Fall back to reason if missing
+
   // Allow missing schema_version/prompt_id - we'll fill them in
   const schemaVersion = asString(value.schema_version) ?? SCHEMA_VERSION;
   const _promptId = asString(value.prompt_id) ?? PROMPT_ID;
@@ -318,6 +337,8 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
     is_novel: isNovel,
     categories: normalizeCategories(value.categories),
     should_deep_summarize: shouldDeepSummarize,
+    topic,
+    one_liner: oneLiner,
   };
 }
 
@@ -499,6 +520,8 @@ export const TRIAGE_BATCH_JSON_SCHEMA: Record<string, unknown> = {
           is_novel: { type: "boolean" },
           categories: { type: "array", items: { type: "string" } },
           should_deep_summarize: { type: "boolean" },
+          topic: { type: "string" },
+          one_liner: { type: "string" },
         },
         required: [
           "id",
@@ -508,6 +531,8 @@ export const TRIAGE_BATCH_JSON_SCHEMA: Record<string, unknown> = {
           "is_novel",
           "categories",
           "should_deep_summarize",
+          "topic",
+          "one_liner",
         ],
       },
     },
@@ -524,6 +549,8 @@ export interface TriageBatchItem {
   is_novel: boolean;
   categories: string[];
   should_deep_summarize: boolean;
+  topic: string;
+  one_liner: string;
 }
 
 export interface TriageBatchOutput {
@@ -564,16 +591,20 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     '      "is_relevant": true/false,\n' +
     '      "is_novel": true/false,\n' +
     '      "categories": ["topic1", "topic2"],\n' +
-    '      "should_deep_summarize": true/false\n' +
+    '      "should_deep_summarize": true/false,\n' +
+    '      "topic": "Main Subject",\n' +
+    '      "one_liner": "Brief summary of content"\n' +
     "    }\n" +
     "  ]\n" +
     "}\n\n" +
     "Rules:\n" +
     "- Return ONE result for EACH input item, in the same order\n" +
     "- Each result.id MUST match an input item id exactly\n" +
-    "- ai_score range: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
-    "- Keep reason concise and topic-agnostic\n" +
-    "- Categories should be short, generic labels\n" +
+    "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
+    "- reason: concise, topic-agnostic explanation\n" +
+    "- categories: short generic labels\n" +
+    "- topic: 2-4 words identifying the main subject (e.g. 'SPY options', 'React hooks', 'Bitcoin price'). Specific enough to group similar items.\n" +
+    "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
@@ -662,6 +693,10 @@ function normalizeBatchOutput(
       continue;
     }
 
+    // New fields - provide defaults for backward compatibility
+    const topic = asString(itemObj.topic) ?? "Uncategorized";
+    const oneLiner = asString(itemObj.one_liner) ?? reason;
+
     outputMap.set(id, {
       schema_version: SCHEMA_VERSION,
       prompt_id: PROMPT_ID,
@@ -673,6 +708,8 @@ function normalizeBatchOutput(
       is_novel: isNovel,
       categories: normalizeCategories(itemObj.categories),
       should_deep_summarize: shouldDeepSummarize,
+      topic,
+      one_liner: oneLiner,
     });
   }
 

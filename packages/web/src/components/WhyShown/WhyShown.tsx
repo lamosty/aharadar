@@ -188,16 +188,16 @@ function WhyShownContent({
         <p className={styles.reason}>{features.reason}</p>
       )}
 
-      {/* Categories from LLM triage - hidden if already shown in parent */}
-      {!hideCategories && features.categories && features.categories.length > 0 && (
+      {/* Topic from LLM triage - shown as primary grouping label */}
+      {!hideCategories && features.topic && features.topic !== "Uncategorized" && (
         <div className={styles.categoriesSection}>
           <div className={styles.tagList}>
-            {features.categories.map((cat) => (
-              <span key={cat} className={styles.tag}>
-                {cat}
-              </span>
-            ))}
+            <span className={styles.tag}>{features.topic}</span>
           </div>
+          {/* One-liner summary if available and reason isn't already shown */}
+          {hideReason && features.one_liner && (
+            <p className={styles.reason}>{features.one_liner}</p>
+          )}
         </div>
       )}
 

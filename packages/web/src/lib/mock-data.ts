@@ -32,6 +32,10 @@ export interface TriageFeatures {
   is_novel?: boolean;
   should_deep_summarize?: boolean;
   categories?: string[];
+  /** Main topic for grouping (2-4 words, e.g. "SPY options", "React hooks") */
+  topic?: string;
+  /** Brief content summary - what the item is about */
+  one_liner?: string;
   model?: string;
   provider?: string;
   prompt_id?: string;

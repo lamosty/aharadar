@@ -657,15 +657,13 @@ export function FeedItem({
                 )}
               </Tooltip>
             )}
-            {/* Category tags */}
-            {triageFeatures?.categories && triageFeatures.categories.length > 0 && (
-              <span className={styles.actionBarTags}>
-                {triageFeatures.categories.slice(0, 3).map((cat) => (
-                  <span key={cat} className={styles.actionBarTag}>
-                    {cat}
-                  </span>
-                ))}
-              </span>
+            {/* Topic tag - single focused label for grouping */}
+            {triageFeatures?.topic && triageFeatures.topic !== "Uncategorized" && (
+              <Tooltip content={triageFeatures.one_liner ?? triageFeatures.reason ?? ""}>
+                <span className={styles.actionBarTags}>
+                  <span className={styles.actionBarTag}>{triageFeatures.topic}</span>
+                </span>
+              </Tooltip>
             )}
           </span>
 
