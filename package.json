@@ -6,6 +6,7 @@
   "license": "MIT",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
+    "clean": "rm -rf packages/*/dist packages/*/.tsbuildinfo packages/*/tsconfig.tsbuildinfo",
     "build": "pnpm -r build",
     "build:cli": "pnpm --filter @aharadar/cli... build",
     "dev": "pnpm dev:cli",
@@ -22,8 +23,8 @@
     "dev:stack:lan": "concurrently -n api,web,worker,queue-ui -c blue,green,yellow,magenta \"pnpm dev:api\" \"pnpm dev:web:lan\" \"pnpm dev:worker\" \"pnpm dev:queue-ui\"",
     "dev:stack:stop": "./scripts/stop-apps.sh",
     "dev:stack:restart": "./scripts/stop-apps.sh && pnpm dev:stack",
-    "start": "pnpm dev:services && pnpm dev:stack",
-    "start:lan": "pnpm dev:services && pnpm dev:stack:lan",
+    "start": "pnpm clean && pnpm dev:services && pnpm dev:stack",
+    "start:lan": "pnpm clean && pnpm dev:services && pnpm dev:stack:lan",
     "stop": "./scripts/stop.sh",
     "restart": "pnpm stop && pnpm start",
     "format": "biome check --write",
@@ -51,6 +52,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "testcontainers": "^10.18.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.16"
   },
