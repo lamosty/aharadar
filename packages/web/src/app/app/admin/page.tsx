@@ -76,6 +76,14 @@ export default function AdminPage() {
           <h2 className={styles.cardTitle}>{t("admin.cards.tuning.title")}</h2>
           <p className={styles.cardDescription}>{t("admin.cards.tuning.description")}</p>
         </Link>
+
+        <Link href="/app/admin/scoring-modes" className={styles.card}>
+          <div className={styles.cardIcon}>
+            <ScoringIcon />
+          </div>
+          <h2 className={styles.cardTitle}>Scoring Modes</h2>
+          <p className={styles.cardDescription}>Configure ranking strategies and run experiments</p>
+        </Link>
       </div>
     </div>
   );
@@ -233,6 +241,27 @@ function TuningIcon() {
       <line x1="1" y1="14" x2="7" y2="14" />
       <line x1="9" y1="8" x2="15" y2="8" />
       <line x1="17" y1="16" x2="23" y2="16" />
+    </svg>
+  );
+}
+
+function ScoringIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 3v18h18" />
+      <path d="M18 17V9" />
+      <path d="M13 17V5" />
+      <path d="M8 17v-3" />
     </svg>
   );
 }
