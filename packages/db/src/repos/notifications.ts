@@ -31,15 +31,6 @@ export interface ListNotificationsParams {
   offset?: number;
 }
 
-export interface ListRecentNotificationsParams {
-  userId: string;
-  hoursAgo: number;
-  unreadOnly?: boolean;
-  limit?: number;
-  offset?: number;
-  severities?: NotificationSeverity[];
-}
-
 export function createNotificationsRepo(db: Queryable) {
   return {
     /**
@@ -124,58 +115,6 @@ export function createNotificationsRepo(db: Queryable) {
         Math.max(1, Math.min(100, limit)),
         Math.max(0, offset),
       ]);
-
-      return { notifications: res.rows, total };
-    },
-
-    /**
-     * List recent notifications for a user within a time range.
-     */
-    async listRecentByUser(
-      params: ListRecentNotificationsParams,
-    ): Promise<{ notifications: NotificationRow[]; total: number }> {
-      const { userId, hoursAgo, unreadOnly = false, limit = 50, offset = 0, severities } = params;
-
-      const conditions: string[] = ["user_id = $1", "created_at >= NOW() - $2 * INTERVAL '1 hour'"];
-      const values: unknown[] = [userId, hoursAgo];
-      let paramIndex = 3;
-
-      if (unreadOnly) {
-        conditions.push("is_read = FALSE");
-      }
-
-      if (severities && severities.length > 0) {
-        conditions.push(`severity = ANY($${paramIndex})`);
-        values.push(severities);
-        paramIndex++;
-      }
-
-      const countRes = await db.query<{ count: string }>(
-        `SELECT count(*)::text as count FROM notifications WHERE ${conditions.join(" AND ")}`,
-        values,
-      );
-      const total = parseInt(countRes.rows[0]?.count ?? "0", 10);
-
-      const listValues = [...values, Math.max(1, Math.min(200, limit)), Math.max(0, offset)];
-
-      const res = await db.query<NotificationRow>(
-        `SELECT
-           id,
-           user_id,
-           type,
-           title,
-           body,
-           severity,
-           data_json,
-           is_read,
-           read_at::text as read_at,
-           created_at::text as created_at
-         FROM notifications
-         WHERE ${conditions.join(" AND ")}
-         ORDER BY created_at DESC
-         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-        listValues,
-      );
 
       return { notifications: res.rows, total };
     },

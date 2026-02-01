@@ -2444,32 +2444,6 @@ export async function getAdminLogsProviderCallErrors(
 }
 
 /**
- * Get recent notifications for admin logs.
- */
-export async function getAdminLogsNotifications(
-  params?: {
-    limit?: number;
-    offset?: number;
-    hoursAgo?: number;
-    severities?: NotificationSeverity[];
-  },
-  signal?: AbortSignal,
-): Promise<NotificationsListResponse> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
-  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
-  if (params?.hoursAgo !== undefined) searchParams.set("hoursAgo", String(params.hoursAgo));
-  if (params?.severities && params.severities.length > 0) {
-    searchParams.set("severity", params.severities.join(","));
-  }
-
-  const query = searchParams.toString();
-  const path = query ? `/admin/logs/notifications?${query}` : "/admin/logs/notifications";
-
-  return apiFetch<NotificationsListResponse>(path, { signal });
-}
-
-/**
  * Get fetch run logs with optional filters.
  */
 export async function getAdminLogsFetchRuns(

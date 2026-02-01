@@ -82,7 +82,6 @@ import {
   getAdminLlmSettings,
   getAdminLogsFetchRuns,
   getAdminLogsHandleHealth,
-  getAdminLogsNotifications,
   getAdminLogsProviderCallErrors,
   getAdminLogsProviderCalls,
   getAdminLogsSourceHealth,
@@ -2073,18 +2072,6 @@ export function useAdminLogsProviderCallErrors(params?: { hoursAgo?: number }) {
   return useQuery({
     queryKey: ["admin", "logs", "provider-calls", "errors", params],
     queryFn: ({ signal }) => getAdminLogsProviderCallErrors(params, signal),
-  });
-}
-
-export function useAdminLogsNotifications(params?: {
-  limit?: number;
-  offset?: number;
-  hoursAgo?: number;
-  severities?: ("info" | "warning" | "error")[];
-}) {
-  return useQuery({
-    queryKey: ["admin", "logs", "notifications", params],
-    queryFn: ({ signal }) => getAdminLogsNotifications(params, signal),
   });
 }
 

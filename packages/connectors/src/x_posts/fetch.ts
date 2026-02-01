@@ -386,14 +386,14 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       const xSearchToolCostUsd = getXaiXSearchCostPerCall();
       const costEstimateUsd = tokenCostUsd + xSearchToolCostUsd;
 
-      const parseMeta =
-        result.assistantParseError === true
-          ? {
-              assistant_text_head: result.assistantTextHead,
-              assistant_text_tail: result.assistantTextTail,
-              assistant_text_length: result.assistantTextLength,
-            }
-          : {};
+      const isParseError = result.assistantParseError === true;
+      const parseMeta = isParseError
+        ? {
+            assistant_text_head: result.assistantTextHead,
+            assistant_text_tail: result.assistantTextTail,
+            assistant_text_length: result.assistantTextLength,
+          }
+        : {};
 
       providerCalls.push({
         userId: params.userId,
@@ -425,22 +425,25 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         },
         startedAt,
         endedAt,
-        status: "ok",
+        status: isParseError ? "error" : "ok",
+        error: isParseError ? { message: "assistant_parse_error" } : undefined,
       });
 
-      anySuccess = true;
+      if (!isParseError) {
+        anySuccess = true;
 
-      if (resultsCount && resultsCount > 0) {
-        rawItems.push(
-          ...extractPostRawItems({
-            assistantJson: result.assistantJson,
-            vendor: config.vendor,
-            query: job.query,
-            dayBucket,
-            windowStart: params.windowStart,
-            windowEnd: params.windowEnd,
-          }),
-        );
+        if (resultsCount && resultsCount > 0) {
+          rawItems.push(
+            ...extractPostRawItems({
+              assistantJson: result.assistantJson,
+              vendor: config.vendor,
+              query: job.query,
+              dayBucket,
+              windowStart: params.windowStart,
+              windowEnd: params.windowEnd,
+            }),
+          );
+        }
       }
     } catch (err) {
       const endedAt = new Date().toISOString();
