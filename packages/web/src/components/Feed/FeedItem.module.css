@@ -966,6 +966,40 @@
   color: var(--color-primary);
 }
 
+/* Scoring mode badge - small colored indicator */
+.scoringModeBadge {
+  font-size: 0.55rem;
+  font-weight: var(--font-weight-bold);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--mode-bg, color-mix(in srgb, var(--color-text-muted) 15%, transparent));
+  color: var(--mode-color, var(--color-text-muted));
+  border: 1px solid var(--mode-border, color-mix(in srgb, var(--color-text-muted) 25%, transparent));
+}
+
+/* Mode color variants */
+.scoringModeBadge[data-mode="balanced"] {
+  --mode-bg: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  --mode-color: var(--color-primary);
+  --mode-border: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.scoringModeBadge[data-mode="preference"] {
+  --mode-bg: color-mix(in srgb, var(--color-success) 12%, transparent);
+  --mode-color: var(--color-success);
+  --mode-border: color-mix(in srgb, var(--color-success) 25%, transparent);
+}
+
+.scoringModeBadge[data-mode="ai-calibration"] {
+  --mode-bg: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  --mode-color: var(--color-warning);
+  --mode-border: color-mix(in srgb, var(--color-warning) 25%, transparent);
+}
+
 .summaryReadyBadge {
   display: inline-flex;
   align-items: center;

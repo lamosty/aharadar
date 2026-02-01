@@ -1,6 +1,7 @@
 "use client";
 
 import { Tooltip } from "@/components/Tooltip";
+import { isScoringModeDisplayEnabled } from "@/lib/experimental";
 import type { Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
 import { SourceFilterCombobox } from "./SourceFilterCombobox";
@@ -14,6 +15,16 @@ interface FeedFilterBarProps {
   onSortChange: (sort: SortOption) => void;
   /** Layout mode - condensed uses simpler styling */
   layout?: Layout;
+  /** Available scoring modes for filtering */
+  availableModes?: Array<{ id: string; name: string }>;
+  /** Currently selected scoring mode filter (empty = all modes) */
+  selectedModeId?: string;
+  /** Callback when mode filter changes */
+  onModeChange?: (modeId: string) => void;
+  /** Whether to group items by scoring mode */
+  groupByMode?: boolean;
+  /** Callback when group by mode toggle changes */
+  onGroupByModeChange?: (enabled: boolean) => void;
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -55,8 +66,15 @@ export function FeedFilterBar({
   sort,
   onSortChange,
   layout = "condensed",
+  availableModes,
+  selectedModeId = "",
+  onModeChange,
+  groupByMode = false,
+  onGroupByModeChange,
 }: FeedFilterBarProps) {
   const isCondensed = layout === "condensed";
+  const showModeControls =
+    isScoringModeDisplayEnabled() && availableModes && availableModes.length > 0;
 
   return (
     <div className={`${styles.filterBar} ${isCondensed ? styles.filterBarCondensed : ""}`}>
@@ -69,6 +87,38 @@ export function FeedFilterBar({
       </div>
 
       <div className={styles.rightControls}>
+        {/* Mode filter dropdown - only shown when experimental toggle is enabled */}
+        {showModeControls && onModeChange && (
+          <select
+            className={styles.modeSelect}
+            value={selectedModeId}
+            onChange={(e) => onModeChange(e.target.value)}
+            aria-label="Filter by mode"
+          >
+            <option value="">All modes</option>
+            {availableModes.map((mode) => (
+              <option key={mode.id} value={mode.id}>
+                {mode.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Group by mode toggle - only shown when experimental toggle is enabled */}
+        {showModeControls && onGroupByModeChange && (
+          <Tooltip content="Group items by scoring mode">
+            <button
+              type="button"
+              className={`${styles.groupToggle} ${groupByMode ? styles.groupToggleActive : ""}`}
+              onClick={() => onGroupByModeChange(!groupByMode)}
+              aria-label="Group by mode"
+              aria-pressed={groupByMode}
+            >
+              <GroupIcon />
+            </button>
+          </Tooltip>
+        )}
+
         <Tooltip content={<SortHelpContent />} position="bottom">
           <button type="button" className={styles.helpButton} aria-label="Sort options help">
             ?
@@ -88,5 +138,26 @@ export function FeedFilterBar({
         </select>
       </div>
     </div>
+  );
+}
+
+function GroupIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
   );
 }

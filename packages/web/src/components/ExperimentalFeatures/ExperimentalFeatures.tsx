@@ -15,7 +15,11 @@ import { t } from "@/lib/i18n";
 import styles from "./ExperimentalFeatures.module.css";
 
 export function ExperimentalFeaturesForm() {
-  const [features, setFeatures] = useState<ExperimentalFeatures>({ qa: false, score_debug: false });
+  const [features, setFeatures] = useState<ExperimentalFeatures>({
+    qa: false,
+    score_debug: false,
+    show_scoring_mode: false,
+  });
   const [isLoaded, setIsLoaded] = useState(false);
   const { addToast } = useToast();
 

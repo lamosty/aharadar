@@ -75,3 +75,8 @@
   margin-top: var(--space-1);
   font-style: italic;
 }
+
+.modeValue {
+  font-weight: 500;
+  color: var(--color-primary);
+}

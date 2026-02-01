@@ -28,6 +28,7 @@ export interface DigestRow {
   source_results: DigestSourceResult[];
   error_message: string | null;
   created_at: string;
+  scoring_mode_id: string | null;
 }
 
 // Raw row type from DB (before parsing JSONB)
@@ -43,6 +44,7 @@ interface DigestRowRaw {
   source_results: DigestSourceResult[] | string; // JSONB may come as string or parsed
   error_message: string | null;
   created_at: string;
+  scoring_mode_id: string | null;
 }
 
 function parseDigestRow(raw: DigestRowRaw): DigestRow {
@@ -63,7 +65,7 @@ export function createDigestsRepo(db: Queryable) {
         `select id, user_id, topic_id::text as topic_id,
                 window_start::text as window_start, window_end::text as window_end,
                 mode, status, credits_used, source_results, error_message,
-                created_at::text as created_at
+                created_at::text as created_at, scoring_mode_id::text as scoring_mode_id
          from digests
          where user_id = $1
          order by created_at desc
@@ -82,7 +84,7 @@ export function createDigestsRepo(db: Queryable) {
         `select id, user_id, topic_id::text as topic_id,
                 window_start::text as window_start, window_end::text as window_end,
                 mode, status, credits_used, source_results, error_message,
-                created_at::text as created_at
+                created_at::text as created_at, scoring_mode_id::text as scoring_mode_id
          from digests
          where user_id = $1 and topic_id = $2::uuid
          order by created_at desc
@@ -103,21 +105,24 @@ export function createDigestsRepo(db: Queryable) {
       creditsUsed?: number;
       sourceResults?: DigestSourceResult[];
       errorMessage?: string | null;
+      scoringModeId?: string | null;
     }): Promise<{ id: string; inserted: boolean }> {
       const status = params.status ?? "complete";
       const creditsUsed = params.creditsUsed ?? 0;
       const sourceResults = params.sourceResults ?? [];
       const errorMessage = params.errorMessage ?? null;
+      const scoringModeId = params.scoringModeId ?? null;
 
       const res = await db.query<{ id: string; inserted: boolean }>(
-        `insert into digests (user_id, topic_id, window_start, window_end, mode, status, credits_used, source_results, error_message)
-         values ($1, $2::uuid, $3::timestamptz, $4::timestamptz, $5, $6, $7, $8::jsonb, $9)
+        `insert into digests (user_id, topic_id, window_start, window_end, mode, status, credits_used, source_results, error_message, scoring_mode_id)
+         values ($1, $2::uuid, $3::timestamptz, $4::timestamptz, $5, $6, $7, $8::jsonb, $9, $10::uuid)
          on conflict (user_id, topic_id, window_start, window_end, mode)
          do update set
            status = excluded.status,
            credits_used = excluded.credits_used,
            source_results = excluded.source_results,
-           error_message = excluded.error_message
+           error_message = excluded.error_message,
+           scoring_mode_id = excluded.scoring_mode_id
          returning id, (xmax = 0) as inserted`,
         [
           params.userId,
@@ -129,6 +134,7 @@ export function createDigestsRepo(db: Queryable) {
           creditsUsed,
           JSON.stringify(sourceResults),
           errorMessage,
+          scoringModeId,
         ],
       );
       const row = res.rows[0];

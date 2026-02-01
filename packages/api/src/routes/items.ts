@@ -60,6 +60,9 @@ interface UnifiedItemRow {
   topic_name: string;
   // Manual item summary (stored via POST /item-summaries)
   manual_summary_json: Record<string, unknown> | null;
+  // Scoring mode used for this digest
+  scoring_mode_id: string | null;
+  scoring_mode_name: string | null;
 }
 
 interface ItemsListQuerystring {
@@ -316,7 +319,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
           di.entities_json,
           di.theme_label as digest_theme_label,
           d.created_at as digest_created_at,
-          d.topic_id as digest_topic_id
+          d.topic_id as digest_topic_id,
+          d.scoring_mode_id as digest_scoring_mode_id
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
         LEFT JOIN clusters c ON c.id = di.cluster_id
@@ -363,10 +367,14 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         -- Manual item summary
         cis.summary_json as manual_summary_json,
         -- Theme label from triage theme embedding clustering
-        li.digest_theme_label as theme_label
+        li.digest_theme_label as theme_label,
+        -- Scoring mode used for this digest
+        li.digest_scoring_mode_id::text as scoring_mode_id,
+        sm.name as scoring_mode_name
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
       JOIN topics t ON t.id = li.digest_topic_id
+      LEFT JOIN scoring_modes sm ON sm.id = li.digest_scoring_mode_id
       LEFT JOIN LATERAL (
         SELECT action FROM feedback_events
         WHERE user_id = '${ctx.userId}' AND content_item_id = li.content_item_id
@@ -507,6 +515,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         topicName: row.topic_name,
         // Manual item summary
         manualSummaryJson: row.manual_summary_json ?? undefined,
+        // Scoring mode used for this digest
+        scoringModeId: row.scoring_mode_id ?? undefined,
+        scoringModeName: row.scoring_mode_name ?? undefined,
       };
     });
 

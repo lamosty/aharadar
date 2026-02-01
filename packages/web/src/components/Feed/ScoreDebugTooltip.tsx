@@ -13,6 +13,8 @@ interface ScoreDebugTooltipProps {
   triageJson?: TriageFeatures;
   /** Final display score (0-1) */
   displayScore: number;
+  /** Scoring mode name used for this item */
+  scoringModeName?: string;
 }
 
 type ScoreDebugV1 = NonNullable<NonNullable<TriageFeatures["system_features"]>["score_debug_v1"]>;
@@ -25,13 +27,18 @@ export function ScoreDebugTooltip({
   isTrendingSort,
   triageJson,
   displayScore,
+  scoringModeName,
 }: ScoreDebugTooltipProps): ReactNode {
   const debugEnabled = isScoreDebugEnabled();
   const scoreDebug = triageJson?.system_features?.score_debug_v1 as ScoreDebugV1 | undefined;
 
   // Simple tooltip when debug disabled or no debug data
   if (!debugEnabled || !scoreDebug) {
-    return isTrendingSort ? t("tooltips.trendingScore") : t("tooltips.ahaScore");
+    const baseTooltip = isTrendingSort ? t("tooltips.trendingScore") : t("tooltips.ahaScore");
+    if (scoringModeName) {
+      return `${baseTooltip} (Mode: ${scoringModeName})`;
+    }
+    return baseTooltip;
   }
 
   const { weights, inputs, components, multipliers, base_score, pre_weight_score, final_score } =
@@ -48,6 +55,12 @@ export function ScoreDebugTooltip({
 
   return (
     <div className={styles.debugTooltip}>
+      {scoringModeName && (
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Scoring Mode</div>
+          <div className={styles.modeValue}>{scoringModeName}</div>
+        </div>
+      )}
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Inputs</div>
         <div className={styles.grid}>

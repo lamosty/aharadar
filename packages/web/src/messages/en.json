@@ -237,6 +237,10 @@
         "score_debug": {
           "label": "Score Debug Mode",
           "description": "Show detailed score breakdowns in tooltips. Reveals exact weights, inputs, and multipliers used for ranking."
+        },
+        "show_scoring_mode": {
+          "label": "Show Scoring Mode",
+          "description": "Display which scoring mode was used for each feed item. Useful for comparing mode effectiveness during experiments."
         }
       }
     },

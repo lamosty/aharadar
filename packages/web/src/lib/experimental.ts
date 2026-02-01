@@ -13,11 +13,14 @@ export interface ExperimentalFeatures {
   qa: boolean;
   /** Score debug tooltips showing ranking breakdown */
   score_debug: boolean;
+  /** Show scoring mode badge on feed items */
+  show_scoring_mode: boolean;
 }
 
 const DEFAULT_FEATURES: ExperimentalFeatures = {
   qa: false,
   score_debug: false,
+  show_scoring_mode: false,
 };
 
 /**
@@ -103,6 +106,13 @@ export function resetExperimentalFeatures(): ExperimentalFeatures {
 }
 
 /**
+ * Check if scoring mode display is enabled.
+ */
+export function isScoringModeDisplayEnabled(): boolean {
+  return isExperimentalFeatureEnabled("show_scoring_mode");
+}
+
+/**
  * Feature metadata for UI display.
  */
 export interface FeatureMeta {
@@ -127,5 +137,10 @@ export const EXPERIMENTAL_FEATURES: FeatureMeta[] = [
     key: "score_debug",
     labelKey: "settings.experimental.features.score_debug.label",
     descriptionKey: "settings.experimental.features.score_debug.description",
+  },
+  {
+    key: "show_scoring_mode",
+    labelKey: "settings.experimental.features.show_scoring_mode.label",
+    descriptionKey: "settings.experimental.features.show_scoring_mode.description",
   },
 ];

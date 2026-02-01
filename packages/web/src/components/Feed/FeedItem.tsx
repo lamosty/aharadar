@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
 import { WhyShown } from "@/components/WhyShown";
 import { ApiError, type FeedItem as FeedItemType, type ManualSummaryOutput } from "@/lib/api";
+import { isScoringModeDisplayEnabled } from "@/lib/experimental";
 import { useBookmarkToggle, useIsBookmarked, useItemSummary } from "@/lib/hooks";
 import { type MessageKey, t } from "@/lib/i18n";
 import type { TriageFeatures } from "@/lib/mock-data";
@@ -188,6 +189,28 @@ function getPrimaryLinkUrl(
 
   // HN and all others: use original URL (comments accessed via comments button)
   return originalUrl || null;
+}
+
+/**
+ * Abbreviate scoring mode name for badge display
+ */
+function abbreviateModeName(name: string): string {
+  const abbrevMap: Record<string, string> = {
+    Balanced: "BAL",
+    "Preference-Heavy": "PREF",
+    "AI + Calibration": "AI+C",
+  };
+  return abbrevMap[name] || name.slice(0, 3).toUpperCase();
+}
+
+/**
+ * Get mode type for CSS data attribute
+ */
+function getModeType(name: string): string {
+  if (name.toLowerCase().includes("balance")) return "balanced";
+  if (name.toLowerCase().includes("preference")) return "preference";
+  if (name.toLowerCase().includes("calibration")) return "ai-calibration";
+  return "default";
 }
 
 function getSourceSecondaryInfo(
@@ -578,11 +601,22 @@ export function FeedItem({
                 isTrendingSort={isTrendingSort}
                 triageJson={item.triageJson as TriageFeatures | undefined}
                 displayScore={displayScore}
+                scoringModeName={item.scoringModeName}
               />
             }
           >
             <span className={styles.scanScore}>{scorePercent}</span>
           </Tooltip>
+          {isScoringModeDisplayEnabled() && item.scoringModeName && (
+            <Tooltip content={`Scoring mode: ${item.scoringModeName}`}>
+              <span
+                className={styles.scoringModeBadge}
+                data-mode={getModeType(item.scoringModeName)}
+              >
+                {abbreviateModeName(item.scoringModeName)}
+              </span>
+            </Tooltip>
+          )}
           <time className={styles.scanTime}>
             {formatRelativeTime(displayDate.dateStr, displayDate.isApproximate)}
           </time>

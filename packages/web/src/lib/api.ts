@@ -231,6 +231,9 @@ export interface FeedItem {
   topicName: string;
   // Manual item summary (from POST /item-summaries)
   manualSummaryJson?: ManualSummaryOutput | null;
+  // Scoring mode used for this digest
+  scoringModeId?: string;
+  scoringModeName?: string;
 }
 
 /** Pagination info */
@@ -2848,6 +2851,96 @@ export async function deleteScoringExperiment(
 ): Promise<{ ok: true; message: string }> {
   return apiFetch<{ ok: true; message: string }>(`/scoring-experiments/${id}`, {
     method: "DELETE",
+    signal,
+  });
+}
+
+// ============================================================================
+// Notifications API
+// ============================================================================
+
+/** Notification severity levels */
+export type NotificationSeverity = "info" | "warning" | "error";
+
+/** Notification item */
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  severity: NotificationSeverity;
+  data: Record<string, unknown> | null;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** Notifications list params */
+export interface NotificationsListParams {
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+/** Notifications list response */
+export interface NotificationsListResponse {
+  ok: true;
+  notifications: NotificationItem[];
+  unreadCount: number;
+  pagination: PaginationInfo;
+}
+
+/** Dismiss notification response */
+export interface DismissNotificationResponse {
+  ok: true;
+  notification: NotificationItem;
+}
+
+/** Dismiss all notifications response */
+export interface DismissAllNotificationsResponse {
+  ok: true;
+  dismissed: number;
+}
+
+/**
+ * Get notifications for the current user.
+ */
+export async function getNotifications(
+  params?: NotificationsListParams,
+  signal?: AbortSignal,
+): Promise<NotificationsListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.unreadOnly) searchParams.set("unreadOnly", "true");
+  if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+
+  const query = searchParams.toString();
+  const path = query ? `/notifications?${query}` : "/notifications";
+
+  return apiFetch<NotificationsListResponse>(path, { signal });
+}
+
+/**
+ * Dismiss (mark as read) a single notification.
+ */
+export async function dismissNotification(
+  id: string,
+  signal?: AbortSignal,
+): Promise<DismissNotificationResponse> {
+  return apiFetch<DismissNotificationResponse>(`/notifications/${id}/dismiss`, {
+    method: "POST",
+    signal,
+  });
+}
+
+/**
+ * Dismiss all notifications for the current user.
+ */
+export async function dismissAllNotifications(
+  signal?: AbortSignal,
+): Promise<DismissAllNotificationsResponse> {
+  return apiFetch<DismissAllNotificationsResponse>("/notifications/dismiss-all", {
+    method: "POST",
     signal,
   });
 }

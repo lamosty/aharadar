@@ -1012,11 +1012,13 @@ export async function persistDigestFromContentItems(params: {
   // Load scoring mode configuration
   // =========================================================================
   let scoringModeConfig: ScoringModeConfig = DEFAULT_SCORING_MODE_CONFIG;
+  let effectiveScoringModeId: string | null = null;
   if (topic?.scoring_mode_id) {
     // Topic has explicit mode set
     const mode = await params.db.scoringModes.getById(topic.scoring_mode_id);
     if (mode) {
       scoringModeConfig = mode.config;
+      effectiveScoringModeId = mode.id;
       log.debug({ modeId: mode.id, modeName: mode.name }, "Using topic-specific scoring mode");
     }
   } else {
@@ -1024,6 +1026,7 @@ export async function persistDigestFromContentItems(params: {
     const defaultMode = await params.db.scoringModes.getDefaultForUser(params.userId);
     if (defaultMode) {
       scoringModeConfig = defaultMode.config;
+      effectiveScoringModeId = defaultMode.id;
       log.debug(
         { modeId: defaultMode.id, modeName: defaultMode.name },
         "Using default scoring mode",
@@ -1390,6 +1393,7 @@ export async function persistDigestFromContentItems(params: {
       status: "complete",
       creditsUsed: runCosts.totalUsd,
       sourceResults: params.sourceResults ?? [],
+      scoringModeId: effectiveScoringModeId,
     });
     await tx.digestItems.replaceForDigest({ digestId: res.id, items });
     return res;
