@@ -149,6 +149,37 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       }
     }
 
+    // Update active experiment metrics
+    try {
+      // Get the topic_id for this content item
+      const topicRes2 = await db.query<{ topic_id: string }>(
+        `SELECT DISTINCT s.topic_id::text as topic_id
+         FROM content_item_sources cis
+         JOIN sources s ON s.id = cis.source_id
+         WHERE cis.content_item_id = $1::uuid
+         LIMIT 1`,
+        [contentItemId],
+      );
+      const topicRow2 = topicRes2.rows[0];
+
+      if (topicRow2) {
+        const activeExperiment = await db.scoringExperiments.getActive(
+          ctx.userId,
+          topicRow2.topic_id,
+        );
+        if (activeExperiment) {
+          await db.scoringExperiments.incrementMetrics(activeExperiment.id, {
+            itemsLiked: action === "like" ? 1 : 0,
+            itemsDisliked: action === "dislike" ? 1 : 0,
+            itemsSkipped: action === "skip" ? 1 : 0,
+          });
+        }
+      }
+    } catch (err) {
+      // Log but don't fail - experiment metric update is non-critical
+      fastify.log.warn({ err, contentItemId, action }, "Failed to update experiment metrics");
+    }
+
     // Update X account policy if this is an x_posts item
     try {
       // Get content item to check source_type and author

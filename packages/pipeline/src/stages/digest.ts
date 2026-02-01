@@ -1397,6 +1397,23 @@ export async function persistDigestFromContentItems(params: {
 
   const triagedCount = items.filter((i) => i.triageJson !== null).length;
 
+  // Update experiment metrics if there's an active experiment
+  try {
+    const activeExperiment = await params.db.scoringExperiments.getActive(
+      params.userId,
+      params.topicId,
+    );
+    if (activeExperiment) {
+      await params.db.scoringExperiments.incrementMetrics(activeExperiment.id, {
+        digestsGenerated: 1,
+        itemsShown: items.length,
+      });
+      log.debug({ experimentId: activeExperiment.id }, "Updated experiment metrics");
+    }
+  } catch (err) {
+    log.warn({ err }, "Failed to update experiment metrics");
+  }
+
   // Final summary log (all items should be triaged since paidCallsAllowed is checked earlier)
   log.info(
     {
