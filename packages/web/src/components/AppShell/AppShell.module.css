@@ -62,10 +62,17 @@
 }
 
 .mobileTitle {
+  flex: 1;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-tight, -0.025em);
+}
+
+.mobileHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* Overlay */
@@ -207,6 +214,19 @@
 .sidebarFooter {
   padding: var(--space-4);
   border-top: 1px solid var(--color-border-subtle);
+}
+
+.sidebarFooterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Hide notification bell in sidebar footer on mobile (shown in mobile header instead) */
+@media (max-width: 768px) {
+  .sidebarFooterRow > *:last-child {
+    display: none;
+  }
 }
 
 /* Main content */

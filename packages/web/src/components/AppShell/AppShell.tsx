@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { NotificationBell } from "@/components/NotificationBell";
 import { UserMenu } from "@/components/UserMenu";
 import { t } from "@/lib/i18n";
 import styles from "./AppShell.module.css";
@@ -42,6 +43,9 @@ export function AppShell({ children, header }: AppShellProps) {
           {sidebarOpen ? <CloseIcon /> : <MenuIcon />}
         </button>
         <span className={styles.mobileTitle}>{t("common.appName")}</span>
+        <div className={styles.mobileHeaderActions}>
+          <NotificationBell />
+        </div>
       </header>
 
       {/* Sidebar overlay for mobile */}
@@ -71,7 +75,10 @@ export function AppShell({ children, header }: AppShellProps) {
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <UserMenu />
+          <div className={styles.sidebarFooterRow}>
+            <UserMenu />
+            <NotificationBell />
+          </div>
         </div>
       </aside>
 
