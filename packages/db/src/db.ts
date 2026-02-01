@@ -18,6 +18,7 @@ import { createItemSummariesRepo } from "./repos/item_summaries";
 import { createLlmSettingsRepo } from "./repos/llm_settings";
 import { createProviderCallsRepo } from "./repos/provider_calls";
 import { createQaMemoryRepo } from "./repos/qa_memory";
+import { createScoringExperimentsRepo } from "./repos/scoring_experiments";
 import { createScoringModesRepo } from "./repos/scoring_modes";
 import { createSessionsRepo } from "./repos/sessions";
 import { createSourceCalibrationsRepo } from "./repos/source_calibrations";
@@ -62,6 +63,7 @@ export type DbContext = Queryable & {
   catchupPacks: ReturnType<typeof createCatchupPacksRepo>;
   ingestionHealth: ReturnType<typeof createIngestionHealthRepo>;
   scoringModes: ReturnType<typeof createScoringModesRepo>;
+  scoringExperiments: ReturnType<typeof createScoringExperimentsRepo>;
   sourceCalibrations: ReturnType<typeof createSourceCalibrationsRepo>;
 };
 
@@ -99,6 +101,7 @@ function createContext(db: Queryable): DbContext {
     catchupPacks: createCatchupPacksRepo(db),
     ingestionHealth: createIngestionHealthRepo(db),
     scoringModes: createScoringModesRepo(db),
+    scoringExperiments: createScoringExperimentsRepo(db),
     sourceCalibrations: createSourceCalibrationsRepo(db),
   };
 }
