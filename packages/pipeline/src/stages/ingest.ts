@@ -509,6 +509,18 @@ export async function ingestEnabledSources(params: {
             .filter((q): q is string => typeof q === "string");
           const queryPreview = queries.slice(0, 3).join(", ");
           const moreCount = queries.length > 3 ? ` (+${queries.length - 3} more)` : "";
+          const parseDetails = parseErrors.slice(0, 3).map((c) => ({
+            query: c.meta?.query,
+            assistantTextHead: c.meta?.assistant_text_head,
+            assistantTextTail: c.meta?.assistant_text_tail,
+            assistantTextLength: c.meta?.assistant_text_length,
+            resultsCount: c.meta?.results_count,
+            maxOutputTokens: c.meta?.max_output_tokens,
+            limit: c.meta?.limit,
+            batchSize: c.meta?.batch_size,
+            batchHandlesCount: c.meta?.batch_handles_count,
+            toolErrorCode: c.meta?.tool_error_code,
+          }));
 
           await createNotification({
             db: params.db,
@@ -522,6 +534,7 @@ export async function ingestEnabledSources(params: {
               sourceName: source.name,
               errorCount: parseErrors.length,
               queries,
+              parseDetails,
               windowStart: params.windowStart,
               windowEnd: params.windowEnd,
             },

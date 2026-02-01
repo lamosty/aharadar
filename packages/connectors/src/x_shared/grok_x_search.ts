@@ -45,6 +45,14 @@ export interface GrokXSearchResult {
   assistantJson?: Record<string, unknown>;
   /** True if assistant text existed but JSON parsing failed. */
   assistantParseError?: boolean;
+  /** True if partial recovery succeeded from malformed JSON. */
+  assistantRecovered?: boolean;
+  /** Number of recovered objects when partial recovery succeeds. */
+  assistantRecoveredCount?: number;
+  /** Debug snippets when parse fails. */
+  assistantTextHead?: string;
+  assistantTextTail?: string;
+  assistantTextLength?: number;
   structuredError?: { code: string; message: string | null };
 }
 
@@ -87,32 +95,42 @@ function extractErrorDetail(response: unknown): string | null {
   return null;
 }
 
+function collectAssistantTextFromOutput(output: unknown): string | null {
+  if (!Array.isArray(output)) return null;
+  const parts: string[] = [];
+  for (const item of output) {
+    const it = asRecord(item);
+    if (it.type === "message" && it.role === "assistant") {
+      const content = it.content;
+      if (Array.isArray(content)) {
+        for (const part of content) {
+          const p = asRecord(part);
+          if (p.type === "output_text" || p.type === "text") {
+            const text = p.text;
+            if (typeof text === "string" && text.length > 0) {
+              parts.push(text);
+            }
+          }
+        }
+      } else if (typeof content === "string" && content.length > 0) {
+        parts.push(content);
+      }
+    }
+  }
+  return parts.length > 0 ? parts.join("") : null;
+}
+
 function extractAssistantContent(response: unknown): string | null {
   const rec = asRecord(response);
+
+  // Responses API: output[] may contain an assistant message with output_text parts.
+  const output = rec.output;
+  const combined = collectAssistantTextFromOutput(output);
+  if (combined && combined.length > 0) return combined;
 
   // OpenAI-compatible Responses API: output_text is a convenience field.
   const outputText = rec.output_text;
   if (typeof outputText === "string" && outputText.length > 0) return outputText;
-
-  // Responses API: output[] may contain an assistant message with output_text parts.
-  const output = rec.output;
-  if (Array.isArray(output)) {
-    for (const item of output) {
-      const it = asRecord(item);
-      if (it.type === "message" && it.role === "assistant") {
-        const content = it.content;
-        if (Array.isArray(content)) {
-          for (const part of content) {
-            const p = asRecord(part);
-            if (p.type === "output_text" || p.type === "text") {
-              const text = p.text;
-              if (typeof text === "string" && text.length > 0) return text;
-            }
-          }
-        }
-      }
-    }
-  }
 
   // OpenAI-compatible Chat Completions API.
   const choices = rec.choices;
@@ -152,7 +170,9 @@ function extractBracketedChunk(text: string, open: string, close: string): strin
 }
 
 function parseAssistantJsonFromText(text: string): Record<string, unknown> | null {
-  const stripped = stripMarkdownFence(text).trim();
+  const stripped = stripMarkdownFence(text)
+    .replace(/^\uFEFF/, "")
+    .trim();
   const direct = tryParseJsonObject(stripped);
   if (direct) return direct;
 
@@ -171,6 +191,64 @@ function parseAssistantJsonFromText(text: string): Record<string, unknown> | nul
   return null;
 }
 
+function recoverJsonObjectsFromText(text: string): Record<string, unknown>[] {
+  const results: Record<string, unknown>[] = [];
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  let buffer = "";
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i] ?? "";
+
+    if (depth === 0) {
+      if (ch === "{") {
+        depth = 1;
+        buffer = "{";
+        inString = false;
+        escapeNext = false;
+      }
+      continue;
+    }
+
+    buffer += ch;
+
+    if (inString) {
+      if (escapeNext) {
+        escapeNext = false;
+      } else if (ch === "\\") {
+        escapeNext = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        const parsed = tryParseJsonObject(buffer);
+        if (parsed && !Array.isArray(parsed)) {
+          results.push(parsed);
+        }
+        buffer = "";
+      }
+    }
+  }
+
+  return results;
+}
+
 function extractStructuredErrorCodeFromText(
   text: string,
 ): { code: string; message: string | null } | null {
@@ -182,6 +260,19 @@ function extractStructuredErrorCodeFromText(
   const message = (err as Record<string, unknown>).message;
   if (typeof code !== "string" || code.length === 0) return null;
   return { code, message: typeof message === "string" && message.length > 0 ? message : null };
+}
+
+function buildAssistantTextSnippets(text: string): {
+  head: string;
+  tail: string;
+  length: number;
+} {
+  const trimmed = text.trim();
+  const length = trimmed.length;
+  const max = 240;
+  const head = trimmed.slice(0, max);
+  const tail = length > max ? trimmed.slice(-max) : trimmed;
+  return { head, tail, length };
 }
 
 function responseSnippet(response: unknown): string | null {
@@ -295,7 +386,6 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     : maxTokensEnv;
 
   const fromDate = toYYYYMMDD(params.fromDate ?? params.sinceTime);
-  const toDate = toYYYYMMDD(params.toDate);
 
   // NOTE: from_date/to_date tool params are broken (return stale cached data).
   // Instead, we inject since: into the query string itself, which works with
@@ -332,7 +422,7 @@ Each array item MUST be an object with ONLY these keys:
 - id (string, digits): the status ID
 - date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
 - url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com). If tool doesn't provide url but you have id + user_handle, construct it.
-- text (string): MUST be <= ${maxTextChars} chars. Truncate longer posts with "..." suffix. No newlines.
+- text (string): MUST be <= ${maxTextChars} chars. Truncate longer posts with "..." suffix. No newlines. Must be JSON-escaped (escape quotes and backslashes).
 - user_handle (string|null): without "@"
 - user_display_name (string|null): display name shown on profile
 - metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
@@ -411,9 +501,25 @@ CRITICAL - Valid JSON is mandatory:
 
   const usage = extractUsageTokens(response);
   const assistantText = extractAssistantContent(response);
-  const assistantJson = assistantText
-    ? (parseAssistantJsonFromText(assistantText) ?? undefined)
-    : undefined;
+  const assistantTextInfo = assistantText ? buildAssistantTextSnippets(assistantText) : null;
+  let assistantJson: Record<string, unknown> | undefined;
+  let assistantRecovered = false;
+  let assistantRecoveredCount = 0;
+
+  if (assistantText) {
+    const parsed = parseAssistantJsonFromText(assistantText);
+    if (parsed) {
+      assistantJson = parsed;
+    } else {
+      const recovered = recoverJsonObjectsFromText(assistantText);
+      if (recovered.length > 0) {
+        assistantJson = { results: recovered };
+        assistantRecovered = true;
+        assistantRecoveredCount = recovered.length;
+      }
+    }
+  }
+
   const assistantParseError = !!assistantText && !assistantJson;
   const structuredError = assistantText
     ? (extractStructuredErrorCodeFromText(assistantText) ?? undefined)
@@ -426,6 +532,11 @@ CRITICAL - Valid JSON is mandatory:
     outputTokens: usage?.outputTokens,
     assistantJson,
     assistantParseError,
+    assistantRecovered,
+    assistantRecoveredCount,
+    assistantTextHead: assistantTextInfo?.head,
+    assistantTextTail: assistantTextInfo?.tail,
+    assistantTextLength: assistantTextInfo?.length,
     structuredError,
   };
 }

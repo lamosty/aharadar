@@ -385,6 +385,21 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
       const xSearchToolCostUsd = getXaiXSearchCostPerCall();
       const costEstimateUsd = tokenCostUsd + xSearchToolCostUsd;
 
+      const parseMeta =
+        result.assistantParseError === true
+          ? {
+              assistant_text_head: result.assistantTextHead,
+              assistant_text_tail: result.assistantTextTail,
+              assistant_text_length: result.assistantTextLength,
+            }
+          : {};
+      const recoveryMeta = result.assistantRecovered
+        ? {
+            assistant_parse_recovered: true,
+            assistant_recovered_count: result.assistantRecoveredCount ?? 0,
+          }
+        : {};
+
       providerCalls.push({
         userId: params.userId,
         purpose: "x_posts_fetch",
@@ -405,6 +420,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
           assistant_parse_error: result.assistantParseError ?? false,
+          ...parseMeta,
+          ...recoveryMeta,
           maxSearchCallsPerRun,
           // Batching experiment metadata
           batch_mode: batchMode,
