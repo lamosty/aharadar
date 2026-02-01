@@ -394,6 +394,13 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
             assistant_text_length: result.assistantTextLength,
           }
         : {};
+      const emitResultsMeta = {
+        emit_results_present: result.emitResultsPresent ?? false,
+        emit_results_parse_error: result.emitResultsParseError ?? false,
+        emit_results_args_head: result.emitResultsArgsHead,
+        emit_results_args_tail: result.emitResultsArgsTail,
+        emit_results_args_length: result.emitResultsArgsLength,
+      };
 
       providerCalls.push({
         userId: params.userId,
@@ -415,6 +422,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
           assistant_parse_error: result.assistantParseError ?? false,
+          ...emitResultsMeta,
           ...parseMeta,
           maxSearchCallsPerRun,
           // Batching experiment metadata

@@ -45,6 +45,14 @@ export interface GrokXSearchResult {
   assistantJson?: Record<string, unknown>;
   /** True if assistant text existed but JSON parsing failed. */
   assistantParseError?: boolean;
+  /** True if emit_results function call was present. */
+  emitResultsPresent?: boolean;
+  /** True if emit_results arguments failed to parse. */
+  emitResultsParseError?: boolean;
+  /** emit_results arguments snippets (debug). */
+  emitResultsArgsHead?: string;
+  emitResultsArgsTail?: string;
+  emitResultsArgsLength?: number;
   /** Debug snippets when parse fails. */
   assistantTextHead?: string;
   assistantTextTail?: string;
@@ -137,6 +145,25 @@ function extractAssistantContent(response: unknown): string | null {
     if (typeof content === "string" && content.length > 0) return content;
   }
 
+  return null;
+}
+
+function extractFunctionCallArguments(response: unknown, name: string): string | null {
+  const rec = asRecord(response);
+  const output = rec.output;
+  if (!Array.isArray(output)) return null;
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const it = item as Record<string, unknown>;
+    if (it.type !== "function_call") continue;
+    if (it.name !== name) continue;
+    const args = it.arguments;
+    if (typeof args === "string" && args.length > 0) return args;
+    if (args && typeof args === "object" && !Array.isArray(args)) {
+      return JSON.stringify(args);
+    }
+    return null;
+  }
   return null;
 }
 
@@ -332,6 +359,49 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   // external_id handles any overlap from fetching slightly beyond the window.
   const queryWithDates = fromDate ? `${params.query} since:${fromDate}` : params.query;
 
+  const emitResultsSchema = {
+    type: "object",
+    additionalProperties: false,
+    required: ["results"],
+    properties: {
+      results: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "date", "url", "text", "user_handle", "user_display_name"],
+          properties: {
+            id: { type: "string" },
+            date: { type: ["string", "null"] },
+            url: { type: ["string", "null"] },
+            text: { type: "string" },
+            user_handle: { type: ["string", "null"] },
+            user_display_name: { type: ["string", "null"] },
+            metrics: {
+              type: "object",
+              additionalProperties: false,
+              required: ["reply_count", "repost_count", "like_count", "quote_count", "view_count"],
+              properties: {
+                reply_count: { type: "number" },
+                repost_count: { type: "number" },
+                like_count: { type: "number" },
+                quote_count: { type: "number" },
+                view_count: { type: "number" },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const emitResultsTool = {
+    type: "function",
+    name: "emit_results",
+    description: "Return structured X post results",
+    parameters: emitResultsSchema,
+  };
+
   const tools = enableXSearchTool
     ? [
         {
@@ -340,8 +410,9 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
             ? { allowed_x_handles: params.allowedXHandles }
             : {}),
         },
+        emitResultsTool,
       ]
-    : undefined;
+    : [emitResultsTool];
 
   const startedAt = Date.now();
   // System prompt optimized for canonical data + token safety
@@ -352,16 +423,18 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     groupSize > 1
       ? `\nThis query covers ${groupSize} accounts. Aim for ~${perAccountTarget} results per account, distributed fairly across all accounts.`
       : "";
-  const systemPrompt = `Return STRICT JSON only (no markdown, no prose). Output MUST be a valid JSON array.
-Use the x_search tool if available to fetch real posts. If you cannot access real posts, return [].
-Do NOT fabricate. If a field is unavailable from the tool results, use null (or omit optional keys).
+  const systemPrompt = `Use the x_search tool to fetch real posts.
+Then call the emit_results function with a JSON object containing a "results" array.
+Do NOT output any normal assistant message or prose.
+If the x_search tool is unavailable or returns no posts, call emit_results with {"results": []}.
+Do NOT fabricate. If a field is unavailable from the tool results, use null.
 
-Each array item MUST be an object with ONLY these keys:
+Each result object MUST include:
 - id (string, digits): the status ID
 - date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
 - url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com). If tool doesn't provide url but you have id + user_handle, construct it.
-- text_b64 (string): base64 of UTF-8 post text (no newlines). Decode on client. If text is longer than ${maxTextChars} chars, truncate BEFORE base64 encoding and add "..." suffix.
-- user_handle (string|null): without "@"
+- text (string): post text, <= ${maxTextChars} chars, no newlines (truncate with "..." if needed)
+- user_handle (string|null): handle (with or without "@")
 - user_display_name (string|null): display name shown on profile
 - metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
 
@@ -369,14 +442,7 @@ Ordering: newest first. Return at most the requested limit.${batchingHint}
 
 Light filtering (cost + quality):
 - Exclude only obvious low-information noise (emoji-only, single-word reactions like "lol"/"true"/"yes", or empty text).
-- Do NOT do "semantic" high-signal judging here; downstream triage handles relevance.
-
-CRITICAL - Valid JSON is mandatory:
-- Budget: ~${maxTokens} output tokens. Plan ahead.
-- Priority order: (1) valid complete JSON array, (2) include all posts, (3) full text content.
-- If a post's text is long, TRUNCATE it to fit within budget. Add "..." at end.
-- If still approaching limit, return fewer posts rather than emit broken JSON.
-- NEVER output partial/truncated JSON. The closing ] bracket must always be present.`;
+- Do NOT do "semantic" high-signal judging here; downstream triage handles relevance.`;
 
   const body = {
     model,
@@ -395,6 +461,7 @@ CRITICAL - Valid JSON is mandatory:
       },
     ],
     ...(tools ? { tools } : {}),
+    tool_choice: "required",
     temperature: 0,
     stream: false,
     max_output_tokens: maxTokens,
@@ -440,11 +507,21 @@ CRITICAL - Valid JSON is mandatory:
   const usage = extractUsageTokens(response);
   const assistantText = extractAssistantContent(response);
   const assistantTextInfo = assistantText ? buildAssistantTextSnippets(assistantText) : null;
-  const assistantJson = assistantText
-    ? (parseAssistantJsonFromText(assistantText) ?? undefined)
-    : undefined;
+  const emitArgs = extractFunctionCallArguments(response, "emit_results");
+  const emitArgsInfo = emitArgs ? buildAssistantTextSnippets(emitArgs) : null;
+  const emitResultsPresent = Boolean(emitArgs);
+  let assistantJson: Record<string, unknown> | undefined;
+  let emitResultsParseError = false;
+  if (emitArgs) {
+    const parsedArgs = tryParseJsonObject(emitArgs);
+    if (parsedArgs) {
+      assistantJson = parsedArgs;
+    } else {
+      emitResultsParseError = true;
+    }
+  }
 
-  const assistantParseError = !!assistantText && !assistantJson;
+  const assistantParseError = emitResultsPresent ? emitResultsParseError : true;
   const structuredError = assistantText
     ? (extractStructuredErrorCodeFromText(assistantText) ?? undefined)
     : undefined;
@@ -456,6 +533,11 @@ CRITICAL - Valid JSON is mandatory:
     outputTokens: usage?.outputTokens,
     assistantJson,
     assistantParseError,
+    emitResultsPresent,
+    emitResultsParseError,
+    emitResultsArgsHead: emitArgsInfo?.head,
+    emitResultsArgsTail: emitArgsInfo?.tail,
+    emitResultsArgsLength: emitArgsInfo?.length,
     assistantTextHead: assistantTextInfo?.head,
     assistantTextTail: assistantTextInfo?.tail,
     assistantTextLength: assistantTextInfo?.length,

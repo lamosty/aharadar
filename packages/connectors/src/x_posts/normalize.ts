@@ -5,7 +5,7 @@
  * Posts are canonical content items with stable URLs and IDs.
  */
 import type { ContentItemDraft, FetchParams } from "@aharadar/shared";
-import { sha256Hex } from "@aharadar/shared";
+import { normalizeHandle, sha256Hex } from "@aharadar/shared";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value))
@@ -54,6 +54,13 @@ function parseGrokDate(value: unknown): { full: string | null; dayOnly: string |
   // Day-only (e.g., "2026-01-08")
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     return { full: null, dayOnly: s };
+  }
+
+  // RFC 1123 or other parseable date strings
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) {
+    const iso = parsed.toISOString();
+    return { full: iso, dayOnly: iso.slice(0, 10) };
   }
 
   return { full: null, dayOnly: null };
@@ -149,7 +156,11 @@ export async function normalizeXPosts(
 
   // Get handle from raw.user_handle (new) or URL
   const rawUserHandle = asString(rec.user_handle);
-  const handle = rawUserHandle ?? parsed.handle;
+  const handle = rawUserHandle
+    ? normalizeHandle(rawUserHandle)
+    : parsed.handle
+      ? normalizeHandle(parsed.handle)
+      : null;
 
   // External ID: prefer status ID, else hash
   const fallbackKey = canonicalUrl ?? bodyText ?? "";
