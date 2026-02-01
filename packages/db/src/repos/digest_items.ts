@@ -1,22 +1,19 @@
 import type { Queryable } from "../db";
 
+interface DigestItemBase {
+  ahaScore: number;
+  triageJson?: Record<string, unknown> | null;
+  summaryJson?: Record<string, unknown> | null;
+  entitiesJson?: Record<string, unknown> | null;
+  /** Embedding of the triage theme string (for re-clustering) */
+  triageThemeVector?: number[] | null;
+  /** Clustered theme label (result of embedding-based grouping) */
+  themeLabel?: string | null;
+}
+
 export type DigestItemRef =
-  | {
-      clusterId: string;
-      contentItemId: null;
-      ahaScore: number;
-      triageJson?: Record<string, unknown> | null;
-      summaryJson?: Record<string, unknown> | null;
-      entitiesJson?: Record<string, unknown> | null;
-    }
-  | {
-      clusterId: null;
-      contentItemId: string;
-      ahaScore: number;
-      triageJson?: Record<string, unknown> | null;
-      summaryJson?: Record<string, unknown> | null;
-      entitiesJson?: Record<string, unknown> | null;
-    };
+  | (DigestItemBase & { clusterId: string; contentItemId: null })
+  | (DigestItemBase & { clusterId: null; contentItemId: string });
 
 export function createDigestItemsRepo(db: Queryable) {
   return {
@@ -33,7 +30,7 @@ export function createDigestItemsRepo(db: Queryable) {
         // digest_id is always $1
         // rank is i+1 (1-based)
         values.push(
-          `($1, $${idx}::uuid, $${idx + 1}::uuid, ${i + 1}, $${idx + 2}, $${idx + 3}::jsonb, $${idx + 4}::jsonb, $${idx + 5}::jsonb)`,
+          `($1, $${idx}::uuid, $${idx + 1}::uuid, ${i + 1}, $${idx + 2}, $${idx + 3}::jsonb, $${idx + 4}::jsonb, $${idx + 5}::jsonb, $${idx + 6}::vector, $${idx + 7})`,
         );
         args.push(
           item.clusterId,
@@ -42,12 +39,14 @@ export function createDigestItemsRepo(db: Queryable) {
           item.triageJson ? JSON.stringify(item.triageJson) : null,
           item.summaryJson ? JSON.stringify(item.summaryJson) : null,
           item.entitiesJson ? JSON.stringify(item.entitiesJson) : null,
+          item.triageThemeVector ? `[${item.triageThemeVector.join(",")}]` : null,
+          item.themeLabel ?? null,
         );
-        idx += 6;
+        idx += 8;
       }
 
       await db.query(
-        `insert into digest_items (digest_id, cluster_id, content_item_id, rank, aha_score, triage_json, summary_json, entities_json)
+        `insert into digest_items (digest_id, cluster_id, content_item_id, rank, aha_score, triage_json, summary_json, entities_json, triage_theme_vector, theme_label)
          values ${values.join(", ")}`,
         args,
       );
