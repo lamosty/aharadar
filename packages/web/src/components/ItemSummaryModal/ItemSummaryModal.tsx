@@ -210,18 +210,27 @@ export function ItemSummaryModal({
               </div>
             )}
 
-            {/* Dynamic sections (v2 schema) */}
+            {/* Dynamic sections (v2 schema) - filter out duplicates of dedicated fields */}
             {summary.sections &&
-              summary.sections.map((section, i) => (
-                <div key={i} className={styles.summaryBlock}>
-                  <h5>{section.title}</h5>
-                  <ul className={styles.bulletList}>
-                    {section.items.map((item, j) => (
-                      <li key={j}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              summary.sections
+                .filter((section) => {
+                  const title = section.title.toLowerCase();
+                  // Skip sections that duplicate the dedicated fields above
+                  if (title === "key points" && summary.bullets.length > 0) return false;
+                  if (title === "discussion highlights" && discussionHighlights.length > 0)
+                    return false;
+                  return true;
+                })
+                .map((section, i) => (
+                  <div key={i} className={styles.summaryBlock}>
+                    <h5>{section.title}</h5>
+                    <ul className={styles.bulletList}>
+                      {section.items.map((item, j) => (
+                        <li key={j}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
 
             {/* Legacy v1 fields (backwards compatibility) */}
             {!summary.sections && summary.why_it_matters && summary.why_it_matters.length > 0 && (
