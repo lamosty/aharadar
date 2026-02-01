@@ -6,4 +6,4 @@ export * from "./embed";
 export * from "./ingest";
 export * from "./llm_enrich";
 export * from "./rank";
-export * from "./theme";
+export * from "./theme_cluster";
