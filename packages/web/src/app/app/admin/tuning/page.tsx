@@ -29,6 +29,14 @@ const THEME_TUNING_RANGES = {
   lookbackDays: { min: 1, max: 14 },
 } as const;
 
+// AI Guidance defaults and max length
+const AI_GUIDANCE_DEFAULTS = {
+  summary_prompt: "",
+  triage_prompt: "",
+};
+
+const AI_GUIDANCE_MAX_LENGTH = 2000;
+
 interface PersonalizationTuningResolved {
   prefBiasSamplingWeight: number;
   prefBiasTriageWeight: number;
@@ -40,6 +48,11 @@ interface ThemeTuningResolved {
   enabled: boolean;
   similarityThreshold: number;
   lookbackDays: number;
+}
+
+interface AiGuidanceResolved {
+  summary_prompt: string;
+  triage_prompt: string;
 }
 
 /** Parse personalization tuning from custom_settings with defaults and clamping */
@@ -91,6 +104,30 @@ function parsePersonalizationTuning(raw: unknown): PersonalizationTuningResolved
       ranges.feedbackWeightDelta.min,
       ranges.feedbackWeightDelta.max,
     ),
+  };
+}
+
+/** Parse AI guidance from custom_settings with defaults */
+function parseAiGuidance(raw: unknown): AiGuidanceResolved {
+  const defaults = AI_GUIDANCE_DEFAULTS;
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ...defaults };
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  function extractString(key: string, defaultValue: string): string {
+    const value = obj[key];
+    if (typeof value !== "string") {
+      return defaultValue;
+    }
+    return value.trim().slice(0, AI_GUIDANCE_MAX_LENGTH);
+  }
+
+  return {
+    summary_prompt: extractString("summary_prompt", defaults.summary_prompt),
+    triage_prompt: extractString("triage_prompt", defaults.triage_prompt),
   };
 }
 
@@ -173,6 +210,10 @@ export default function AdminTuningPage() {
   );
   const [themeLookbackDays, setThemeLookbackDays] = useState(THEME_TUNING_DEFAULTS.lookbackDays);
 
+  // Form state for AI guidance
+  const [aiSummaryPrompt, setAiSummaryPrompt] = useState(AI_GUIDANCE_DEFAULTS.summary_prompt);
+  const [aiTriagePrompt, setAiTriagePrompt] = useState(AI_GUIDANCE_DEFAULTS.triage_prompt);
+
   // Auto-select first topic when loaded
   useEffect(() => {
     if (topics.length > 0 && !selectedTopicId) {
@@ -201,6 +242,11 @@ export default function AdminTuningPage() {
     setThemeEnabled(themeTuning.enabled);
     setThemeSimilarityThreshold(themeTuning.similarityThreshold);
     setThemeLookbackDays(themeTuning.lookbackDays);
+
+    // Load AI guidance
+    const aiGuidance = parseAiGuidance(topic.customSettings?.ai_guidance_v1);
+    setAiSummaryPrompt(aiGuidance.summary_prompt);
+    setAiTriagePrompt(aiGuidance.triage_prompt);
   }, [selectedTopicId, topics]);
 
   const updateMutation = useUpdateTopicCustomSettings(selectedTopicId, {
@@ -242,6 +288,10 @@ export default function AdminTuningPage() {
         similarityThreshold: themeSimilarityThreshold,
         lookbackDays: themeLookbackDays,
       },
+      ai_guidance_v1: {
+        summary_prompt: aiSummaryPrompt,
+        triage_prompt: aiTriagePrompt,
+      },
     });
   };
 
@@ -255,6 +305,9 @@ export default function AdminTuningPage() {
     setThemeEnabled(THEME_TUNING_DEFAULTS.enabled);
     setThemeSimilarityThreshold(THEME_TUNING_DEFAULTS.similarityThreshold);
     setThemeLookbackDays(THEME_TUNING_DEFAULTS.lookbackDays);
+    // Reset AI guidance
+    setAiSummaryPrompt(AI_GUIDANCE_DEFAULTS.summary_prompt);
+    setAiTriagePrompt(AI_GUIDANCE_DEFAULTS.triage_prompt);
   };
 
   const isSaving = updateMutation.isPending;
@@ -266,6 +319,9 @@ export default function AdminTuningPage() {
     : null;
   const savedThemeTuning = selectedTopic
     ? parseThemeTuning(selectedTopic.customSettings?.theme_tuning_v1)
+    : null;
+  const savedAiGuidance = selectedTopic
+    ? parseAiGuidance(selectedTopic.customSettings?.ai_guidance_v1)
     : null;
 
   const hasPersonalChanges =
@@ -281,7 +337,12 @@ export default function AdminTuningPage() {
       themeSimilarityThreshold !== savedThemeTuning.similarityThreshold ||
       themeLookbackDays !== savedThemeTuning.lookbackDays);
 
-  const hasChanges = hasPersonalChanges || hasThemeChanges;
+  const hasAiGuidanceChanges =
+    savedAiGuidance &&
+    (aiSummaryPrompt !== savedAiGuidance.summary_prompt ||
+      aiTriagePrompt !== savedAiGuidance.triage_prompt);
+
+  const hasChanges = hasPersonalChanges || hasThemeChanges || hasAiGuidanceChanges;
 
   // Check if current values differ from defaults
   const isPersonalDefault =
@@ -295,7 +356,11 @@ export default function AdminTuningPage() {
     themeSimilarityThreshold === THEME_TUNING_DEFAULTS.similarityThreshold &&
     themeLookbackDays === THEME_TUNING_DEFAULTS.lookbackDays;
 
-  const isDefault = isPersonalDefault && isThemeDefault;
+  const isAiGuidanceDefault =
+    aiSummaryPrompt === AI_GUIDANCE_DEFAULTS.summary_prompt &&
+    aiTriagePrompt === AI_GUIDANCE_DEFAULTS.triage_prompt;
+
+  const isDefault = isPersonalDefault && isThemeDefault && isAiGuidanceDefault;
 
   if (isLoading) {
     return (
@@ -610,6 +675,62 @@ export default function AdminTuningPage() {
             Delete all existing themes and rebuild from current inbox items. Use this if themes seem
             stale or after changing settings.
           </p>
+        </div>
+
+        {/* AI Guidance Section */}
+        <div className={styles.sectionDivider}>
+          <h2 className={styles.sectionTitle}>{t("admin.aiGuidance.title")}</h2>
+          <p className={styles.sectionSubtitle}>{t("admin.aiGuidance.subtitle")}</p>
+        </div>
+
+        {/* Summary Prompt */}
+        <div className={styles.section}>
+          <div className={styles.textareaGroup}>
+            <label htmlFor="aiSummaryPrompt" className={styles.sliderLabel}>
+              {t("admin.aiGuidance.summaryPrompt.label")}
+            </label>
+            <p className={styles.sliderDescription}>
+              {t("admin.aiGuidance.summaryPrompt.description")}
+            </p>
+            <textarea
+              id="aiSummaryPrompt"
+              value={aiSummaryPrompt}
+              onChange={(e) => setAiSummaryPrompt(e.target.value)}
+              placeholder={t("admin.aiGuidance.summaryPrompt.placeholder")}
+              className={styles.textarea}
+              disabled={isSaving}
+              maxLength={AI_GUIDANCE_MAX_LENGTH}
+              rows={4}
+            />
+            <div className={styles.charCount}>
+              {aiSummaryPrompt.length} / {AI_GUIDANCE_MAX_LENGTH}
+            </div>
+          </div>
+        </div>
+
+        {/* Triage Prompt */}
+        <div className={styles.section}>
+          <div className={styles.textareaGroup}>
+            <label htmlFor="aiTriagePrompt" className={styles.sliderLabel}>
+              {t("admin.aiGuidance.triagePrompt.label")}
+            </label>
+            <p className={styles.sliderDescription}>
+              {t("admin.aiGuidance.triagePrompt.description")}
+            </p>
+            <textarea
+              id="aiTriagePrompt"
+              value={aiTriagePrompt}
+              onChange={(e) => setAiTriagePrompt(e.target.value)}
+              placeholder={t("admin.aiGuidance.triagePrompt.placeholder")}
+              className={styles.textarea}
+              disabled={isSaving}
+              maxLength={AI_GUIDANCE_MAX_LENGTH}
+              rows={4}
+            />
+            <div className={styles.charCount}>
+              {aiTriagePrompt.length} / {AI_GUIDANCE_MAX_LENGTH}
+            </div>
+          </div>
         </div>
 
         {/* Form Actions */}

@@ -11,6 +11,7 @@ import {
   type BudgetTier,
   createLogger,
   normalizeHandle,
+  parseAiGuidance,
   parsePersonalizationTuning,
   type SourceType,
 } from "@aharadar/shared";
@@ -389,6 +390,7 @@ async function triageCandidates(params: {
   mode: DigestMode;
   maxCalls: number;
   llmConfig?: LlmRuntimeConfig;
+  triageGuidance?: string;
 }): Promise<Map<string, TriageOutput>> {
   if (params.maxCalls <= 0 || params.candidates.length === 0) return new Map();
 
@@ -424,6 +426,7 @@ async function triageCandidates(params: {
       router,
       tier,
       triageMap,
+      triageGuidance: params.triageGuidance,
     });
   }
 
@@ -460,6 +463,7 @@ async function triageCandidates(params: {
         candidates: batchInputs,
         batchId,
         reasoningEffortOverride: params.llmConfig?.reasoningEffort,
+        aiGuidance: params.triageGuidance,
       });
 
       // Merge results into triageMap
@@ -610,6 +614,7 @@ async function triageCandidatesIndividually(params: {
   router: ReturnType<typeof createConfiguredLlmRouter>;
   tier: BudgetTier;
   triageMap: Map<string, TriageOutput>;
+  triageGuidance?: string;
 }): Promise<Map<string, TriageOutput>> {
   const triageMap = params.triageMap;
 
@@ -636,6 +641,7 @@ async function triageCandidatesIndividually(params: {
           windowEnd: params.windowEnd,
         },
         reasoningEffortOverride: params.llmConfig?.reasoningEffort,
+        aiGuidance: params.triageGuidance,
       });
 
       triageMap.set(candidate.candidateId, result.output);
@@ -997,6 +1003,7 @@ export async function persistDigestFromContentItems(params: {
   // =========================================================================
   const topic = await params.db.topics.getById(params.topicId);
   const tuning = parsePersonalizationTuning(topic?.custom_settings?.personalization_tuning_v1);
+  const aiGuidance = parseAiGuidance(topic?.custom_settings?.ai_guidance_v1);
 
   log.debug(
     {
@@ -1105,6 +1112,7 @@ export async function persistDigestFromContentItems(params: {
     mode: params.mode,
     maxCalls: triageLimit,
     llmConfig: params.llmConfig,
+    triageGuidance: aiGuidance.triage_prompt || undefined,
   });
 
   // Compute novelty for candidates (topic-scoped, embedding-based)
@@ -1256,6 +1264,7 @@ export async function persistDigestFromContentItems(params: {
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     tier,
+    summaryGuidance: aiGuidance.summary_prompt || undefined,
     candidates: enrichCandidates,
   });
 

@@ -13,7 +13,7 @@ import {
   withTimeout,
 } from "@aharadar/llm";
 import { computeCreditsStatus } from "@aharadar/pipeline";
-import type { ProviderCallDraft } from "@aharadar/shared";
+import { type ProviderCallDraft, parseAiGuidance } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -157,6 +157,23 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
       const llmConfig = buildLlmRuntimeConfig(llmSettings);
       const router = createConfiguredLlmRouter(process.env, llmConfig);
 
+      // Fetch AI guidance from the content item's topic
+      let aiGuidance: string | undefined;
+      const contentItem = await db.query<{ topic_id: string }>(
+        `SELECT s.topic_id FROM content_items ci
+         JOIN sources s ON ci.source_id = s.id
+         WHERE ci.id = $1`,
+        [contentItemId],
+      );
+      if (contentItem.rows.length > 0) {
+        const topicId = contentItem.rows[0].topic_id;
+        const topic = await db.topics.getById(topicId);
+        if (topic) {
+          const guidance = parseAiGuidance(topic.custom_settings?.ai_guidance_v1);
+          aiGuidance = guidance.summary_prompt || undefined;
+        }
+      }
+
       // Call manualSummarize
       const timeoutMs = Number.parseInt(process.env.MANUAL_SUMMARY_TIMEOUT_MS ?? "120000", 10);
       const result = await withTimeout(
@@ -172,6 +189,7 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
               sourceType: metadata?.sourceType ?? null,
             },
           },
+          aiGuidance,
         }),
         Number.isFinite(timeoutMs) ? timeoutMs : 120000,
         "manualSummarize",

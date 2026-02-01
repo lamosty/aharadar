@@ -633,6 +633,22 @@
         "costImpact": "No additional cost. Applied when computing preferences."
       },
       "defaultsNote": "Default values are tuned for balanced personalization. Adjust carefully."
+    },
+    "aiGuidance": {
+      "title": "AI Guidance",
+      "subtitle": "Customize how AI analyzes and summarizes content for this topic. These prompts are injected into AI calls to provide domain-specific context.",
+      "summaryPrompt": {
+        "label": "Summary Guidance",
+        "description": "Custom instructions for how AI should summarize content. Injected into deep summary and manual summary prompts.",
+        "placeholder": "Example: Focus on valuation, competitive moat, and execution risk. Frame analysis as bull case / bear case. Be skeptical of promotional content."
+      },
+      "triagePrompt": {
+        "label": "Triage Guidance",
+        "description": "Custom instructions for how AI should judge relevance and importance during triage.",
+        "placeholder": "Example: Prioritize primary sources and official announcements. Be skeptical of rumors and speculation. Weight technical analysis higher than price predictions."
+      },
+      "exampleInvesting": "Investing: \"Focus on valuation, competitive moat, and execution risk. Frame as bull/bear case.\"",
+      "exampleTech": "Tech: \"Emphasize technical feasibility, adoption barriers, and competitive landscape.\""
     }
   },
   "accessibility": {

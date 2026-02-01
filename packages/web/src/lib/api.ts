@@ -1310,6 +1310,10 @@ export interface TopicCustomSettingsUpdateRequest {
     similarityThreshold?: number;
     lookbackDays?: number;
   };
+  ai_guidance_v1?: {
+    summary_prompt?: string;
+    triage_prompt?: string;
+  };
 }
 
 /** Topic custom settings update response */
@@ -1881,7 +1885,13 @@ export async function getAdminAbtest(
 // Item Summaries API
 // ============================================================================
 
-/** Manual summary output (manual_summary_v2) */
+/** A dynamic section with a title and list of items */
+export interface SummarySection {
+  title: string;
+  items: string[];
+}
+
+/** Manual summary output (deep_summary_v2) */
 export interface ManualSummaryOutput {
   schema_version: string;
   prompt_id: string;
@@ -1890,9 +1900,12 @@ export interface ManualSummaryOutput {
   one_liner: string;
   bullets: string[];
   discussion_highlights?: string[];
-  why_it_matters: string[];
-  risks_or_caveats: string[];
-  suggested_followups: string[];
+  /** Dynamic sections shaped by AI guidance */
+  sections?: SummarySection[];
+  // Legacy v1 fields (for backwards compatibility with existing summaries)
+  why_it_matters?: string[];
+  risks_or_caveats?: string[];
+  suggested_followups?: string[];
 }
 
 /** Item summary request */

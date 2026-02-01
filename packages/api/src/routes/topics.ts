@@ -1,5 +1,5 @@
 import type { DigestMode, Topic } from "@aharadar/db";
-import { validatePersonalizationTuning } from "@aharadar/shared";
+import { validateAiGuidance, validatePersonalizationTuning } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -410,6 +410,27 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
               error: {
                 code: "INVALID_TUNING",
                 message: `Invalid personalization tuning: ${errors.join("; ")}`,
+              },
+            });
+          }
+        }
+      }
+
+      // Validate ai_guidance_v1 if present
+      if (bodyObj.ai_guidance_v1 !== undefined) {
+        const guidanceInput = bodyObj.ai_guidance_v1;
+        if (
+          guidanceInput !== null &&
+          typeof guidanceInput === "object" &&
+          !Array.isArray(guidanceInput)
+        ) {
+          const errors = validateAiGuidance(guidanceInput as Record<string, unknown>);
+          if (errors.length > 0) {
+            return reply.code(400).send({
+              ok: false,
+              error: {
+                code: "INVALID_AI_GUIDANCE",
+                message: `Invalid AI guidance: ${errors.join("; ")}`,
               },
             });
           }

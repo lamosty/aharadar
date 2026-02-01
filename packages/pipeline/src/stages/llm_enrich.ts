@@ -56,6 +56,8 @@ export async function enrichTopCandidates(params: {
   windowStart: string;
   windowEnd: string;
   tier: BudgetTier;
+  /** Optional AI guidance for summaries (injected into prompt) */
+  summaryGuidance?: string;
   // ranked candidates in priority order
   candidates: Array<{
     candidateId: string;
@@ -167,6 +169,7 @@ export async function enrichTopCandidates(params: {
           windowEnd: params.windowEnd,
         },
         reasoningEffortOverride: params.llmConfig?.reasoningEffort,
+        aiGuidance: params.summaryGuidance,
       });
 
       summaries.set(candidate.candidateId, result.output);

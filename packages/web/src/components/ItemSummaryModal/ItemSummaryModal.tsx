@@ -210,7 +210,21 @@ export function ItemSummaryModal({
               </div>
             )}
 
-            {summary.why_it_matters.length > 0 && (
+            {/* Dynamic sections (v2 schema) */}
+            {summary.sections &&
+              summary.sections.map((section, i) => (
+                <div key={i} className={styles.summaryBlock}>
+                  <h5>{section.title}</h5>
+                  <ul className={styles.bulletList}>
+                    {section.items.map((item, j) => (
+                      <li key={j}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+            {/* Legacy v1 fields (backwards compatibility) */}
+            {!summary.sections && summary.why_it_matters && summary.why_it_matters.length > 0 && (
               <div className={styles.summaryBlock}>
                 <h5>{t("itemSummary.whyItMatters")}</h5>
                 <ul className={styles.bulletList}>
@@ -221,27 +235,31 @@ export function ItemSummaryModal({
               </div>
             )}
 
-            {summary.risks_or_caveats.length > 0 && (
-              <div className={styles.summaryBlock}>
-                <h5>{t("itemSummary.risksOrCaveats")}</h5>
-                <ul className={styles.bulletList}>
-                  {summary.risks_or_caveats.map((risk, i) => (
-                    <li key={i}>{risk}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {!summary.sections &&
+              summary.risks_or_caveats &&
+              summary.risks_or_caveats.length > 0 && (
+                <div className={styles.summaryBlock}>
+                  <h5>{t("itemSummary.risksOrCaveats")}</h5>
+                  <ul className={styles.bulletList}>
+                    {summary.risks_or_caveats.map((risk, i) => (
+                      <li key={i}>{risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            {summary.suggested_followups.length > 0 && (
-              <div className={styles.summaryBlock}>
-                <h5>{t("itemSummary.suggestedFollowups")}</h5>
-                <ul className={styles.bulletList}>
-                  {summary.suggested_followups.map((followup, i) => (
-                    <li key={i}>{followup}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {!summary.sections &&
+              summary.suggested_followups &&
+              summary.suggested_followups.length > 0 && (
+                <div className={styles.summaryBlock}>
+                  <h5>{t("itemSummary.suggestedFollowups")}</h5>
+                  <ul className={styles.bulletList}>
+                    {summary.suggested_followups.map((followup, i) => (
+                      <li key={i}>{followup}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
           </div>
         </div>
 

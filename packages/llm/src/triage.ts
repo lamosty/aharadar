@@ -141,10 +141,11 @@ function clampText(value: string | null | undefined, maxChars: number): string |
   return truncate(trimmed, maxChars);
 }
 
-function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
+function buildSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string): string {
   const retryNote = isRetry
     ? "The previous response was invalid. Fix it and return ONLY the JSON object."
     : "Return ONLY the JSON object.";
+  const guidanceSection = aiGuidance ? `\nTopic-Specific Guidance:\n${aiGuidance}\n` : "";
   return (
     "You are a strict JSON generator for content triage.\n" +
     `${retryNote}\n` +
@@ -169,6 +170,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     "- categories: short generic labels\n" +
     "- topic: 2-4 words identifying the main subject (e.g. 'SPY options', 'React hooks', 'Bitcoin price'). Specific enough to group similar items, not too generic.\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
+    guidanceSection +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
@@ -363,6 +365,7 @@ async function runTriageOnce(params: {
   candidate: TriageCandidateInput;
   isRetry: boolean;
   reasoningEffortOverride?: ReasoningEffort | null;
+  aiGuidance?: string;
 }): Promise<{ output: TriageOutput; inputTokens: number; outputTokens: number; endpoint: string }> {
   const ref = params.router.chooseModel("triage", params.tier);
 
@@ -389,7 +392,7 @@ async function runTriageOnce(params: {
   const effectiveReasoningEffort = reasoningEffort ?? undefined;
 
   const call = await params.router.call("triage", ref, {
-    system: buildSystemPrompt(ref, params.isRetry),
+    system: buildSystemPrompt(ref, params.isRetry, params.aiGuidance),
     user: buildUserPrompt(params.candidate, params.tier),
     maxOutputTokens,
     reasoningEffort: effectiveReasoningEffort,
@@ -450,12 +453,14 @@ export async function triageCandidate(params: {
   tier: BudgetTier;
   candidate: TriageCandidateInput;
   reasoningEffortOverride?: ReasoningEffort | null;
+  aiGuidance?: string;
 }): Promise<TriageCallResult> {
   try {
     const result = await runTriageOnce({
       ...params,
       isRetry: false,
       reasoningEffortOverride: params.reasoningEffortOverride,
+      aiGuidance: params.aiGuidance,
     });
     return {
       output: result.output,
@@ -484,6 +489,7 @@ export async function triageCandidate(params: {
       ...params,
       isRetry: true,
       reasoningEffortOverride: params.reasoningEffortOverride,
+      aiGuidance: params.aiGuidance,
     });
     return {
       output: retry.output,
@@ -571,10 +577,11 @@ export interface TriageBatchCallResult {
   successCount: number;
 }
 
-function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean): string {
+function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string): string {
   const retryNote = isRetry
     ? "The previous response was invalid. Fix it and return ONLY the JSON object."
     : "Return ONLY the JSON object.";
+  const guidanceSection = aiGuidance ? `\nTopic-Specific Guidance:\n${aiGuidance}\n` : "";
   return (
     "You are a strict JSON generator for content triage.\n" +
     "You will receive multiple items in a batch. Evaluate EACH item independently.\n" +
@@ -605,6 +612,7 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean): string {
     "- categories: short generic labels\n" +
     "- topic: 2-4 words identifying the main subject (e.g. 'SPY options', 'React hooks', 'Bitcoin price'). Specific enough to group similar items.\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
+    guidanceSection +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
@@ -794,6 +802,7 @@ async function runBatchTriageOnce(params: {
   batchId: string;
   isRetry: boolean;
   reasoningEffortOverride?: ReasoningEffort | null;
+  aiGuidance?: string;
 }): Promise<{
   outputs: Map<string, TriageOutput>;
   inputTokens: number;
@@ -820,7 +829,7 @@ async function runBatchTriageOnce(params: {
   const effectiveReasoningEffort = reasoningEffort ?? undefined;
 
   const call = await params.router.call("triage", ref, {
-    system: buildBatchSystemPrompt(ref, params.isRetry),
+    system: buildBatchSystemPrompt(ref, params.isRetry, params.aiGuidance),
     user: buildBatchUserPrompt(params.candidates, params.batchId, params.tier),
     maxOutputTokens,
     reasoningEffort: effectiveReasoningEffort,
@@ -874,6 +883,7 @@ export async function triageBatch(params: {
   candidates: TriageCandidateInput[];
   batchId: string;
   reasoningEffortOverride?: ReasoningEffort | null;
+  aiGuidance?: string;
 }): Promise<TriageBatchCallResult> {
   if (params.candidates.length === 0) {
     return {

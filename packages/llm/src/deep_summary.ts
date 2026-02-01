@@ -2,8 +2,14 @@ import type { BudgetTier } from "@aharadar/shared";
 
 import type { LlmRouter, ModelRef } from "./types";
 
-const PROMPT_ID = "deep_summary_v1";
-const SCHEMA_VERSION = "deep_summary_v1";
+const PROMPT_ID = "deep_summary_v2";
+const SCHEMA_VERSION = "deep_summary_v2";
+
+/** A dynamic section with a title and list of items */
+export interface SummarySection {
+  title: string;
+  items: string[];
+}
 
 export interface DeepSummaryCandidateInput {
   id: string;
@@ -19,15 +25,15 @@ export interface DeepSummaryCandidateInput {
 }
 
 export interface DeepSummaryOutput {
-  schema_version: "deep_summary_v1";
-  prompt_id: "deep_summary_v1";
+  schema_version: "deep_summary_v2";
+  prompt_id: "deep_summary_v2";
   provider: string;
   model: string;
   one_liner: string;
   bullets: string[];
-  why_it_matters: string[];
-  risks_or_caveats: string[];
-  suggested_followups: string[];
+  discussion_highlights?: string[];
+  /** Dynamic sections shaped by AI guidance (e.g., Bull Case / Bear Case) */
+  sections: SummarySection[];
 }
 
 export interface DeepSummaryCallResult {
@@ -94,26 +100,45 @@ function clampText(value: string | null | undefined, maxChars: number): string |
   return truncate(trimmed, maxChars);
 }
 
-function buildSystemPrompt(ref: ModelRef, isRetry: boolean): string {
+function buildSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string): string {
   const retryNote = isRetry
     ? "The previous response was invalid. Fix it and return ONLY the JSON object."
     : "Return ONLY the JSON object.";
+
+  // Default sections when no guidance is provided
+  const defaultSectionsNote =
+    'If no specific guidance is given, use these default sections: "Why It Matters", "Risks & Caveats", "Suggested Follow-ups".';
+
+  // Guidance section with instructions on how to use it
+  const guidanceSection = aiGuidance
+    ? `\nTopic-Specific Guidance (use this to shape your "sections" output):\n${aiGuidance}\n\n` +
+      "Create section titles that match this guidance. For example, if guidance mentions bull/bear case analysis, " +
+      'use sections like "Bull Case" and "Bear Case" instead of generic ones.\n'
+    : `\n${defaultSectionsNote}\n`;
+
   return (
     "You are a strict JSON generator for deep summaries.\n" +
     `${retryNote}\n` +
     "Output must match this schema (no extra keys, no markdown):\n" +
     "{\n" +
-    '  "schema_version": "deep_summary_v1",\n' +
-    '  "prompt_id": "deep_summary_v1",\n' +
+    '  "schema_version": "deep_summary_v2",\n' +
+    '  "prompt_id": "deep_summary_v2",\n' +
     `  "provider": "${ref.provider}",\n` +
     `  "model": "${ref.model}",\n` +
     '  "one_liner": "One sentence summary.",\n' +
-    '  "bullets": ["Bullet 1", "Bullet 2"],\n' +
-    '  "why_it_matters": ["Reason 1", "Reason 2"],\n' +
-    '  "risks_or_caveats": ["Caveat 1"],\n' +
-    '  "suggested_followups": ["Followup 1"]\n' +
-    "}\n" +
-    "Keep it topic-agnostic and avoid domain-specific assumptions. Be concise and factual."
+    '  "bullets": ["Key point 1", "Key point 2"],\n' +
+    '  "discussion_highlights": ["Notable comment 1", "Notable comment 2"],\n' +
+    '  "sections": [\n' +
+    '    { "title": "Section Title", "items": ["Point 1", "Point 2"] }\n' +
+    "  ]\n" +
+    "}\n\n" +
+    "Rules:\n" +
+    "- one_liner: A single sentence capturing the essence.\n" +
+    "- bullets: 2-5 key factual points from the content.\n" +
+    "- discussion_highlights: Only include if source has comments/discussion. Extract notable viewpoints.\n" +
+    "- sections: 2-4 analysis sections. Section titles should reflect the guidance provided.\n" +
+    guidanceSection +
+    "Be concise and factual."
   );
 }
 
@@ -170,22 +195,66 @@ function asStringArray(value: unknown, maxLen: number): string[] | null {
   return out;
 }
 
+function asSections(value: unknown, maxSections: number): SummarySection[] | null {
+  if (!Array.isArray(value)) return null;
+  const out: SummarySection[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const obj = entry as Record<string, unknown>;
+    const title = asString(obj.title);
+    const items = asStringArray(obj.items, 10);
+    if (!title || !items || items.length === 0) continue;
+    out.push({ title, items });
+    if (out.length >= maxSections) break;
+  }
+  return out.length > 0 ? out : null;
+}
+
 function normalizeDeepSummaryOutput(
   value: Record<string, unknown>,
   ref: ModelRef,
 ): DeepSummaryOutput | null {
   const schemaVersion = asString(value.schema_version) ?? SCHEMA_VERSION;
   const promptId = asString(value.prompt_id) ?? PROMPT_ID;
-  if (schemaVersion !== SCHEMA_VERSION || promptId !== PROMPT_ID) return null;
+
+  // Accept both v1 and v2 schema versions for backwards compatibility
+  const isV1 = schemaVersion === "deep_summary_v1" && promptId === "deep_summary_v1";
+  const isV2 = schemaVersion === SCHEMA_VERSION && promptId === PROMPT_ID;
+  if (!isV1 && !isV2) return null;
 
   const oneLiner = asString(value.one_liner);
   if (!oneLiner) return null;
 
   const bullets = asStringArray(value.bullets, 20);
-  const why = asStringArray(value.why_it_matters, 20);
-  const risks = asStringArray(value.risks_or_caveats, 20);
-  const followups = asStringArray(value.suggested_followups, 20);
-  if (!bullets || !why || !risks || !followups) return null;
+  if (!bullets) return null;
+
+  // Optional discussion_highlights
+  const discussionHighlights = asStringArray(value.discussion_highlights, 20) ?? undefined;
+
+  // For v2: parse sections directly
+  // For v1: convert old fields to sections format
+  let sections: SummarySection[];
+  if (isV2) {
+    const parsedSections = asSections(value.sections, 6);
+    if (!parsedSections) return null;
+    sections = parsedSections;
+  } else {
+    // Convert v1 format to v2 sections
+    const why = asStringArray(value.why_it_matters, 20);
+    const risks = asStringArray(value.risks_or_caveats, 20);
+    const followups = asStringArray(value.suggested_followups, 20);
+    sections = [];
+    if (why && why.length > 0) {
+      sections.push({ title: "Why It Matters", items: why });
+    }
+    if (risks && risks.length > 0) {
+      sections.push({ title: "Risks & Caveats", items: risks });
+    }
+    if (followups && followups.length > 0) {
+      sections.push({ title: "Suggested Follow-ups", items: followups });
+    }
+    if (sections.length === 0) return null;
+  }
 
   return {
     schema_version: SCHEMA_VERSION,
@@ -194,9 +263,8 @@ function normalizeDeepSummaryOutput(
     model: ref.model,
     one_liner: oneLiner,
     bullets,
-    why_it_matters: why,
-    risks_or_caveats: risks,
-    suggested_followups: followups,
+    discussion_highlights: discussionHighlights,
+    sections,
   };
 }
 
@@ -220,6 +288,7 @@ async function runDeepSummaryOnce(params: {
   candidate: DeepSummaryCandidateInput;
   isRetry: boolean;
   reasoningEffortOverride?: ReasoningEffort | null;
+  aiGuidance?: string;
 }): Promise<{
   output: DeepSummaryOutput;
   inputTokens: number;
@@ -242,7 +311,7 @@ async function runDeepSummaryOnce(params: {
   const effectiveReasoningEffort = reasoningEffort ?? undefined;
 
   const call = await params.router.call("deep_summary", ref, {
-    system: buildSystemPrompt(ref, params.isRetry),
+    system: buildSystemPrompt(ref, params.isRetry, params.aiGuidance),
     user: buildUserPrompt(params.candidate, params.tier),
     maxOutputTokens,
     reasoningEffort: effectiveReasoningEffort,
@@ -267,12 +336,14 @@ export async function deepSummarizeCandidate(params: {
   tier: BudgetTier;
   candidate: DeepSummaryCandidateInput;
   reasoningEffortOverride?: ReasoningEffort | null;
+  aiGuidance?: string;
 }): Promise<DeepSummaryCallResult> {
   try {
     const result = await runDeepSummaryOnce({
       ...params,
       isRetry: false,
       reasoningEffortOverride: params.reasoningEffortOverride,
+      aiGuidance: params.aiGuidance,
     });
     return {
       output: result.output,
@@ -288,6 +359,7 @@ export async function deepSummarizeCandidate(params: {
       ...params,
       isRetry: true,
       reasoningEffortOverride: params.reasoningEffortOverride,
+      aiGuidance: params.aiGuidance,
     });
     return {
       output: retry.output,
