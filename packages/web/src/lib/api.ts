@@ -2523,3 +2523,331 @@ export async function postAdminRegenerateThemes(
     signal,
   });
 }
+
+// ============================================================================
+// Scoring Modes API
+// ============================================================================
+
+/** Scoring mode config */
+export interface ScoringModeConfig {
+  version: 1;
+  weights: {
+    wAha: number;
+    wHeuristic: number;
+    wPref: number;
+    wNovelty: number;
+  };
+  features: {
+    perSourceCalibration: boolean;
+    aiPreferenceInjection: boolean;
+    embeddingPreferences: boolean;
+  };
+  calibration: {
+    windowDays: number;
+    minSamples: number;
+    maxOffset: number;
+  };
+}
+
+/** Scoring mode */
+export interface ScoringMode {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  config: ScoringModeConfig;
+  notes: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Scoring mode change audit entry */
+export interface ScoringModeChange {
+  id: string;
+  userId: string;
+  topicId: string | null;
+  previousModeId: string | null;
+  newModeId: string | null;
+  reason: string | null;
+  changedAt: string;
+}
+
+/** Scoring modes list response */
+export interface ScoringModesResponse {
+  ok: true;
+  modes: ScoringMode[];
+}
+
+/** Single scoring mode response */
+export interface ScoringModeResponse {
+  ok: true;
+  mode: ScoringMode;
+}
+
+/** Scoring mode audit log response */
+export interface ScoringModeAuditResponse {
+  ok: true;
+  changes: ScoringModeChange[];
+}
+
+/** Get all scoring modes */
+export async function getScoringModes(signal?: AbortSignal): Promise<ScoringModesResponse> {
+  return apiFetch<ScoringModesResponse>("/scoring-modes", { signal });
+}
+
+/** Get default scoring mode */
+export async function getScoringModeDefault(
+  signal?: AbortSignal,
+): Promise<ScoringModeResponse | ApiErrorResponse> {
+  return apiFetch<ScoringModeResponse>("/scoring-modes/default", { signal });
+}
+
+/** Get scoring mode by ID */
+export async function getScoringMode(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ScoringModeResponse> {
+  return apiFetch<ScoringModeResponse>(`/scoring-modes/${id}`, { signal });
+}
+
+/** Get scoring mode audit log */
+export async function getScoringModeAudit(
+  params?: { topicId?: string; limit?: number },
+  signal?: AbortSignal,
+): Promise<ScoringModeAuditResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.topicId) searchParams.set("topicId", params.topicId);
+  if (params?.limit) searchParams.set("limit", params.limit.toString());
+
+  const query = searchParams.toString();
+  const path = query ? `/scoring-modes/audit?${query}` : "/scoring-modes/audit";
+
+  return apiFetch<ScoringModeAuditResponse>(path, { signal });
+}
+
+/** Create scoring mode request */
+export interface CreateScoringModeRequest {
+  name: string;
+  description?: string;
+  notes?: string;
+  isDefault?: boolean;
+  weights?: Partial<ScoringModeConfig["weights"]>;
+  features?: Partial<ScoringModeConfig["features"]>;
+  calibration?: Partial<ScoringModeConfig["calibration"]>;
+}
+
+/** Create a new scoring mode */
+export async function postScoringMode(
+  data: CreateScoringModeRequest,
+  signal?: AbortSignal,
+): Promise<ScoringModeResponse> {
+  return apiFetch<ScoringModeResponse>("/scoring-modes", {
+    method: "POST",
+    body: JSON.stringify(data),
+    signal,
+  });
+}
+
+/** Update scoring mode request */
+export interface UpdateScoringModeRequest {
+  name?: string;
+  description?: string | null;
+  notes?: string | null;
+  weights?: Partial<ScoringModeConfig["weights"]>;
+  features?: Partial<ScoringModeConfig["features"]>;
+  calibration?: Partial<ScoringModeConfig["calibration"]>;
+}
+
+/** Update a scoring mode */
+export async function putScoringMode(
+  id: string,
+  data: UpdateScoringModeRequest,
+  signal?: AbortSignal,
+): Promise<ScoringModeResponse> {
+  return apiFetch<ScoringModeResponse>(`/scoring-modes/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+    signal,
+  });
+}
+
+/** Set scoring mode as default */
+export async function postScoringModeSetDefault(
+  id: string,
+  reason?: string,
+  signal?: AbortSignal,
+): Promise<ScoringModeResponse> {
+  return apiFetch<ScoringModeResponse>(`/scoring-modes/${id}/set-default`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+    signal,
+  });
+}
+
+/** Delete a scoring mode */
+export async function deleteScoringMode(
+  id: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true; message: string }> {
+  return apiFetch<{ ok: true; message: string }>(`/scoring-modes/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}
+
+/** Set topic scoring mode */
+export async function patchTopicScoringMode(
+  topicId: string,
+  scoringModeId: string | null,
+  reason?: string,
+  signal?: AbortSignal,
+): Promise<TopicDetailResponse> {
+  return apiFetch<TopicDetailResponse>(`/topics/${topicId}/scoring-mode`, {
+    method: "PATCH",
+    body: JSON.stringify({ scoringModeId, reason }),
+    signal,
+  });
+}
+
+// ============================================================================
+// Scoring Experiments API
+// ============================================================================
+
+/** Experiment outcome */
+export type ExperimentOutcome = "positive" | "neutral" | "negative";
+
+/** Scoring experiment */
+export interface ScoringExperiment {
+  id: string;
+  userId: string;
+  topicId: string;
+  modeId: string;
+  name: string;
+  hypothesis: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  itemsShown: number;
+  itemsLiked: number;
+  itemsDisliked: number;
+  itemsSkipped: number;
+  digestsGenerated: number;
+  notes: string | null;
+  outcome: ExperimentOutcome | null;
+  learnings: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Scoring experiments list response */
+export interface ScoringExperimentsResponse {
+  ok: true;
+  experiments: ScoringExperiment[];
+}
+
+/** Single scoring experiment response */
+export interface ScoringExperimentResponse {
+  ok: true;
+  experiment: ScoringExperiment;
+}
+
+/** Get all scoring experiments */
+export async function getScoringExperiments(
+  params?: { topicId?: string; activeOnly?: boolean; limit?: number },
+  signal?: AbortSignal,
+): Promise<ScoringExperimentsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.topicId) searchParams.set("topicId", params.topicId);
+  if (params?.activeOnly) searchParams.set("activeOnly", "true");
+  if (params?.limit) searchParams.set("limit", params.limit.toString());
+
+  const query = searchParams.toString();
+  const path = query ? `/scoring-experiments?${query}` : "/scoring-experiments";
+
+  return apiFetch<ScoringExperimentsResponse>(path, { signal });
+}
+
+/** Get active experiments for the user */
+export async function getScoringExperimentsActive(
+  signal?: AbortSignal,
+): Promise<ScoringExperimentsResponse> {
+  return apiFetch<ScoringExperimentsResponse>("/scoring-experiments/active", { signal });
+}
+
+/** Get scoring experiment by ID */
+export async function getScoringExperiment(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ScoringExperimentResponse> {
+  return apiFetch<ScoringExperimentResponse>(`/scoring-experiments/${id}`, { signal });
+}
+
+/** Create scoring experiment request */
+export interface CreateScoringExperimentRequest {
+  topicId: string;
+  modeId: string;
+  name: string;
+  hypothesis?: string;
+}
+
+/** Create a new scoring experiment */
+export async function postScoringExperiment(
+  data: CreateScoringExperimentRequest,
+  signal?: AbortSignal,
+): Promise<ScoringExperimentResponse> {
+  return apiFetch<ScoringExperimentResponse>("/scoring-experiments", {
+    method: "POST",
+    body: JSON.stringify(data),
+    signal,
+  });
+}
+
+/** Update scoring experiment request */
+export interface UpdateScoringExperimentRequest {
+  name?: string;
+  hypothesis?: string | null;
+  notes?: string | null;
+}
+
+/** Update a scoring experiment */
+export async function putScoringExperiment(
+  id: string,
+  data: UpdateScoringExperimentRequest,
+  signal?: AbortSignal,
+): Promise<ScoringExperimentResponse> {
+  return apiFetch<ScoringExperimentResponse>(`/scoring-experiments/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+    signal,
+  });
+}
+
+/** End scoring experiment request */
+export interface EndScoringExperimentRequest {
+  outcome?: ExperimentOutcome | null;
+  learnings?: string;
+}
+
+/** End a scoring experiment */
+export async function postScoringExperimentEnd(
+  id: string,
+  data: EndScoringExperimentRequest,
+  signal?: AbortSignal,
+): Promise<ScoringExperimentResponse> {
+  return apiFetch<ScoringExperimentResponse>(`/scoring-experiments/${id}/end`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    signal,
+  });
+}
+
+/** Delete a scoring experiment */
+export async function deleteScoringExperiment(
+  id: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true; message: string }> {
+  return apiFetch<{ ok: true; message: string }>(`/scoring-experiments/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}

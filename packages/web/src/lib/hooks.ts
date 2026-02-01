@@ -42,6 +42,8 @@ import {
   type CreateDigestSummaryResponse,
   type CreateInboxSummaryRequest,
   type CreateInboxSummaryResponse,
+  type CreateScoringExperimentRequest,
+  type CreateScoringModeRequest,
   type CreateTopicRequest,
   type CreateTopicResponse,
   clearEmergencyStop as clearEmergencyStopApi,
@@ -59,9 +61,12 @@ import {
   type DigestsListResponse,
   deleteAdminSource,
   deleteCatchupPack,
+  deleteScoringExperiment,
+  deleteScoringMode,
   deleteTopic,
   drainQueue,
   type EmergencyStopStatusResponse,
+  type EndScoringExperimentRequest,
   emergencyStop,
   type FeedbackAction,
   type FeedbackByTopicResponse,
@@ -101,6 +106,12 @@ import {
   getOpsStatus,
   getPreferences,
   getQueueStatus,
+  getScoringExperiment,
+  getScoringExperiments,
+  getScoringExperimentsActive,
+  getScoringMode,
+  getScoringModeAudit,
+  getScoringModes,
   getTopic,
   getTopics,
   getXAccountPolicies,
@@ -130,6 +141,7 @@ import {
   patchPreferences,
   patchTopicCustomSettings,
   patchTopicDigestSettings,
+  patchTopicScoringMode,
   pauseQueue,
   postAdminAbtest,
   postAdminRegenerateThemes,
@@ -138,7 +150,13 @@ import {
   postFeedback,
   postItemSummary,
   postMarkChecked,
+  postScoringExperiment,
+  postScoringExperimentEnd,
+  postScoringMode,
+  postScoringModeSetDefault,
   postTopicMarkChecked,
+  putScoringExperiment,
+  putScoringMode,
   type QueueActionResponse,
   type QueueStatusResponse,
   type QuotaStatusResponse,
@@ -147,6 +165,15 @@ import {
   resetAdminBudget,
   resetXAccountPolicy,
   resumeQueue,
+  // Scoring Experiments
+  type ScoringExperiment,
+  type ScoringExperimentResponse,
+  type ScoringExperimentsResponse,
+  // Scoring Modes
+  type ScoringMode,
+  type ScoringModeAuditResponse,
+  type ScoringModeResponse,
+  type ScoringModesResponse,
   type SourceCreateRequest,
   type SourceCreateResponse,
   type SourceDeleteResponse,
@@ -163,6 +190,8 @@ import {
   type TopicMarkCheckedResponse,
   type TopicsListResponse,
   toggleBookmark,
+  type UpdateScoringExperimentRequest,
+  type UpdateScoringModeRequest,
   type UpdateTopicRequest,
   type UpdateTopicResponse,
   updateTopic,
@@ -236,6 +265,20 @@ export const queryKeys = {
     all: ["topics"] as const,
     list: () => ["topics", "list"] as const,
     detail: (id: string) => ["topics", id] as const,
+  },
+  scoringModes: {
+    all: ["scoring-modes"] as const,
+    list: () => ["scoring-modes", "list"] as const,
+    detail: (id: string) => ["scoring-modes", id] as const,
+    audit: (params?: { topicId?: string; limit?: number }) =>
+      ["scoring-modes", "audit", params] as const,
+  },
+  scoringExperiments: {
+    all: ["scoring-experiments"] as const,
+    list: (params?: { topicId?: string; activeOnly?: boolean; limit?: number }) =>
+      ["scoring-experiments", "list", params] as const,
+    active: () => ["scoring-experiments", "active"] as const,
+    detail: (id: string) => ["scoring-experiments", id] as const,
   },
 } as const;
 
@@ -2056,5 +2099,334 @@ export function useAdminLogsHandleHealth(params?: { sourceId?: string }) {
   return useQuery({
     queryKey: ["admin", "logs", "ingestion", "handles", params],
     queryFn: ({ signal }) => getAdminLogsHandleHealth(params, signal),
+  });
+}
+
+// ============================================================================
+// Scoring Modes Hooks
+// ============================================================================
+
+/**
+ * Query all scoring modes for the current user.
+ */
+export function useScoringModes(
+  options?: Omit<
+    UseQueryOptions<ScoringModesResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.scoringModes.list(),
+    queryFn: ({ signal }) => getScoringModes(signal),
+    ...options,
+  });
+}
+
+/**
+ * Query a single scoring mode by ID.
+ */
+export function useScoringMode(
+  id: string,
+  options?: Omit<
+    UseQueryOptions<ScoringModeResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.scoringModes.detail(id),
+    queryFn: ({ signal }) => getScoringMode(id, signal),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+/**
+ * Query scoring mode audit log.
+ */
+export function useScoringModeAudit(
+  params?: { topicId?: string; limit?: number },
+  options?: Omit<
+    UseQueryOptions<ScoringModeAuditResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.scoringModes.audit(params),
+    queryFn: ({ signal }) => getScoringModeAudit(params, signal),
+    ...options,
+  });
+}
+
+/**
+ * Create a new scoring mode.
+ */
+export function useScoringModeCreate(
+  options?: Omit<
+    UseMutationOptions<ScoringModeResponse, ApiError | NetworkError, CreateScoringModeRequest>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateScoringModeRequest) => postScoringMode(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Update a scoring mode.
+ */
+export function useScoringModeUpdate(
+  options?: Omit<
+    UseMutationOptions<
+      ScoringModeResponse,
+      ApiError | NetworkError,
+      { id: string; data: UpdateScoringModeRequest }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateScoringModeRequest }) =>
+      putScoringMode(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.detail(variables.id) });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Set a scoring mode as default.
+ */
+export function useScoringModeSetDefault(
+  options?: Omit<
+    UseMutationOptions<
+      ScoringModeResponse,
+      ApiError | NetworkError,
+      { id: string; reason?: string }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      postScoringModeSetDefault(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.audit() });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Delete a scoring mode.
+ */
+export function useScoringModeDelete(
+  options?: Omit<
+    UseMutationOptions<{ ok: true; message: string }, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteScoringMode(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.all });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Set topic scoring mode.
+ */
+export function useTopicScoringModeUpdate(
+  options?: Omit<
+    UseMutationOptions<
+      TopicDetailResponse,
+      ApiError | NetworkError,
+      { topicId: string; scoringModeId: string | null; reason?: string }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      topicId,
+      scoringModeId,
+      reason,
+    }: {
+      topicId: string;
+      scoringModeId: string | null;
+      reason?: string;
+    }) => patchTopicScoringMode(topicId, scoringModeId, reason),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.detail(variables.topicId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.audit() });
+    },
+    ...options,
+  });
+}
+
+// ============================================================================
+// Scoring Experiments Hooks
+// ============================================================================
+
+/**
+ * Query scoring experiments.
+ */
+export function useScoringExperiments(
+  params?: { topicId?: string; activeOnly?: boolean; limit?: number },
+  options?: Omit<
+    UseQueryOptions<ScoringExperimentsResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.scoringExperiments.list(params),
+    queryFn: ({ signal }) => getScoringExperiments(params, signal),
+    ...options,
+  });
+}
+
+/**
+ * Query active scoring experiments for the user.
+ */
+export function useScoringExperimentsActive(
+  options?: Omit<
+    UseQueryOptions<ScoringExperimentsResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.scoringExperiments.active(),
+    queryFn: ({ signal }) => getScoringExperimentsActive(signal),
+    ...options,
+  });
+}
+
+/**
+ * Query a single scoring experiment by ID.
+ */
+export function useScoringExperiment(
+  id: string,
+  options?: Omit<
+    UseQueryOptions<ScoringExperimentResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.scoringExperiments.detail(id),
+    queryFn: ({ signal }) => getScoringExperiment(id, signal),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+/**
+ * Create a new scoring experiment.
+ */
+export function useScoringExperimentCreate(
+  options?: Omit<
+    UseMutationOptions<
+      ScoringExperimentResponse,
+      ApiError | NetworkError,
+      CreateScoringExperimentRequest
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateScoringExperimentRequest) => postScoringExperiment(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringExperiments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topics.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringModes.audit() });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Update a scoring experiment.
+ */
+export function useScoringExperimentUpdate(
+  options?: Omit<
+    UseMutationOptions<
+      ScoringExperimentResponse,
+      ApiError | NetworkError,
+      { id: string; data: UpdateScoringExperimentRequest }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateScoringExperimentRequest }) =>
+      putScoringExperiment(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringExperiments.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.scoringExperiments.detail(variables.id),
+      });
+    },
+    ...options,
+  });
+}
+
+/**
+ * End a scoring experiment.
+ */
+export function useScoringExperimentEnd(
+  options?: Omit<
+    UseMutationOptions<
+      ScoringExperimentResponse,
+      ApiError | NetworkError,
+      { id: string; data: EndScoringExperimentRequest }
+    >,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: EndScoringExperimentRequest }) =>
+      postScoringExperimentEnd(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringExperiments.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.scoringExperiments.detail(variables.id),
+      });
+    },
+    ...options,
+  });
+}
+
+/**
+ * Delete a scoring experiment.
+ */
+export function useScoringExperimentDelete(
+  options?: Omit<
+    UseMutationOptions<{ ok: true; message: string }, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteScoringExperiment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scoringExperiments.all });
+    },
+    ...options,
   });
 }
