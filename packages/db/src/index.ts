@@ -1,4 +1,5 @@
 export * from "./db";
+export * from "./helpers/create_notification";
 export * from "./repos/abtests";
 export * from "./repos/aggregate_summaries";
 export * from "./repos/auth_tokens";
@@ -14,6 +15,7 @@ export * from "./repos/fetch_runs";
 export * from "./repos/ingestion_health";
 export * from "./repos/item_summaries";
 export * from "./repos/llm_settings";
+export * from "./repos/notifications";
 export * from "./repos/provider_calls";
 export * from "./repos/qa_memory";
 export * from "./repos/scoring_experiments";
