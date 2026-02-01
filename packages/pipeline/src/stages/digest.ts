@@ -23,6 +23,8 @@ const TRIAGE_BATCH_SIZE = 15;
 /** Maximum total input characters per batch (safety limit) */
 const TRIAGE_BATCH_MAX_CHARS = 60000;
 
+import type { ScoringModeConfig, SourceCalibration } from "@aharadar/db";
+import { DEFAULT_SCORING_MODE_CONFIG } from "@aharadar/db";
 import { type DiversityCandidate, selectWithDiversity } from "../lib/diversity_selection";
 import { type SamplingCandidate, stratifiedSample } from "../lib/fair_sampling";
 import { allocateTriageCalls, type TriageCandidate } from "../lib/triage_allocation";
@@ -39,6 +41,7 @@ import {
   rankCandidates,
   type UserPreferences,
 } from "./rank";
+import { clusterTriageThemesIntoLabels } from "./theme_cluster";
 
 // catch_up mode removed per task-121; now uses only BudgetTier values
 export type DigestMode = BudgetTier;
@@ -1005,6 +1008,29 @@ export async function persistDigestFromContentItems(params: {
   const tuning = parsePersonalizationTuning(topic?.custom_settings?.personalization_tuning_v1);
   const aiGuidance = parseAiGuidance(topic?.custom_settings?.ai_guidance_v1);
 
+  // =========================================================================
+  // Load scoring mode configuration
+  // =========================================================================
+  let scoringModeConfig: ScoringModeConfig = DEFAULT_SCORING_MODE_CONFIG;
+  if (topic?.scoring_mode_id) {
+    // Topic has explicit mode set
+    const mode = await params.db.scoringModes.getById(topic.scoring_mode_id);
+    if (mode) {
+      scoringModeConfig = mode.config;
+      log.debug({ modeId: mode.id, modeName: mode.name }, "Using topic-specific scoring mode");
+    }
+  } else {
+    // Fall back to user's default mode
+    const defaultMode = await params.db.scoringModes.getDefaultForUser(params.userId);
+    if (defaultMode) {
+      scoringModeConfig = defaultMode.config;
+      log.debug(
+        { modeId: defaultMode.id, modeName: defaultMode.name },
+        "Using default scoring mode",
+      );
+    }
+  }
+
   log.debug(
     {
       prefBiasSampling: tuning.prefBiasSamplingWeight,
@@ -1013,6 +1039,15 @@ export async function persistDigestFromContentItems(params: {
       feedbackDelta: tuning.feedbackWeightDelta,
     },
     "Effective personalization tuning",
+  );
+
+  log.debug(
+    {
+      weights: scoringModeConfig.weights,
+      perSourceCalibration: scoringModeConfig.features.perSourceCalibration,
+      aiPreferenceInjection: scoringModeConfig.features.aiPreferenceInjection,
+    },
+    "Effective scoring mode config",
   );
 
   // Helper to compute preference score from embedding similarity
@@ -1140,6 +1175,17 @@ export async function persistDigestFromContentItems(params: {
     authorWeights: feedbackPrefs.authorWeights,
   };
 
+  // Load source calibrations if per-source calibration is enabled
+  let sourceCalibrations: Map<string, SourceCalibration> = new Map();
+  if (scoringModeConfig.features.perSourceCalibration) {
+    const sourceIds = [...new Set(scored.map((c) => c.sourceId))];
+    sourceCalibrations = await params.db.sourceCalibrations.getBatch(params.userId, sourceIds);
+    log.debug(
+      { sourceCount: sourceIds.length, calibrationsLoaded: sourceCalibrations.size },
+      "Loaded source calibrations for ranking",
+    );
+  }
+
   // Topic is already fetched earlier for tuning settings
   const topicDecayHours = topic?.decay_hours ?? null;
 
@@ -1147,6 +1193,8 @@ export async function persistDigestFromContentItems(params: {
     userPreferences,
     decayHours: topicDecayHours,
     weights: { wPref: tuning.rankPrefWeight },
+    scoringModeConfig,
+    sourceCalibrations,
     candidates: scored.map((c) => {
       // Compute source weight (from source config and env type weights)
       const perSourceWeight = asFiniteNumber(c.sourceConfigJson?.weight);
@@ -1173,6 +1221,7 @@ export async function persistDigestFromContentItems(params: {
         sourceWeight,
         sourceType: c.sourceType as SourceType,
         author: c.author,
+        sourceId: c.sourceId,
       };
     }),
   });
@@ -1268,9 +1317,45 @@ export async function persistDigestFromContentItems(params: {
     candidates: enrichCandidates,
   });
 
+  // =========================================================================
+  // Step 5: Theme clustering - group similar triage themes by embedding
+  // Embeds triage theme strings and clusters by similarity for UI grouping
+  // =========================================================================
+  const themeClusterInput = selected.map((s) => ({
+    candidateId: s.candidateId,
+    // Support both "theme" (new) and "topic" (legacy) fields in triageJson
+    topic:
+      (s.triageJson as { theme?: string; topic?: string } | null)?.theme ??
+      (s.triageJson as { theme?: string; topic?: string } | null)?.topic ??
+      "Uncategorized",
+  }));
+
+  const themeClusterResult = await clusterTriageThemesIntoLabels(themeClusterInput, tier);
+
+  // Build lookup maps for theme data
+  const themeLabelMap = new Map<string, string>();
+  const themeVectorMap = new Map<string, number[]>();
+  for (const item of themeClusterResult.items) {
+    themeLabelMap.set(item.candidateId, item.themeLabel);
+    if (item.vector.length > 0) {
+      themeVectorMap.set(item.candidateId, item.vector);
+    }
+  }
+
+  log.info(
+    {
+      uniqueThemes: themeClusterResult.stats.uniqueTopics,
+      clusterCount: themeClusterResult.stats.clusterCount,
+      inputTokens: themeClusterResult.stats.inputTokens,
+    },
+    "Theme clustering completed",
+  );
+
   const items = selected.map((s) => {
     const summary = summaries.get(s.candidateId) ?? null;
     const summaryJson = summary ? (summary as unknown as Record<string, unknown>) : null;
+    const themeLabel = themeLabelMap.get(s.candidateId) ?? null;
+    const triageThemeVector = themeVectorMap.get(s.candidateId) ?? null;
     return s.kind === "cluster"
       ? {
           clusterId: s.candidateId,
@@ -1278,6 +1363,8 @@ export async function persistDigestFromContentItems(params: {
           ahaScore: s.score,
           triageJson: s.triageJson,
           summaryJson,
+          themeLabel,
+          triageThemeVector,
         }
       : {
           clusterId: null,
@@ -1285,6 +1372,8 @@ export async function persistDigestFromContentItems(params: {
           ahaScore: s.score,
           triageJson: s.triageJson,
           summaryJson,
+          themeLabel,
+          triageThemeVector,
         };
   });
 

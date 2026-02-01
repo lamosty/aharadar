@@ -28,6 +28,8 @@ export interface TopicRow {
   digest_cursor_end: string | null;
   // Custom settings (per-topic configuration)
   custom_settings: Record<string, unknown>;
+  // Scoring mode
+  scoring_mode_id: string | null;
 }
 
 export interface Topic {
@@ -47,6 +49,8 @@ export interface Topic {
   digestCursorEnd: Date | null;
   // Custom settings (per-topic configuration)
   customSettings: Record<string, unknown>;
+  // Scoring mode
+  scoringModeId: string | null;
 }
 
 function rowToTopic(row: TopicRow): Topic {
@@ -67,6 +71,8 @@ function rowToTopic(row: TopicRow): Topic {
     digestCursorEnd: row.digest_cursor_end ? new Date(row.digest_cursor_end) : null,
     // Custom settings
     customSettings: row.custom_settings ?? {},
+    // Scoring mode
+    scoringModeId: row.scoring_mode_id,
   };
 }
 
@@ -79,7 +85,7 @@ export function createTopicsRepo(db: Queryable) {
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
                 digest_mode, digest_depth, digest_cursor_end::text,
-                custom_settings
+                custom_settings, scoring_mode_id
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC`,
@@ -95,7 +101,7 @@ export function createTopicsRepo(db: Queryable) {
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
                 digest_mode, digest_depth, digest_cursor_end::text,
-                custom_settings
+                custom_settings, scoring_mode_id
          FROM topics
          WHERE id = $1
          LIMIT 1`,
@@ -111,7 +117,7 @@ export function createTopicsRepo(db: Queryable) {
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
                 digest_mode, digest_depth, digest_cursor_end::text,
-                custom_settings
+                custom_settings, scoring_mode_id
          FROM topics
          WHERE user_id = $1 AND name = $2
          LIMIT 1`,
@@ -134,7 +140,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         [
           params.userId,
           params.name,
@@ -172,7 +178,7 @@ export function createTopicsRepo(db: Queryable) {
                 created_at::text AS created_at,
                 digest_schedule_enabled, digest_interval_minutes,
                 digest_mode, digest_depth, digest_cursor_end::text,
-                custom_settings
+                custom_settings, scoring_mode_id
          FROM topics
          WHERE user_id = $1
          ORDER BY created_at ASC
@@ -246,7 +252,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         values,
       );
 
@@ -268,7 +274,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         [id],
       );
 
@@ -319,7 +325,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         values,
       );
 
@@ -397,7 +403,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         values,
       );
 
@@ -421,7 +427,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         [id, cursorEndIso],
       );
 
@@ -447,7 +453,7 @@ export function createTopicsRepo(db: Queryable) {
                    created_at::text AS created_at,
                    digest_schedule_enabled, digest_interval_minutes,
                    digest_mode, digest_depth, digest_cursor_end::text,
-                   custom_settings`,
+                   custom_settings, scoring_mode_id`,
         [id, JSON.stringify(customSettings)],
       );
 
@@ -463,6 +469,29 @@ export function createTopicsRepo(db: Queryable) {
     async delete(id: string): Promise<boolean> {
       const res = await db.query("DELETE FROM topics WHERE id = $1", [id]);
       return (res.rowCount ?? 0) > 0;
+    },
+
+    /**
+     * Update the scoring mode for a topic.
+     * Pass null to clear the mode (will use user's default mode).
+     */
+    async updateScoringMode(id: string, scoringModeId: string | null): Promise<Topic> {
+      const res = await db.query<TopicRow>(
+        `UPDATE topics
+         SET scoring_mode_id = $2
+         WHERE id = $1
+         RETURNING id, user_id, name, description,
+                   viewing_profile, decay_hours, last_checked_at::text,
+                   created_at::text AS created_at,
+                   digest_schedule_enabled, digest_interval_minutes,
+                   digest_mode, digest_depth, digest_cursor_end::text,
+                   custom_settings, scoring_mode_id`,
+        [id, scoringModeId],
+      );
+
+      const row = res.rows[0];
+      if (!row) throw new Error("topics.updateScoringMode: topic not found");
+      return rowToTopic(row);
     },
   };
 }

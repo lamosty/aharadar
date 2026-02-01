@@ -125,6 +125,30 @@ export async function feedbackRoutes(fastify: FastifyInstance): Promise<void> {
       }
     }
 
+    // Update source calibrations for like/dislike feedback
+    if (PROFILE_ACTIONS.includes(action)) {
+      try {
+        // Get all source_ids for this content item
+        const sourceRes = await db.query<{ source_id: string }>(
+          `SELECT cis.source_id::text as source_id
+           FROM content_item_sources cis
+           WHERE cis.content_item_id = $1::uuid`,
+          [contentItemId],
+        );
+
+        for (const row of sourceRes.rows) {
+          await db.sourceCalibrations.updateOnFeedback({
+            userId: ctx.userId,
+            sourceId: row.source_id,
+            action: action as "like" | "dislike",
+          });
+        }
+      } catch (err) {
+        // Log but don't fail - calibration update is non-critical
+        fastify.log.warn({ err, contentItemId, action }, "Failed to update source calibrations");
+      }
+    }
+
     // Update X account policy if this is an x_posts item
     try {
       // Get content item to check source_type and author

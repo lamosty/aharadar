@@ -20,7 +20,7 @@ function makeTriage(overrides: Partial<TriageOutput> = {}): TriageOutput {
     is_novel: true,
     categories: [],
     should_deep_summarize: false,
-    topic: "Test Topic",
+    theme: "Test Topic",
     one_liner: "Test summary",
     ...overrides,
   };

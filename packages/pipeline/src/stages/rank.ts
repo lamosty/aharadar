@@ -1,3 +1,4 @@
+import type { ScoringModeConfig, SourceCalibration } from "@aharadar/db";
 import type { TriageOutput } from "@aharadar/llm";
 import type { SourceType } from "@aharadar/shared";
 import type { NoveltyFeature } from "../scoring/novelty";
@@ -8,6 +9,17 @@ export interface RankWeights {
   wPref: number;
   wSignal: number;
   wNovelty: number;
+}
+
+/**
+ * Source calibration feature for explainability.
+ */
+export interface SourceCalibrationFeature {
+  source_id: string;
+  hit_rate: number | null;
+  calibration_offset: number;
+  items_total: number;
+  applied: boolean;
 }
 
 /**
@@ -115,6 +127,8 @@ export interface RankCandidateInput {
   sourceType?: SourceType;
   /** Author for user preference lookup */
   author?: string | null;
+  /** Source ID for per-source calibration lookup */
+  sourceId?: string;
 }
 
 export interface RankedCandidate {
@@ -198,20 +212,51 @@ export function rankCandidates(params: {
   userPreferences?: UserPreferences;
   /** Hours for exponential decay half-life. If provided, older items score lower. */
   decayHours?: number | null;
+  /** Scoring mode configuration for feature flags and calibration settings */
+  scoringModeConfig?: ScoringModeConfig | null;
+  /** Per-source calibration data keyed by source ID */
+  sourceCalibrations?: Map<string, SourceCalibration>;
 }): RankedCandidate[] {
-  const wAha = params.weights?.wAha ?? 0.8;
-  const wHeuristic = params.weights?.wHeuristic ?? 0.15;
-  const wPref = params.weights?.wPref ?? 0.15; // Increased from 0.05 to make preferences more impactful
+  // Use weights from scoringModeConfig if provided, otherwise fall back to params.weights or defaults
+  const modeConfig = params.scoringModeConfig;
+  const wAha = params.weights?.wAha ?? modeConfig?.weights.wAha ?? 0.8;
+  const wHeuristic = params.weights?.wHeuristic ?? modeConfig?.weights.wHeuristic ?? 0.15;
+  const wPref = params.weights?.wPref ?? modeConfig?.weights.wPref ?? 0.15;
   // Signal corroboration is disabled by default (ENABLE_SIGNAL_CORROBORATION=1 to enable)
   const wSignal = params.weights?.wSignal ?? 0;
-  const wNovelty = params.weights?.wNovelty ?? 0.05;
+  const wNovelty = params.weights?.wNovelty ?? modeConfig?.weights.wNovelty ?? 0.05;
+
+  // Feature flags from mode config
+  const perSourceCalibrationEnabled = modeConfig?.features.perSourceCalibration ?? false;
+  const calibrationMinSamples = modeConfig?.calibration.minSamples ?? 10;
 
   const nowMs = Date.now();
   const decayHours = params.decayHours ?? null;
 
   const scored = params.candidates.map((c) => {
     const triage = c.triage;
-    const aha01 = triage ? triage.ai_score / 100 : c.heuristicScore;
+    let aha01 = triage ? triage.ai_score / 100 : c.heuristicScore;
+
+    // Apply per-source calibration to AI score if enabled
+    let calibrationFeature: SourceCalibrationFeature | null = null;
+    if (perSourceCalibrationEnabled && c.sourceId && params.sourceCalibrations) {
+      const calibration = params.sourceCalibrations.get(c.sourceId);
+      if (calibration) {
+        const totalFeedback = calibration.itemsLiked + calibration.itemsDisliked;
+        const applied = totalFeedback >= calibrationMinSamples;
+        calibrationFeature = {
+          source_id: c.sourceId,
+          hit_rate: calibration.rollingHitRate,
+          calibration_offset: calibration.calibrationOffset,
+          items_total: totalFeedback,
+          applied,
+        };
+        if (applied && triage) {
+          // Apply calibration offset to AI score (not heuristic fallback)
+          aha01 = Math.max(0, Math.min(1, aha01 + calibration.calibrationOffset));
+        }
+      }
+    }
     const pos = asFiniteNumber(c.positiveSim) ?? 0;
     const neg = asFiniteNumber(c.negativeSim) ?? 0;
     const pref = pos - neg; // [-1,1]ish
@@ -305,6 +350,19 @@ export function rankCandidates(params: {
       };
     }
 
+    if (calibrationFeature) {
+      systemFeatures.source_calibration_v1 = {
+        source_id: calibrationFeature.source_id,
+        hit_rate:
+          calibrationFeature.hit_rate !== null
+            ? Math.round(calibrationFeature.hit_rate * 1000) / 1000
+            : null,
+        calibration_offset: Math.round(calibrationFeature.calibration_offset * 1000) / 1000,
+        items_total: calibrationFeature.items_total,
+        applied: calibrationFeature.applied,
+      };
+    }
+
     // Score debug breakdown for UI tooltips
     // Heuristic subweights are hardcoded in digest.ts
     const wRecency = 0.6;
@@ -330,6 +388,11 @@ export function rankCandidates(params: {
       inputs: {
         ai_score: triage?.ai_score ?? null,
         aha01: Math.round(aha01 * 1000) / 1000,
+        aha01_calibrated:
+          calibrationFeature?.applied && triage ? Math.round(aha01 * 1000) / 1000 : null,
+        calibration_offset: calibrationFeature?.applied
+          ? Math.round(calibrationFeature.calibration_offset * 1000) / 1000
+          : null,
         heuristic_score: Math.round(c.heuristicScore * 1000) / 1000,
         recency01: Math.round(recency01 * 1000) / 1000,
         engagement01: Math.round(engagement01 * 1000) / 1000,
