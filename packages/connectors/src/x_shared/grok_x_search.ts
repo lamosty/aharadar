@@ -45,10 +45,6 @@ export interface GrokXSearchResult {
   assistantJson?: Record<string, unknown>;
   /** True if assistant text existed but JSON parsing failed. */
   assistantParseError?: boolean;
-  /** True if partial recovery succeeded from malformed JSON. */
-  assistantRecovered?: boolean;
-  /** Number of recovered objects when partial recovery succeeds. */
-  assistantRecoveredCount?: number;
   /** Debug snippets when parse fails. */
   assistantTextHead?: string;
   assistantTextTail?: string;
@@ -189,64 +185,6 @@ function parseAssistantJsonFromText(text: string): Record<string, unknown> | nul
   }
 
   return null;
-}
-
-function recoverJsonObjectsFromText(text: string): Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-  let depth = 0;
-  let inString = false;
-  let escapeNext = false;
-  let buffer = "";
-
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i] ?? "";
-
-    if (depth === 0) {
-      if (ch === "{") {
-        depth = 1;
-        buffer = "{";
-        inString = false;
-        escapeNext = false;
-      }
-      continue;
-    }
-
-    buffer += ch;
-
-    if (inString) {
-      if (escapeNext) {
-        escapeNext = false;
-      } else if (ch === "\\") {
-        escapeNext = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-
-    if (ch === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (ch === "{") {
-      depth += 1;
-      continue;
-    }
-
-    if (ch === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        const parsed = tryParseJsonObject(buffer);
-        if (parsed && !Array.isArray(parsed)) {
-          results.push(parsed);
-        }
-        buffer = "";
-      }
-    }
-  }
-
-  return results;
 }
 
 function extractStructuredErrorCodeFromText(
@@ -422,7 +360,7 @@ Each array item MUST be an object with ONLY these keys:
 - id (string, digits): the status ID
 - date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
 - url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com). If tool doesn't provide url but you have id + user_handle, construct it.
-- text (string): MUST be <= ${maxTextChars} chars. Truncate longer posts with "..." suffix. No newlines. Must be JSON-escaped (escape quotes and backslashes).
+- text_b64 (string): base64 of UTF-8 post text (no newlines). Decode on client. If text is longer than ${maxTextChars} chars, truncate BEFORE base64 encoding and add "..." suffix.
 - user_handle (string|null): without "@"
 - user_display_name (string|null): display name shown on profile
 - metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
@@ -502,23 +440,9 @@ CRITICAL - Valid JSON is mandatory:
   const usage = extractUsageTokens(response);
   const assistantText = extractAssistantContent(response);
   const assistantTextInfo = assistantText ? buildAssistantTextSnippets(assistantText) : null;
-  let assistantJson: Record<string, unknown> | undefined;
-  let assistantRecovered = false;
-  let assistantRecoveredCount = 0;
-
-  if (assistantText) {
-    const parsed = parseAssistantJsonFromText(assistantText);
-    if (parsed) {
-      assistantJson = parsed;
-    } else {
-      const recovered = recoverJsonObjectsFromText(assistantText);
-      if (recovered.length > 0) {
-        assistantJson = { results: recovered };
-        assistantRecovered = true;
-        assistantRecoveredCount = recovered.length;
-      }
-    }
-  }
+  const assistantJson = assistantText
+    ? (parseAssistantJsonFromText(assistantText) ?? undefined)
+    : undefined;
 
   const assistantParseError = !!assistantText && !assistantJson;
   const structuredError = assistantText
@@ -532,8 +456,6 @@ CRITICAL - Valid JSON is mandatory:
     outputTokens: usage?.outputTokens,
     assistantJson,
     assistantParseError,
-    assistantRecovered,
-    assistantRecoveredCount,
     assistantTextHead: assistantTextInfo?.head,
     assistantTextTail: assistantTextInfo?.tail,
     assistantTextLength: assistantTextInfo?.length,

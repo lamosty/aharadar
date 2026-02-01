@@ -224,6 +224,7 @@ function extractPostRawItems(params: {
       date: asString(r.date),
       url: asString(r.url),
       text: asString(r.text),
+      text_b64: asString(r.text_b64) ?? asString(r.textB64),
       user_handle: asString(r.user_handle),
       user_display_name: asString(r.user_display_name),
       ...(metrics ? { metrics } : {}),
@@ -393,12 +394,6 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
               assistant_text_length: result.assistantTextLength,
             }
           : {};
-      const recoveryMeta = result.assistantRecovered
-        ? {
-            assistant_parse_recovered: true,
-            assistant_recovered_count: result.assistantRecoveredCount ?? 0,
-          }
-        : {};
 
       providerCalls.push({
         userId: params.userId,
@@ -421,7 +416,6 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           tool_error_code: toolErrorCode,
           assistant_parse_error: result.assistantParseError ?? false,
           ...parseMeta,
-          ...recoveryMeta,
           maxSearchCallsPerRun,
           // Batching experiment metadata
           batch_mode: batchMode,

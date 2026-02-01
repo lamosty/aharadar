@@ -112,6 +112,17 @@ function clampText(text: string, maxChars: number): string {
   return text.slice(0, maxChars);
 }
 
+function decodeBase64Text(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const decoded = Buffer.from(trimmed, "base64").toString("utf8");
+    return decoded.length > 0 ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function normalizeXPosts(
   raw: unknown,
   params: FetchParams,
@@ -123,7 +134,9 @@ export async function normalizeXPosts(
 
   const url = asString(rec.url);
   const canonicalUrl = url && looksLikeUrl(url) ? url : null;
-  const textRaw = asString(rec.text);
+  const textBase64 = asString(rec.text_b64);
+  const decodedText = textBase64 ? decodeBase64Text(textBase64) : null;
+  const textRaw = decodedText ?? asString(rec.text);
   const bodyText = textRaw ? clampText(textRaw.replaceAll("\n", " ").trim(), 10_000) : null;
 
   // Parse date - may be full timestamp or day-only
@@ -202,6 +215,7 @@ export async function normalizeXPosts(
       date: rec.date,
       id: rawStatusId,
       user_handle: rawUserHandle,
+      text_b64: textBase64,
       url,
     },
   };
