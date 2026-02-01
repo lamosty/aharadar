@@ -22,8 +22,8 @@ export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
     is_novel: { type: "boolean" },
     categories: { type: "array", items: { type: "string" } },
     should_deep_summarize: { type: "boolean" },
-    // New fields for topic-based grouping
-    topic: { type: "string" },
+    // Theme for UI grouping (renamed from "topic" to avoid confusion with AhaRadar Topic concept)
+    theme: { type: "string" },
     one_liner: { type: "string" },
   },
   required: [
@@ -37,7 +37,7 @@ export const TRIAGE_JSON_SCHEMA: Record<string, unknown> = {
     "is_novel",
     "categories",
     "should_deep_summarize",
-    "topic",
+    "theme",
     "one_liner",
   ],
   additionalProperties: false,
@@ -67,8 +67,8 @@ export interface TriageOutput {
   is_novel: boolean;
   categories: string[];
   should_deep_summarize: boolean;
-  /** Main topic for grouping similar items (2-4 words, specific enough to distinguish) */
-  topic: string;
+  /** Theme for UI grouping (1-3 words, broad subject for clustering similar items) */
+  theme: string;
   /** Brief content summary - what the item is about, not why it's relevant */
   one_liner: string;
 }
@@ -161,14 +161,14 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string)
     '  "is_novel": true,\n' +
     '  "categories": ["topic1", "topic2"],\n' +
     '  "should_deep_summarize": false,\n' +
-    '  "topic": "Main Subject",\n' +
+    '  "theme": "Main Subject",\n' +
     '  "one_liner": "Brief summary of the content."\n' +
     "}\n" +
     "Rules:\n" +
     "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
-    "- topic: 2-4 words identifying the main subject (e.g. 'SPY options', 'React hooks', 'Bitcoin price'). Specific enough to group similar items, not too generic.\n" +
+    "- theme: 1-3 words for the main subject (e.g. 'Bitcoin', 'SPY options', 'Gold prices'). This is used for UI GROUPING - multiple items should share the same theme. Use broad terms, NOT specific events or actions. BAD: 'Bitcoin DCA advice', 'Bitcoin meme'. GOOD: 'Bitcoin'. BAD: 'Silver crash explanation'. GOOD: 'Silver'.\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     guidanceSection +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
@@ -312,8 +312,8 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
   const shouldDeepSummarize = asBoolean(value.should_deep_summarize);
   if (isRelevant === null || isNovel === null || shouldDeepSummarize === null) return null;
 
-  // New fields - provide defaults for backward compatibility with older model outputs
-  const topic = asString(value.topic) ?? "Uncategorized";
+  // Theme field - prefer "theme" but fall back to legacy "topic" for backward compatibility
+  const theme = asString(value.theme) ?? asString(value.topic) ?? "Uncategorized";
   const oneLiner = asString(value.one_liner) ?? reason; // Fall back to reason if missing
 
   // Allow missing schema_version/prompt_id - we'll fill them in
@@ -339,7 +339,7 @@ function normalizeTriageOutput(value: Record<string, unknown>, ref: ModelRef): T
     is_novel: isNovel,
     categories: normalizeCategories(value.categories),
     should_deep_summarize: shouldDeepSummarize,
-    topic,
+    theme,
     one_liner: oneLiner,
   };
 }
@@ -610,7 +610,7 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: st
     "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
-    "- topic: 2-4 words identifying the main subject (e.g. 'SPY options', 'React hooks', 'Bitcoin price'). Specific enough to group similar items.\n" +
+    "- topic: 1-3 words for the main subject (e.g. 'Bitcoin', 'SPY options', 'Gold prices'). This is used for GROUPING - multiple items in this batch may share the same topic. Use broad terms, NOT specific events. BAD: 'Bitcoin DCA', 'Silver crash'. GOOD: 'Bitcoin', 'Silver'.\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     guidanceSection +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
@@ -701,8 +701,8 @@ function normalizeBatchOutput(
       continue;
     }
 
-    // New fields - provide defaults for backward compatibility
-    const topic = asString(itemObj.topic) ?? "Uncategorized";
+    // Theme field - prefer "theme" but fall back to legacy "topic" for backward compatibility
+    const theme = asString(itemObj.theme) ?? asString(itemObj.topic) ?? "Uncategorized";
     const oneLiner = asString(itemObj.one_liner) ?? reason;
 
     outputMap.set(id, {
@@ -716,7 +716,7 @@ function normalizeBatchOutput(
       is_novel: isNovel,
       categories: normalizeCategories(itemObj.categories),
       should_deep_summarize: shouldDeepSummarize,
-      topic,
+      theme,
       one_liner: oneLiner,
     });
   }
