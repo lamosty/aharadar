@@ -5,7 +5,8 @@ import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 import type { SourceConfigFormProps, XPostsConfig } from "./types";
 
-const MAX_X_SEARCH_HANDLES_PER_CALL = 10;
+// Grok's fast model struggles with batches > 5, producing truncated JSON
+const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
 
 /** Serialize groups to textarea format (one line per group, comma-separated) */
 function serializeGroups(groups: string[][] | undefined): string {
@@ -635,8 +636,8 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                   <strong>Manual:</strong> Define groups of accounts to query together
                 </p>
                 <p>
-                  <strong>Limit:</strong> X search handle filters allow up to{" "}
-                  {MAX_X_SEARCH_HANDLES_PER_CALL} accounts per call.
+                  <strong>Limit:</strong> Max {MAX_X_SEARCH_HANDLES_PER_CALL} accounts per batch
+                  (larger batches cause JSON truncation with Grok&apos;s fast model).
                 </p>
               </>
             }
@@ -692,7 +693,7 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                       config so each digest run behaves the same (useful for testing).
                     </p>
                     <p>
-                      <strong>Limit:</strong> {MAX_X_SEARCH_HANDLES_PER_CALL} accounts per call.
+                      <strong>Recommended:</strong> 3-5 accounts per batch for reliable results.
                     </p>
                   </>
                 }

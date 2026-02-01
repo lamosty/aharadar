@@ -279,7 +279,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   const maxTextChars = params.maxTextChars ?? (tier === "high" ? 1000 : 480);
 
   const model = firstEnv(["SIGNAL_GROK_MODEL"]) ?? "grok-4-1-fast-non-reasoning";
-  const maxTokensDefault = tier === "high" ? 2000 : 900;
+  // Generous defaults since x_search tool cost dominates token cost
+  const maxTokensDefault = tier === "high" ? 4000 : 2000;
   const maxTokensEnv =
     parseIntEnv("SIGNAL_GROK_MAX_OUTPUT_TOKENS", process.env.SIGNAL_GROK_MAX_OUTPUT_TOKENS) ??
     maxTokensDefault;
@@ -287,7 +288,7 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     parseIntEnv(
       "X_POSTS_MAX_OUTPUT_TOKENS_HARD_CAP",
       process.env.X_POSTS_MAX_OUTPUT_TOKENS_HARD_CAP,
-    ) ?? 16000;
+    ) ?? 32000;
   // Apply override if provided, clamped to hard cap
   const maxTokens = params.maxOutputTokens
     ? Math.min(params.maxOutputTokens, hardCap)
@@ -323,7 +324,7 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
     groupSize > 1
       ? `\nThis query covers ${groupSize} accounts. Aim for ~${perAccountTarget} results per account, distributed fairly across all accounts.`
       : "";
-  const systemPrompt = `Return STRICT JSON only (no markdown, no prose). Output MUST be a JSON array.
+  const systemPrompt = `Return STRICT JSON only (no markdown, no prose). Output MUST be a valid JSON array.
 Use the x_search tool if available to fetch real posts. If you cannot access real posts, return [].
 Do NOT fabricate. If a field is unavailable from the tool results, use null (or omit optional keys).
 
@@ -331,7 +332,7 @@ Each array item MUST be an object with ONLY these keys:
 - id (string, digits): the status ID
 - date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
 - url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com). If tool doesn't provide url but you have id + user_handle, construct it.
-- text (string): single line, <= ${maxTextChars} chars, no newlines, no paraphrasing
+- text (string): MUST be <= ${maxTextChars} chars. Truncate longer posts with "..." suffix. No newlines.
 - user_handle (string|null): without "@"
 - user_display_name (string|null): display name shown on profile
 - metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
@@ -342,8 +343,12 @@ Light filtering (cost + quality):
 - Exclude only obvious low-information noise (emoji-only, single-word reactions like "lol"/"true"/"yes", or empty text).
 - Do NOT do "semantic" high-signal judging here; downstream triage handles relevance.
 
-Token safety (critical):
-- Your output budget is ~${maxTokens} tokens. If returning N results would exceed this, return fewer results rather than truncating or emitting invalid JSON.`;
+CRITICAL - Valid JSON is mandatory:
+- Budget: ~${maxTokens} output tokens. Plan ahead.
+- Priority order: (1) valid complete JSON array, (2) include all posts, (3) full text content.
+- If a post's text is long, TRUNCATE it to fit within budget. Add "..." at end.
+- If still approaching limit, return fewer posts rather than emit broken JSON.
+- NEVER output partial/truncated JSON. The closing ] bracket must always be present.`;
 
   const body = {
     model,
