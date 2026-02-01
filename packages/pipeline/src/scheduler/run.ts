@@ -15,7 +15,6 @@ import {
   type IngestSourceResult,
   ingestEnabledSources,
 } from "../stages/ingest";
-import { type ThemeRunResult, themeTopicContentItems } from "../stages/theme";
 
 const log = createLogger({ component: "pipeline" });
 
@@ -48,7 +47,6 @@ export interface PipelineRunResult {
   embed: EmbedRunResult;
   dedupe: DedupeRunResult;
   cluster: ClusterRunResult;
-  theme: ThemeRunResult;
   digest: DigestRunResult | null;
   digestPlan?: DigestPlan;
   creditsStatus?: CreditsStatus;
@@ -173,14 +171,6 @@ export async function runPipelineOnce(
     windowEnd: params.windowEnd,
   });
 
-  const theme = await themeTopicContentItems({
-    db,
-    userId: params.userId,
-    topicId: params.topicId,
-    windowStart: params.windowStart,
-    windowEnd: params.windowEnd,
-  });
-
   // Convert ingest results to digest source results format
   const sourceResults = toDigestSourceResults(ingest.perSource);
 
@@ -226,7 +216,6 @@ export async function runPipelineOnce(
       embed,
       dedupe,
       cluster,
-      theme,
       digest: {
         digestId: failedDigest.id,
         mode: digestMode,
@@ -273,7 +262,6 @@ export async function runPipelineOnce(
     embed,
     dedupe,
     cluster,
-    theme,
     digest,
     digestPlan,
     creditsStatus,
