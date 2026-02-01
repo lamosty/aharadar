@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { ProviderCallLogItem } from "@/lib/api";
 import {
   useAdminLogsFetchRuns,
   useAdminLogsHandleHealth,
@@ -155,35 +154,28 @@ function ProviderCallsTab({ hoursAgo }: { hoursAgo: number }) {
             <th>Tokens (in/out)</th>
             <th>Cost</th>
             <th>Status</th>
-            <th>Flags</th>
           </tr>
         </thead>
         <tbody>
-          {data.calls.map((call) => {
-            const flagsText = getProviderCallFlagsText(call);
-            return (
-              <tr key={call.id}>
-                <td className={`${styles.mono} ${styles.nowrap}`}>{formatTime(call.startedAt)}</td>
-                <td className={styles.truncate} title={call.purpose}>
-                  {call.purpose}
-                </td>
-                <td className={styles.nowrap}>
-                  <span>{call.provider}</span>
-                  <span className={styles.muted}> / {call.model}</span>
-                </td>
-                <td className={styles.mono}>
-                  {formatNumber(call.inputTokens)} / {formatNumber(call.outputTokens)}
-                </td>
-                <td className={styles.mono}>${call.costUsd.toFixed(4)}</td>
-                <td>
-                  <StatusBadge status={call.status} />
-                </td>
-                <td className={`${styles.mono} ${styles.truncate}`} title={flagsText}>
-                  {flagsText}
-                </td>
-              </tr>
-            );
-          })}
+          {data.calls.map((call) => (
+            <tr key={call.id}>
+              <td className={`${styles.mono} ${styles.nowrap}`}>{formatTime(call.startedAt)}</td>
+              <td className={styles.truncate} title={call.purpose}>
+                {call.purpose}
+              </td>
+              <td className={styles.nowrap}>
+                <span>{call.provider}</span>
+                <span className={styles.muted}> / {call.model}</span>
+              </td>
+              <td className={styles.mono}>
+                {formatNumber(call.inputTokens)} / {formatNumber(call.outputTokens)}
+              </td>
+              <td className={styles.mono}>${call.costUsd.toFixed(4)}</td>
+              <td>
+                <StatusBadge status={call.status} />
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -518,19 +510,6 @@ function formatCounts(counts: Record<string, unknown>): string {
   if (total === 0 && newItems === 0) return "-";
   if (newItems > 0) return `${total} (${newItems} new)`;
   return total.toString();
-}
-
-function getProviderCallFlagsText(call: ProviderCallLogItem): string {
-  const meta = call.meta ?? {};
-  const flags: string[] = [];
-  if (meta.assistant_parse_error === true) {
-    flags.push("parse-error");
-  }
-  const toolErrorCode = meta.tool_error_code;
-  if (typeof toolErrorCode === "string" && toolErrorCode.trim()) {
-    flags.push(`tool:${toolErrorCode.trim()}`);
-  }
-  return flags.length > 0 ? flags.join(", ") : "-";
 }
 
 function isHandleStale(lastPostDate: string | null): boolean {
