@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import type { NotificationItem } from "@/lib/api";
 import {
   useAdminLogsFetchRuns,
   useAdminLogsHandleHealth,
+  useAdminLogsNotifications,
   useAdminLogsProviderCallErrors,
   useAdminLogsProviderCalls,
   useAdminLogsSourceHealth,
@@ -399,52 +401,121 @@ function IngestionTab() {
 // ============================================================================
 
 function ErrorsTab({ hoursAgo }: { hoursAgo: number }) {
-  const { data, isLoading, isError, error } = useAdminLogsProviderCallErrors({
+  const providerErrors = useAdminLogsProviderCallErrors({
     hoursAgo,
   });
+  const notificationLogs = useAdminLogsNotifications({
+    hoursAgo,
+    limit: 200,
+    severities: ["warning", "error"],
+  });
 
-  if (isLoading) {
-    return (
-      <div className={styles.loading}>
-        <LoadingSpinner />
-        <span>Loading error summary...</span>
+  return (
+    <>
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Provider call errors</h2>
+        {providerErrors.isLoading ? (
+          <div className={styles.loading}>
+            <LoadingSpinner />
+            <span>Loading error summary...</span>
+          </div>
+        ) : providerErrors.isError || !providerErrors.data ? (
+          <div className={styles.error}>
+            <p>{providerErrors.error?.message || "Failed to load error summary"}</p>
+          </div>
+        ) : providerErrors.data.errors.length === 0 ? (
+          <div className={styles.emptyState}>
+            No provider call errors in the selected time range
+          </div>
+        ) : (
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Purpose</th>
+                  <th>Error Count</th>
+                  <th>Total Count</th>
+                  <th>Error Rate %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {providerErrors.data.errors.map((item) => {
+                  const errorRate =
+                    item.totalCount > 0 ? (item.errorCount / item.totalCount) * 100 : 0;
+                  return (
+                    <tr key={item.purpose}>
+                      <td>{item.purpose}</td>
+                      <td className={styles.mono}>{formatNumber(item.errorCount)}</td>
+                      <td className={styles.mono}>{formatNumber(item.totalCount)}</td>
+                      <td className={`${styles.mono} ${getErrorRateClass(errorRate)}`}>
+                        {errorRate.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    );
-  }
 
-  if (isError || !data) {
-    return (
-      <div className={styles.error}>
-        <p>{error?.message || "Failed to load error summary"}</p>
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Notifications (warnings/errors)</h2>
+        {notificationLogs.isLoading ? (
+          <div className={styles.loading}>
+            <LoadingSpinner />
+            <span>Loading notifications...</span>
+          </div>
+        ) : notificationLogs.isError || !notificationLogs.data ? (
+          <div className={styles.error}>
+            <p>{notificationLogs.error?.message || "Failed to load notifications"}</p>
+          </div>
+        ) : notificationLogs.data.notifications.length === 0 ? (
+          <div className={styles.emptyState}>No notifications in the selected time range</div>
+        ) : (
+          <NotificationsTable notifications={notificationLogs.data.notifications} />
+        )}
       </div>
-    );
-  }
+    </>
+  );
+}
 
-  if (data.errors.length === 0) {
-    return <div className={styles.emptyState}>No errors in the selected time range</div>;
-  }
-
+function NotificationsTable({ notifications }: { notifications: NotificationItem[] }) {
   return (
     <div className={styles.tableContainer}>
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Purpose</th>
-            <th>Error Count</th>
-            <th>Total Count</th>
-            <th>Error Rate %</th>
+            <th>Time</th>
+            <th>Severity</th>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Context</th>
+            <th>Message</th>
           </tr>
         </thead>
         <tbody>
-          {data.errors.map((item) => {
-            const errorRate = item.totalCount > 0 ? (item.errorCount / item.totalCount) * 100 : 0;
+          {notifications.map((notification) => {
+            const context = getNotificationContext(notification);
             return (
-              <tr key={item.purpose}>
-                <td>{item.purpose}</td>
-                <td className={styles.mono}>{formatNumber(item.errorCount)}</td>
-                <td className={styles.mono}>{formatNumber(item.totalCount)}</td>
-                <td className={`${styles.mono} ${getErrorRateClass(errorRate)}`}>
-                  {errorRate.toFixed(1)}%
+              <tr key={notification.id}>
+                <td className={`${styles.mono} ${styles.nowrap}`}>
+                  {formatTime(notification.createdAt)}
+                </td>
+                <td>
+                  <StatusBadge status={notification.severity} />
+                </td>
+                <td className={styles.truncate} title={notification.title}>
+                  {notification.title}
+                </td>
+                <td className={`${styles.mono} ${styles.truncate}`} title={notification.type}>
+                  {notification.type}
+                </td>
+                <td className={styles.truncate} title={context}>
+                  {context}
+                </td>
+                <td className={styles.truncate} title={notification.body ?? ""}>
+                  {notification.body ?? "-"}
                 </td>
               </tr>
             );
@@ -510,6 +581,39 @@ function formatCounts(counts: Record<string, unknown>): string {
   if (total === 0 && newItems === 0) return "-";
   if (newItems > 0) return `${total} (${newItems} new)`;
   return total.toString();
+}
+
+function getNotificationContext(notification: NotificationItem): string {
+  const data = notification.data;
+  if (!data || typeof data !== "object") return "-";
+
+  const record = data as Record<string, unknown>;
+  const sourceName = record.sourceName;
+  if (typeof sourceName === "string" && sourceName.trim()) return sourceName;
+
+  const topicName = record.topicName;
+  if (typeof topicName === "string" && topicName.trim()) return topicName;
+
+  const erroredSources = record.erroredSources;
+  if (Array.isArray(erroredSources) && erroredSources.length > 0) {
+    const names = erroredSources
+      .map((source) => {
+        if (!source || typeof source !== "object") return null;
+        const name = (source as Record<string, unknown>).sourceName;
+        return typeof name === "string" ? name : null;
+      })
+      .filter((name): name is string => !!name && name.trim().length > 0);
+
+    if (names.length > 0) {
+      const preview = names.slice(0, 2).join(", ");
+      const more = names.length > 2 ? ` (+${names.length - 2} more)` : "";
+      return `${preview}${more}`;
+    }
+
+    return `${erroredSources.length} sources`;
+  }
+
+  return "-";
 }
 
 function isHandleStale(lastPostDate: string | null): boolean {

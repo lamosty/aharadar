@@ -182,6 +182,140 @@ export async function adminLogsRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
+  // GET /admin/logs/notifications - List recent notifications
+  fastify.get("/admin/logs/notifications", async (request, reply) => {
+    const db = getDb();
+
+    // Get current user and verify admin role
+    let userId: string;
+    try {
+      userId = getUserId(request);
+      const user = await db.users.getById(userId);
+      if (!user || user.role !== "admin") {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Admin access required",
+          },
+        });
+      }
+    } catch {
+      return reply.code(401).send({
+        ok: false,
+        error: {
+          code: "NOT_AUTHENTICATED",
+          message: "Authentication required",
+        },
+      });
+    }
+
+    // Get singleton context for userId
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const query = request.query as Record<string, string | undefined>;
+
+    // Parse query params
+    const limit = query.limit ? parseInt(query.limit, 10) : 100;
+    const offset = query.offset ? parseInt(query.offset, 10) : 0;
+    const hoursAgo = query.hoursAgo ? parseInt(query.hoursAgo, 10) : 24;
+    const severityParam = query.severity;
+
+    // Validate numeric params
+    if (Number.isNaN(limit) || limit < 1 || limit > 500) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "limit must be a number between 1 and 500",
+        },
+      });
+    }
+
+    if (Number.isNaN(offset) || offset < 0) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "offset must be a non-negative number",
+        },
+      });
+    }
+
+    if (Number.isNaN(hoursAgo) || hoursAgo < 1 || hoursAgo > 720) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "hoursAgo must be a number between 1 and 720",
+        },
+      });
+    }
+
+    let severities: ("info" | "warning" | "error")[] | undefined;
+    if (severityParam) {
+      const allowed = new Set(["info", "warning", "error"]);
+      const parsed = severityParam
+        .split(",")
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+
+      if (parsed.length === 0 || parsed.some((value) => !allowed.has(value))) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "severity must be a comma-separated list of info, warning, or error",
+          },
+        });
+      }
+
+      severities = parsed as ("info" | "warning" | "error")[];
+    }
+
+    const [{ notifications, total }, unreadCount] = await Promise.all([
+      db.notifications.listRecentByUser({
+        userId: ctx.userId,
+        hoursAgo,
+        limit,
+        offset,
+        severities,
+      }),
+      db.notifications.getUnreadCount(ctx.userId),
+    ]);
+
+    return {
+      ok: true,
+      notifications: notifications.map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        severity: n.severity,
+        data: n.data_json,
+        isRead: n.is_read,
+        readAt: n.read_at,
+        createdAt: n.created_at,
+      })),
+      unreadCount,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + limit < total,
+      },
+    };
+  });
+
   // GET /admin/logs/fetch-runs - List recent fetch runs
   fastify.get("/admin/logs/fetch-runs", async (request, reply) => {
     const db = getDb();
