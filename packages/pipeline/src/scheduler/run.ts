@@ -1,4 +1,4 @@
-import type { Db, DigestSourceResult } from "@aharadar/db";
+import { createNotification, type Db, type DigestSourceResult } from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger } from "@aharadar/shared";
@@ -91,6 +91,52 @@ export async function runPipelineOnce(
     });
     paidCallsAllowed = creditsStatus.paidCallsAllowed;
     printCreditsWarning(creditsStatus);
+
+    // Notify on budget exhaustion
+    if (!paidCallsAllowed) {
+      const monthlyPct = Math.round((creditsStatus.monthlyUsed / creditsStatus.monthlyLimit) * 100);
+      const dailyPct =
+        creditsStatus.dailyLimit && creditsStatus.dailyLimit > 0
+          ? Math.round((creditsStatus.dailyUsed / creditsStatus.dailyLimit) * 100)
+          : null;
+
+      await createNotification({
+        db,
+        userId: params.userId,
+        type: "budget_exhausted",
+        title: "Budget exhausted",
+        body:
+          dailyPct !== null && dailyPct >= 100
+            ? `Daily budget at ${dailyPct}%. Paid connectors disabled until reset.`
+            : `Monthly budget at ${monthlyPct}%. Paid connectors disabled until reset.`,
+        severity: "error",
+        data: {
+          monthlyUsed: creditsStatus.monthlyUsed,
+          monthlyLimit: creditsStatus.monthlyLimit,
+          dailyUsed: creditsStatus.dailyUsed,
+          dailyLimit: creditsStatus.dailyLimit,
+        },
+      });
+    } else if (creditsStatus.warningLevel !== "none") {
+      // Notify on budget warning (approaching/critical)
+      const monthlyPct = Math.round((creditsStatus.monthlyUsed / creditsStatus.monthlyLimit) * 100);
+      await createNotification({
+        db,
+        userId: params.userId,
+        type: "budget_warning",
+        title:
+          creditsStatus.warningLevel === "critical"
+            ? "Budget critical"
+            : "Budget approaching limit",
+        body: `You've used ${monthlyPct}% of your monthly budget.`,
+        severity: creditsStatus.warningLevel === "critical" ? "warning" : "info",
+        data: {
+          monthlyUsed: creditsStatus.monthlyUsed,
+          monthlyLimit: creditsStatus.monthlyLimit,
+          warningLevel: creditsStatus.warningLevel,
+        },
+      });
+    }
   }
 
   const effectiveTier = resolveTier(params.mode, paidCallsAllowed);
@@ -144,6 +190,39 @@ export async function runPipelineOnce(
     filter: params.ingestFilter,
     paidCallsAllowed,
   });
+
+  // Notify on ingest fetch errors
+  const erroredSources = ingest.perSource.filter((s) => s.status === "error");
+  if (erroredSources.length > 0) {
+    const sourceNames = erroredSources.map((s) => s.sourceName).join(", ");
+    const errorMessages = erroredSources
+      .filter((s) => s.error?.message)
+      .map((s) => `${s.sourceName}: ${s.error?.message}`)
+      .slice(0, 3);
+
+    await createNotification({
+      db,
+      userId: params.userId,
+      type: "ingest_fetch_error",
+      title: `Source fetch failed (${erroredSources.length})`,
+      body:
+        errorMessages.length > 0
+          ? errorMessages.join("; ")
+          : `Failed to fetch from: ${sourceNames}`,
+      severity: "error",
+      data: {
+        topicId: params.topicId,
+        erroredSources: erroredSources.map((s) => ({
+          sourceId: s.sourceId,
+          sourceName: s.sourceName,
+          sourceType: s.sourceType,
+          error: s.error,
+        })),
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+      },
+    });
+  }
 
   const embed = await embedTopicContentItems({
     db,
@@ -205,6 +284,27 @@ export async function runPipelineOnce(
       creditsUsed: 0, // TODO: calculate actual credits used for ingest
       sourceResults,
       errorMessage,
+    });
+
+    // Notify on digest failure
+    await createNotification({
+      db,
+      userId: params.userId,
+      type: "digest_failed",
+      title: "Digest generation failed",
+      body: errorMessage,
+      severity: "warning",
+      data: {
+        digestId: failedDigest.id,
+        topicId: params.topicId,
+        topicName: topic.name,
+        skippedSources: skippedSources.map((s) => ({
+          sourceName: s.sourceName,
+          skipReason: s.skipReason,
+        })),
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+      },
     });
 
     return {

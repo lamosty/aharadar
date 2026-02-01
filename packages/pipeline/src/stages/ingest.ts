@@ -1,5 +1,5 @@
 import { getConnector } from "@aharadar/connectors";
-import type { Db, SourceRow } from "@aharadar/db";
+import { createNotification, type Db, type SourceRow } from "@aharadar/db";
 import {
   type ContentItemDraft,
   canonicalizeUrl,
@@ -497,6 +497,35 @@ export async function ingestEnabledSources(params: {
           baseResult.errors += 1;
           totals.errors += 1;
           log.warn({ err }, "provider_calls insert failed");
+        }
+      }
+
+      // Create notification for x_posts parse errors
+      if (source.type === "x_posts") {
+        const parseErrors = providerCalls.filter((c) => c.meta?.assistant_parse_error === true);
+        if (parseErrors.length > 0) {
+          const queries = parseErrors
+            .map((c) => c.meta?.query)
+            .filter((q): q is string => typeof q === "string");
+          const queryPreview = queries.slice(0, 3).join(", ");
+          const moreCount = queries.length > 3 ? ` (+${queries.length - 3} more)` : "";
+
+          await createNotification({
+            db: params.db,
+            userId: params.userId,
+            type: "x_posts_parse_error",
+            title: "X connector parse error",
+            body: `Failed to parse ${parseErrors.length} response(s) for: ${queryPreview}${moreCount}`,
+            severity: "warning",
+            data: {
+              sourceId: source.id,
+              sourceName: source.name,
+              errorCount: parseErrors.length,
+              queries,
+              windowStart: params.windowStart,
+              windowEnd: params.windowEnd,
+            },
+          });
         }
       }
 
