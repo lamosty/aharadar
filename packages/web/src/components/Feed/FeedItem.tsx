@@ -390,14 +390,13 @@ export function FeedItem({
       onMobileClick();
       return;
     }
-    // In fast triage mode, clicking selects this item
-    if (fastTriageMode && onSelect) {
+    // If onSelect is provided, parent wants selection behavior (fast triage mode)
+    if (onSelect) {
       onSelect();
       return;
     }
-    if (!fastTriageMode) {
-      setExpanded((prev) => !prev);
-    }
+    // Otherwise toggle local expansion
+    setExpanded((prev) => !prev);
   };
 
   // Close the detail panel

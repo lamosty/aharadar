@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FeedItem as FeedItemType, ManualSummaryOutput } from "@/lib/api";
 import type { Layout } from "@/lib/theme";
 import type { SortOption } from "./FeedFilterBar";
@@ -78,6 +78,14 @@ export function ThemeRow({
 }: ThemeRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Auto-expand theme when it contains the force-expanded item
+  // This ensures fast triage works across collapsed themes
+  useEffect(() => {
+    if (forceExpandedId && theme.items.some((item) => item.id === forceExpandedId)) {
+      setIsExpanded(true);
+    }
+  }, [forceExpandedId, theme.items]);
+
   const handleToggle = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
@@ -103,6 +111,7 @@ export function ThemeRow({
       className={styles.themeContainer}
       data-expanded={isExpanded}
       data-single-item={theme.items.length === 1}
+      data-theme-row
     >
       {/* Theme header with expand/collapse toggle */}
       <div className={styles.themeHeader} onClick={handleToggle}>

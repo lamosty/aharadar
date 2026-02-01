@@ -257,6 +257,18 @@ function FeedPageContent() {
     view,
   });
 
+  // Get items in visual order (respects theme grouping when enabled)
+  // This is used for fast triage navigation to match what user sees
+  const getVisualOrderItems = useCallback(() => {
+    const items = data?.items ?? [];
+    if (!groupByTheme) {
+      return items;
+    }
+    // Flatten theme groups into visual order
+    const themeGroups = groupItemsByTheme(items);
+    return themeGroups.flatMap((group) => group.items);
+  }, [data?.items, groupByTheme]);
+
   // Feedback mutation
   const feedbackMutation = useFeedback({
     onError: () => {
@@ -334,7 +346,8 @@ function FeedPageContent() {
   // Handle "Next" button in Highlights - expand next item's detail panel
   const handleNextItem = useCallback(
     (currentItemId: string) => {
-      const allItems = data?.items ?? [];
+      // Use visual order to match what user sees (respects theme grouping)
+      const allItems = getVisualOrderItems();
       const currentIndex = allItems.findIndex((i) => i.id === currentItemId);
       if (currentIndex >= 0 && currentIndex < allItems.length - 1) {
         const nextItem = allItems[currentIndex + 1];
@@ -349,14 +362,15 @@ function FeedPageContent() {
         }
       }
     },
-    [data],
+    [getVisualOrderItems],
   );
 
   const handleFeedback = useCallback(
     async (contentItemId: string, action: "like" | "dislike" | "skip") => {
-      const items = data?.items ?? [];
-      const item = items.find((i) => i.id === contentItemId);
-      const currentIndex = items.findIndex((i) => i.id === contentItemId);
+      // Use visual order to match what user sees (respects theme grouping)
+      const visualItems = getVisualOrderItems();
+      const item = visualItems.find((i) => i.id === contentItemId);
+      const currentIndex = visualItems.findIndex((i) => i.id === contentItemId);
 
       // Track in desktop history for undo (only on desktop, not mobile)
       if (item && !isMobile) {
@@ -374,16 +388,16 @@ function FeedPageContent() {
         fastTriageMode &&
         view === "inbox" &&
         currentIndex >= 0 &&
-        currentIndex < items.length - 1
+        currentIndex < visualItems.length - 1
       ) {
         // The item at currentIndex+1 will move to currentIndex after the current item is removed
-        const nextItem = items[currentIndex + 1];
+        const nextItem = visualItems[currentIndex + 1];
         if (nextItem) {
           setForceExpandedId(nextItem.id);
         }
       }
     },
-    [data, feedbackMutation, fastTriageMode, view, isMobile],
+    [getVisualOrderItems, feedbackMutation, fastTriageMode, view, isMobile],
   );
 
   const handleClearFeedback = useCallback(
@@ -539,10 +553,13 @@ function FeedPageContent() {
       // Don't clear if clicking inside a feed item (let item handle selection)
       if (target.closest("[data-feed-item]")) return;
 
+      // Don't clear if clicking inside a theme row (let theme handle expansion)
+      if (target.closest("[data-theme-row]")) return;
+
       // Don't clear if clicking inside a modal
       if (target.closest("[data-modal]")) return;
 
-      // Click was outside feed items and modals - clear selection
+      // Click was outside feed items, themes, and modals - clear selection
       setForceExpandedId(null);
     },
     [fastTriageMode, forceExpandedId],
@@ -808,7 +825,7 @@ function FeedPageContent() {
                         }, 300);
                       }
                     }}
-                    onSelect={(itemId) => setForceExpandedId(itemId)}
+                    onSelect={fastTriageMode ? (itemId) => setForceExpandedId(itemId) : undefined}
                     onClose={() => setForceExpandedId(null)}
                     onNext={(currentId) => handleNextItem(currentId)}
                     onUndo={!isMobile ? handleDesktopUndo : undefined}
@@ -834,7 +851,7 @@ function FeedPageContent() {
                     onMobileClick={isMobile ? () => handleMobileItemClick(item) : undefined}
                     onUndo={!isMobile ? handleDesktopUndo : undefined}
                     canUndo={!isMobile && desktopHistory.length > 0}
-                    onSelect={() => setForceExpandedId(item.id)}
+                    onSelect={fastTriageMode ? () => setForceExpandedId(item.id) : undefined}
                     onHover={() => {
                       // In fast triage mode, don't clear force-expanded on hover
                       // CSS disables hover expansion, users click to manually expand
