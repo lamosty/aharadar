@@ -224,10 +224,8 @@ export interface FeedItem {
   clusterId?: string | null;
   clusterMemberCount?: number;
   clusterItems?: ClusterItem[];
-  // Theme information for topic-level grouping
-  themeId?: string;
+  // Theme label from triage theme embedding clustering
   themeLabel?: string;
-  themeItemCount?: number;
   // Topic context (for "all topics" mode)
   topicId: string;
   topicName: string;
@@ -259,7 +257,7 @@ export interface ItemsListParams {
   minScore?: number;
   since?: string;
   until?: string;
-  sort?: "best" | "latest" | "trending" | "ai_score";
+  sort?: "best" | "latest" | "trending" | "ai_score" | "has_ai_summary";
   topicId?: string;
   view?: FeedView;
 }

@@ -265,9 +265,9 @@ function FeedPageContent() {
       return items;
     }
     // Flatten theme groups into visual order
-    const themeGroups = groupItemsByTheme(items);
+    const themeGroups = groupItemsByTheme(items, sort);
     return themeGroups.flatMap((group) => group.items);
-  }, [data?.items, groupByTheme]);
+  }, [data?.items, groupByTheme, sort]);
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -789,7 +789,7 @@ function FeedPageContent() {
           >
             {groupByTheme
               ? // Render items grouped by theme
-                groupItemsByTheme(items).map((themeGroup) => (
+                groupItemsByTheme(items, sort).map((themeGroup) => (
                   <ThemeRow
                     key={themeGroup.themeId}
                     theme={themeGroup}

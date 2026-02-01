@@ -1,11 +1,6 @@
 import type { LlmProvider, LlmSettingsUpdate, ReasoningEffort, SourceRow } from "@aharadar/db";
 import { checkQuotaForRun, getQuotaStatusAsync } from "@aharadar/llm";
-import {
-  compileDigestPlan,
-  computeCreditsStatus,
-  resetBudget,
-  themeTopicContentItems,
-} from "@aharadar/pipeline";
+import { compileDigestPlan, computeCreditsStatus, resetBudget } from "@aharadar/pipeline";
 import {
   type AbtestVariantConfig,
   clearEmergencyStop,
@@ -2344,118 +2339,6 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       return {
         ok: true,
         policy: view,
-      };
-    },
-  );
-
-  // =========================================================================
-  // Theme Management Endpoints
-  // =========================================================================
-
-  // POST /admin/topics/:id/regenerate-themes - Delete and rebuild themes for a topic
-  fastify.post<{ Params: { id: string } }>(
-    "/admin/topics/:id/regenerate-themes",
-    async (request, reply) => {
-      const ctx = await getSingletonContext();
-      if (!ctx) {
-        return reply.code(503).send({
-          ok: false,
-          error: {
-            code: "NOT_INITIALIZED",
-            message: "Database not initialized: no user or topic found",
-          },
-        });
-      }
-
-      const { id: topicId } = request.params;
-
-      if (!isValidUuid(topicId)) {
-        return reply.code(400).send({
-          ok: false,
-          error: {
-            code: "INVALID_PARAM",
-            message: "id must be a valid UUID",
-          },
-        });
-      }
-
-      const db = getDb();
-      const topic = await db.topics.getById(topicId);
-
-      if (!topic) {
-        return reply.code(404).send({
-          ok: false,
-          error: {
-            code: "NOT_FOUND",
-            message: `Topic not found: ${topicId}`,
-          },
-        });
-      }
-
-      if (topic.user_id !== ctx.userId) {
-        return reply.code(403).send({
-          ok: false,
-          error: {
-            code: "FORBIDDEN",
-            message: "Topic does not belong to current user",
-          },
-        });
-      }
-
-      // Delete all theme_items for themes in this topic
-      await db.query(
-        `DELETE FROM theme_items
-         WHERE theme_id IN (
-           SELECT id FROM themes WHERE topic_id = $1
-         )`,
-        [topicId],
-      );
-
-      // Delete themes with no items (all of them after above delete)
-      await db.query(`DELETE FROM themes WHERE topic_id = $1`, [topicId]);
-
-      // Get theme tuning settings from topic
-      const themeTuning = (topic.custom_settings as Record<string, unknown> | null)
-        ?.theme_tuning_v1 as
-        | { enabled?: boolean; similarityThreshold?: number; lookbackDays?: number }
-        | undefined;
-
-      // Check if theming is enabled
-      const themeEnabled = themeTuning?.enabled !== false;
-      if (!themeEnabled) {
-        return {
-          ok: true,
-          message: "Themes deleted. Theming is disabled for this topic, so no new themes created.",
-          result: { attempted: 0, attachedToExisting: 0, created: 0, skipped: 0, errors: 0 },
-        };
-      }
-
-      // Build a wide window to capture all inbox items (30 days back)
-      const windowEnd = new Date();
-      const windowStart = new Date(windowEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      // Run theme stage with topic settings
-      const result = await themeTopicContentItems({
-        db,
-        userId: ctx.userId,
-        topicId,
-        windowStart: windowStart.toISOString(),
-        windowEnd: windowEnd.toISOString(),
-        limits: {
-          maxItems: 1000, // Process up to 1000 items
-          themeLookbackDays: themeTuning?.lookbackDays ?? 7,
-          similarityThreshold: themeTuning?.similarityThreshold ?? 0.65,
-          updateCentroid: true,
-          maxItemsPerTheme: 100,
-          stricterThresholdAfterDays: 3,
-          stricterSimilarityThreshold: 0.7,
-        },
-      });
-
-      return {
-        ok: true,
-        message: `Themes regenerated. Created ${result.created} themes, attached ${result.attachedToExisting} items to existing themes.`,
-        result,
       };
     },
   );

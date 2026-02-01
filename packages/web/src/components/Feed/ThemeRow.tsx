@@ -217,20 +217,59 @@ export function ThemeRow({
 }
 
 /**
- * Extract topic from item's triage JSON.
- * Falls back to themeLabel (server-side theme) or "Uncategorized".
+ * Extract theme label for grouping items.
+ *
+ * Priority order:
+ * 1. themeLabel (embedding-based clustering from digest pipeline)
+ * 2. triageJson.theme (new field name for triage theme)
+ * 3. triageJson.topic (legacy field name - will be deprecated)
+ * 4. "Uncategorized"
  */
 function getItemTopic(item: FeedItemType): string {
-  // Prefer topic from triage JSON (new field)
-  const triageTopic = (item.triageJson as { topic?: string } | null)?.topic;
-  if (triageTopic && triageTopic !== "Uncategorized") {
-    return triageTopic;
-  }
-  // Fall back to server-side theme label
-  if (item.themeLabel) {
+  // Prefer embedding-clustered theme label (most accurate grouping)
+  if (item.themeLabel && item.themeLabel !== "Uncategorized") {
     return item.themeLabel;
   }
+  // Fall back to raw triage theme/topic (for items without clustering)
+  const triageData = item.triageJson as { theme?: string; topic?: string } | null;
+  const triageTheme = triageData?.theme ?? triageData?.topic;
+  if (triageTheme && triageTheme !== "Uncategorized") {
+    return triageTheme;
+  }
   return "Uncategorized";
+}
+
+/**
+ * Sort comparator for items based on sort option.
+ */
+function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType) => number {
+  switch (sort) {
+    case "latest":
+      return (a, b) => {
+        const dateA = a.item.publishedAt ? new Date(a.item.publishedAt).getTime() : 0;
+        const dateB = b.item.publishedAt ? new Date(b.item.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      };
+    case "trending":
+      return (a, b) => (b.trendingScore ?? b.score ?? 0) - (a.trendingScore ?? a.score ?? 0);
+    case "ai_score":
+      return (a, b) => {
+        const scoreA = (a.triageJson as { ai_score?: number } | null)?.ai_score ?? 0;
+        const scoreB = (b.triageJson as { ai_score?: number } | null)?.ai_score ?? 0;
+        return scoreB - scoreA;
+      };
+    case "has_ai_summary":
+      // Items with summary first, then by score
+      return (a, b) => {
+        const hasA = a.triageJson ? 1 : 0;
+        const hasB = b.triageJson ? 1 : 0;
+        if (hasA !== hasB) return hasB - hasA;
+        return (b.ahaScore ?? b.score ?? 0) - (a.ahaScore ?? a.score ?? 0);
+      };
+    case "best":
+    default:
+      return (a, b) => (b.ahaScore ?? b.score ?? 0) - (a.ahaScore ?? a.score ?? 0);
+  }
 }
 
 /**
@@ -238,10 +277,11 @@ function getItemTopic(item: FeedItemType): string {
  *
  * - Topics with 2+ items → collapsible group (shown first, sorted by top score)
  * - Topics with 1 item OR no topic → collected into "Uncategorized" (shown last)
+ * - Items within each group are sorted by the specified sort option
  *
  * This ensures only meaningful clusters are shown as groups.
  */
-export function groupItemsByTheme(items: FeedItemType[]): ThemeGroup[] {
+export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "best"): ThemeGroup[] {
   const topicMap = new Map<string, FeedItemType[]>();
 
   // First pass: group items by topic from triageJson
@@ -257,6 +297,7 @@ export function groupItemsByTheme(items: FeedItemType[]): ThemeGroup[] {
 
   const themedGroups: ThemeGroup[] = [];
   const uncategorizedItems: FeedItemType[] = [];
+  const comparator = getItemComparator(sort);
 
   // Second pass: create groups for topics with 2+ items, collect singles
   for (const [topic, topicItems] of topicMap) {
@@ -264,7 +305,8 @@ export function groupItemsByTheme(items: FeedItemType[]): ThemeGroup[] {
       // No topic OR single-item topic → goes to uncategorized
       uncategorizedItems.push(...topicItems);
     } else {
-      // Multi-item topic → create a group
+      // Sort items within the group by the selected sort option
+      topicItems.sort(comparator);
       const topItem = topicItems[0];
       themedGroups.push({
         themeId: topic, // Use topic as themeId for compatibility
@@ -276,15 +318,17 @@ export function groupItemsByTheme(items: FeedItemType[]): ThemeGroup[] {
     }
   }
 
-  // Sort themed groups by top score (highest first)
-  themedGroups.sort((a, b) => b.topScore - a.topScore);
-
-  // Sort uncategorized items by score (highest first) before grouping
-  uncategorizedItems.sort((a, b) => {
-    const scoreA = a.ahaScore ?? a.score ?? 0;
-    const scoreB = b.ahaScore ?? b.score ?? 0;
-    return scoreB - scoreA;
+  // Sort themed groups by top item (using same sort logic as items)
+  // This ensures theme order respects the selected sort option
+  themedGroups.sort((a, b) => {
+    const topA = a.items[0];
+    const topB = b.items[0];
+    if (!topA || !topB) return 0;
+    return comparator(topA, topB);
   });
+
+  // Sort uncategorized items by the selected sort option
+  uncategorizedItems.sort(comparator);
 
   // Add "Uncategorized" group at the end (always last)
   if (uncategorizedItems.length > 0) {

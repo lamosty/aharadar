@@ -53,10 +53,8 @@ interface UnifiedItemRow {
   cluster_id: string | null;
   cluster_member_count: number | null;
   cluster_items_json: ClusterItemRow[] | null;
-  // Theme fields
-  theme_id: string | null;
+  // Theme label from triage theme embedding clustering
   theme_label: string | null;
-  theme_item_count: number | null;
   // Topic fields (for "all topics" mode)
   topic_id: string;
   topic_name: string;
@@ -189,8 +187,9 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Validate sort
-    // "best" = raw score (no decay), "latest" = by publication date, "trending" = decayed score, "ai_score" = raw LLM triage score
-    const validSorts = ["best", "latest", "trending", "ai_score"];
+    // "best" = raw score (no decay), "latest" = by publication date, "trending" = decayed score
+    // "ai_score" = raw LLM triage score, "has_ai_summary" = items with AI summary first
+    const validSorts = ["best", "latest", "trending", "ai_score", "has_ai_summary"];
     if (!validSorts.includes(sort)) {
       return reply.code(400).send({
         ok: false,
@@ -268,6 +267,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     // - "latest": by publication date - shows newest items first
     // - "trending": decayed score - balances quality with recency
     // - "ai_score": raw LLM triage score - useful for debugging ranking issues
+    // - "has_ai_summary": items with AI summary first, then by score
     // Note: All modes include li.content_item_id as tie-breaker for deterministic pagination
     let orderBy: string;
     switch (sort) {
@@ -281,6 +281,11 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       case "ai_score":
         // Order by raw LLM triage score (ai_score from triage_json)
         orderBy = "(li.triage_json->>'ai_score')::numeric DESC NULLS LAST, li.content_item_id DESC";
+        break;
+      case "has_ai_summary":
+        // Items with AI summary first, then by score
+        orderBy =
+          "CASE WHEN cis.summary_json IS NOT NULL THEN 0 ELSE 1 END ASC, li.aha_score DESC, li.content_item_id DESC";
         break;
       default: // "best"
         // Order by raw score (no decay) - best quality items first
@@ -309,6 +314,7 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
           di.triage_json,
           di.summary_json,
           di.entities_json,
+          di.theme_label as digest_theme_label,
           d.created_at as digest_created_at,
           d.topic_id as digest_topic_id
         FROM digest_items di
@@ -356,10 +362,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         t.name as topic_name,
         -- Manual item summary
         cis.summary_json as manual_summary_json,
-        -- Theme fields
-        theme_info.theme_id::text as theme_id,
-        theme_info.theme_label as theme_label,
-        theme_info.theme_item_count as theme_item_count
+        -- Theme label from triage theme embedding clustering
+        li.digest_theme_label as theme_label
       FROM latest_items li
       JOIN content_items ci ON ci.id = li.content_item_id
       JOIN topics t ON t.id = li.digest_topic_id
@@ -397,16 +401,6 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         WHERE cli.cluster_id = li.cluster_id
           AND ci_member.deleted_at IS NULL
       ) cluster_members ON li.cluster_id IS NOT NULL
-      LEFT JOIN LATERAL (
-        SELECT
-          th.id as theme_id,
-          th.label as theme_label,
-          th.item_count as theme_item_count
-        FROM theme_items ti
-        JOIN themes th ON th.id = ti.theme_id
-        WHERE ti.content_item_id = li.content_item_id
-        LIMIT 1
-      ) theme_info ON fe.action IS NULL  -- Only include theme info for inbox items
       WHERE ${filterClause}
       ORDER BY ${orderBy}
       LIMIT $${filterParamIdx}
@@ -506,10 +500,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         clusterId: row.cluster_id,
         clusterMemberCount: row.cluster_member_count ?? undefined,
         clusterItems: clusterItems?.length ? clusterItems : undefined,
-        // Theme data
-        themeId: row.theme_id ?? undefined,
+        // Theme label from triage theme embedding clustering
         themeLabel: row.theme_label ?? undefined,
-        themeItemCount: row.theme_item_count ?? undefined,
         // Topic context (for "all topics" mode)
         topicId: row.topic_id,
         topicName: row.topic_name,
