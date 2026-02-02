@@ -20,7 +20,7 @@ export interface ExperimentalFeatures {
 const DEFAULT_FEATURES: ExperimentalFeatures = {
   qa: false,
   score_debug: false,
-  show_scoring_mode: false,
+  show_scoring_mode: true,
 };
 
 /**
