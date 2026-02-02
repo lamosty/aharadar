@@ -54,31 +54,61 @@ The goal is “same stack locally and prod” via Docker Compose:
 5. Verify the scaffold runs:
    - `pnpm dev` (runs the stub CLI)
 
+### Running the app
+
+**Development mode** (with hot reload, slower initial page loads):
+```bash
+pnpm start         # localhost only
+pnpm start:lan     # accessible on LAN (use for remote access)
+```
+
+**Production mode** (faster, no hot reload):
+```bash
+pnpm start:prod       # localhost only
+pnpm start:prod:lan   # accessible on LAN
+```
+
+Production mode runs `next build` first, then serves optimized pages. Use this for daily use when you're not actively developing.
+
+### Port configuration
+
+If ports 3000/3001 are in use, configure in `.env`:
+```bash
+WEB_PORT=3010           # Web frontend port
+API_PORT=3011           # API server port
+API_URL=http://localhost:3011  # For Next.js proxy
+```
+
+Then export before running:
+```bash
+export WEB_PORT=3010 API_PORT=3011 API_URL=http://localhost:3011
+pnpm start:lan
+```
+
+### Authentication (dev mode)
+
+In development, you can bypass email login:
+1. Go to the login page
+2. Optionally enter your email (for admin access)
+3. Click "Dev Bypass" button
+
+This sets cookies and logs you in without needing email verification.
+
 ### Day-to-day workflow
 
-- **You do not rebuild Docker for TypeScript code changes.**
-  - Docker is for Postgres/Redis.
-  - App code is run from the host during dev (fast iteration).
-- Re-run **migrations** when SQL changes:
-  - `./scripts/migrate.sh`
-- If you need a clean DB/Redis:
-  - `./scripts/reset.sh` (destroys local data)
+- **Docker is only for Postgres/Redis** - app code runs on host
+- Re-run migrations when SQL changes: `./scripts/migrate.sh`
+- Clean DB/Redis: `./scripts/reset.sh` (destroys local data)
 
 ### Useful scripts
 
-- `./scripts/dev.sh`: start Postgres + Redis
-- `./scripts/migrate.sh`: apply SQL migrations
-- `./scripts/logs.sh [service]`: follow logs
-- `./scripts/down.sh`: stop services
-- `./scripts/restart.sh`: restart services
-- `./scripts/reset.sh`: wipe volumes + restart + migrate
-
-When the runtime code is implemented, the typical flow will be:
-
-1. Copy env:
-   - `cp .env.example .env`
-2. Boot services:
-   - `./scripts/dev.sh`
+| Script | Purpose |
+|--------|---------|
+| `./scripts/dev.sh` | Start Postgres + Redis |
+| `./scripts/migrate.sh` | Apply SQL migrations |
+| `./scripts/logs.sh [service]` | Follow logs |
+| `./scripts/down.sh` | Stop services |
+| `./scripts/reset.sh` | Wipe + restart + migrate |
 
 ## License
 
