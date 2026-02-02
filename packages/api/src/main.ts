@@ -14,6 +14,7 @@ import { askRoutes } from "./routes/ask.js";
 import { authRoutes } from "./routes/auth.js";
 import { bookmarksRoutes } from "./routes/bookmarks.js";
 import { catchupPacksRoutes } from "./routes/catchup-packs.js";
+import { devRoutes } from "./routes/dev.js";
 import { digestsRoutes } from "./routes/digests.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
@@ -93,6 +94,7 @@ async function buildServer() {
   await fastify.register(healthRoutes, { prefix: "/api" });
   await fastify.register(authRoutes, { prefix: "/api" });
   await fastify.register(storageRoutes, { prefix: "/api" });
+  await fastify.register(devRoutes, { prefix: "/api" });
 
   // Protected routes - allow either session cookie OR API key
   await fastify.register(
