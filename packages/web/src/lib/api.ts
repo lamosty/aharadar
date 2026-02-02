@@ -449,28 +449,17 @@ export interface DevSettings {
 }
 
 const DEFAULT_DEV_SETTINGS: DevSettings = {
-  apiBaseUrl: "http://localhost:3001/api",
+  apiBaseUrl: "/api",
   apiKey: "",
 };
 
 /**
- * Get the default API URL based on the current hostname.
- * If accessing via LAN IP, use that IP for API calls too.
+ * Get the default API URL.
+ * Uses relative path "/api" which Next.js proxies to the API server.
+ * This avoids CORS and cookie issues by keeping everything on one origin.
  */
 function getDefaultApiUrl(): string {
-  if (typeof window === "undefined") {
-    return DEFAULT_DEV_SETTINGS.apiBaseUrl;
-  }
-
-  const { hostname } = window.location;
-
-  // If accessing via localhost, use localhost for API
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return "http://localhost:3001/api";
-  }
-
-  // If accessing via LAN IP or other hostname, use same host for API
-  return `http://${hostname}:3001/api`;
+  return "/api";
 }
 
 /**
