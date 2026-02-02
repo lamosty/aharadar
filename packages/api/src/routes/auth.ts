@@ -1,46 +1,59 @@
 import { createLogger } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
-import { generateToken, hashToken } from "../auth/crypto.js";
+import { generateToken, hashPassword, hashToken, verifyPassword } from "../auth/crypto.js";
 import { getUserId, sessionAuth } from "../auth/session.js";
 import { getDb } from "../lib/db.js";
-import { sendMagicLinkEmail } from "../lib/email.js";
 
 const log = createLogger({ component: "auth" });
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAGIC_LINK_EXPIRY_MINUTES = 15;
+const MIN_PASSWORD_LENGTH = 8;
 const SESSION_EXPIRY_DAYS = 30;
-const IS_DEV = process.env.NODE_ENV !== "production";
 
-interface SendLinkBody {
+interface RegisterBody {
   email: string;
+  password: string;
 }
 
-interface VerifyQuery {
-  token: string;
+interface LoginBody {
+  email: string;
+  password: string;
 }
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   /**
-   * POST /auth/send-link
-   * Send magic link email to user
+   * POST /auth/register
+   * Create account with email and password
    */
-  fastify.post<{ Body: SendLinkBody }>("/auth/send-link", async (request, reply) => {
+  fastify.post<{ Body: RegisterBody }>("/auth/register", async (request, reply) => {
     const body = request.body as unknown;
 
-    // Validate email
-    if (!body || typeof body !== "object" || !("email" in body)) {
+    // Validate request body
+    if (!body || typeof body !== "object") {
       return reply.code(400).send({
         ok: false,
-        error: { code: "INVALID_REQUEST", message: "Email is required" },
+        error: { code: "INVALID_REQUEST", message: "Invalid request body" },
       });
     }
 
-    const { email } = body as { email: unknown };
+    const { email, password } = body as { email?: unknown; password?: unknown };
+
+    // Validate email
     if (typeof email !== "string" || !EMAIL_REGEX.test(email)) {
       return reply.code(400).send({
         ok: false,
         error: { code: "INVALID_EMAIL", message: "Invalid email format" },
+      });
+    }
+
+    // Validate password
+    if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PASSWORD",
+          message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+        },
       });
     }
 
@@ -49,119 +62,163 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     try {
       const db = getDb();
 
-      // Get or create user by email
-      const user = await db.users.getOrCreateByEmail(normalizedEmail);
+      // Check if user already exists
+      const existingUser = await db.users.getByEmail(normalizedEmail);
+      if (existingUser) {
+        return reply.code(409).send({
+          ok: false,
+          error: { code: "USER_EXISTS", message: "An account with this email already exists" },
+        });
+      }
 
-      // Generate magic link token
-      const token = generateToken();
-      const tokenHash = hashToken(token);
-      const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000);
+      // Hash password and create user
+      const passwordHash = await hashPassword(password);
+      const user = await db.users.createWithPassword(normalizedEmail, passwordHash);
 
-      // Store token hash in database
-      await db.authTokens.create({
+      log.info({ userId: user.id, email: normalizedEmail }, "User registered");
+
+      // Create session
+      const sessionToken = generateToken();
+      const sessionHash = hashToken(sessionToken);
+      const sessionExpiresAt = new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+
+      await db.sessions.create({
         userId: user.id,
-        tokenHash,
-        purpose: "magic_link",
-        expiresAt,
+        tokenHash: sessionHash,
+        userAgent: request.headers["user-agent"],
+        ipAddress: request.ip,
+        expiresAt: sessionExpiresAt,
       });
 
-      // Send email with magic link (or skip in dev mode if Resend not configured)
-      const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-      const verifyUrl = `${appUrl}/verify?token=${encodeURIComponent(token)}`;
+      // Set session cookie
+      const isProduction = process.env.NODE_ENV === "production";
 
-      // In dev mode without RESEND_API_KEY, return token directly for testing
-      if (IS_DEV && !process.env.RESEND_API_KEY) {
-        log.info({ email: normalizedEmail, verifyUrl }, "DEV MODE: Magic link generated");
-        return {
-          ok: true,
-          message: "Dev mode: Check console or use the returned verifyUrl",
-          // Only exposed in dev mode for testing/Playwright
-          _dev: {
-            token,
-            verifyUrl,
-          },
-        };
-      }
-
-      await sendMagicLinkEmail({ to: normalizedEmail, token, appUrl });
-
-      // In dev mode with Resend configured, still return verifyUrl for convenience
-      if (IS_DEV) {
-        log.info({ email: normalizedEmail, verifyUrl }, "Magic link sent");
-        return {
-          ok: true,
-          message: "Magic link sent! Check your email.",
-          // Only exposed in dev mode for testing/Playwright
-          _dev: {
-            verifyUrl,
-          },
-        };
-      }
-
-      // Production: Never expose token or URL
-      return { ok: true, message: "If this email exists, a login link has been sent" };
-    } catch (err) {
-      log.error({ err }, "Error sending magic link");
-      // Still return success to prevent email enumeration
-      return { ok: true, message: "If this email exists, a login link has been sent" };
-    }
-  });
-
-  /**
-   * GET /auth/verify
-   * Verify magic link token and create session
-   */
-  fastify.get<{ Querystring: VerifyQuery }>("/auth/verify", async (request, reply) => {
-    const { token } = request.query as { token?: string };
-
-    if (!token || typeof token !== "string") {
-      return reply.code(400).send({
-        ok: false,
-        error: { code: "INVALID_REQUEST", message: "Token is required" },
-      });
-    }
-
-    const db = getDb();
-    const tokenHash = hashToken(token);
-
-    // Find valid (unused, not expired) token
-    const authToken = await db.authTokens.getValidByHash(tokenHash);
-
-    if (!authToken) {
-      // Redirect to login with error
-      const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-      return reply.redirect(`${appUrl}/login?error=invalid_token`);
-    }
-
-    // Mark token as used
-    await db.authTokens.markUsed(authToken.id);
-
-    // Create session
-    const sessionToken = generateToken();
-    const sessionHash = hashToken(sessionToken);
-    const sessionExpiresAt = new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-
-    await db.sessions.create({
-      userId: authToken.user_id,
-      tokenHash: sessionHash,
-      userAgent: request.headers["user-agent"],
-      ipAddress: request.ip,
-      expiresAt: sessionExpiresAt,
-    });
-
-    // Set session cookie and redirect to app
-    const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-    const isProduction = process.env.NODE_ENV === "production";
-
-    reply
-      .setCookie("session", sessionToken, {
+      reply.setCookie("session", sessionToken, {
         path: "/",
         httpOnly: true,
         secure: isProduction,
         sameSite: "lax",
-        maxAge: SESSION_EXPIRY_DAYS * 24 * 60 * 60, // seconds
-      })
-      .redirect(`${appUrl}/app`);
+        maxAge: SESSION_EXPIRY_DAYS * 24 * 60 * 60,
+      });
+
+      return {
+        ok: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
+      };
+    } catch (err) {
+      log.error({ err }, "Error during registration");
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "REGISTRATION_FAILED", message: "Failed to create account" },
+      });
+    }
+  });
+
+  /**
+   * POST /auth/login
+   * Login with email and password
+   */
+  fastify.post<{ Body: LoginBody }>("/auth/login", async (request, reply) => {
+    const body = request.body as unknown;
+
+    // Validate request body
+    if (!body || typeof body !== "object") {
+      return reply.code(400).send({
+        ok: false,
+        error: { code: "INVALID_REQUEST", message: "Invalid request body" },
+      });
+    }
+
+    const { email, password } = body as { email?: unknown; password?: unknown };
+
+    // Validate email
+    if (typeof email !== "string" || !EMAIL_REGEX.test(email)) {
+      return reply.code(400).send({
+        ok: false,
+        error: { code: "INVALID_EMAIL", message: "Invalid email format" },
+      });
+    }
+
+    // Validate password
+    if (typeof password !== "string") {
+      return reply.code(400).send({
+        ok: false,
+        error: { code: "INVALID_PASSWORD", message: "Password is required" },
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    try {
+      const db = getDb();
+
+      // Get user with password hash
+      const user = await db.users.getByEmailWithPassword(normalizedEmail);
+
+      // Use generic error message to prevent email enumeration
+      const invalidCredentialsError = {
+        ok: false,
+        error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" },
+      };
+
+      if (!user || !user.password_hash) {
+        // User doesn't exist or has no password set
+        // Still perform a dummy password check to prevent timing attacks
+        await verifyPassword(password, "$2b$12$dummy.hash.to.prevent.timing.attacks");
+        return reply.code(401).send(invalidCredentialsError);
+      }
+
+      // Verify password
+      const isValid = await verifyPassword(password, user.password_hash);
+      if (!isValid) {
+        return reply.code(401).send(invalidCredentialsError);
+      }
+
+      log.info({ userId: user.id, email: normalizedEmail }, "User logged in");
+
+      // Create session
+      const sessionToken = generateToken();
+      const sessionHash = hashToken(sessionToken);
+      const sessionExpiresAt = new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+
+      await db.sessions.create({
+        userId: user.id,
+        tokenHash: sessionHash,
+        userAgent: request.headers["user-agent"],
+        ipAddress: request.ip,
+        expiresAt: sessionExpiresAt,
+      });
+
+      // Set session cookie
+      const isProduction = process.env.NODE_ENV === "production";
+
+      reply.setCookie("session", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        maxAge: SESSION_EXPIRY_DAYS * 24 * 60 * 60,
+      });
+
+      return {
+        ok: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
+      };
+    } catch (err) {
+      log.error({ err }, "Error during login");
+      return reply.code(500).send({
+        ok: false,
+        error: { code: "LOGIN_FAILED", message: "Failed to log in" },
+      });
+    }
   });
 
   /**
