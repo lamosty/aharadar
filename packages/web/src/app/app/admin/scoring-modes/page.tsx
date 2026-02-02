@@ -115,6 +115,10 @@ export default function AdminScoringModesPage() {
               Configure ranking strategies and run experiments to optimize content quality
             </p>
           </div>
+          <Link href="/app/admin/scoring-modes/experiments" className={styles.secondaryButton}>
+            <ExperimentIcon />
+            <span>All Experiments</span>
+          </Link>
         </div>
       </header>
 
@@ -138,9 +142,20 @@ export default function AdminScoringModesPage() {
                 <div key={exp.id} className={styles.experimentCard}>
                   <div className={styles.experimentHeader}>
                     <div>
-                      <h3 className={styles.experimentName}>{exp.name}</h3>
+                      <Link
+                        href={`/app/admin/scoring-modes/experiments/${exp.id}`}
+                        className={styles.experimentNameLink}
+                      >
+                        <h3 className={styles.experimentName}>{exp.name}</h3>
+                      </Link>
                       <span className={styles.experimentMode}>
-                        Testing: <strong>{mode?.name ?? "Unknown mode"}</strong>
+                        Testing:{" "}
+                        <Link
+                          href={`/app/admin/scoring-modes/${exp.modeId}`}
+                          className={styles.experimentModeLink}
+                        >
+                          {mode?.name ?? "Unknown mode"}
+                        </Link>
                       </span>
                     </div>
                     <span className={styles.experimentDuration}>
@@ -244,7 +259,12 @@ export default function AdminScoringModesPage() {
                 >
                   <div className={styles.modeHeader}>
                     <div className={styles.modeTitleRow}>
-                      <h3 className={styles.modeName}>{mode.name}</h3>
+                      <Link
+                        href={`/app/admin/scoring-modes/${mode.id}`}
+                        className={styles.modeNameLink}
+                      >
+                        <h3 className={styles.modeName}>{mode.name}</h3>
+                      </Link>
                       {mode.isDefault && <span className={styles.defaultBadge}>Default</span>}
                       {activeExp && <span className={styles.activeBadge}>In Experiment</span>}
                     </div>
