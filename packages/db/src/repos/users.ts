@@ -9,6 +9,10 @@ export interface UserRow {
   created_at: string;
 }
 
+export interface UserRowWithPassword extends UserRow {
+  password_hash: string | null;
+}
+
 export interface CreateUserParams {
   email?: string;
 }
@@ -78,6 +82,31 @@ export function createUsersRepo(db: Queryable) {
         "SELECT id, email, role, created_at FROM users ORDER BY created_at DESC",
       );
       return res.rows;
+    },
+
+    async getByEmailWithPassword(email: string): Promise<UserRowWithPassword | null> {
+      const normalizedEmail = email.toLowerCase().trim();
+      const res = await db.query<UserRowWithPassword>(
+        "SELECT id, email, role, created_at, password_hash FROM users WHERE lower(email) = $1 LIMIT 1",
+        [normalizedEmail],
+      );
+      return res.rows[0] ?? null;
+    },
+
+    async updatePassword(userId: string, passwordHash: string): Promise<void> {
+      await db.query("UPDATE users SET password_hash = $1 WHERE id = $2", [passwordHash, userId]);
+    },
+
+    async createWithPassword(email: string, passwordHash: string): Promise<UserRow> {
+      const normalizedEmail = email.toLowerCase().trim();
+      const res = await db.query<UserRow>(
+        `INSERT INTO users (email, password_hash) VALUES ($1, $2)
+         RETURNING id, email, role, created_at`,
+        [normalizedEmail, passwordHash],
+      );
+      const row = res.rows[0];
+      if (!row) throw new Error("Failed to create user with password");
+      return row;
     },
   };
 }

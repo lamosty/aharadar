@@ -2,7 +2,6 @@ import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 import { Pool } from "pg";
 import { createAbtestsRepo } from "./repos/abtests";
 import { createAggregateSummariesRepo } from "./repos/aggregate_summaries";
-import { createAuthTokensRepo } from "./repos/auth_tokens";
 import { createBookmarksRepo } from "./repos/bookmarks";
 import { createCatchupPacksRepo } from "./repos/catchup_packs";
 import { createContentItemReadsRepo } from "./repos/content_item_reads";
@@ -52,7 +51,6 @@ export type DbContext = Queryable & {
   feedbackEvents: ReturnType<typeof createFeedbackEventsRepo>;
   providerCalls: ReturnType<typeof createProviderCallsRepo>;
   qa: ReturnType<typeof createQaMemoryRepo>;
-  authTokens: ReturnType<typeof createAuthTokensRepo>;
   sessions: ReturnType<typeof createSessionsRepo>;
   userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
   llmSettings: ReturnType<typeof createLlmSettingsRepo>;
@@ -91,7 +89,6 @@ function createContext(db: Queryable): DbContext {
     feedbackEvents: createFeedbackEventsRepo(db),
     providerCalls: createProviderCallsRepo(db),
     qa: createQaMemoryRepo(db),
-    authTokens: createAuthTokensRepo(db),
     sessions: createSessionsRepo(db),
     userApiKeys: createUserApiKeysRepo(db),
     llmSettings: createLlmSettingsRepo(db),
