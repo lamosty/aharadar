@@ -1,6 +1,6 @@
 import type { ScoringMode, ScoringModeChange, ScoringModeConfig } from "@aharadar/db";
 import type { FastifyInstance } from "fastify";
-import { getDb, getSingletonContext } from "../lib/db.js";
+import { getDb, getUserIdWithFallback } from "../lib/db.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -154,20 +154,20 @@ function validateCalibration(
 
 export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void> {
   // GET /scoring-modes - List all scoring modes for current user
-  fastify.get("/scoring-modes", async (_request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
+  fastify.get("/scoring-modes", async (request, reply) => {
+    const userId = await getUserIdWithFallback(request);
+    if (!userId) {
       return reply.code(503).send({
         ok: false,
         error: {
           code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
+          message: "No user context available",
         },
       });
     }
 
     const db = getDb();
-    const modes = await db.scoringModes.listByUser(ctx.userId);
+    const modes = await db.scoringModes.listByUser(userId);
 
     return {
       ok: true,
@@ -176,20 +176,20 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
   });
 
   // GET /scoring-modes/default - Get the default scoring mode for current user
-  fastify.get("/scoring-modes/default", async (_request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
+  fastify.get("/scoring-modes/default", async (request, reply) => {
+    const userId = await getUserIdWithFallback(request);
+    if (!userId) {
       return reply.code(503).send({
         ok: false,
         error: {
           code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
+          message: "No user context available",
         },
       });
     }
 
     const db = getDb();
-    const mode = await db.scoringModes.getDefaultForUser(ctx.userId);
+    const mode = await db.scoringModes.getDefaultForUser(userId);
 
     if (!mode) {
       return reply.code(404).send({
@@ -211,13 +211,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
   fastify.get<{ Querystring: { topicId?: string; limit?: string } }>(
     "/scoring-modes/audit",
     async (request, reply) => {
-      const ctx = await getSingletonContext();
-      if (!ctx) {
+      const userId = await getUserIdWithFallback(request);
+      if (!userId) {
         return reply.code(503).send({
           ok: false,
           error: {
             code: "NOT_INITIALIZED",
-            message: "Database not initialized: no user or topic found",
+            message: "No user context available",
           },
         });
       }
@@ -247,7 +247,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
 
       const db = getDb();
       const changes = await db.scoringModes.getChanges({
-        userId: ctx.userId,
+        userId,
         topicId: topicId ?? null,
         limit,
       });
@@ -261,13 +261,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
 
   // GET /scoring-modes/:id - Get a specific scoring mode
   fastify.get<{ Params: { id: string } }>("/scoring-modes/:id", async (request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
+    const userId = await getUserIdWithFallback(request);
+    if (!userId) {
       return reply.code(503).send({
         ok: false,
         error: {
           code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
+          message: "No user context available",
         },
       });
     }
@@ -298,7 +298,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
     }
 
     // Verify ownership
-    if (mode.userId !== ctx.userId) {
+    if (mode.userId !== userId) {
       return reply.code(403).send({
         ok: false,
         error: {
@@ -316,13 +316,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
 
   // POST /scoring-modes - Create a new scoring mode
   fastify.post("/scoring-modes", async (request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
+    const userId = await getUserIdWithFallback(request);
+    if (!userId) {
       return reply.code(503).send({
         ok: false,
         error: {
           code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
+          message: "No user context available",
         },
       });
     }
@@ -404,7 +404,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
 
     try {
       const mode = await db.scoringModes.create({
-        userId: ctx.userId,
+        userId,
         name: name.trim(),
         description: typeof description === "string" ? description.trim() : null,
         notes: typeof notes === "string" ? notes.trim() : null,
@@ -437,13 +437,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
 
   // PUT /scoring-modes/:id - Update a scoring mode
   fastify.put<{ Params: { id: string } }>("/scoring-modes/:id", async (request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
+    const userId = await getUserIdWithFallback(request);
+    if (!userId) {
       return reply.code(503).send({
         ok: false,
         error: {
           code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
+          message: "No user context available",
         },
       });
     }
@@ -547,7 +547,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
-    if (existing.userId !== ctx.userId) {
+    if (existing.userId !== userId) {
       return reply.code(403).send({
         ok: false,
         error: {
@@ -606,13 +606,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
   fastify.post<{ Params: { id: string } }>(
     "/scoring-modes/:id/set-default",
     async (request, reply) => {
-      const ctx = await getSingletonContext();
-      if (!ctx) {
+      const userId = await getUserIdWithFallback(request);
+      if (!userId) {
         return reply.code(503).send({
           ok: false,
           error: {
             code: "NOT_INITIALIZED",
-            message: "Database not initialized: no user or topic found",
+            message: "No user context available",
           },
         });
       }
@@ -645,7 +645,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
         });
       }
 
-      if (existing.userId !== ctx.userId) {
+      if (existing.userId !== userId) {
         return reply.code(403).send({
           ok: false,
           error: {
@@ -656,13 +656,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       }
 
       // Get current default for audit log
-      const currentDefault = await db.scoringModes.getDefaultForUser(ctx.userId);
+      const currentDefault = await db.scoringModes.getDefaultForUser(userId);
 
-      await db.scoringModes.setDefault(ctx.userId, id);
+      await db.scoringModes.setDefault(userId, id);
 
       // Log the change
       await db.scoringModes.logChange({
-        userId: ctx.userId,
+        userId,
         previousModeId: currentDefault?.id ?? null,
         newModeId: id,
         reason,
@@ -679,13 +679,13 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
 
   // DELETE /scoring-modes/:id - Delete a scoring mode
   fastify.delete<{ Params: { id: string } }>("/scoring-modes/:id", async (request, reply) => {
-    const ctx = await getSingletonContext();
-    if (!ctx) {
+    const userId = await getUserIdWithFallback(request);
+    if (!userId) {
       return reply.code(503).send({
         ok: false,
         error: {
           code: "NOT_INITIALIZED",
-          message: "Database not initialized: no user or topic found",
+          message: "No user context available",
         },
       });
     }
@@ -715,7 +715,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
-    if (existing.userId !== ctx.userId) {
+    if (existing.userId !== userId) {
       return reply.code(403).send({
         ok: false,
         error: {
