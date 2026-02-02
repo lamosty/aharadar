@@ -55,9 +55,9 @@
 }
 
 .dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
+  top: 70px;
+  left: 260px;
   width: 320px;
   max-height: 400px;
   background-color: var(--color-surface);
@@ -70,10 +70,9 @@
 
 @media (max-width: 768px) {
   .dropdown {
-    position: fixed;
     top: 60px;
-    right: var(--space-4);
     left: var(--space-4);
+    right: var(--space-4);
     width: auto;
     max-height: calc(100vh - 80px);
   }

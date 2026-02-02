@@ -117,6 +117,9 @@
 }
 
 .sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: var(--space-5);
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -216,15 +219,9 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
-.sidebarFooterRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-/* Hide notification bell in sidebar footer on mobile (shown in mobile header instead) */
+/* Hide notification bell in sidebar header on mobile (shown in mobile header instead) */
 @media (max-width: 768px) {
-  .sidebarFooterRow > *:last-child {
+  .sidebarHeader > *:last-child:not(.logo) {
     display: none;
   }
 }

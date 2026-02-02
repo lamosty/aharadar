@@ -62,6 +62,7 @@ export function AppShell({ children, header }: AppShellProps) {
             <RadarIcon />
             <span>{t("common.appName")}</span>
           </Link>
+          <NotificationBell />
         </div>
 
         <nav className={styles.nav}>
@@ -75,10 +76,7 @@ export function AppShell({ children, header }: AppShellProps) {
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <div className={styles.sidebarFooterRow}>
-            <UserMenu />
-            <NotificationBell />
-          </div>
+          <UserMenu />
         </div>
       </aside>
 
