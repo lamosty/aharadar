@@ -1,39 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useToast } from "@/components/Toast";
 import { getDevSettings } from "@/lib/api";
 import { t } from "@/lib/i18n";
-import styles from "./page.module.css";
+import styles from "../login/page.module.css";
 
-function LoginContent() {
+const MIN_PASSWORD_LENGTH = 8;
+
+export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
-  const searchParams = useSearchParams();
   const router = useRouter();
-
-  // Show error toast if redirected with error
-  useEffect(() => {
-    const error = searchParams.get("error");
-    if (error === "invalid_credentials") {
-      addToast(t("login.invalidCredentials"), "error");
-    }
-  }, [searchParams, addToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email.trim()) {
-      addToast(t("login.emailRequired"), "error");
+      addToast(t("register.emailRequired"), "error");
       return;
     }
 
     if (!password) {
-      addToast(t("login.passwordRequired"), "error");
+      addToast(t("register.passwordRequired"), "error");
+      return;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      addToast(t("register.passwordTooShort"), "error");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      addToast(t("register.passwordMismatch"), "error");
       return;
     }
 
@@ -41,7 +45,7 @@ function LoginContent() {
 
     try {
       const settings = getDevSettings();
-      const response = await fetch(`${settings.apiBaseUrl}/auth/login`, {
+      const response = await fetch(`${settings.apiBaseUrl}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -51,10 +55,10 @@ function LoginContent() {
       const data = await response.json();
 
       if (!data.ok) {
-        throw new Error(data.error?.message ?? "Failed to login");
+        throw new Error(data.error?.message ?? "Failed to create account");
       }
 
-      addToast(t("login.success"), "success");
+      addToast(t("register.success"), "success");
       router.push("/app");
     } catch (err) {
       addToast(err instanceof Error ? err.message : t("toast.error"), "error");
@@ -72,21 +76,21 @@ function LoginContent() {
           <span>{t("common.appName")}</span>
         </Link>
 
-        {/* Login card */}
+        {/* Register card */}
         <div className={styles.card}>
-          <h1 className={styles.title}>{t("login.title")}</h1>
-          <p className={styles.subtitle}>{t("login.subtitle")}</p>
+          <h1 className={styles.title}>{t("register.title")}</h1>
+          <p className={styles.subtitle}>{t("register.subtitle")}</p>
 
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.field}>
               <label htmlFor="email" className="label">
-                {t("login.emailLabel")}
+                {t("register.emailLabel")}
               </label>
               <input
                 id="email"
                 type="email"
                 className="input"
-                placeholder={t("login.emailPlaceholder")}
+                placeholder={t("register.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -97,17 +101,34 @@ function LoginContent() {
 
             <div className={styles.field}>
               <label htmlFor="password" className="label">
-                {t("login.passwordLabel")}
+                {t("register.passwordLabel")}
               </label>
               <input
                 id="password"
                 type="password"
                 className="input"
-                placeholder={t("login.passwordPlaceholder")}
+                placeholder={t("register.passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
+                autoComplete="new-password"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="confirmPassword" className="label">
+                {t("register.confirmPasswordLabel")}
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                className="input"
+                placeholder={t("register.confirmPasswordPlaceholder")}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
                 disabled={isLoading}
               />
             </div>
@@ -117,12 +138,12 @@ function LoginContent() {
               className={`btn btn-primary ${styles.submitButton}`}
               disabled={isLoading}
             >
-              {isLoading ? <LoadingSpinner /> : t("login.submit")}
+              {isLoading ? <LoadingSpinner /> : t("register.submit")}
             </button>
           </form>
 
           <p className={styles.registerLink}>
-            {t("login.noAccount")} <Link href="/register">{t("login.createAccount")}</Link>
+            {t("register.hasAccount")} <Link href="/login">{t("register.signIn")}</Link>
           </p>
         </div>
 
@@ -130,22 +151,6 @@ function LoginContent() {
         <Link href="/" className={styles.backLink}>
           {t("common.back")}
         </Link>
-
-        {/* Dev bypass button - only in development */}
-        {process.env.NODE_ENV !== "production" && (
-          <button
-            type="button"
-            className={styles.devBypass}
-            onClick={() => {
-              const bypassUrl = email.trim()
-                ? `/api/dev/bypass?role=admin&email=${encodeURIComponent(email.trim())}`
-                : "/api/dev/bypass?role=admin";
-              window.location.href = bypassUrl;
-            }}
-          >
-            Dev Bypass {email.trim() ? `(${email.trim()})` : "(skip auth)"}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -186,19 +191,5 @@ function LoadingSpinner() {
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" />
       <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" />
     </svg>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className={styles.page}>
-          <div className={styles.container}>{t("common.loading")}</div>
-        </div>
-      }
-    >
-      <LoginContent />
-    </Suspense>
   );
 }
