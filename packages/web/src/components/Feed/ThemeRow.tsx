@@ -200,7 +200,7 @@ export function ThemeRow({
               onViewSummary={onViewSummary}
               onSummaryGenerated={onSummaryGenerated}
               onMobileClick={onMobileClick ? () => onMobileClick(item) : undefined}
-              fastTriageMode={fastTriageMode && forceExpandedId !== null}
+              fastTriageMode={fastTriageMode}
               forceExpanded={forceExpandedId === item.id}
               onHover={onHover ? () => onHover(item.id) : undefined}
               onSelect={onSelect ? () => onSelect(item.id) : undefined}

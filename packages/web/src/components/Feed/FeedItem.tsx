@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useToast } from "@/components/Toast";
 import { Tooltip } from "@/components/Tooltip";
@@ -405,6 +405,14 @@ export function FeedItem({
 
   // Force expanded state (for fast triage mode)
   const isExpanded = forceExpanded || expanded;
+
+  // In fast triage mode, collapse any locally expanded items so only the
+  // force-expanded selection remains visible.
+  useEffect(() => {
+    if (fastTriageMode && expanded && !forceExpanded) {
+      setExpanded(false);
+    }
+  }, [fastTriageMode, expanded, forceExpanded]);
 
   // Toggle expansion (for mobile tap interaction)
   const toggleExpanded = () => {

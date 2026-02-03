@@ -38,6 +38,13 @@ import styles from "./page.module.css";
 // Default page size based on layout
 const DEFAULT_PAGE_SIZE: PageSize = 50;
 
+interface DesktopUndoEntry {
+  item: FeedItemType;
+  beforeId: string | null;
+  afterId: string | null;
+  index: number;
+}
+
 export default function FeedPage() {
   return (
     <Suspense fallback={<FeedPageSkeleton />}>
@@ -99,8 +106,8 @@ function FeedPageContent() {
   // Theme grouping mode - group items by theme for reduced visual density
   const [groupByTheme, setGroupByTheme] = useLocalStorage<boolean>("feedGroupByTheme", false);
 
-  // Desktop undo history - tracks items after feedback for undo
-  const [desktopHistory, setDesktopHistory] = useState<FeedItemType[]>([]);
+  // Desktop undo history - tracks items after feedback for undo (with position context)
+  const [desktopHistory, setDesktopHistory] = useState<DesktopUndoEntry[]>([]);
 
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
@@ -374,7 +381,12 @@ function FeedPageContent() {
 
       // Track in desktop history for undo (only on desktop, not mobile)
       if (item && !isMobile) {
-        setDesktopHistory((prev) => [...prev, item]);
+        const beforeId = currentIndex > 0 ? (visualItems[currentIndex - 1]?.id ?? null) : null;
+        const afterId =
+          currentIndex >= 0 && currentIndex < visualItems.length - 1
+            ? (visualItems[currentIndex + 1]?.id ?? null)
+            : null;
+        setDesktopHistory((prev) => [...prev, { item, beforeId, afterId, index: currentIndex }]);
       }
 
       await feedbackMutation.mutateAsync({
@@ -419,57 +431,76 @@ function FeedPageContent() {
     [handleFeedback],
   );
 
+  const insertRestoredItem = (items: FeedItemType[], entry: DesktopUndoEntry): FeedItemType[] => {
+    const restoredItem = { ...entry.item, feedback: null };
+    const filtered = items.filter((i) => i.id !== restoredItem.id);
+
+    let insertIndex = filtered.length;
+    if (entry.beforeId) {
+      const beforeIndex = filtered.findIndex((i) => i.id === entry.beforeId);
+      if (beforeIndex !== -1) {
+        insertIndex = beforeIndex + 1;
+      }
+    }
+
+    if (insertIndex === filtered.length && entry.afterId) {
+      const afterIndex = filtered.findIndex((i) => i.id === entry.afterId);
+      if (afterIndex !== -1) {
+        insertIndex = afterIndex;
+      }
+    }
+
+    if (insertIndex === filtered.length && entry.index >= 0) {
+      insertIndex = Math.min(entry.index, filtered.length);
+    }
+
+    return [...filtered.slice(0, insertIndex), restoredItem, ...filtered.slice(insertIndex)];
+  };
+
   // Desktop undo handler - pops from history, clears feedback, and expands the restored item
   // Optimistic: show immediately, API call in background
   // Returns the restored item so callers can use it
   const handleDesktopUndo = useCallback(() => {
     if (desktopHistory.length === 0) return null;
-    const previousItem = desktopHistory[desktopHistory.length - 1];
+    const previousEntry = desktopHistory[desktopHistory.length - 1];
     setDesktopHistory((prev) => prev.slice(0, -1));
 
     // Optimistically add item back to cache immediately
     // Clear its feedback state so it appears in inbox
-    const restoredItem = { ...previousItem, feedback: null };
+    const restoredItem = { ...previousEntry.item, feedback: null };
     queryClient.setQueriesData<{ items: FeedItemType[]; pagination: unknown }>(
       { queryKey: ["items", "paged"] },
       (old) => {
         if (!old) return old;
-        // Add item back at the top of the list
-        return {
-          ...old,
-          items: [restoredItem, ...old.items.filter((i) => i.id !== restoredItem.id)],
-        };
+        return { ...old, items: insertRestoredItem(old.items, previousEntry) };
       },
     );
 
     // Expand the restored item immediately
-    setForceExpandedId(previousItem.id);
+    setForceExpandedId(previousEntry.item.id);
 
     // API call in background - don't await
     clearFeedbackMutation.mutate({
-      contentItemId: previousItem.id,
-      digestId: previousItem.digestId,
+      contentItemId: previousEntry.item.id,
+      digestId: previousEntry.item.digestId,
     });
 
     return restoredItem;
-  }, [desktopHistory, clearFeedbackMutation, queryClient]);
+  }, [desktopHistory, clearFeedbackMutation, queryClient, insertRestoredItem]);
 
   // Modal undo handler - restores modal with item's summary, without expanding feed item
   const handleModalUndo = useCallback(() => {
     if (desktopHistory.length === 0) return;
-    const previousItem = desktopHistory[desktopHistory.length - 1];
+    const previousEntry = desktopHistory[desktopHistory.length - 1];
     setDesktopHistory((prev) => prev.slice(0, -1));
 
     // Optimistically add item back to cache
-    const restoredItem = { ...previousItem, feedback: null };
+    const restoredItem = { ...previousEntry.item, feedback: null };
     queryClient.setQueriesData<{ items: FeedItemType[]; pagination: unknown }>(
       { queryKey: ["items", "paged"] },
       (old) => {
         if (!old) return old;
-        return {
-          ...old,
-          items: [restoredItem, ...old.items.filter((i) => i.id !== restoredItem.id)],
-        };
+        return { ...old, items: insertRestoredItem(old.items, previousEntry) };
       },
     );
 
@@ -482,10 +513,10 @@ function FeedPageContent() {
 
     // API call in background
     clearFeedbackMutation.mutate({
-      contentItemId: previousItem.id,
-      digestId: previousItem.digestId,
+      contentItemId: previousEntry.item.id,
+      digestId: previousEntry.item.digestId,
     });
-  }, [desktopHistory, clearFeedbackMutation, queryClient]);
+  }, [desktopHistory, clearFeedbackMutation, queryClient, insertRestoredItem]);
 
   // Mobile modal handlers
   const handleMobileItemClick = useCallback((item: FeedItemType) => {
@@ -842,7 +873,7 @@ function FeedPageContent() {
                     layout={layout}
                     showTopicBadge={isAllTopicsMode}
                     forceExpanded={!isSummaryModalOpen && forceExpandedId === item.id}
-                    fastTriageMode={fastTriageMode && forceExpandedId !== null}
+                    fastTriageMode={fastTriageMode}
                     onViewSummary={handleOpenReaderModal}
                     onSummaryGenerated={() => refetch()}
                     onNext={() => handleNextItem(item.id)}
