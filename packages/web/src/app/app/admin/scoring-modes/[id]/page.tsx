@@ -40,7 +40,7 @@ export default function ScoringModeDetailPage({ params }: PageProps) {
 
   // Form state
   const [editingSection, setEditingSection] = useState<
-    "name" | "weights" | "features" | "notes" | null
+    "name" | "weights" | "features" | "llm" | "notes" | null
   >(null);
   const [formData, setFormData] = useState<{
     name: string;
@@ -57,15 +57,24 @@ export default function ScoringModeDetailPage({ params }: PageProps) {
       aiPreferenceInjection: boolean;
       embeddingPreferences: boolean;
     };
+    llm: {
+      usageScale: number;
+    };
   } | null>(null);
 
-  function startEditing(section: "name" | "weights" | "features" | "notes", modeData: ScoringMode) {
+  function startEditing(
+    section: "name" | "weights" | "features" | "llm" | "notes",
+    modeData: ScoringMode,
+  ) {
     setFormData({
       name: modeData.name,
       description: modeData.description ?? "",
       notes: modeData.notes ?? "",
       weights: { ...modeData.config.weights },
       features: { ...modeData.config.features },
+      llm: {
+        usageScale: modeData.config.llm?.usageScale ?? 1,
+      },
     });
     setEditingSection(section);
   }
@@ -88,6 +97,8 @@ export default function ScoringModeDetailPage({ params }: PageProps) {
       updates.weights = formData.weights;
     } else if (editingSection === "features") {
       updates.features = formData.features;
+    } else if (editingSection === "llm") {
+      updates.llm = formData.llm;
     } else if (editingSection === "notes") {
       if (formData.notes !== (mode.notes ?? "")) updates.notes = formData.notes || null;
     }
@@ -482,6 +493,66 @@ export default function ScoringModeDetailPage({ params }: PageProps) {
         )}
       </section>
 
+      {/* LLM Usage Section */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>LLM Usage</h2>
+          {editingSection !== "llm" && (
+            <button className={styles.editButton} onClick={() => startEditing("llm", mode)}>
+              <EditIcon />
+              Edit
+            </button>
+          )}
+        </div>
+
+        {editingSection === "llm" && formData ? (
+          <div className={styles.editCard}>
+            <p className={styles.helpText}>
+              Scale LLM usage relative to the digest plan. 1.0x is the baseline. Higher values
+              increase triage coverage and deep summaries; lower values conserve credits.
+            </p>
+            <div className={styles.weightsGrid}>
+              <ScaleSlider
+                label="Usage Scale"
+                description="Applies to triage calls, deep summaries, and candidate pool size"
+                value={formData.llm.usageScale}
+                onChange={(v) =>
+                  setFormData({
+                    ...formData,
+                    llm: { usageScale: v },
+                  })
+                }
+              />
+            </div>
+            <div className={styles.editActions}>
+              <button className={styles.secondaryButton} onClick={cancelEditing}>
+                Cancel
+              </button>
+              <button
+                className={styles.primaryButton}
+                onClick={saveChanges}
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.infoCard}>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Usage Scale</span>
+              <span className={styles.infoValue}>
+                {(mode.config.llm?.usageScale ?? 1).toFixed(2)}x
+              </span>
+            </div>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Applies To</span>
+              <span className={styles.infoValue}>Triage, deep summary, candidate pool</span>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Notes Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
@@ -596,6 +667,34 @@ function WeightSlider({ label, description, value, onChange }: WeightSliderProps
         min="0"
         max="1"
         step="0.05"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+      />
+    </div>
+  );
+}
+
+interface ScaleSliderProps {
+  label: string;
+  description: string;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+function ScaleSlider({ label, description, value, onChange }: ScaleSliderProps) {
+  return (
+    <div className={styles.sliderGroup}>
+      <div className={styles.sliderHeader}>
+        <label className={styles.sliderLabel}>{label}</label>
+        <span className={styles.sliderValue}>{value.toFixed(2)}x</span>
+      </div>
+      <p className={styles.sliderDescription}>{description}</p>
+      <input
+        type="range"
+        className={styles.slider}
+        min="0.5"
+        max="2"
+        step="0.1"
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />

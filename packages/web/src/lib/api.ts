@@ -2534,6 +2534,9 @@ export interface ScoringModeConfig {
     aiPreferenceInjection: boolean;
     embeddingPreferences: boolean;
   };
+  llm: {
+    usageScale: number;
+  };
   calibration: {
     windowDays: number;
     minSamples: number;
@@ -2626,6 +2629,7 @@ export interface CreateScoringModeRequest {
   isDefault?: boolean;
   weights?: Partial<ScoringModeConfig["weights"]>;
   features?: Partial<ScoringModeConfig["features"]>;
+  llm?: Partial<ScoringModeConfig["llm"]>;
   calibration?: Partial<ScoringModeConfig["calibration"]>;
 }
 
@@ -2648,6 +2652,7 @@ export interface UpdateScoringModeRequest {
   notes?: string | null;
   weights?: Partial<ScoringModeConfig["weights"]>;
   features?: Partial<ScoringModeConfig["features"]>;
+  llm?: Partial<ScoringModeConfig["llm"]>;
   calibration?: Partial<ScoringModeConfig["calibration"]>;
 }
 

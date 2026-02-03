@@ -152,6 +152,35 @@ function validateCalibration(
   return { valid: true, calibration: validated };
 }
 
+/** Validate partial ScoringModeConfig llm usage */
+function validateLlm(
+  llm: unknown,
+): { valid: true; llm: Partial<ScoringModeConfig["llm"]> } | { valid: false; error: string } {
+  if (llm === undefined || llm === null) {
+    return { valid: true, llm: {} };
+  }
+
+  if (typeof llm !== "object" || Array.isArray(llm)) {
+    return { valid: false, error: "llm must be an object" };
+  }
+
+  const l = llm as Record<string, unknown>;
+  const validated: Partial<ScoringModeConfig["llm"]> = {};
+
+  if (l.usageScale !== undefined) {
+    if (typeof l.usageScale !== "number" || !Number.isFinite(l.usageScale as number)) {
+      return { valid: false, error: "usageScale must be a finite number" };
+    }
+    const val = l.usageScale as number;
+    if (val < 0.5 || val > 2.0) {
+      return { valid: false, error: "usageScale must be between 0.5 and 2.0" };
+    }
+    validated.usageScale = val;
+  }
+
+  return { valid: true, llm: validated };
+}
+
 export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void> {
   // GET /scoring-modes - List all scoring modes for current user
   fastify.get("/scoring-modes", async (request, reply) => {
@@ -338,10 +367,8 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
-    const { name, description, notes, isDefault, weights, features, calibration } = body as Record<
-      string,
-      unknown
-    >;
+    const { name, description, notes, isDefault, weights, features, calibration, llm } =
+      body as Record<string, unknown>;
 
     // Validate name
     if (typeof name !== "string" || name.trim().length === 0) {
@@ -400,6 +427,18 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
+    // Validate llm usage
+    const llmResult = validateLlm(llm);
+    if (!llmResult.valid) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: llmResult.error,
+        },
+      });
+    }
+
     const db = getDb();
 
     try {
@@ -412,6 +451,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
         config: {
           weights: weightsResult.weights,
           features: featuresResult.features,
+          llm: llmResult.llm,
           calibration: calibrationResult.calibration,
         } as Partial<ScoringModeConfig>,
       });
@@ -471,7 +511,7 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
-    const { name, description, notes, weights, features, calibration } = body as Record<
+    const { name, description, notes, weights, features, calibration, llm } = body as Record<
       string,
       unknown
     >;
@@ -534,6 +574,18 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
+    // Validate llm usage
+    const llmResult = validateLlm(llm);
+    if (!llmResult.valid) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: llmResult.error,
+        },
+      });
+    }
+
     const db = getDb();
     const existing = await db.scoringModes.getById(id);
 
@@ -562,12 +614,14 @@ export async function scoringModesRoutes(fastify: FastifyInstance): Promise<void
       const hasConfigUpdates =
         Object.keys(weightsResult.weights).length > 0 ||
         Object.keys(featuresResult.features).length > 0 ||
-        Object.keys(calibrationResult.calibration).length > 0;
+        Object.keys(calibrationResult.calibration).length > 0 ||
+        Object.keys(llmResult.llm).length > 0;
 
       const configUpdate = hasConfigUpdates
         ? ({
             weights: weightsResult.weights as ScoringModeConfig["weights"],
             features: featuresResult.features as ScoringModeConfig["features"],
+            llm: llmResult.llm as ScoringModeConfig["llm"],
             calibration: calibrationResult.calibration as ScoringModeConfig["calibration"],
           } as Partial<ScoringModeConfig>)
         : undefined;

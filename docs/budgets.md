@@ -150,6 +150,10 @@ When credits are nearing limits, we proactively scale **LLM-heavy caps** to redu
 
 This is applied to the computed digest plan (triage calls, deep summary calls, candidate pool size) before running the digest.
 
+### Per-mode LLM usage scale (implemented)
+
+Scoring modes can optionally apply an **LLM usage scale** (default `1.0x`) to increase or decrease triage coverage and deep summaries per topic. This is applied **before** budget warning scaling.
+
 ## Budget tier semantics (policy presets)
 
 ### low (previously “dial_down”)

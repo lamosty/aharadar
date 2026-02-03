@@ -26,9 +26,9 @@ vi.mock("../budgets/credits", () => ({
   printCreditsWarning: vi.fn(),
 }));
 
-import type { Db } from "@aharadar/db";
+import { type Db, DEFAULT_SCORING_MODE_CONFIG } from "@aharadar/db";
 import { computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
-import { applyBudgetScale, compileDigestPlan } from "../lib/digest_plan";
+import { applyBudgetScale, applyUsageScale, compileDigestPlan } from "../lib/digest_plan";
 import { clusterTopicContentItems } from "../stages/cluster";
 import { dedupeTopicContentItems } from "../stages/dedupe";
 import { persistDigestFromContentItems } from "../stages/digest";
@@ -47,12 +47,17 @@ describe("runPipelineOnce", () => {
         digest_mode: "normal",
         digest_depth: 50,
         decay_hours: null,
+        scoring_mode_id: null,
       }),
     },
     sources: {
       listEnabledByUserAndTopic: vi
         .fn()
         .mockResolvedValue([{ id: "source-1", type: "rss", name: "Test Source" }]),
+    },
+    scoringModes: {
+      getById: vi.fn().mockResolvedValue(null),
+      getDefaultForUser: vi.fn().mockResolvedValue(null),
     },
     notifications: {
       create: vi.fn().mockResolvedValue(undefined),
@@ -91,6 +96,8 @@ describe("runPipelineOnce", () => {
     vi.mocked(clusterTopicContentItems).mockResolvedValue(mockClusterResult as never);
     vi.mocked(persistDigestFromContentItems).mockResolvedValue(mockDigestResult as never);
     vi.mocked(printCreditsWarning).mockReturnValue(false);
+    vi.mocked(mockDb.scoringModes.getById).mockResolvedValue(null);
+    vi.mocked(mockDb.scoringModes.getDefaultForUser).mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -123,6 +130,43 @@ describe("runPipelineOnce", () => {
 
       expect(persistDigestFromContentItems).toHaveBeenCalledWith(
         expect.objectContaining({ mode: "normal" }),
+      );
+    });
+
+    it("applies scoring mode LLM usage scale to digest plan", async () => {
+      vi.mocked(mockDb.scoringModes.getDefaultForUser).mockResolvedValue({
+        id: "mode-1",
+        userId: "user-1",
+        name: "Aggressive",
+        description: null,
+        config: {
+          ...DEFAULT_SCORING_MODE_CONFIG,
+          llm: { usageScale: 1.5 },
+        },
+        notes: null,
+        isDefault: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await runPipelineOnce(mockDb, baseParams);
+
+      const plan = compileDigestPlan({
+        mode: "normal",
+        digestDepth: 50,
+        enabledSourceCount: 1,
+        env: {},
+      });
+      const scaled = applyUsageScale(plan, 1.5, {});
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limits: expect.objectContaining({
+            triageMaxCalls: scaled.triageMaxCalls,
+            candidatePoolMax: scaled.candidatePoolMax,
+            deepSummaryMaxCalls: scaled.deepSummaryMaxCalls,
+          }),
+        }),
       );
     });
 

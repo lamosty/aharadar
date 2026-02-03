@@ -1,9 +1,20 @@
-import { createNotification, type Db, type DigestSourceResult } from "@aharadar/db";
+import {
+  createNotification,
+  type Db,
+  DEFAULT_SCORING_MODE_CONFIG,
+  type DigestSourceResult,
+  type ScoringModeConfig,
+} from "@aharadar/db";
 import type { LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger } from "@aharadar/shared";
 import { type CreditsStatus, computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
-import { applyBudgetScale, compileDigestPlan, type DigestPlan } from "../lib/digest_plan";
+import {
+  applyBudgetScale,
+  applyUsageScale,
+  compileDigestPlan,
+  type DigestPlan,
+} from "../lib/digest_plan";
 import { type ClusterRunResult, clusterTopicContentItems } from "../stages/cluster";
 import { type DedupeRunResult, dedupeTopicContentItems } from "../stages/dedupe";
 import { type DigestRunResult, persistDigestFromContentItems } from "../stages/digest";
@@ -59,6 +70,24 @@ function resolveTier(mode: BudgetTier | undefined, paidCallsAllowed: boolean): B
   if (!paidCallsAllowed) return "low";
   // Default to "normal" if mode not specified (catch_up removed per task-121)
   return mode ?? "normal";
+}
+
+function clampUsageScale(value: number): number {
+  return Math.max(0.5, Math.min(2, value));
+}
+
+async function resolveScoringModeConfig(params: {
+  db: Db;
+  userId: string;
+  topic: { scoring_mode_id: string | null };
+}): Promise<ScoringModeConfig> {
+  const { db, userId, topic } = params;
+  if (topic.scoring_mode_id) {
+    const mode = await db.scoringModes.getById(topic.scoring_mode_id);
+    if (mode) return mode.config;
+  }
+  const fallback = await db.scoringModes.getDefaultForUser(userId);
+  return fallback?.config ?? DEFAULT_SCORING_MODE_CONFIG;
 }
 
 const BUDGET_WARNING_SCALES: Record<CreditsStatus["warningLevel"], number> = {
@@ -179,9 +208,17 @@ export async function runPipelineOnce(
     enabledSourceCount,
   });
 
+  const scoringModeConfig = await resolveScoringModeConfig({
+    db,
+    userId: params.userId,
+    topic,
+  });
+  const usageScale = clampUsageScale(scoringModeConfig.llm?.usageScale ?? 1);
+  const usagePlan = applyUsageScale(digestPlan, usageScale);
+
   const budgetScale = computeBudgetScale(creditsStatus);
   const effectivePlan =
-    budgetScale.scale < 1 ? applyBudgetScale(digestPlan, budgetScale.scale) : digestPlan;
+    budgetScale.scale < 1 ? applyBudgetScale(usagePlan, budgetScale.scale) : usagePlan;
 
   if (budgetScale.scale < 1) {
     log.info(
@@ -206,6 +243,7 @@ export async function runPipelineOnce(
       mode: digestMode,
       depth: digestDepth,
       sources: enabledSourceCount,
+      usageScale,
       plan: effectivePlan,
     },
     "Compiled digest plan",

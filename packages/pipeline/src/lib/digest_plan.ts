@@ -86,6 +86,27 @@ function parseIntEnv(env: NodeJS.ProcessEnv | undefined, key: string, fallback: 
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function resolveHardCaps(env: NodeJS.ProcessEnv | undefined) {
+  return {
+    maxItems: parseIntEnv(env, "DIGEST_MAX_ITEMS_HARD_CAP", DEFAULT_HARD_CAPS.maxItems),
+    triageMaxCalls: parseIntEnv(
+      env,
+      "DIGEST_TRIAGE_MAX_CALLS_HARD_CAP",
+      DEFAULT_HARD_CAPS.triageMaxCalls,
+    ),
+    deepSummaryMaxCalls: parseIntEnv(
+      env,
+      "DIGEST_DEEP_SUMMARY_MAX_CALLS_HARD_CAP",
+      DEFAULT_HARD_CAPS.deepSummaryMaxCalls,
+    ),
+    candidatePoolMax: parseIntEnv(
+      env,
+      "DIGEST_CANDIDATE_POOL_HARD_CAP",
+      DEFAULT_HARD_CAPS.candidatePoolMax,
+    ),
+  };
+}
+
 // ============================================================================
 // Compiler
 // ============================================================================
@@ -107,24 +128,7 @@ export function compileDigestPlan(params: CompileDigestPlanParams): DigestPlan {
   const coeff = MODE_COEFFICIENTS[mode];
 
   // Parse hard caps from env
-  const hardCaps = {
-    maxItems: parseIntEnv(env, "DIGEST_MAX_ITEMS_HARD_CAP", DEFAULT_HARD_CAPS.maxItems),
-    triageMaxCalls: parseIntEnv(
-      env,
-      "DIGEST_TRIAGE_MAX_CALLS_HARD_CAP",
-      DEFAULT_HARD_CAPS.triageMaxCalls,
-    ),
-    deepSummaryMaxCalls: parseIntEnv(
-      env,
-      "DIGEST_DEEP_SUMMARY_MAX_CALLS_HARD_CAP",
-      DEFAULT_HARD_CAPS.deepSummaryMaxCalls,
-    ),
-    candidatePoolMax: parseIntEnv(
-      env,
-      "DIGEST_CANDIDATE_POOL_HARD_CAP",
-      DEFAULT_HARD_CAPS.candidatePoolMax,
-    ),
-  };
+  const hardCaps = resolveHardCaps(env);
 
   // Calculate depth factor (0.5 to 2.0)
   const clampedDepth = clamp(0, 100, digestDepth);
@@ -173,7 +177,48 @@ export function applyBudgetScale(plan: DigestPlan, scale: number): DigestPlan {
   const digestMaxItems = Math.max(5, Math.round(plan.digestMaxItems * safeScale));
   const triageMaxCalls = Math.max(digestMaxItems, Math.round(plan.triageMaxCalls * safeScale));
   const deepSummaryMaxCalls = Math.max(0, Math.round(plan.deepSummaryMaxCalls * safeScale));
-  const candidatePoolMax = Math.max(100, Math.round(plan.candidatePoolMax * safeScale));
+  const candidatePoolMax = Math.max(
+    triageMaxCalls,
+    Math.max(100, Math.round(plan.candidatePoolMax * safeScale)),
+  );
+
+  return {
+    digestMaxItems,
+    triageMaxCalls,
+    deepSummaryMaxCalls,
+    candidatePoolMax,
+  };
+}
+
+/**
+ * Apply an LLM usage scale factor to a DigestPlan.
+ *
+ * This is used for scoring modes that want more/less LLM coverage.
+ * Values > 1 increase coverage up to hard caps; values < 1 reduce usage.
+ */
+export function applyUsageScale(
+  plan: DigestPlan,
+  scale: number,
+  env: NodeJS.ProcessEnv | undefined = process.env,
+): DigestPlan {
+  if (!Number.isFinite(scale)) return plan;
+  const safeScale = Math.max(0.5, Math.min(2, scale));
+  if (Math.abs(safeScale - 1) < 1e-3) return plan;
+
+  const hardCaps = resolveHardCaps(env);
+  const digestMaxItems = clamp(5, hardCaps.maxItems, Math.round(plan.digestMaxItems * safeScale));
+  const triageMaxCalls = Math.min(
+    hardCaps.triageMaxCalls,
+    Math.max(digestMaxItems, Math.round(plan.triageMaxCalls * safeScale)),
+  );
+  const deepSummaryMaxCalls = Math.min(
+    hardCaps.deepSummaryMaxCalls,
+    Math.max(0, Math.round(plan.deepSummaryMaxCalls * safeScale)),
+  );
+  const candidatePoolMax = Math.min(
+    hardCaps.candidatePoolMax,
+    Math.max(triageMaxCalls, Math.round(plan.candidatePoolMax * safeScale)),
+  );
 
   return {
     digestMaxItems,

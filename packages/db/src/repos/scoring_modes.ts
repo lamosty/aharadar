@@ -17,6 +17,10 @@ export interface ScoringModeConfig {
     aiPreferenceInjection: boolean; // Add prefs to triage prompt
     embeddingPreferences: boolean; // Use embedding similarity
   };
+  llm: {
+    /** Scale LLM usage relative to the digest plan (0.5-2.0) */
+    usageScale: number;
+  };
   calibration: {
     windowDays: number; // Rolling window for hit rate
     minSamples: number; // Min feedbacks before calibrating
@@ -84,6 +88,9 @@ export const DEFAULT_SCORING_MODE_CONFIG: ScoringModeConfig = {
     aiPreferenceInjection: false,
     embeddingPreferences: true,
   },
+  llm: {
+    usageScale: 1,
+  },
   calibration: {
     windowDays: 30,
     minSamples: 10,
@@ -91,13 +98,20 @@ export const DEFAULT_SCORING_MODE_CONFIG: ScoringModeConfig = {
   },
 };
 
+const LLM_USAGE_SCALE_RANGE = { min: 0.5, max: 2.0 };
+
+function clampUsageScale(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(LLM_USAGE_SCALE_RANGE.min, Math.min(LLM_USAGE_SCALE_RANGE.max, value));
+}
+
 function rowToScoringMode(row: ScoringModeRow): ScoringMode {
   return {
     id: row.id,
     userId: row.user_id,
     name: row.name,
     description: row.description,
-    config: row.config_json,
+    config: normalizeScoringModeConfig(row.config_json),
     notes: row.notes,
     isDefault: row.is_default,
     createdAt: new Date(row.created_at),
@@ -144,6 +158,12 @@ export function normalizeScoringModeConfig(
       embeddingPreferences:
         config.features?.embeddingPreferences ??
         DEFAULT_SCORING_MODE_CONFIG.features.embeddingPreferences,
+    },
+    llm: {
+      usageScale: clampUsageScale(
+        config.llm?.usageScale,
+        DEFAULT_SCORING_MODE_CONFIG.llm.usageScale,
+      ),
     },
     calibration: {
       windowDays:
@@ -287,6 +307,7 @@ export function createScoringModesRepo(db: Queryable) {
           ...updates.config,
           weights: { ...currentConfig.weights, ...updates.config.weights },
           features: { ...currentConfig.features, ...updates.config.features },
+          llm: { ...currentConfig.llm, ...updates.config.llm },
           calibration: { ...currentConfig.calibration, ...updates.config.calibration },
         });
         setClauses.push(`config_json = $${paramIdx}`);

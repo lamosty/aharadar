@@ -300,6 +300,7 @@ Generate deeper summaries only for the most valuable candidates.
 **Budget dial behavior**
 
 - Deep summary call caps are derived from the digest plan and **scaled down** when credits are approaching/critical.
+- Scoring modes can apply an **LLM usage scale** to increase/decrease triage + summary coverage per topic.
 
 ### 9) Persist digest
 
