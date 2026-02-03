@@ -31,6 +31,8 @@ interface FeedItemProps {
   onHover?: () => void;
   /** Whether fast triage mode is active (disables hover expansion) */
   fastTriageMode?: boolean;
+  /** Disable hover expansion (used when fast triage selection is active) */
+  disableHoverExpansion?: boolean;
   /** Current sort mode (controls score label/tooltip) */
   sort?: SortOption;
   /** Called when user wants to view full summary (reader modal) */
@@ -359,6 +361,7 @@ export function FeedItem({
   forceExpanded = false,
   onHover,
   fastTriageMode = false,
+  disableHoverExpansion = false,
   sort = "best",
   onViewSummary,
   onSummaryGenerated,
@@ -558,7 +561,7 @@ export function FeedItem({
   return (
     <article
       id={`feed-item-${item.id}`}
-      className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${fastTriageMode ? styles.scanItemFastTriage : ""}`}
+      className={`${styles.scanItem} ${isExpanded ? styles.scanItemExpanded : ""} ${disableHoverExpansion ? styles.scanItemFastTriage : ""}`}
       data-testid={`feed-item-${item.id}`}
       data-feed-item
       onMouseEnter={onHover}

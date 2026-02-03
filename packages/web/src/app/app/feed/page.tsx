@@ -875,6 +875,7 @@ function FeedPageContent() {
                     onSummaryGenerated={() => refetch()}
                     onMobileClick={isMobile ? handleMobileItemClick : undefined}
                     fastTriageMode={fastTriageMode}
+                    disableHoverExpansion={fastTriageMode && forceExpandedId !== null}
                     forceExpandedId={!isSummaryModalOpen ? forceExpandedId : null}
                     onHover={(itemId) => {
                       // In fast triage mode, don't clear force-expanded on hover
@@ -915,6 +916,7 @@ function FeedPageContent() {
                     showTopicBadge={isAllTopicsMode}
                     forceExpanded={!isSummaryModalOpen && forceExpandedId === item.id}
                     fastTriageMode={fastTriageMode}
+                    disableHoverExpansion={fastTriageMode && forceExpandedId !== null}
                     onViewSummary={handleOpenReaderModal}
                     onSummaryGenerated={() => refetch()}
                     onNext={() => handleNextItem(item.id)}

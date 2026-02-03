@@ -29,6 +29,8 @@ interface ThemeRowProps {
   onMobileClick?: (item: FeedItemType) => void;
   /** Whether fast triage mode is active */
   fastTriageMode?: boolean;
+  /** Disable hover expansion (used when fast triage selection is active) */
+  disableHoverExpansion?: boolean;
   /** Called when bulk action is performed on all items in theme */
   onBulkFeedback?: (contentItemIds: string[], action: "like" | "dislike") => Promise<void>;
   /** Called when all items in theme are marked as read */
@@ -66,6 +68,7 @@ export function ThemeRow({
   onSummaryGenerated,
   onMobileClick,
   fastTriageMode,
+  disableHoverExpansion,
   onBulkFeedback,
   onBulkMarkRead,
   forceExpandedId,
@@ -201,6 +204,7 @@ export function ThemeRow({
               onSummaryGenerated={onSummaryGenerated}
               onMobileClick={onMobileClick ? () => onMobileClick(item) : undefined}
               fastTriageMode={fastTriageMode}
+              disableHoverExpansion={disableHoverExpansion}
               forceExpanded={forceExpandedId === item.id}
               onHover={onHover ? () => onHover(item.id) : undefined}
               onSelect={onSelect ? () => onSelect(item.id) : undefined}
