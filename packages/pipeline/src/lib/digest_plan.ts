@@ -159,3 +159,26 @@ export function compileDigestPlan(params: CompileDigestPlanParams): DigestPlan {
     candidatePoolMax,
   };
 }
+
+/**
+ * Apply a budget scale factor to a DigestPlan.
+ *
+ * This is used when credits are approaching/critical to reduce
+ * LLM-heavy work (triage + deep summaries) and shrink candidate pools.
+ */
+export function applyBudgetScale(plan: DigestPlan, scale: number): DigestPlan {
+  const safeScale = Math.max(0, Math.min(1, scale));
+  if (safeScale >= 0.999) return plan;
+
+  const digestMaxItems = Math.max(5, Math.round(plan.digestMaxItems * safeScale));
+  const triageMaxCalls = Math.max(digestMaxItems, Math.round(plan.triageMaxCalls * safeScale));
+  const deepSummaryMaxCalls = Math.max(0, Math.round(plan.deepSummaryMaxCalls * safeScale));
+  const candidatePoolMax = Math.max(100, Math.round(plan.candidatePoolMax * safeScale));
+
+  return {
+    digestMaxItems,
+    triageMaxCalls,
+    deepSummaryMaxCalls,
+    candidatePoolMax,
+  };
+}

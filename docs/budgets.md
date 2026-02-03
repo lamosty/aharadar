@@ -141,6 +141,15 @@ Hard constraint (from spec):
 
 - Always attempt to output _some_ digest (`triage-only` is acceptable).
 
+### Adaptive LLM scaling (implemented)
+
+When credits are nearing limits, we proactively scale **LLM-heavy caps** to reduce spend while still producing a digest:
+
+- **Approaching (>=80%)**: scale triage/deep-summary limits by **0.7**
+- **Critical (>=95%)**: scale triage/deep-summary limits by **0.4**
+
+This is applied to the computed digest plan (triage calls, deep summary calls, candidate pool size) before running the digest.
+
 ## Budget tier semantics (policy presets)
 
 ### low (previously “dial_down”)

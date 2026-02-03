@@ -28,6 +28,7 @@ vi.mock("../budgets/credits", () => ({
 
 import type { Db } from "@aharadar/db";
 import { computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
+import { applyBudgetScale, compileDigestPlan } from "../lib/digest_plan";
 import { clusterTopicContentItems } from "../stages/cluster";
 import { dedupeTopicContentItems } from "../stages/dedupe";
 import { persistDigestFromContentItems } from "../stages/digest";
@@ -53,6 +54,9 @@ describe("runPipelineOnce", () => {
         .fn()
         .mockResolvedValue([{ id: "source-1", type: "rss", name: "Test Source" }]),
     },
+    notifications: {
+      create: vi.fn().mockResolvedValue(undefined),
+    },
   } as unknown as Db;
 
   const baseParams = {
@@ -62,7 +66,19 @@ describe("runPipelineOnce", () => {
     windowEnd: "2024-06-15T08:00:00Z",
   };
 
-  const mockIngestResult = { sourcesProcessed: 1, itemsIngested: 5 };
+  const mockIngestResult = {
+    sourcesProcessed: 1,
+    itemsIngested: 5,
+    perSource: [
+      {
+        sourceId: "source-1",
+        sourceName: "Test Source",
+        sourceType: "rss",
+        status: "ok",
+        itemsFetched: 5,
+      },
+    ],
+  };
   const mockEmbedResult = { itemsEmbedded: 5 };
   const mockDedupeResult = { deduplicatedCount: 0 };
   const mockClusterResult = { clustersCreated: 1 };
@@ -190,6 +206,42 @@ describe("runPipelineOnce", () => {
 
       expect(result.creditsStatus).toBeDefined();
       expect(result.creditsStatus?.monthlyUsed).toBe(500);
+    });
+
+    it("scales digest plan when credits are approaching limit", async () => {
+      vi.mocked(computeCreditsStatus).mockResolvedValue({
+        monthlyUsed: 850,
+        monthlyLimit: 1000,
+        monthlyRemaining: 150,
+        dailyUsed: 0,
+        dailyLimit: null,
+        dailyRemaining: null,
+        paidCallsAllowed: true,
+        warningLevel: "approaching",
+      });
+
+      await runPipelineOnce(mockDb, {
+        ...baseParams,
+        budget: { monthlyCredits: 1000 },
+      });
+
+      const plan = compileDigestPlan({
+        mode: "normal",
+        digestDepth: 50,
+        enabledSourceCount: 1,
+        env: {},
+      });
+      const scaled = applyBudgetScale(plan, 0.7);
+
+      expect(persistDigestFromContentItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limits: expect.objectContaining({
+            triageMaxCalls: scaled.triageMaxCalls,
+            candidatePoolMax: scaled.candidatePoolMax,
+            deepSummaryMaxCalls: scaled.deepSummaryMaxCalls,
+          }),
+        }),
+      );
     });
   });
 

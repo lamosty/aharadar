@@ -53,6 +53,8 @@ export interface DigestLimits {
   triageMaxCalls?: number;
   /** Max candidate pool size (optional, defaults based on maxItems) */
   candidatePoolMax?: number;
+  /** Max deep summary LLM calls (optional, defaults to env if omitted) */
+  deepSummaryMaxCalls?: number;
 }
 
 export interface DigestRunResult {
@@ -1503,6 +1505,11 @@ export async function persistDigestFromContentItems(params: {
     ];
   });
 
+  const enrichLimits =
+    params.limits?.deepSummaryMaxCalls !== undefined
+      ? { maxCalls: params.limits.deepSummaryMaxCalls }
+      : undefined;
+
   const { summaries } = await enrichTopCandidates({
     db: params.db,
     userId: params.userId,
@@ -1512,6 +1519,7 @@ export async function persistDigestFromContentItems(params: {
     tier,
     summaryGuidance: aiGuidance.summary_prompt || undefined,
     candidates: enrichCandidates,
+    limits: enrichLimits,
   });
 
   // =========================================================================

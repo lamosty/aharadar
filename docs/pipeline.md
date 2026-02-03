@@ -297,6 +297,10 @@ Generate deeper summaries only for the most valuable candidates.
 
 - In `low`, skip deep summary entirely (triage-only digest is still valid).
 
+**Budget dial behavior**
+
+- Deep summary call caps are derived from the digest plan and **scaled down** when credits are approaching/critical.
+
 ### 9) Persist digest
 
 Create:

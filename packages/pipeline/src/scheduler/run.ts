@@ -3,7 +3,7 @@ import type { LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger } from "@aharadar/shared";
 import { type CreditsStatus, computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
-import { compileDigestPlan, type DigestPlan } from "../lib/digest_plan";
+import { applyBudgetScale, compileDigestPlan, type DigestPlan } from "../lib/digest_plan";
 import { type ClusterRunResult, clusterTopicContentItems } from "../stages/cluster";
 import { type DedupeRunResult, dedupeTopicContentItems } from "../stages/dedupe";
 import { type DigestRunResult, persistDigestFromContentItems } from "../stages/digest";
@@ -59,6 +59,20 @@ function resolveTier(mode: BudgetTier | undefined, paidCallsAllowed: boolean): B
   if (!paidCallsAllowed) return "low";
   // Default to "normal" if mode not specified (catch_up removed per task-121)
   return mode ?? "normal";
+}
+
+const BUDGET_WARNING_SCALES: Record<CreditsStatus["warningLevel"], number> = {
+  none: 1,
+  approaching: 0.7,
+  critical: 0.4,
+};
+
+function computeBudgetScale(status?: CreditsStatus): { scale: number; reason: string | null } {
+  if (!status) return { scale: 1, reason: null };
+  if (!status.paidCallsAllowed) return { scale: 0, reason: "credits_exhausted" };
+  const scale = BUDGET_WARNING_SCALES[status.warningLevel] ?? 1;
+  if (scale >= 0.999) return { scale: 1, reason: null };
+  return { scale, reason: `credits_${status.warningLevel}` };
 }
 
 /** Convert IngestSourceResult to DigestSourceResult format */
@@ -165,13 +179,34 @@ export async function runPipelineOnce(
     enabledSourceCount,
   });
 
+  const budgetScale = computeBudgetScale(creditsStatus);
+  const effectivePlan =
+    budgetScale.scale < 1 ? applyBudgetScale(digestPlan, budgetScale.scale) : digestPlan;
+
+  if (budgetScale.scale < 1) {
+    log.info(
+      {
+        topicId: params.topicId.slice(0, 8),
+        warningLevel: creditsStatus?.warningLevel ?? "none",
+        scale: budgetScale.scale,
+        reason: budgetScale.reason,
+        plan: {
+          digestMaxItems: effectivePlan.digestMaxItems,
+          triageMaxCalls: effectivePlan.triageMaxCalls,
+          deepSummaryMaxCalls: effectivePlan.deepSummaryMaxCalls,
+        },
+      },
+      "Budget warning: scaling digest plan",
+    );
+  }
+
   log.debug(
     {
       topicId: params.topicId.slice(0, 8),
       mode: digestMode,
       depth: digestDepth,
       sources: enabledSourceCount,
-      plan: digestPlan,
+      plan: effectivePlan,
     },
     "Compiled digest plan",
   );
@@ -249,6 +284,24 @@ export async function runPipelineOnce(
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
   });
+
+  // Policy=STOP: skip digest creation entirely when paid calls are not allowed
+  if (!paidCallsAllowed) {
+    return {
+      userId: params.userId,
+      topicId: params.topicId,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      ingest,
+      embed,
+      dedupe,
+      cluster,
+      digest: null,
+      digestPlan: effectivePlan,
+      creditsStatus,
+      digestSkippedDueToCredits: true,
+    };
+  }
 
   // Convert ingest results to digest source results format
   const sourceResults = toDigestSourceResults(ingest.perSource);
@@ -333,7 +386,7 @@ export async function runPipelineOnce(
   }
 
   // Use plan's digestMaxItems, unless explicitly overridden in params
-  const effectiveMaxItems = params.digest?.maxItems ?? digestPlan.digestMaxItems;
+  const effectiveMaxItems = params.digest?.maxItems ?? effectivePlan.digestMaxItems;
 
   const digest = await persistDigestFromContentItems({
     db,
@@ -344,8 +397,9 @@ export async function runPipelineOnce(
     mode: digestMode,
     limits: {
       maxItems: effectiveMaxItems,
-      triageMaxCalls: digestPlan.triageMaxCalls,
-      candidatePoolMax: digestPlan.candidatePoolMax,
+      triageMaxCalls: effectivePlan.triageMaxCalls,
+      candidatePoolMax: effectivePlan.candidatePoolMax,
+      deepSummaryMaxCalls: effectivePlan.deepSummaryMaxCalls,
     },
     filter: params.ingestFilter,
     paidCallsAllowed,
@@ -363,7 +417,7 @@ export async function runPipelineOnce(
     dedupe,
     cluster,
     digest,
-    digestPlan,
+    digestPlan: effectivePlan,
     creditsStatus,
   };
 }
