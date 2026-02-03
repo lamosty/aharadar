@@ -23,11 +23,6 @@
   background: var(--color-surface-hover);
 }
 
-/* Hide header for single-item themes (no need to expand/collapse) */
-.themeContainer[data-single-item="true"] .themeHeader {
-  display: none;
-}
-
 .expandToggle {
   display: flex;
   align-items: center;

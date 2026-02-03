@@ -85,6 +85,37 @@ interface Cluster {
   centroid: number[];
 }
 
+function countWords(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).filter(Boolean).length;
+}
+
+function pickClusterLabel(topics: string[]): string {
+  if (topics.length === 0) return "Uncategorized";
+  let best = topics[0]!;
+  let bestWords = countWords(best);
+  let bestLength = best.length;
+
+  for (let i = 1; i < topics.length; i += 1) {
+    const candidate = topics[i]!;
+    const candidateWords = countWords(candidate);
+    const candidateLength = candidate.length;
+    if (candidateWords > bestWords) {
+      best = candidate;
+      bestWords = candidateWords;
+      bestLength = candidateLength;
+      continue;
+    }
+    if (candidateWords === bestWords && candidateLength > bestLength) {
+      best = candidate;
+      bestLength = candidateLength;
+    }
+  }
+
+  return best;
+}
+
 /**
  * Greedy clustering of topics by embedding similarity.
  *
@@ -95,18 +126,36 @@ interface Cluster {
  *
  * @param items - Items with topic strings and their embeddings
  * @param threshold - Minimum cosine similarity to join a cluster (default 0.75)
+ * @param seedClusters - Optional seed clusters (label + vector) to anchor grouping
  * @returns Map of candidateId -> themeLabel
  */
 export function clusterTopicsByEmbedding(
   items: Array<{ topic: string; vector: number[] }>,
   threshold = 0.75,
+  seedClusters: Array<{ label: string; vector: number[] }> = [],
 ): { clusters: Cluster[]; topicToLabel: Map<string, string> } {
   const clusters: Cluster[] = [];
-  const topicToLabel = new Map<string, string>();
+  const seenTopics = new Map<string, string>();
+
+  // Initialize clusters from seeds (for theme continuity across digests)
+  const seenSeeds = new Set<string>();
+  for (const seed of seedClusters) {
+    const label = seed.label?.trim();
+    if (!label || label === "Uncategorized" || seenSeeds.has(label)) continue;
+    if (!Array.isArray(seed.vector) || seed.vector.length === 0) continue;
+    clusters.push({
+      label,
+      topics: [label],
+      vectors: [seed.vector],
+      centroid: seed.vector,
+    });
+    seenTopics.set(label, label);
+    seenSeeds.add(label);
+  }
 
   for (const item of items) {
     // Skip if we already processed this exact topic string
-    if (topicToLabel.has(item.topic)) {
+    if (seenTopics.has(item.topic)) {
       continue;
     }
 
@@ -128,7 +177,7 @@ export function clusterTopicsByEmbedding(
       bestCluster.vectors.push(item.vector);
       // Update centroid (incremental average)
       bestCluster.centroid = computeCentroid(bestCluster.vectors);
-      topicToLabel.set(item.topic, bestCluster.label);
+      seenTopics.set(item.topic, bestCluster.label);
     } else {
       // Create new cluster with this topic as the label
       const newCluster: Cluster = {
@@ -138,7 +187,20 @@ export function clusterTopicsByEmbedding(
         centroid: item.vector,
       };
       clusters.push(newCluster);
-      topicToLabel.set(item.topic, item.topic);
+      seenTopics.set(item.topic, item.topic);
+    }
+  }
+
+  // Recompute cluster labels to prefer more specific topics (more words/length)
+  for (const cluster of clusters) {
+    cluster.label = pickClusterLabel(cluster.topics);
+  }
+
+  // Rebuild topic -> label map using final cluster labels
+  const topicToLabel = new Map<string, string>();
+  for (const cluster of clusters) {
+    for (const topic of cluster.topics) {
+      topicToLabel.set(topic, cluster.label);
     }
   }
 
@@ -154,12 +216,14 @@ export function clusterTopicsByEmbedding(
  * @param items - Items with candidateId and triage topic
  * @param tier - Budget tier for embedding model selection
  * @param threshold - Similarity threshold for clustering (default from env or 0.75)
+ * @param seedClusters - Optional seed clusters to stabilize labels across runs
  * @returns Clustered items with theme labels and vectors
  */
 export async function clusterTriageThemesIntoLabels(
   items: ThemeClusterInput[],
   tier: BudgetTier,
   threshold?: number,
+  seedClusters?: Array<{ label: string; vector: number[] }>,
 ): Promise<ThemeClusterResult> {
   // Filter out empty/uncategorized topics
   const validItems = items.filter(
@@ -188,7 +252,31 @@ export async function clusterTriageThemesIntoLabels(
   const uniqueTopics = [...new Set(validItems.map((item) => item.topic))];
 
   // Embed topics using the embeddings client
-  const client = createEnvEmbeddingsClient();
+  let client: ReturnType<typeof createEnvEmbeddingsClient>;
+  try {
+    client = createEnvEmbeddingsClient();
+  } catch (err) {
+    console.warn(
+      `[theme_cluster] embeddings disabled; falling back to raw theme labels: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    return {
+      items: items.map((item) => ({
+        candidateId: item.candidateId,
+        topic: item.topic,
+        vector: [],
+        themeLabel: item.topic || "Uncategorized",
+      })),
+      clusters: new Map(),
+      stats: {
+        uniqueTopics: uniqueTopics.length,
+        clusterCount: 0,
+        inputTokens: 0,
+        costEstimateCredits: 0,
+      },
+    };
+  }
   const ref = client.chooseModel(tier);
   const embedResult = await client.embed(ref, uniqueTopics);
 
@@ -213,6 +301,7 @@ export async function clusterTriageThemesIntoLabels(
   const { clusters, topicToLabel } = clusterTopicsByEmbedding(
     topicsWithVectors,
     effectiveThreshold,
+    seedClusters ?? [],
   );
 
   // Build result

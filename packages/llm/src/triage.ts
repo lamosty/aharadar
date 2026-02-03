@@ -67,7 +67,7 @@ export interface TriageOutput {
   is_novel: boolean;
   categories: string[];
   should_deep_summarize: boolean;
-  /** Theme for UI grouping (1-3 words, broad subject for clustering similar items) */
+  /** Theme for UI grouping (2-4 words, subject + facet for grouping similar items) */
   theme: string;
   /** Brief content summary - what the item is about, not why it's relevant */
   one_liner: string;
@@ -168,18 +168,23 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string)
     "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
-    "- theme: 1-3 words for the main subject (e.g. 'Bitcoin', 'SPY options', 'Gold prices'). This is used for UI GROUPING - multiple items should share the same theme. Use broad terms, NOT specific events or actions. BAD: 'Bitcoin DCA advice', 'Bitcoin meme'. GOOD: 'Bitcoin'. BAD: 'Silver crash explanation'. GOOD: 'Silver'.\n" +
+    "- theme: 2-4 words capturing the subject + facet (e.g. 'Bitcoin ETFs', 'AI regulation', 'City transit plan', 'Kubernetes release'). This is used for UI GROUPING. Avoid ultra-broad single-word themes unless the item truly spans the entire subject.\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
+    "- If user_preferences_summary is provided in the input, use it to judge relevance.\n" +
     guidanceSection +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
 }
 
-function buildUserPrompt(candidate: TriageCandidateInput, tier: BudgetTier): string {
+function buildUserPrompt(
+  candidate: TriageCandidateInput,
+  tier: BudgetTier,
+  preferenceSummary?: string,
+): string {
   const maxBody = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
   const maxTitle = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_TITLE_CHARS) ?? 240;
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     budget_tier: tier,
     window_start: candidate.windowStart,
     window_end: candidate.windowEnd,
@@ -194,6 +199,10 @@ function buildUserPrompt(candidate: TriageCandidateInput, tier: BudgetTier): str
       published_at: candidate.publishedAt ?? null,
     },
   };
+
+  if (preferenceSummary && preferenceSummary.trim().length > 0) {
+    payload.user_preferences_summary = preferenceSummary.trim();
+  }
 
   return `Input JSON:\n${JSON.stringify(payload)}`;
 }
@@ -366,6 +375,7 @@ async function runTriageOnce(params: {
   isRetry: boolean;
   reasoningEffortOverride?: ReasoningEffort | null;
   aiGuidance?: string;
+  preferenceSummary?: string;
 }): Promise<{ output: TriageOutput; inputTokens: number; outputTokens: number; endpoint: string }> {
   const ref = params.router.chooseModel("triage", params.tier);
 
@@ -393,7 +403,7 @@ async function runTriageOnce(params: {
 
   const call = await params.router.call("triage", ref, {
     system: buildSystemPrompt(ref, params.isRetry, params.aiGuidance),
-    user: buildUserPrompt(params.candidate, params.tier),
+    user: buildUserPrompt(params.candidate, params.tier, params.preferenceSummary),
     maxOutputTokens,
     reasoningEffort: effectiveReasoningEffort,
     jsonSchema,
@@ -454,6 +464,7 @@ export async function triageCandidate(params: {
   candidate: TriageCandidateInput;
   reasoningEffortOverride?: ReasoningEffort | null;
   aiGuidance?: string;
+  preferenceSummary?: string;
 }): Promise<TriageCallResult> {
   try {
     const result = await runTriageOnce({
@@ -461,6 +472,7 @@ export async function triageCandidate(params: {
       isRetry: false,
       reasoningEffortOverride: params.reasoningEffortOverride,
       aiGuidance: params.aiGuidance,
+      preferenceSummary: params.preferenceSummary,
     });
     return {
       output: result.output,
@@ -490,6 +502,7 @@ export async function triageCandidate(params: {
       isRetry: true,
       reasoningEffortOverride: params.reasoningEffortOverride,
       aiGuidance: params.aiGuidance,
+      preferenceSummary: params.preferenceSummary,
     });
     return {
       output: retry.output,
@@ -610,8 +623,9 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: st
     "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
-    "- topic: 1-3 words for the main subject (e.g. 'Bitcoin', 'SPY options', 'Gold prices'). This is used for GROUPING - multiple items in this batch may share the same topic. Use broad terms, NOT specific events. BAD: 'Bitcoin DCA', 'Silver crash'. GOOD: 'Bitcoin', 'Silver'.\n" +
+    "- topic: 2-4 words capturing the subject + facet (e.g. 'Bitcoin ETFs', 'AI regulation', 'City transit plan', 'Kubernetes release'). This is used for GROUPING.\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
+    "- If user_preferences_summary is provided in the input, use it to judge relevance.\n" +
     guidanceSection +
     "IMPORTANT: Output raw JSON only. Do NOT wrap in markdown code blocks."
   );
@@ -621,6 +635,7 @@ function buildBatchUserPrompt(
   candidates: TriageCandidateInput[],
   batchId: string,
   tier: BudgetTier,
+  preferenceSummary?: string,
 ): string {
   const maxBody = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
   const maxTitle = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_TITLE_CHARS) ?? 240;
@@ -636,13 +651,17 @@ function buildBatchUserPrompt(
     published_at: c.publishedAt ?? null,
   }));
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     batch_id: batchId,
     budget_tier: tier,
     window_start: candidates[0]?.windowStart ?? "",
     window_end: candidates[0]?.windowEnd ?? "",
     items,
   };
+
+  if (preferenceSummary && preferenceSummary.trim().length > 0) {
+    payload.user_preferences_summary = preferenceSummary.trim();
+  }
 
   return `Input JSON:\n${JSON.stringify(payload)}`;
 }
@@ -803,6 +822,7 @@ async function runBatchTriageOnce(params: {
   isRetry: boolean;
   reasoningEffortOverride?: ReasoningEffort | null;
   aiGuidance?: string;
+  preferenceSummary?: string;
 }): Promise<{
   outputs: Map<string, TriageOutput>;
   inputTokens: number;
@@ -830,7 +850,12 @@ async function runBatchTriageOnce(params: {
 
   const call = await params.router.call("triage", ref, {
     system: buildBatchSystemPrompt(ref, params.isRetry, params.aiGuidance),
-    user: buildBatchUserPrompt(params.candidates, params.batchId, params.tier),
+    user: buildBatchUserPrompt(
+      params.candidates,
+      params.batchId,
+      params.tier,
+      params.preferenceSummary,
+    ),
     maxOutputTokens,
     reasoningEffort: effectiveReasoningEffort,
     jsonSchema: TRIAGE_BATCH_JSON_SCHEMA,
@@ -884,6 +909,7 @@ export async function triageBatch(params: {
   batchId: string;
   reasoningEffortOverride?: ReasoningEffort | null;
   aiGuidance?: string;
+  preferenceSummary?: string;
 }): Promise<TriageBatchCallResult> {
   if (params.candidates.length === 0) {
     return {
@@ -906,6 +932,7 @@ export async function triageBatch(params: {
       ...params,
       isRetry: false,
       reasoningEffortOverride: params.reasoningEffortOverride,
+      preferenceSummary: params.preferenceSummary,
     });
     return {
       outputs: result.outputs,
@@ -935,6 +962,7 @@ export async function triageBatch(params: {
       ...params,
       isRetry: true,
       reasoningEffortOverride: params.reasoningEffortOverride,
+      preferenceSummary: params.preferenceSummary,
     });
     return {
       outputs: retry.outputs,

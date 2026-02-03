@@ -876,8 +876,8 @@ export function useResetBudget(
 }
 
 /**
- * Mutation to regenerate themes for a topic.
- * Deletes all existing themes and rebuilds from inbox items.
+ * Mutation to regenerate theme labels for a topic.
+ * Recomputes labels for recent triaged items.
  */
 export function useRegenerateThemes(
   topicId: string,

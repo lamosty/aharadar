@@ -279,22 +279,13 @@ function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType)
 /**
  * Group items by topic (from triage JSON).
  *
- * - Topics with 2+ items → collapsible group (shown first, sorted by top score)
- * - Topics with 1 item OR no topic → collected into "Uncategorized" (shown last),
- *   unless the topic is in stickyThemes (meaning it recently had 2+ items)
+ * - Topics with 1+ items → collapsible group (shown first, sorted by top score)
+ * - Items with no topic → collected into "Uncategorized" (shown last)
  * - Items within each group are sorted by the specified sort option
  *
- * This ensures only meaningful clusters are shown as groups.
+ * This keeps themed items grouped while preserving an "Uncategorized" bucket.
  */
-interface GroupItemsOptions {
-  stickyThemes?: Set<string>;
-}
-
-export function groupItemsByTheme(
-  items: FeedItemType[],
-  sort: SortOption = "best",
-  options: GroupItemsOptions = {},
-): ThemeGroup[] {
+export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "best"): ThemeGroup[] {
   const topicMap = new Map<string, FeedItemType[]>();
 
   // First pass: group items by topic from triageJson
@@ -314,22 +305,22 @@ export function groupItemsByTheme(
 
   // Second pass: create groups for topics with 2+ items, collect singles
   for (const [topic, topicItems] of topicMap) {
-    const isSticky = options.stickyThemes?.has(topic) ?? false;
-    if (topic === "Uncategorized" || (topicItems.length === 1 && !isSticky)) {
-      // No topic OR single-item topic → goes to uncategorized
+    if (topic === "Uncategorized") {
+      // No topic → goes to uncategorized
       uncategorizedItems.push(...topicItems);
-    } else {
-      // Sort items within the group by the selected sort option
-      topicItems.sort(comparator);
-      const topItem = topicItems[0];
-      themedGroups.push({
-        themeId: topic, // Use topic as themeId for compatibility
-        label: topic, // Topic is the label
-        itemCount: topicItems.length,
-        items: topicItems,
-        topScore: topItem?.ahaScore ?? topItem?.score ?? 0,
-      });
+      continue;
     }
+
+    // Sort items within the group by the selected sort option
+    topicItems.sort(comparator);
+    const topItem = topicItems[0];
+    themedGroups.push({
+      themeId: topic, // Use topic as themeId for compatibility
+      label: topic, // Topic is the label
+      itemCount: topicItems.length,
+      items: topicItems,
+      topScore: topItem?.ahaScore ?? topItem?.score ?? 0,
+    });
   }
 
   // Sort themed groups by top item (using same sort logic as items)

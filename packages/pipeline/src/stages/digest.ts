@@ -13,6 +13,7 @@ import {
   normalizeHandle,
   parseAiGuidance,
   parsePersonalizationTuning,
+  parseThemeTuning,
   type SourceType,
 } from "@aharadar/shared";
 
@@ -160,6 +161,41 @@ function normalize01(values: number[]): number[] {
   return values.map((v) => clamp01((v - min) / range));
 }
 
+function parseVectorText(text: string): number[] | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return null;
+  const inner = trimmed.slice(1, -1).trim();
+  if (inner.length === 0) return [];
+  const parts = inner.split(",");
+  const out: number[] = [];
+  for (const p of parts) {
+    const n = Number.parseFloat(p);
+    if (!Number.isFinite(n)) return null;
+    out.push(n);
+  }
+  return out;
+}
+
+function meanUpdateVector(
+  existing: number[] | null,
+  count: number,
+  next: number[],
+): { vector: number[]; count: number } {
+  const n = Math.max(0, Math.floor(count));
+  if (!existing || existing.length === 0 || n === 0) {
+    return { vector: next, count: n + 1 };
+  }
+  if (existing.length !== next.length) {
+    return { vector: next, count: n + 1 };
+  }
+  const out: number[] = new Array(existing.length);
+  const denom = n + 1;
+  for (let i = 0; i < existing.length; i += 1) {
+    out[i] = (existing[i]! * n + next[i]!) / denom;
+  }
+  return { vector: out, count: denom };
+}
+
 function getPrimaryUrl(params: {
   canonicalUrl: string | null;
   metadata: Record<string, unknown>;
@@ -173,6 +209,124 @@ function getPrimaryUrl(params: {
     if (typeof first === "string" && first.length > 0) return first;
   }
   return null;
+}
+
+async function loadPreferenceSummary(params: {
+  db: Db;
+  userId: string;
+  topicId: string;
+}): Promise<string | null> {
+  // If we have a stored natural language summary, prefer that.
+  try {
+    const pref = await params.db.query<{ natural_language_prefs: string | null }>(
+      `select natural_language_prefs
+       from topic_preference_profiles
+       where user_id = $1::uuid and topic_id = $2::uuid
+       limit 1`,
+      [params.userId, params.topicId],
+    );
+    const stored = pref.rows[0]?.natural_language_prefs ?? null;
+    if (stored && stored.trim().length > 0) {
+      return stored.trim().slice(0, 800);
+    }
+  } catch (err) {
+    log.warn({ err }, "Preference summary lookup failed");
+  }
+
+  // Fall back to a compact summary from recent feedback events.
+  const feedback = await params.db.query<{ action: string; title: string | null }>(
+    `select fe.action, ci.title
+     from feedback_events fe
+     join content_items ci on ci.id = fe.content_item_id
+     join content_item_sources cis on cis.content_item_id = ci.id
+     join sources s on s.id = cis.source_id
+     where fe.user_id = $1::uuid
+       and s.topic_id = $2::uuid
+       and fe.action in ('like', 'dislike')
+     order by fe.created_at desc
+     limit 50`,
+    [params.userId, params.topicId],
+  );
+
+  const likes: string[] = [];
+  const dislikes: string[] = [];
+  const seenLikes = new Set<string>();
+  const seenDislikes = new Set<string>();
+
+  for (const row of feedback.rows) {
+    const title = (row.title ?? "").trim();
+    if (!title) continue;
+    if (row.action === "like" && likes.length < 5 && !seenLikes.has(title)) {
+      likes.push(title);
+      seenLikes.add(title);
+    } else if (row.action === "dislike" && dislikes.length < 5 && !seenDislikes.has(title)) {
+      dislikes.push(title);
+      seenDislikes.add(title);
+    }
+    if (likes.length >= 5 && dislikes.length >= 5) break;
+  }
+
+  if (likes.length === 0 && dislikes.length === 0) return null;
+
+  const parts: string[] = [];
+  if (likes.length > 0) parts.push(`Likes: ${likes.join("; ")}`);
+  if (dislikes.length > 0) parts.push(`Dislikes: ${dislikes.join("; ")}`);
+  return parts.join(" | ").slice(0, 800);
+}
+
+async function loadThemeSeedClusters(params: {
+  db: Db;
+  userId: string;
+  topicId: string;
+  windowEnd: string;
+  lookbackDays: number;
+  limit?: number;
+}): Promise<Array<{ label: string; vector: number[] }>> {
+  const lookbackDays = Math.max(0, Math.floor(params.lookbackDays));
+  if (lookbackDays <= 0) return [];
+
+  const windowEndMs = parseIsoMs(params.windowEnd);
+  const lookbackStartIso = new Date(windowEndMs - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
+  const limit = Math.max(1, Math.min(5000, Math.floor(params.limit ?? 2000)));
+
+  const res = await params.db.query<{ theme_label: string | null; vector_text: string | null }>(
+    `select di.theme_label, di.triage_theme_vector::text as vector_text
+     from digest_items di
+     join digests d on d.id = di.digest_id
+     where d.user_id = $1::uuid
+       and d.topic_id = $2::uuid
+       and d.created_at >= $3::timestamptz
+       and di.triage_theme_vector is not null
+       and di.theme_label is not null
+     order by d.created_at desc
+     limit $4`,
+    [params.userId, params.topicId, lookbackStartIso, limit],
+  );
+
+  const byLabel = new Map<string, { vector: number[]; count: number }>();
+  for (const row of res.rows) {
+    const label = (row.theme_label ?? "").trim();
+    if (!label || label === "Uncategorized") continue;
+    const vectorText = row.vector_text ?? "";
+    const vec = vectorText ? parseVectorText(vectorText) : null;
+    if (!vec || vec.length === 0) continue;
+
+    const existing = byLabel.get(label);
+    if (!existing) {
+      byLabel.set(label, { vector: vec, count: 1 });
+    } else {
+      const upd = meanUpdateVector(existing.vector, existing.count, vec);
+      byLabel.set(label, { vector: upd.vector, count: upd.count });
+    }
+  }
+
+  const seeds: Array<{ label: string; vector: number[] }> = [];
+  for (const [label, entry] of byLabel) {
+    if (entry.vector.length > 0) {
+      seeds.push({ label, vector: entry.vector });
+    }
+  }
+  return seeds;
 }
 
 /**
@@ -394,6 +548,7 @@ async function triageCandidates(params: {
   maxCalls: number;
   llmConfig?: LlmRuntimeConfig;
   triageGuidance?: string;
+  preferenceSummary?: string | null;
 }): Promise<Map<string, TriageOutput>> {
   if (params.maxCalls <= 0 || params.candidates.length === 0) return new Map();
 
@@ -430,6 +585,7 @@ async function triageCandidates(params: {
       tier,
       triageMap,
       triageGuidance: params.triageGuidance,
+      preferenceSummary: params.preferenceSummary ?? undefined,
     });
   }
 
@@ -467,6 +623,7 @@ async function triageCandidates(params: {
         batchId,
         reasoningEffortOverride: params.llmConfig?.reasoningEffort,
         aiGuidance: params.triageGuidance,
+        preferenceSummary: params.preferenceSummary ?? undefined,
       });
 
       // Merge results into triageMap
@@ -527,6 +684,8 @@ async function triageCandidates(params: {
           router,
           tier,
           triageMap: new Map(),
+          triageGuidance: params.triageGuidance,
+          preferenceSummary: params.preferenceSummary ?? undefined,
         });
 
         for (const [id, output] of individualResults) {
@@ -589,6 +748,8 @@ async function triageCandidates(params: {
         router,
         tier,
         triageMap: new Map(),
+        triageGuidance: params.triageGuidance,
+        preferenceSummary: params.preferenceSummary ?? undefined,
       });
 
       for (const [id, output] of individualResults) {
@@ -618,6 +779,7 @@ async function triageCandidatesIndividually(params: {
   tier: BudgetTier;
   triageMap: Map<string, TriageOutput>;
   triageGuidance?: string;
+  preferenceSummary?: string;
 }): Promise<Map<string, TriageOutput>> {
   const triageMap = params.triageMap;
 
@@ -645,6 +807,7 @@ async function triageCandidatesIndividually(params: {
         },
         reasoningEffortOverride: params.llmConfig?.reasoningEffort,
         aiGuidance: params.triageGuidance,
+        preferenceSummary: params.preferenceSummary,
       });
 
       triageMap.set(candidate.candidateId, result.output);
@@ -949,6 +1112,8 @@ export async function persistDigestFromContentItems(params: {
     const engagementRaw = getEngagementRaw(meta);
     recencies.push(recency);
     engagements.push(engagementRaw);
+    const positiveSim = row.positive_sim;
+    const negativeSim = row.negative_sim;
     return {
       candidateId: row.candidate_id,
       kind: row.kind,
@@ -967,8 +1132,8 @@ export async function persistDigestFromContentItems(params: {
       metadata: asRecord(row.metadata_json),
       recency,
       engagementRaw,
-      positiveSim: row.positive_sim,
-      negativeSim: row.negative_sim,
+      positiveSim,
+      negativeSim,
       vectorText: row.vector_text,
     };
   });
@@ -1007,6 +1172,7 @@ export async function persistDigestFromContentItems(params: {
   const topic = await params.db.topics.getById(params.topicId);
   const tuning = parsePersonalizationTuning(topic?.custom_settings?.personalization_tuning_v1);
   const aiGuidance = parseAiGuidance(topic?.custom_settings?.ai_guidance_v1);
+  const themeTuning = parseThemeTuning(topic?.custom_settings?.theme_tuning_v1);
 
   // =========================================================================
   // Load scoring mode configuration
@@ -1049,9 +1215,35 @@ export async function persistDigestFromContentItems(params: {
       weights: scoringModeConfig.weights,
       perSourceCalibration: scoringModeConfig.features.perSourceCalibration,
       aiPreferenceInjection: scoringModeConfig.features.aiPreferenceInjection,
+      embeddingPreferences: scoringModeConfig.features.embeddingPreferences,
     },
     "Effective scoring mode config",
   );
+
+  const embeddingPreferencesEnabled = scoringModeConfig.features.embeddingPreferences ?? true;
+  const aiPreferenceInjectionEnabled = scoringModeConfig.features.aiPreferenceInjection ?? false;
+
+  if (!embeddingPreferencesEnabled) {
+    for (const item of scored) {
+      item.positiveSim = null;
+      item.negativeSim = null;
+    }
+  }
+
+  const preferenceSummary = aiPreferenceInjectionEnabled
+    ? await loadPreferenceSummary({
+        db: params.db,
+        userId: params.userId,
+        topicId: params.topicId,
+      })
+    : null;
+
+  if (aiPreferenceInjectionEnabled) {
+    log.debug(
+      { hasPreferenceSummary: Boolean(preferenceSummary) },
+      "Preference summary loaded for triage",
+    );
+  }
 
   // Helper to compute preference score from embedding similarity
   // preferenceScore = clamp(-1, 1, positiveSim - negativeSim)
@@ -1059,6 +1251,7 @@ export async function persistDigestFromContentItems(params: {
     positiveSim: number | null,
     negativeSim: number | null,
   ): number => {
+    if (!embeddingPreferencesEnabled) return 0;
     const raw = (positiveSim ?? 0) - (negativeSim ?? 0);
     return Math.max(-1, Math.min(1, raw));
   };
@@ -1151,6 +1344,7 @@ export async function persistDigestFromContentItems(params: {
     maxCalls: triageLimit,
     llmConfig: params.llmConfig,
     triageGuidance: aiGuidance.triage_prompt || undefined,
+    preferenceSummary,
   });
 
   // Compute novelty for candidates (topic-scoped, embedding-based)
@@ -1333,26 +1527,48 @@ export async function persistDigestFromContentItems(params: {
       "Uncategorized",
   }));
 
-  const themeClusterResult = await clusterTriageThemesIntoLabels(themeClusterInput, tier);
-
-  // Build lookup maps for theme data
   const themeLabelMap = new Map<string, string>();
   const themeVectorMap = new Map<string, number[]>();
-  for (const item of themeClusterResult.items) {
-    themeLabelMap.set(item.candidateId, item.themeLabel);
-    if (item.vector.length > 0) {
-      themeVectorMap.set(item.candidateId, item.vector);
-    }
-  }
 
-  log.info(
-    {
-      uniqueThemes: themeClusterResult.stats.uniqueTopics,
-      clusterCount: themeClusterResult.stats.clusterCount,
-      inputTokens: themeClusterResult.stats.inputTokens,
-    },
-    "Theme clustering completed",
-  );
+  if (themeTuning.enabled) {
+    try {
+      const seedClusters = await loadThemeSeedClusters({
+        db: params.db,
+        userId: params.userId,
+        topicId: params.topicId,
+        windowEnd: params.windowEnd,
+        lookbackDays: themeTuning.lookbackDays,
+        limit: 2000,
+      });
+
+      const themeClusterResult = await clusterTriageThemesIntoLabels(
+        themeClusterInput,
+        tier,
+        themeTuning.similarityThreshold,
+        seedClusters,
+      );
+
+      for (const item of themeClusterResult.items) {
+        themeLabelMap.set(item.candidateId, item.themeLabel);
+        if (item.vector.length > 0) {
+          themeVectorMap.set(item.candidateId, item.vector);
+        }
+      }
+
+      log.info(
+        {
+          uniqueThemes: themeClusterResult.stats.uniqueTopics,
+          clusterCount: themeClusterResult.stats.clusterCount,
+          inputTokens: themeClusterResult.stats.inputTokens,
+        },
+        "Theme clustering completed",
+      );
+    } catch (err) {
+      log.warn({ err }, "Theme clustering failed, continuing without theme labels");
+    }
+  } else {
+    log.info({ enabled: themeTuning.enabled }, "Theme clustering disabled for topic");
+  }
 
   const items = selected.map((s) => {
     const summary = summaries.get(s.candidateId) ?? null;

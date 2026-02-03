@@ -1,6 +1,11 @@
 import type { LlmProvider, LlmSettingsUpdate, ReasoningEffort, SourceRow } from "@aharadar/db";
 import { checkQuotaForRun, getQuotaStatusAsync } from "@aharadar/llm";
-import { compileDigestPlan, computeCreditsStatus, resetBudget } from "@aharadar/pipeline";
+import {
+  clusterTriageThemesIntoLabels,
+  compileDigestPlan,
+  computeCreditsStatus,
+  resetBudget,
+} from "@aharadar/pipeline";
 import {
   type AbtestVariantConfig,
   clearEmergencyStop,
@@ -17,6 +22,7 @@ import {
   loadRuntimeEnv,
   normalizeHandle,
   type OpsLinks,
+  parseThemeTuning,
 } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getUserId } from "../auth/session.js";
@@ -41,6 +47,10 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 function isValidUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_REGEX.test(value);
+}
+
+function asVectorLiteral(vector: number[]): string {
+  return `[${vector.map((n) => (Number.isFinite(n) ? n : 0)).join(",")}]`;
 }
 
 /** Convert DB source row to API response format */
@@ -462,6 +472,166 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
     return { ok: true, jobId };
   });
+
+  // POST /admin/topics/:id/regenerate-themes - Recompute theme labels for latest items
+  fastify.post<{ Params: { id: string } }>(
+    "/admin/topics/:id/regenerate-themes",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const db = getDb();
+      const topic = await db.topics.getById(id);
+      if (!topic) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Topic not found: ${id}`,
+          },
+        });
+      }
+      if (topic.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+
+      const themeTuning = parseThemeTuning(topic.custom_settings?.theme_tuning_v1);
+      if (!themeTuning.enabled) {
+        return {
+          ok: true,
+          message: "Theme grouping is disabled for this topic. No changes applied.",
+          result: {
+            attempted: 0,
+            attachedToExisting: 0,
+            created: 0,
+            skipped: 0,
+            errors: 0,
+          },
+        };
+      }
+
+      const limit = 2000;
+      const latestItems = await db.query<{
+        digest_item_id: string;
+        triage_json: Record<string, unknown> | null;
+      }>(
+        `WITH latest_items AS (
+           SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
+             di.id::text as digest_item_id,
+             di.triage_json
+           FROM digest_items di
+           JOIN digests d ON d.id = di.digest_id
+           LEFT JOIN clusters c ON c.id = di.cluster_id
+           WHERE d.user_id = $1
+             AND d.topic_id = $2::uuid
+           ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
+         )
+         SELECT digest_item_id, triage_json
+         FROM latest_items
+         WHERE triage_json IS NOT NULL
+         LIMIT $3`,
+        [ctx.userId, id, limit],
+      );
+
+      if (latestItems.rows.length === 0) {
+        return {
+          ok: true,
+          message: "No triaged items found to regenerate themes.",
+          result: {
+            attempted: 0,
+            attachedToExisting: 0,
+            created: 0,
+            skipped: 0,
+            errors: 0,
+          },
+        };
+      }
+
+      const inputs = latestItems.rows.map((row) => {
+        const triage = row.triage_json as { theme?: string; topic?: string } | null;
+        const topicLabel = triage?.theme ?? triage?.topic ?? "Uncategorized";
+        return {
+          candidateId: row.digest_item_id,
+          topic: topicLabel,
+        };
+      });
+
+      let clusterResult: Awaited<ReturnType<typeof clusterTriageThemesIntoLabels>>;
+      try {
+        clusterResult = await clusterTriageThemesIntoLabels(
+          inputs,
+          (topic.digest_mode as BudgetTier) ?? "normal",
+          themeTuning.similarityThreshold,
+        );
+      } catch (err) {
+        return reply.code(500).send({
+          ok: false,
+          error: {
+            code: "THEME_REGEN_FAILED",
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+
+      let errors = 0;
+      await db.tx(async (tx) => {
+        for (const item of clusterResult.items) {
+          const vectorLiteral = item.vector.length > 0 ? asVectorLiteral(item.vector) : null;
+          try {
+            await tx.query(
+              `UPDATE digest_items
+               SET triage_theme_vector = $2::vector,
+                   theme_label = $3
+               WHERE id = $1::uuid`,
+              [item.candidateId, vectorLiteral, item.themeLabel],
+            );
+          } catch (err) {
+            errors += 1;
+          }
+        }
+      });
+
+      const uniqueLabels = new Set(clusterResult.items.map((i) => i.themeLabel));
+      const attachedToExisting = clusterResult.items.filter((i) => i.themeLabel !== i.topic).length;
+
+      return {
+        ok: true,
+        message: `Regenerated theme labels for ${clusterResult.items.length} items.`,
+        result: {
+          attempted: clusterResult.items.length,
+          attachedToExisting,
+          created: uniqueLabels.size,
+          skipped: 0,
+          errors,
+        },
+      };
+    },
+  );
 
   fastify.get("/admin/budgets", async (_request, reply) => {
     const ctx = await getSingletonContext();

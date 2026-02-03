@@ -8,7 +8,6 @@ import {
   FeedFilterBar,
   FeedItem,
   FeedItemSkeleton,
-  getItemThemeKey,
   groupItemsByTheme,
   type SortOption,
   ThemeRow,
@@ -94,7 +93,6 @@ function FeedPageContent() {
   );
   const [sort, setSort] = useState<SortOption>(sortParam || "best");
   const [view, setView] = useState<FeedView>(viewParam || "inbox");
-  const selectedSourcesKey = selectedSources.join("|");
 
   // Pagination state - page size persisted in localStorage
   const [pageSize, setPageSize] = useLocalStorage<PageSize>("feedPageSize", DEFAULT_PAGE_SIZE);
@@ -107,8 +105,6 @@ function FeedPageContent() {
 
   // Theme grouping mode - group items by theme for reduced visual density
   const [groupByTheme, setGroupByTheme] = useLocalStorage<boolean>("feedGroupByTheme", false);
-  // Track themes that have had 2+ items so single leftovers stay grouped
-  const [stickyThemes, setStickyThemes] = useState<Set<string>>(new Set());
 
   // Desktop undo history - tracks items after feedback for undo (with position context)
   const [desktopHistory, setDesktopHistory] = useState<DesktopUndoEntry[]>([]);
@@ -170,10 +166,7 @@ function FeedPageContent() {
     };
   }, []);
 
-  // Reset sticky themes when filters change or grouping is toggled
-  useEffect(() => {
-    setStickyThemes(new Set());
-  }, [groupByTheme, view, currentTopicId, selectedSourcesKey]);
+  // No sticky theme state: grouping updates are fully derived from current items
 
   // Determine if we're in "all topics" mode
   const isAllTopicsMode = currentTopicId === null;
@@ -281,9 +274,9 @@ function FeedPageContent() {
       return items;
     }
     // Flatten theme groups into visual order
-    const themeGroups = groupItemsByTheme(items, sort, { stickyThemes });
+    const themeGroups = groupItemsByTheme(items, sort);
     return themeGroups.flatMap((group) => group.items);
-  }, [data?.items, groupByTheme, sort, stickyThemes]);
+  }, [data?.items, groupByTheme, sort]);
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -582,38 +575,6 @@ function FeedPageContent() {
   const totalCount = data?.pagination.total ?? 0;
   const isCondensed = layout === "condensed";
 
-  // Track themes that have had 2+ items so single leftovers stay grouped
-  useEffect(() => {
-    if (!groupByTheme || !data?.items) return;
-
-    const counts = new Map<string, number>();
-    for (const item of items) {
-      const theme = getItemThemeKey(item);
-      if (theme === "Uncategorized") continue;
-      counts.set(theme, (counts.get(theme) ?? 0) + 1);
-    }
-
-    setStickyThemes((prev) => {
-      const next = new Set(prev);
-      const present = new Set<string>();
-
-      for (const [theme, count] of counts) {
-        present.add(theme);
-        if (count >= 2) {
-          next.add(theme);
-        }
-      }
-
-      for (const theme of next) {
-        if (!present.has(theme)) {
-          next.delete(theme);
-        }
-      }
-
-      return next;
-    });
-  }, [groupByTheme, data?.items, items]);
-
   // Clear selection when clicking outside feed items
   const handleContainerClick = useCallback(
     (e: React.MouseEvent) => {
@@ -861,7 +822,7 @@ function FeedPageContent() {
           >
             {groupByTheme
               ? // Render items grouped by theme
-                groupItemsByTheme(items, sort, { stickyThemes }).map((themeGroup) => (
+                groupItemsByTheme(items, sort).map((themeGroup) => (
                   <ThemeRow
                     key={themeGroup.themeId}
                     theme={themeGroup}

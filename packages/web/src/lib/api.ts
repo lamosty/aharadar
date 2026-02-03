@@ -2504,7 +2504,7 @@ export interface RegenerateThemesResponse {
 
 /**
  * Regenerate themes for a topic.
- * Deletes all existing themes and rebuilds from inbox items.
+ * Recomputes labels for recent triaged items.
  */
 export async function postAdminRegenerateThemes(
   topicId: string,

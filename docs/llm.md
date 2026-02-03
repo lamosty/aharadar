@@ -156,6 +156,10 @@ For a cluster candidate:
 - user preference profile summary (derived from likes/dislikes)
 - budget tier (derived from numeric budget pool and policy)
 
+**Theme guidance (triage_v1)**:
+- `theme` should be 2–4 words capturing **subject + facet** (e.g., “AI regulation”, “City transit plan”, “Kubernetes release”).
+- Avoid ultra-broad single-word themes unless the item truly spans the entire subject.
+
 ## Deep summary task
 
 ### Purpose

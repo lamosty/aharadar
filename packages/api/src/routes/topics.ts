@@ -1,5 +1,9 @@
 import type { DigestMode, Topic } from "@aharadar/db";
-import { validateAiGuidance, validatePersonalizationTuning } from "@aharadar/shared";
+import {
+  validateAiGuidance,
+  validatePersonalizationTuning,
+  validateThemeTuning,
+} from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
@@ -435,6 +439,23 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
               error: {
                 code: "INVALID_AI_GUIDANCE",
                 message: `Invalid AI guidance: ${errors.join("; ")}`,
+              },
+            });
+          }
+        }
+      }
+
+      // Validate theme_tuning_v1 if present
+      if (bodyObj.theme_tuning_v1 !== undefined) {
+        const themeInput = bodyObj.theme_tuning_v1;
+        if (themeInput !== null && typeof themeInput === "object" && !Array.isArray(themeInput)) {
+          const errors = validateThemeTuning(themeInput as Record<string, unknown>);
+          if (errors.length > 0) {
+            return reply.code(400).send({
+              ok: false,
+              error: {
+                code: "INVALID_THEME_TUNING",
+                message: `Invalid theme tuning: ${errors.join("; ")}`,
               },
             });
           }

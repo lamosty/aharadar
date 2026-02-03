@@ -307,6 +307,16 @@ Create:
   - `rank` starting at 1
   - `aha_score` and JSON outputs
 
+### Theme grouping (UI helper)
+
+After triage, we **cluster triage theme strings** for UI grouping. This is a lightweight, topic‑agnostic step that does **not** affect ranking. It is controlled per topic via `topics.custom_settings.theme_tuning_v1`:
+
+- `enabled`: toggle theme grouping computation
+- `similarityThreshold`: cosine similarity threshold for grouping
+- `lookbackDays`: how far back to reuse theme labels for continuity
+  
+Cluster labels are chosen to favor **more specific** topic strings (more words/length) within a cluster to avoid overly broad group names.
+
 ## Feedback loop integration
 
 Feedback events update personalization inputs:
