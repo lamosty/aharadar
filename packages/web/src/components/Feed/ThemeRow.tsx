@@ -225,7 +225,7 @@ export function ThemeRow({
  * 3. triageJson.topic (legacy field name - will be deprecated)
  * 4. "Uncategorized"
  */
-function getItemTopic(item: FeedItemType): string {
+export function getItemThemeKey(item: FeedItemType): string {
   // Prefer embedding-clustered theme label (most accurate grouping)
   if (item.themeLabel && item.themeLabel !== "Uncategorized") {
     return item.themeLabel;
@@ -276,17 +276,26 @@ function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType)
  * Group items by topic (from triage JSON).
  *
  * - Topics with 2+ items → collapsible group (shown first, sorted by top score)
- * - Topics with 1 item OR no topic → collected into "Uncategorized" (shown last)
+ * - Topics with 1 item OR no topic → collected into "Uncategorized" (shown last),
+ *   unless the topic is in stickyThemes (meaning it recently had 2+ items)
  * - Items within each group are sorted by the specified sort option
  *
  * This ensures only meaningful clusters are shown as groups.
  */
-export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "best"): ThemeGroup[] {
+interface GroupItemsOptions {
+  stickyThemes?: Set<string>;
+}
+
+export function groupItemsByTheme(
+  items: FeedItemType[],
+  sort: SortOption = "best",
+  options: GroupItemsOptions = {},
+): ThemeGroup[] {
   const topicMap = new Map<string, FeedItemType[]>();
 
   // First pass: group items by topic from triageJson
   for (const item of items) {
-    const topic = getItemTopic(item);
+    const topic = getItemThemeKey(item);
     const existing = topicMap.get(topic);
     if (existing) {
       existing.push(item);
@@ -301,7 +310,8 @@ export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "bes
 
   // Second pass: create groups for topics with 2+ items, collect singles
   for (const [topic, topicItems] of topicMap) {
-    if (topic === "Uncategorized" || topicItems.length === 1) {
+    const isSticky = options.stickyThemes?.has(topic) ?? false;
+    if (topic === "Uncategorized" || (topicItems.length === 1 && !isSticky)) {
       // No topic OR single-item topic → goes to uncategorized
       uncategorizedItems.push(...topicItems);
     } else {
