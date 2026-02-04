@@ -125,5 +125,7 @@ Task files (in recommended order):
 95. `task-147-feed-inline-auto-summary.md` - Web: inline auto-summary on paste + remove Deep Dive UI
 96. `task-148-score-debug-tooltip.md` - Web/pipeline: debug score breakdown tooltip + experimental toggle
 97. `task-150-ask-chat-ui.md` - Web/API: ChatGPT-style Ask UI with topic-scoped conversations
+98. `task-151-embedding-retention.md` - Pipeline/DB: embedding retention policy + cleanup job
+99. `task-152-theme-lifecycle-controls.md` - Pipeline/UI: theme lifecycle and drift controls
 
 **Note**: Deep Dive UI/terminology is being retired; tasks 146–147 supersede the Deep Dive flow from tasks 137/144/145.
