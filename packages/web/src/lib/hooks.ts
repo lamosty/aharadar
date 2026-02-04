@@ -65,6 +65,7 @@ import {
   deleteScoringMode,
   deleteTopic,
   drainQueue,
+  type EmbeddingRetentionStatusResponse,
   type EmergencyStopStatusResponse,
   type EndScoringExperimentRequest,
   emergencyStop,
@@ -78,6 +79,7 @@ import {
   getAdminAbtest,
   getAdminAbtests,
   getAdminBudgets,
+  getAdminEmbeddingRetentionStatus,
   getAdminLlmQuota,
   getAdminLlmSettings,
   getAdminLogsFetchRuns,
@@ -248,6 +250,7 @@ export const queryKeys = {
     llmQuota: ["admin", "llm-quota"] as const,
     queueStatus: ["admin", "queue-status"] as const,
     opsStatus: ["admin", "ops-status"] as const,
+    embeddingRetention: (topicId: string) => ["admin", "embedding-retention", topicId] as const,
     abtests: {
       all: ["admin", "abtests"] as const,
       list: () => ["admin", "abtests", "list"] as const,
@@ -850,6 +853,22 @@ export function useAdminBudgets(
     queryFn: ({ signal }) => getAdminBudgets(signal),
     // Refetch budgets more frequently as they change
     staleTime: 10 * 1000, // 10 seconds
+    ...options,
+  });
+}
+
+export function useAdminEmbeddingRetentionStatus(
+  topicId: string,
+  options?: Omit<
+    UseQueryOptions<EmbeddingRetentionStatusResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.embeddingRetention(topicId),
+    queryFn: ({ signal }) => getAdminEmbeddingRetentionStatus(topicId, signal),
+    enabled: Boolean(topicId),
+    staleTime: 30 * 1000,
     ...options,
   });
 }

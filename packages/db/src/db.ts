@@ -9,6 +9,7 @@ import { createContentItemSourcesRepo } from "./repos/content_item_sources";
 import { createContentItemsRepo } from "./repos/content_items";
 import { createDigestItemsRepo } from "./repos/digest_items";
 import { createDigestsRepo } from "./repos/digests";
+import { createEmbeddingRetentionRunsRepo } from "./repos/embedding_retention_runs";
 import { createEmbeddingsRepo } from "./repos/embeddings";
 import { createFeedbackEventsRepo } from "./repos/feedback_events";
 import { createFetchRunsRepo } from "./repos/fetch_runs";
@@ -44,6 +45,7 @@ export type DbContext = Queryable & {
   contentItemSources: ReturnType<typeof createContentItemSourcesRepo>;
   contentItemReads: ReturnType<typeof createContentItemReadsRepo>;
   embeddings: ReturnType<typeof createEmbeddingsRepo>;
+  embeddingRetentionRuns: ReturnType<typeof createEmbeddingRetentionRunsRepo>;
   topicPreferenceProfiles: ReturnType<typeof createTopicPreferenceProfilesRepo>;
   digests: ReturnType<typeof createDigestsRepo>;
   digestItems: ReturnType<typeof createDigestItemsRepo>;
@@ -81,6 +83,7 @@ function createContext(db: Queryable): DbContext {
     contentItemSources: createContentItemSourcesRepo(db),
     contentItemReads: createContentItemReadsRepo(db),
     embeddings: createEmbeddingsRepo(db),
+    embeddingRetentionRuns: createEmbeddingRetentionRunsRepo(db),
     topicPreferenceProfiles: createTopicPreferenceProfilesRepo(db),
     digests: createDigestsRepo(db),
     digestItems: createDigestItemsRepo(db),

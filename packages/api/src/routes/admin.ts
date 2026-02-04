@@ -639,6 +639,78 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     },
   );
 
+  fastify.get<{ Params: { id: string } }>(
+    "/admin/topics/:id/embedding-retention",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "id must be a valid UUID",
+          },
+        });
+      }
+
+      const db = getDb();
+      const topic = await db.topics.getById(id);
+      if (!topic) {
+        return reply.code(404).send({
+          ok: false,
+          error: {
+            code: "NOT_FOUND",
+            message: `Topic not found: ${id}`,
+          },
+        });
+      }
+      if (topic.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Topic does not belong to current user",
+          },
+        });
+      }
+
+      const latest = await db.embeddingRetentionRuns.getLatestForTopic({
+        userId: ctx.userId,
+        topicId: id,
+      });
+
+      return {
+        ok: true,
+        run: latest
+          ? {
+              id: latest.id,
+              topicId: latest.topic_id,
+              windowEnd: latest.window_end,
+              maxAgeDays: latest.max_age_days,
+              maxItems: latest.max_items,
+              effectiveMaxAgeDays: latest.effective_max_age_days,
+              cutoffAt: latest.cutoff_at,
+              deletedByAge: latest.deleted_by_age,
+              deletedByMaxItems: latest.deleted_by_max_items,
+              totalDeleted: latest.total_deleted,
+              createdAt: latest.created_at,
+            }
+          : null,
+      };
+    },
+  );
+
   fastify.get("/admin/budgets", async (_request, reply) => {
     const ctx = await getSingletonContext();
     if (!ctx) {

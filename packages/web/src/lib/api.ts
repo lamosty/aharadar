@@ -2531,6 +2531,39 @@ export async function postAdminRegenerateThemes(
 }
 
 // ============================================================================
+// Embedding Retention API
+// ============================================================================
+
+export interface EmbeddingRetentionRun {
+  id: string;
+  topicId: string;
+  windowEnd: string;
+  maxAgeDays: number;
+  maxItems: number;
+  effectiveMaxAgeDays: number;
+  cutoffAt: string;
+  deletedByAge: number;
+  deletedByMaxItems: number;
+  totalDeleted: number;
+  createdAt: string;
+}
+
+export interface EmbeddingRetentionStatusResponse {
+  ok: true;
+  run: EmbeddingRetentionRun | null;
+}
+
+export async function getAdminEmbeddingRetentionStatus(
+  topicId: string,
+  signal?: AbortSignal,
+): Promise<EmbeddingRetentionStatusResponse> {
+  return apiFetch<EmbeddingRetentionStatusResponse>(
+    `/admin/topics/${topicId}/embedding-retention`,
+    { signal },
+  );
+}
+
+// ============================================================================
 // Scoring Modes API
 // ============================================================================
 

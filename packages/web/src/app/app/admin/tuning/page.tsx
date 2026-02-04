@@ -281,7 +281,12 @@ function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolved {
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
-import { useRegenerateThemes, useTopics, useUpdateTopicCustomSettings } from "@/lib/hooks";
+import {
+  useAdminEmbeddingRetentionStatus,
+  useRegenerateThemes,
+  useTopics,
+  useUpdateTopicCustomSettings,
+} from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -402,6 +407,8 @@ export default function AdminTuningPage() {
       addToast(err.message || t("admin.tuning.saveFailed"), "error");
     },
   });
+
+  const retentionStatusQuery = useAdminEmbeddingRetentionStatus(selectedTopicId);
 
   const regenerateThemesMutation = useRegenerateThemes(selectedTopicId, {
     onSuccess: (data) => {
@@ -563,6 +570,11 @@ export default function AdminTuningPage() {
 
   const isDefault =
     isPersonalDefault && isThemeDefault && isRetentionDefault && isAiGuidanceDefault;
+
+  const retentionRun = retentionStatusQuery.data?.run ?? null;
+  const retentionStatusLabel = retentionRun
+    ? new Date(retentionRun.createdAt).toLocaleString()
+    : "No retention runs yet";
 
   if (isLoading) {
     return (
@@ -1057,6 +1069,23 @@ export default function AdminTuningPage() {
             Keep embeddings bounded without losing your best signals. Retention is topic-scoped and
             never deletes items with feedback or bookmarks unless you disable those protections.
             Items shared across topics are preserved.
+          </p>
+        </div>
+
+        {/* Retention Status */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <span className={styles.toggleLabel}>Last Retention Run</span>
+            <span className={styles.sliderValue}>
+              {retentionStatusQuery.isLoading ? "Loading..." : retentionStatusLabel}
+            </span>
+          </div>
+          <p className={styles.sliderDescription}>
+            {retentionStatusQuery.isError
+              ? "Unable to load retention history."
+              : retentionRun
+                ? `Cutoff: ${new Date(retentionRun.cutoffAt).toLocaleDateString()} · Deleted ${retentionRun.totalDeleted.toLocaleString()} embeddings (${retentionRun.deletedByAge.toLocaleString()} age, ${retentionRun.deletedByMaxItems.toLocaleString()} cap).`
+                : "Retention stats appear after the next pipeline run completes."}
           </p>
         </div>
 

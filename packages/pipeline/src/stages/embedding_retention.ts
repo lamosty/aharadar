@@ -45,6 +45,23 @@ export async function pruneEmbeddingsForTopic(params: {
     protectBookmarks: retention.protectBookmarks,
   });
 
+  try {
+    await params.db.embeddingRetentionRuns.insert({
+      userId: params.userId,
+      topicId: params.topicId,
+      windowEnd: params.windowEnd,
+      maxAgeDays: retention.maxAgeDays,
+      maxItems: retention.maxItems,
+      effectiveMaxAgeDays,
+      cutoffIso,
+      deletedByAge: result.deletedByAge,
+      deletedByMaxItems: result.deletedByMaxItems,
+      totalDeleted: result.totalDeleted,
+    });
+  } catch (err) {
+    log.warn({ err }, "Failed to store embedding retention run");
+  }
+
   log.info(
     {
       topicId: params.topicId.slice(0, 8),

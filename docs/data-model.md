@@ -154,6 +154,24 @@ create table embeddings (
 create index embeddings_vector_hnsw
   on embeddings using hnsw (vector vector_cosine_ops);
 
+-- embedding_retention_runs: audit log for embedding pruning per topic
+create table embedding_retention_runs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  topic_id uuid not null references topics(id) on delete cascade,
+  window_end timestamptz not null,
+  max_age_days integer not null,
+  max_items integer not null default 0,
+  effective_max_age_days integer not null,
+  cutoff_at timestamptz not null,
+  deleted_by_age integer not null default 0,
+  deleted_by_max_items integer not null default 0,
+  total_deleted integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index embedding_retention_runs_topic_created_idx
+  on embedding_retention_runs(user_id, topic_id, created_at desc);
+
 -- clusters: story/topic grouping
 create table clusters (
   id uuid primary key default gen_random_uuid(),
