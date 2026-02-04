@@ -16,7 +16,6 @@ export * from "./repos/item_summaries";
 export * from "./repos/llm_settings";
 export * from "./repos/notifications";
 export * from "./repos/provider_calls";
-export * from "./repos/qa_memory";
 export * from "./repos/scoring_experiments";
 export * from "./repos/scoring_modes";
 export * from "./repos/sessions";

@@ -17,7 +17,6 @@ import { createItemSummariesRepo } from "./repos/item_summaries";
 import { createLlmSettingsRepo } from "./repos/llm_settings";
 import { createNotificationsRepo } from "./repos/notifications";
 import { createProviderCallsRepo } from "./repos/provider_calls";
-import { createQaMemoryRepo } from "./repos/qa_memory";
 import { createScoringExperimentsRepo } from "./repos/scoring_experiments";
 import { createScoringModesRepo } from "./repos/scoring_modes";
 import { createSessionsRepo } from "./repos/sessions";
@@ -50,7 +49,6 @@ export type DbContext = Queryable & {
   digestItems: ReturnType<typeof createDigestItemsRepo>;
   feedbackEvents: ReturnType<typeof createFeedbackEventsRepo>;
   providerCalls: ReturnType<typeof createProviderCallsRepo>;
-  qa: ReturnType<typeof createQaMemoryRepo>;
   sessions: ReturnType<typeof createSessionsRepo>;
   userApiKeys: ReturnType<typeof createUserApiKeysRepo>;
   llmSettings: ReturnType<typeof createLlmSettingsRepo>;
@@ -88,7 +86,6 @@ function createContext(db: Queryable): DbContext {
     digestItems: createDigestItemsRepo(db),
     feedbackEvents: createFeedbackEventsRepo(db),
     providerCalls: createProviderCallsRepo(db),
-    qa: createQaMemoryRepo(db),
     sessions: createSessionsRepo(db),
     userApiKeys: createUserApiKeysRepo(db),
     llmSettings: createLlmSettingsRepo(db),

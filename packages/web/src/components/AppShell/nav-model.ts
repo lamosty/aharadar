@@ -13,7 +13,6 @@ export interface NavItem {
     | "home"
     | "feed"
     | "packs"
-    | "ask"
     | "digest"
     | "sources"
     | "topics"
@@ -56,13 +55,6 @@ export const mainNavItems: NavItem[] = [
     href: "/app/bookmarks",
     labelKey: "nav.bookmarks",
     icon: "bookmarks",
-    mobileNav: false,
-  },
-  {
-    id: "ask",
-    href: "/app/ask",
-    labelKey: "nav.ask",
-    icon: "ask",
     mobileNav: false,
   },
   {

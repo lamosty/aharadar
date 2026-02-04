@@ -35,7 +35,6 @@ const TASKS: TaskType[] = [
   "deep_summary",
   "entity_extract",
   "signal_parse",
-  "qa",
   "aggregate_summary",
   "catchup_pack_select",
   "catchup_pack_tier",
@@ -348,7 +347,7 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
         return callClaudeSubscription(ref, request, {
           // Treat CLAUDE_TRIAGE_THINKING as a general "thinking" toggle for subscription calls.
           // Historically only triage used this, but we also enable it for Ask/Q&A.
-          enableThinking: (task === "triage" || task === "qa") && enableThinking,
+          enableThinking: task === "triage" && enableThinking,
           jsonSchema: request.jsonSchema,
         });
       }

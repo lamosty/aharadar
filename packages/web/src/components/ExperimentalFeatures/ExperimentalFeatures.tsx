@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import {
@@ -16,7 +15,6 @@ import styles from "./ExperimentalFeatures.module.css";
 
 export function ExperimentalFeaturesForm() {
   const [features, setFeatures] = useState<ExperimentalFeatures>({
-    qa: false,
     score_debug: false,
     show_scoring_mode: false,
   });
@@ -78,9 +76,9 @@ export function ExperimentalFeaturesForm() {
                   {t(feature.labelKey as Parameters<typeof t>[0])}
                 </span>
                 {feature.href && (
-                  <Link href={feature.href} className={styles.featureLink}>
+                  <a href={feature.href} className={styles.featureLink}>
                     Open →
-                  </Link>
+                  </a>
                 )}
               </div>
               <label className={styles.toggle}>

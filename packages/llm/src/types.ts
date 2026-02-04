@@ -5,7 +5,6 @@ export type TaskType =
   | "deep_summary"
   | "entity_extract"
   | "signal_parse"
-  | "qa"
   | "aggregate_summary"
   | "catchup_pack_select"
   | "catchup_pack_tier";

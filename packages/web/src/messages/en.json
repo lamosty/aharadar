@@ -28,7 +28,6 @@
     "feed": "Feed",
     "packs": "Packs",
     "bookmarks": "Bookmarks",
-    "ask": "Ask",
     "digests": "Digests",
     "sources": "Sources",
     "topics": "Topics",
@@ -37,24 +36,6 @@
     "logout": "Logout",
     "admin": "Admin",
     "openApp": "Open App"
-  },
-  "ask": {
-    "title": "Ask Your Knowledge Base",
-    "subtitle": "Get AI-powered answers from your curated content",
-    "topic": "Topic",
-    "question": "Question",
-    "questionPlaceholder": "Ask anything... e.g., What would Warren Buffett think about recent tech layoffs?",
-    "newChat": "New chat",
-    "newChatHint": "Start a new chat thread for this topic (clears Ask memory for this topic only).",
-    "submit": "Ask",
-    "thinking": "Thinking...",
-    "answer": "Answer",
-    "citations": "Sources",
-    "confidence": "Confidence",
-    "dataGaps": "Data Gaps",
-    "featureDisabled": "Feature Not Enabled",
-    "enableInSettings": "Enable the Q&A experimental feature in Settings to start asking questions about your knowledge base.",
-    "goToSettings": "Go to Settings"
   },
   "itemSummary": {
     "openOriginal": "Open original",
@@ -244,12 +225,8 @@
       "info": "Toggle experimental features on or off. These features are in development and may change or be removed.",
       "reset": "All features reset to defaults",
       "resetAll": "Reset All",
-      "serverNote": "Note: Some features also require server-side configuration (QA_ENABLED=true in .env). The toggle here controls client-side access.",
+      "serverNote": "Note: Some features may also require server-side configuration. The toggle here controls client-side access.",
       "features": {
-        "qa": {
-          "label": "Q&A / Ask Your Knowledge Base",
-          "description": "Ask natural language questions about your ingested content. Uses cluster-based RAG to search and generate answers with citations."
-        },
         "score_debug": {
           "label": "Score Debug Mode",
           "description": "Show detailed score breakdowns in tooltips. Reveals exact weights, inputs, and multipliers used for ranking."

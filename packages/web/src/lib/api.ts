@@ -1067,7 +1067,6 @@ export interface EnvConfig {
   appEnv: string;
   appTimezone: string;
   appUrl: string | null;
-  qaEnabled: boolean;
 
   // Budget limits
   monthlyCredits: number;

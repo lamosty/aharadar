@@ -1600,8 +1600,6 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       appEnv: process.env.APP_ENV ?? "production",
       appTimezone: process.env.APP_TIMEZONE ?? "UTC",
       appUrl: process.env.APP_URL ?? null,
-      qaEnabled: process.env.QA_ENABLED === "true",
-
       // Budget limits
       monthlyCredits: parseIntOrNull(process.env.MONTHLY_CREDITS) ?? 10000,
       dailyThrottleCredits: parseIntOrNull(process.env.DAILY_THROTTLE_CREDITS),

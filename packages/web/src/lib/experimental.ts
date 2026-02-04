@@ -9,8 +9,6 @@
 const STORAGE_KEY = "aharadar_experimental_features";
 
 export interface ExperimentalFeatures {
-  /** Q&A / Ask Your Knowledge Base */
-  qa: boolean;
   /** Score debug tooltips showing ranking breakdown */
   score_debug: boolean;
   /** Show scoring mode badge on feed items */
@@ -18,7 +16,6 @@ export interface ExperimentalFeatures {
 }
 
 const DEFAULT_FEATURES: ExperimentalFeatures = {
-  qa: false,
   score_debug: false,
   show_scoring_mode: true,
 };
@@ -37,7 +34,15 @@ export function getExperimentalFeatures(): ExperimentalFeatures {
       return DEFAULT_FEATURES;
     }
     const parsed = JSON.parse(stored) as Partial<ExperimentalFeatures>;
-    return { ...DEFAULT_FEATURES, ...parsed };
+    return {
+      ...DEFAULT_FEATURES,
+      score_debug:
+        typeof parsed.score_debug === "boolean" ? parsed.score_debug : DEFAULT_FEATURES.score_debug,
+      show_scoring_mode:
+        typeof parsed.show_scoring_mode === "boolean"
+          ? parsed.show_scoring_mode
+          : DEFAULT_FEATURES.show_scoring_mode,
+    };
   } catch {
     return DEFAULT_FEATURES;
   }
@@ -127,12 +132,6 @@ export interface FeatureMeta {
  * All experimental features with metadata.
  */
 export const EXPERIMENTAL_FEATURES: FeatureMeta[] = [
-  {
-    key: "qa",
-    labelKey: "settings.experimental.features.qa.label",
-    descriptionKey: "settings.experimental.features.qa.description",
-    href: "/app/ask",
-  },
   {
     key: "score_debug",
     labelKey: "settings.experimental.features.score_debug.label",

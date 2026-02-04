@@ -72,7 +72,6 @@ export function EnvConfigWarnings({ showFullConfig = false }: EnvConfigWarningsP
             highlight={config.appEnv !== "production"}
           />
           <ConfigItem label="Timezone" value={config.appTimezone} />
-          <ConfigItem label="QA Mode" value={config.qaEnabled ? "Enabled" : "Disabled"} />
           {/* Budgets */}
           <ConfigItem label="Monthly Credits" value={config.monthlyCredits.toLocaleString()} />
           <ConfigItem
