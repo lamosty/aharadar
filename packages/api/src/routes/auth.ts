@@ -91,12 +91,14 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       });
 
       // Set session cookie
-      const isProduction = process.env.NODE_ENV === "production";
+      // Allow disabling secure cookies for internal HTTP access
+      const secureCookies =
+        process.env.SECURE_COOKIES !== "false" && process.env.NODE_ENV === "production";
 
       reply.setCookie("session", sessionToken, {
         path: "/",
         httpOnly: true,
-        secure: isProduction,
+        secure: secureCookies,
         sameSite: "lax",
         maxAge: SESSION_EXPIRY_DAYS * 24 * 60 * 60,
       });
@@ -194,12 +196,14 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       });
 
       // Set session cookie
-      const isProduction = process.env.NODE_ENV === "production";
+      // Allow disabling secure cookies for internal HTTP access
+      const secureCookies =
+        process.env.SECURE_COOKIES !== "false" && process.env.NODE_ENV === "production";
 
       reply.setCookie("session", sessionToken, {
         path: "/",
         httpOnly: true,
-        secure: isProduction,
+        secure: secureCookies,
         sameSite: "lax",
         maxAge: SESSION_EXPIRY_DAYS * 24 * 60 * 60,
       });

@@ -15,8 +15,32 @@
  */
 
 const path = require("path");
+const fs = require("fs");
 
 const ROOT = __dirname;
+
+// Parse .env file manually (PM2 does not load .env by default)
+function parseEnv(envPath) {
+  const env = {};
+  try {
+    const content = fs.readFileSync(envPath, "utf8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const idx = trimmed.indexOf("=");
+      if (idx > 0) {
+        const key = trimmed.slice(0, idx);
+        const value = trimmed.slice(idx + 1);
+        env[key] = value;
+      }
+    }
+  } catch (e) {
+    // Ignore if .env doesn't exist
+  }
+  return env;
+}
+
+const dotenv = parseEnv(path.join(ROOT, ".env"));
 const NODE_ENV = process.env.NODE_ENV || "production";
 
 module.exports = {
@@ -27,6 +51,7 @@ module.exports = {
       script: "packages/api/dist/main.js",
       interpreter: "node",
       env: {
+        ...dotenv,
         NODE_ENV,
       },
       // Restart settings
@@ -46,8 +71,13 @@ module.exports = {
       args: "start",
       interpreter: "none",
       env: {
+        ...dotenv,
         NODE_ENV,
-        PORT: process.env.WEB_PORT || 3000,
+        PORT: dotenv.WEB_PORT || process.env.WEB_PORT || 3000,
+        API_URL:
+          dotenv.API_URL ||
+          process.env.API_URL ||
+          `http://localhost:${dotenv.API_PORT || 3001}`,
       },
       // Restart settings
       max_restarts: 10,
@@ -65,6 +95,7 @@ module.exports = {
       script: "packages/worker/dist/main.js",
       interpreter: "node",
       env: {
+        ...dotenv,
         NODE_ENV,
       },
       // Restart settings
@@ -80,9 +111,10 @@ module.exports = {
     {
       name: "aharadar-queue-ui",
       cwd: ROOT,
-      script: "packages/queue-ui/dist/main.js",
+      script: "packages/queue-ui/dist/index.js",
       interpreter: "node",
       env: {
+        ...dotenv,
         NODE_ENV,
       },
       // Restart settings
