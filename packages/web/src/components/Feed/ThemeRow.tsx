@@ -730,8 +730,8 @@ function chunkItems<T>(items: T[], size: number): T[][] {
 /**
  * Group items by topic (from triage JSON).
  *
- * - Topics with 1+ items → collapsible group (shown first, sorted by top score)
- * - Items with no topic → collected into "Uncategorized" (shown last)
+ * - Topics with 2+ items → collapsible group (shown first, sorted by top score)
+ * - Singletons → collected into "Uncategorized" (shown last)
  * - Items within each group are sorted by the specified sort option
  *
  * This keeps themed items grouped while preserving an "Uncategorized" bucket.
@@ -742,10 +742,12 @@ export function groupItemsByTheme(
 ): ThemeGroup[] {
   const resolvedOptions = typeof options === "string" ? { sort: options } : options;
   const sort = resolvedOptions.sort ?? "best";
-  const maxItemsPerTheme = resolvedOptions.maxItemsPerTheme ?? 0;
+  const maxItemsPerThemeRaw = resolvedOptions.maxItemsPerTheme ?? 0;
+  const maxItemsPerTheme = maxItemsPerThemeRaw >= 2 ? maxItemsPerThemeRaw : 0;
   const subthemesEnabled = resolvedOptions.subthemesEnabled ?? false;
   const refineLabels = resolvedOptions.refineLabels ?? false;
   const fallbackThemeByItemId = resolvedOptions.fallbackThemeByItemId;
+  const minThemeSize = 2;
 
   const topicMap = new Map<string, FeedItemType[]>();
 
@@ -778,6 +780,14 @@ export function groupItemsByTheme(
   ): ThemeGroup[] {
     const sortedItems = [...themeItems].sort(comparator);
     const chunks = maxItemsPerTheme > 0 ? chunkItems(sortedItems, maxItemsPerTheme) : [sortedItems];
+    // Avoid singleton chunks by merging the last 1-item chunk into the previous chunk.
+    if (chunks.length > 1 && chunks[chunks.length - 1]?.length === 1) {
+      const last = chunks.pop();
+      const prev = chunks[chunks.length - 1];
+      if (last && prev) {
+        prev.push(...last);
+      }
+    }
     const baseLabel = cleanLabel(themeKey);
     const baseLabelNormalized = normalizePhrase(baseLabel);
     const themeWords = new Set(tokenizeText(baseLabel).map(normalizeToken));
@@ -818,6 +828,11 @@ export function groupItemsByTheme(
   // Second pass: create groups for topics, collect uncategorized
   for (const [topic, topicItems] of topicMap) {
     if (topic === "Uncategorized") {
+      uncategorizedItems.push(...topicItems);
+      continue;
+    }
+
+    if (topicItems.length < minThemeSize) {
       uncategorizedItems.push(...topicItems);
       continue;
     }
