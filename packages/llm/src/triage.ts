@@ -52,6 +52,12 @@ export interface TriageCandidateInput {
   primaryUrl?: string | null;
   author?: string | null;
   publishedAt?: string | null;
+  clusterMembers?: Array<{
+    title: string | null;
+    sourceType?: string | null;
+    sourceName?: string | null;
+    publishedAt?: string | null;
+  }>;
   windowStart: string;
   windowEnd: string;
 }
@@ -169,6 +175,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string)
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
     "- theme: 2-4 words capturing the subject + facet (e.g. 'Bitcoin ETFs', 'AI regulation', 'City transit plan', 'Kubernetes release'). This is used for UI GROUPING. Avoid ultra-broad single-word themes unless the item truly spans the entire subject.\n" +
+    "- If cluster_members are provided, use them to pick a more specific shared theme (not just the broad subject).\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     "- If user_preferences_summary is provided in the input, use it to judge relevance.\n" +
     guidanceSection +
@@ -183,6 +190,7 @@ function buildUserPrompt(
 ): string {
   const maxBody = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
   const maxTitle = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_TITLE_CHARS) ?? 240;
+  const maxClusterMembers = 5;
 
   const payload: Record<string, unknown> = {
     budget_tier: tier,
@@ -199,6 +207,22 @@ function buildUserPrompt(
       published_at: candidate.publishedAt ?? null,
     },
   };
+
+  if (candidate.clusterMembers && candidate.clusterMembers.length > 0) {
+    const clusterMembers = candidate.clusterMembers
+      .slice(0, maxClusterMembers)
+      .map((member) => ({
+        title: clampText(member.title, maxTitle),
+        source_type: member.sourceType ?? null,
+        source_name: member.sourceName ?? null,
+        published_at: member.publishedAt ?? null,
+      }))
+      .filter((member) => member.title);
+
+    if (clusterMembers.length > 0) {
+      payload.cluster_members = clusterMembers;
+    }
+  }
 
   if (preferenceSummary && preferenceSummary.trim().length > 0) {
     payload.user_preferences_summary = preferenceSummary.trim();
@@ -624,6 +648,7 @@ function buildBatchSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: st
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
     "- topic: 2-4 words capturing the subject + facet (e.g. 'Bitcoin ETFs', 'AI regulation', 'City transit plan', 'Kubernetes release'). This is used for GROUPING.\n" +
+    "- If cluster_members are provided, use them to pick a more specific shared theme (not just the broad subject).\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     "- If user_preferences_summary is provided in the input, use it to judge relevance.\n" +
     guidanceSection +
@@ -639,17 +664,38 @@ function buildBatchUserPrompt(
 ): string {
   const maxBody = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
   const maxTitle = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_TITLE_CHARS) ?? 240;
+  const maxClusterMembers = 5;
 
-  const items = candidates.map((c) => ({
-    id: c.id,
-    source_type: c.sourceType,
-    source_name: c.sourceName ?? null,
-    title: clampText(c.title, maxTitle),
-    body_text: clampText(c.bodyText, maxBody),
-    primary_url: c.primaryUrl ?? null,
-    author: c.author ?? null,
-    published_at: c.publishedAt ?? null,
-  }));
+  const items = candidates.map((c) => {
+    const item: Record<string, unknown> = {
+      id: c.id,
+      source_type: c.sourceType,
+      source_name: c.sourceName ?? null,
+      title: clampText(c.title, maxTitle),
+      body_text: clampText(c.bodyText, maxBody),
+      primary_url: c.primaryUrl ?? null,
+      author: c.author ?? null,
+      published_at: c.publishedAt ?? null,
+    };
+
+    if (c.clusterMembers && c.clusterMembers.length > 0) {
+      const clusterMembers = c.clusterMembers
+        .slice(0, maxClusterMembers)
+        .map((member) => ({
+          title: clampText(member.title, maxTitle),
+          source_type: member.sourceType ?? null,
+          source_name: member.sourceName ?? null,
+          published_at: member.publishedAt ?? null,
+        }))
+        .filter((member) => member.title);
+
+      if (clusterMembers.length > 0) {
+        item.cluster_members = clusterMembers;
+      }
+    }
+
+    return item;
+  });
 
   const payload: Record<string, unknown> = {
     batch_id: batchId,

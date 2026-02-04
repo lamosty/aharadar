@@ -370,6 +370,67 @@ async function loadThemeSeedClusters(params: {
   return seeds;
 }
 
+async function loadClusterMemberContext(params: {
+  db: Db;
+  userId: string;
+  topicId: string;
+  clusterIds: string[];
+  limitPerCluster: number;
+}): Promise<Map<string, ClusterMemberContext[]>> {
+  if (params.clusterIds.length === 0 || params.limitPerCluster <= 0) {
+    return new Map();
+  }
+
+  const limit = Math.max(1, Math.min(10, Math.floor(params.limitPerCluster)));
+  const res = await params.db.query<{
+    cluster_id: string;
+    title: string | null;
+    source_type: string | null;
+    source_name: string | null;
+    published_at: string | null;
+  }>(
+    `select cluster_id, title, source_type, source_name, published_at
+     from (
+       select
+         cli.cluster_id::text as cluster_id,
+         ci.title,
+         s.type as source_type,
+         s.name as source_name,
+         coalesce(ci.published_at, ci.fetched_at)::text as published_at,
+         row_number() over (
+           partition by cli.cluster_id
+           order by coalesce(ci.published_at, ci.fetched_at) desc, length(coalesce(ci.title, '')) desc
+         ) as rn
+       from cluster_items cli
+       join content_items ci on ci.id = cli.content_item_id
+       join content_item_sources cis on cis.content_item_id = ci.id
+       join sources s on s.id = cis.source_id
+       where cli.cluster_id = any($1::uuid[])
+         and s.user_id = $2::uuid
+         and s.topic_id = $3::uuid
+         and ci.deleted_at is null
+         and ci.duplicate_of_content_item_id is null
+     ) t
+     where rn <= $4
+     order by cluster_id, rn`,
+    [params.clusterIds, params.userId, params.topicId, limit],
+  );
+
+  const result = new Map<string, ClusterMemberContext[]>();
+  for (const row of res.rows) {
+    const list = result.get(row.cluster_id) ?? [];
+    list.push({
+      title: row.title,
+      sourceType: row.source_type,
+      sourceName: row.source_name,
+      publishedAt: row.published_at,
+    });
+    result.set(row.cluster_id, list);
+  }
+
+  return result;
+}
+
 /**
  * Compute novelty for candidates by finding max similarity to topic history.
  *
@@ -751,6 +812,14 @@ interface TriageableCandidate {
   author: string | null;
   publishedAt: string | null;
   metadata: Record<string, unknown>;
+  clusterMembers?: ClusterMemberContext[];
+}
+
+interface ClusterMemberContext {
+  title: string | null;
+  sourceType: string | null;
+  sourceName: string | null;
+  publishedAt: string | null;
 }
 
 function chunkCandidatesIntoBatches(
@@ -763,7 +832,10 @@ function chunkCandidatesIntoBatches(
   let currentChars = 0;
 
   for (const candidate of candidates) {
-    const itemChars = (candidate.title?.length ?? 0) + (candidate.bodyText?.length ?? 0);
+    const memberChars =
+      candidate.clusterMembers?.reduce((sum, member) => sum + (member.title?.length ?? 0), 0) ?? 0;
+    const itemChars =
+      (candidate.title?.length ?? 0) + (candidate.bodyText?.length ?? 0) + memberChars;
 
     // Start new batch if current would exceed limits
     if (
@@ -857,6 +929,7 @@ async function triageCandidates(params: {
       bodyText: c.bodyText,
       sourceType: c.sourceType,
       sourceName: c.sourceName,
+      clusterMembers: c.clusterMembers,
       primaryUrl: getPrimaryUrl({ canonicalUrl: c.canonicalUrl, metadata: c.metadata }),
       author: c.author,
       publishedAt: c.publishedAt,
@@ -1045,6 +1118,7 @@ async function triageCandidatesIndividually(params: {
           bodyText: candidate.bodyText,
           sourceType: candidate.sourceType,
           sourceName: candidate.sourceName,
+          clusterMembers: candidate.clusterMembers,
           primaryUrl: getPrimaryUrl({
             canonicalUrl: candidate.canonicalUrl,
             metadata: candidate.metadata,
@@ -1422,6 +1496,31 @@ export async function persistDigestFromContentItems(params: {
   const tuning = parsePersonalizationTuning(topic?.custom_settings?.personalization_tuning_v1);
   const aiGuidance = parseAiGuidance(topic?.custom_settings?.ai_guidance_v1);
   const themeTuning = parseThemeTuning(topic?.custom_settings?.theme_tuning_v1);
+  const clusterContextEnabled = themeTuning.useClusterContext === true;
+
+  let scoredCandidates = scored;
+  if (clusterContextEnabled) {
+    try {
+      const clusterIds = scored.filter((c) => c.kind === "cluster").map((c) => c.candidateId);
+      const clusterMembers = await loadClusterMemberContext({
+        db: params.db,
+        userId: params.userId,
+        topicId: params.topicId,
+        clusterIds,
+        limitPerCluster: 5,
+      });
+      scoredCandidates = scored.map((candidate) =>
+        candidate.kind === "cluster"
+          ? {
+              ...candidate,
+              clusterMembers: clusterMembers.get(candidate.candidateId) ?? [],
+            }
+          : candidate,
+      );
+    } catch (err) {
+      log.warn({ err }, "Cluster context load failed; continuing without cluster titles");
+    }
+  }
 
   // =========================================================================
   // Load scoring mode configuration
@@ -1473,7 +1572,7 @@ export async function persistDigestFromContentItems(params: {
   const aiPreferenceInjectionEnabled = scoringModeConfig.features.aiPreferenceInjection ?? false;
 
   if (!embeddingPreferencesEnabled) {
-    for (const item of scored) {
+    for (const item of scoredCandidates) {
       item.positiveSim = null;
       item.negativeSim = null;
     }
@@ -1508,7 +1607,7 @@ export async function persistDigestFromContentItems(params: {
   // =========================================================================
   // Step 1: Stratified sampling for fair coverage across sources and time
   // =========================================================================
-  const samplingCandidates: SamplingCandidate[] = scored.map((c) => ({
+  const samplingCandidates: SamplingCandidate[] = scoredCandidates.map((c) => ({
     candidateId: c.candidateId,
     sourceType: c.sourceType,
     sourceId: c.fairnessSourceId,
@@ -1526,7 +1625,9 @@ export async function persistDigestFromContentItems(params: {
   });
 
   // Filter to only sampled candidates
-  const sampledScored = scored.filter((c) => samplingResult.sampledIds.has(c.candidateId));
+  const sampledScored = scoredCandidates.filter((c) =>
+    samplingResult.sampledIds.has(c.candidateId),
+  );
 
   log.info(
     {
@@ -1619,7 +1720,10 @@ export async function persistDigestFromContentItems(params: {
     topicId: params.topicId,
     windowStart: params.windowStart,
     lookbackDays: noveltyLookbackDays,
-    candidates: scored.map((c) => ({ candidateId: c.candidateId, vectorText: c.vectorText })),
+    candidates: scoredCandidates.map((c) => ({
+      candidateId: c.candidateId,
+      vectorText: c.vectorText,
+    })),
   });
 
   // Parse source type weights from env for ranking
@@ -1639,7 +1743,7 @@ export async function persistDigestFromContentItems(params: {
   // Load source calibrations if per-source calibration is enabled
   let sourceCalibrations: Map<string, SourceCalibration> = new Map();
   if (scoringModeConfig.features.perSourceCalibration) {
-    const sourceIds = [...new Set(scored.map((c) => c.sourceId))];
+    const sourceIds = [...new Set(scoredCandidates.map((c) => c.sourceId))];
     sourceCalibrations = await params.db.sourceCalibrations.getBatch(params.userId, sourceIds);
     log.debug(
       { sourceCount: sourceIds.length, calibrationsLoaded: sourceCalibrations.size },
@@ -1656,7 +1760,7 @@ export async function persistDigestFromContentItems(params: {
     weights: { wPref: tuning.rankPrefWeight },
     scoringModeConfig,
     sourceCalibrations,
-    candidates: scored.map((c) => {
+    candidates: scoredCandidates.map((c) => {
       // Compute source weight (from source config and env type weights)
       const perSourceWeight = asFiniteNumber(c.sourceConfigJson?.weight);
       const sourceWeight = computeEffectiveSourceWeight({

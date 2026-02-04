@@ -13,6 +13,8 @@ export interface ThemeTuningV1 {
   schema_version: "theme_tuning_v1";
   /** Whether theme grouping is enabled */
   enabled?: boolean;
+  /** Include cluster member titles in triage input for more specific themes */
+  useClusterContext?: boolean;
   /** Similarity threshold for theme clustering (0.3-0.9) */
   similarityThreshold?: number;
   /** Lookback window in days for theme continuity (1-14) */
@@ -24,6 +26,7 @@ export interface ThemeTuningV1 {
  */
 export interface ThemeTuningResolved {
   enabled: boolean;
+  useClusterContext: boolean;
   similarityThreshold: number;
   lookbackDays: number;
 }
@@ -31,6 +34,7 @@ export interface ThemeTuningResolved {
 /** Default tuning values (match admin UI defaults) */
 export const THEME_TUNING_DEFAULTS: ThemeTuningResolved = {
   enabled: true,
+  useClusterContext: false,
   similarityThreshold: 0.65,
   lookbackDays: 7,
 };
@@ -58,6 +62,8 @@ export function parseThemeTuning(raw: unknown): ThemeTuningResolved {
   const obj = raw as Record<string, unknown>;
 
   const enabled = typeof obj.enabled === "boolean" ? obj.enabled : defaults.enabled;
+  const useClusterContext =
+    typeof obj.useClusterContext === "boolean" ? obj.useClusterContext : defaults.useClusterContext;
 
   function extractClamped(
     key: keyof ThemeTuningResolved,
@@ -74,6 +80,7 @@ export function parseThemeTuning(raw: unknown): ThemeTuningResolved {
 
   return {
     enabled,
+    useClusterContext,
     similarityThreshold: extractClamped(
       "similarityThreshold",
       defaults.similarityThreshold,
@@ -99,6 +106,9 @@ export function validateThemeTuning(input: Partial<ThemeTuningV1>): string[] {
 
   if (input.enabled !== undefined && typeof input.enabled !== "boolean") {
     errors.push("enabled must be a boolean");
+  }
+  if (input.useClusterContext !== undefined && typeof input.useClusterContext !== "boolean") {
+    errors.push("useClusterContext must be a boolean");
   }
 
   function validateField(key: keyof typeof ranges, value: unknown): void {

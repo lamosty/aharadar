@@ -155,6 +155,7 @@ For a cluster candidate:
 - source provenance (reddit/hn/rss/youtube/signal)
 - user preference profile summary (derived from likes/dislikes)
 - budget tier (derived from numeric budget pool and policy)
+- optional: `cluster_members` list when theme tuning enables cluster context
 
 **Theme guidance (triage_v1)**:
 - `theme` should be 2–4 words capturing **subject + facet** (e.g., “AI regulation”, “City transit plan”, “Kubernetes release”).

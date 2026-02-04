@@ -20,6 +20,7 @@ const PERSONALIZATION_TUNING_RANGES = {
 // Theme tuning defaults and ranges
 const THEME_TUNING_DEFAULTS = {
   enabled: true,
+  useClusterContext: false,
   similarityThreshold: 0.65,
   lookbackDays: 7,
 };
@@ -46,6 +47,7 @@ interface PersonalizationTuningResolved {
 
 interface ThemeTuningResolved {
   enabled: boolean;
+  useClusterContext: boolean;
   similarityThreshold: number;
   lookbackDays: number;
 }
@@ -160,6 +162,7 @@ function parseThemeTuning(raw: unknown): ThemeTuningResolved {
 
   return {
     enabled: extractBool("enabled", defaults.enabled),
+    useClusterContext: extractBool("useClusterContext", defaults.useClusterContext),
     similarityThreshold: extractClampedNum(
       "similarityThreshold",
       defaults.similarityThreshold,
@@ -205,6 +208,9 @@ export default function AdminTuningPage() {
 
   // Form state for theme tuning params
   const [themeEnabled, setThemeEnabled] = useState(THEME_TUNING_DEFAULTS.enabled);
+  const [themeUseClusterContext, setThemeUseClusterContext] = useState(
+    THEME_TUNING_DEFAULTS.useClusterContext,
+  );
   const [themeSimilarityThreshold, setThemeSimilarityThreshold] = useState(
     THEME_TUNING_DEFAULTS.similarityThreshold,
   );
@@ -240,6 +246,7 @@ export default function AdminTuningPage() {
     // Load theme tuning
     const themeTuning = parseThemeTuning(topic.customSettings?.theme_tuning_v1);
     setThemeEnabled(themeTuning.enabled);
+    setThemeUseClusterContext(themeTuning.useClusterContext);
     setThemeSimilarityThreshold(themeTuning.similarityThreshold);
     setThemeLookbackDays(themeTuning.lookbackDays);
 
@@ -285,6 +292,7 @@ export default function AdminTuningPage() {
       },
       theme_tuning_v1: {
         enabled: themeEnabled,
+        useClusterContext: themeUseClusterContext,
         similarityThreshold: themeSimilarityThreshold,
         lookbackDays: themeLookbackDays,
       },
@@ -303,6 +311,7 @@ export default function AdminTuningPage() {
     setFeedbackWeightDelta(PERSONALIZATION_TUNING_DEFAULTS.feedbackWeightDelta);
     // Reset theme tuning
     setThemeEnabled(THEME_TUNING_DEFAULTS.enabled);
+    setThemeUseClusterContext(THEME_TUNING_DEFAULTS.useClusterContext);
     setThemeSimilarityThreshold(THEME_TUNING_DEFAULTS.similarityThreshold);
     setThemeLookbackDays(THEME_TUNING_DEFAULTS.lookbackDays);
     // Reset AI guidance
@@ -334,6 +343,7 @@ export default function AdminTuningPage() {
   const hasThemeChanges =
     savedThemeTuning &&
     (themeEnabled !== savedThemeTuning.enabled ||
+      themeUseClusterContext !== savedThemeTuning.useClusterContext ||
       themeSimilarityThreshold !== savedThemeTuning.similarityThreshold ||
       themeLookbackDays !== savedThemeTuning.lookbackDays);
 
@@ -353,6 +363,7 @@ export default function AdminTuningPage() {
 
   const isThemeDefault =
     themeEnabled === THEME_TUNING_DEFAULTS.enabled &&
+    themeUseClusterContext === THEME_TUNING_DEFAULTS.useClusterContext &&
     themeSimilarityThreshold === THEME_TUNING_DEFAULTS.similarityThreshold &&
     themeLookbackDays === THEME_TUNING_DEFAULTS.lookbackDays;
 
@@ -585,6 +596,31 @@ export default function AdminTuningPage() {
           <p className={styles.sliderDescription}>
             When enabled, the pipeline will compute themes for items. Disable to skip theme
             computation entirely.
+          </p>
+        </div>
+
+        {/* Cluster Context Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="themeUseClusterContext" className={styles.toggleLabel}>
+              Use Cluster Context for Themes
+            </label>
+            <button
+              id="themeUseClusterContext"
+              type="button"
+              role="switch"
+              aria-checked={themeUseClusterContext}
+              className={`${styles.toggle} ${themeUseClusterContext ? styles.toggleOn : ""}`}
+              onClick={() => setThemeUseClusterContext(!themeUseClusterContext)}
+              disabled={isSaving || !themeEnabled}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            When enabled, triage includes a few cluster member titles to generate more specific
+            themes. This can increase token usage slightly but often reduces giant buckets like
+            &quot;Bitcoin&quot;.
           </p>
         </div>
 

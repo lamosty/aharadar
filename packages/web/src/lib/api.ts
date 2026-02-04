@@ -1299,6 +1299,7 @@ export interface TopicCustomSettingsUpdateRequest {
   };
   theme_tuning_v1?: {
     enabled?: boolean;
+    useClusterContext?: boolean;
     similarityThreshold?: number;
     lookbackDays?: number;
   };
