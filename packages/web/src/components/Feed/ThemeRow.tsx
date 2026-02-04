@@ -9,6 +9,8 @@ import styles from "./ThemeRow.module.css";
 
 /** A theme group containing related items */
 export interface ThemeGroup {
+  /** Raw theme key used for grouping (unrefined) */
+  themeKey: string;
   themeId: string;
   label: string | null;
   itemCount: number;
@@ -36,6 +38,8 @@ export interface ThemeGroupingOptions {
   subthemesEnabled?: boolean;
   /** Apply non-LLM label refinement for display */
   refineLabels?: boolean;
+  /** Optional fallback theme key for items missing a theme */
+  fallbackThemeByItemId?: Map<string, string>;
 }
 
 interface ThemeRowProps {
@@ -741,12 +745,19 @@ export function groupItemsByTheme(
   const maxItemsPerTheme = resolvedOptions.maxItemsPerTheme ?? 0;
   const subthemesEnabled = resolvedOptions.subthemesEnabled ?? false;
   const refineLabels = resolvedOptions.refineLabels ?? false;
+  const fallbackThemeByItemId = resolvedOptions.fallbackThemeByItemId;
 
   const topicMap = new Map<string, FeedItemType[]>();
 
   // First pass: group items by topic from triageJson
   for (const item of items) {
-    const topic = getItemThemeKey(item);
+    let topic = getItemThemeKey(item);
+    if (topic === "Uncategorized" && fallbackThemeByItemId) {
+      const fallback = fallbackThemeByItemId.get(item.id);
+      if (fallback && fallback !== "Uncategorized") {
+        topic = fallback;
+      }
+    }
     const existing = topicMap.get(topic);
     if (existing) {
       existing.push(item);
@@ -791,6 +802,7 @@ export function groupItemsByTheme(
       const suffix = chunks.length > 1 ? ` · ${index + 1}` : "";
 
       groups.push({
+        themeKey,
         themeId: chunks.length > 1 ? `${baseThemeId}::${index + 1}` : baseThemeId,
         label: `${refinedLabel}${suffix}`,
         itemCount: orderedItems.length,

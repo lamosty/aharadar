@@ -214,7 +214,8 @@ function FeedPageContent() {
     };
   }, []);
 
-  // No sticky theme state: grouping updates are fully derived from current items
+  // Sticky theme state: keep multi-item groups anchored when a single item is removed
+  const stickyThemeByItemIdRef = useRef<Map<string, string>>(new Map());
 
   // Determine if we're in "all topics" mode
   const isAllTopicsMode = currentTopicId === null;
@@ -321,17 +322,43 @@ function FeedPageContent() {
     view,
   });
 
+  const items = data?.items ?? [];
+
+  const themeGroups = useMemo(() => {
+    if (!groupByTheme) return [];
+    return groupItemsByTheme(items, {
+      sort,
+      ...themeGroupingOptions,
+      fallbackThemeByItemId: stickyThemeByItemIdRef.current,
+    });
+  }, [groupByTheme, items, sort, themeGroupingOptions]);
+
+  useEffect(() => {
+    if (!groupByTheme) return;
+    const sticky = stickyThemeByItemIdRef.current;
+    const currentIds = new Set(items.map((item) => item.id));
+    for (const id of sticky.keys()) {
+      if (!currentIds.has(id)) {
+        sticky.delete(id);
+      }
+    }
+    for (const group of themeGroups) {
+      if (group.itemCount >= 2 && group.themeKey !== "Uncategorized") {
+        for (const item of group.items) {
+          sticky.set(item.id, group.themeKey);
+        }
+      }
+    }
+  }, [groupByTheme, items, themeGroups]);
+
   // Get items in visual order (respects theme grouping when enabled)
   // This is used for fast triage navigation to match what user sees
   const getVisualOrderItems = useCallback(() => {
-    const items = data?.items ?? [];
     if (!groupByTheme) {
       return items;
     }
-    // Flatten theme groups into visual order
-    const themeGroups = groupItemsByTheme(items, { sort, ...themeGroupingOptions });
     return themeGroups.flatMap((group) => group.items);
-  }, [data?.items, groupByTheme, sort, themeGroupingOptions]);
+  }, [groupByTheme, items, themeGroups]);
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -626,7 +653,6 @@ function FeedPageContent() {
     });
   }, [mobileModalHistory, clearFeedbackMutation]);
 
-  const items = data?.items ?? [];
   const totalCount = data?.pagination.total ?? 0;
   const isCondensed = layout === "condensed";
 
@@ -877,7 +903,7 @@ function FeedPageContent() {
           >
             {groupByTheme
               ? // Render items grouped by theme
-                groupItemsByTheme(items, { sort, ...themeGroupingOptions }).map((themeGroup) => (
+                themeGroups.map((themeGroup) => (
                   <ThemeRow
                     key={themeGroup.themeId}
                     theme={themeGroup}
