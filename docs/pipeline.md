@@ -100,6 +100,7 @@ This mechanism allows different source types to have different natural frequenci
   - Retention is topic-scoped and **never** deletes items with feedback or bookmarks (unless disabled).
   - Effective retention is clamped to at least the novelty lookback window.
   - Embeddings for items shared across multiple topics are preserved (safety-first).
+  - Optional hard cap by item count can prune the oldest embeddings beyond a per-topic limit.
 
 ### 3) Dedupe
 

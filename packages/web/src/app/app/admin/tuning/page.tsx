@@ -42,12 +42,14 @@ const THEME_TUNING_RANGES = {
 const EMBEDDING_RETENTION_DEFAULTS = {
   enabled: true,
   maxAgeDays: 90,
+  maxItems: 0,
   protectFeedback: true,
   protectBookmarks: true,
 };
 
 const EMBEDDING_RETENTION_RANGES = {
   maxAgeDays: { min: 30, max: 120 },
+  maxItems: { min: 0, max: 200000 },
 } as const;
 
 // AI Guidance defaults and max length
@@ -85,6 +87,7 @@ interface AiGuidanceResolved {
 interface EmbeddingRetentionResolved {
   enabled: boolean;
   maxAgeDays: number;
+  maxItems: number;
   protectFeedback: boolean;
   protectBookmarks: boolean;
 }
@@ -265,6 +268,12 @@ function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolved {
       ranges.maxAgeDays.min,
       ranges.maxAgeDays.max,
     ),
+    maxItems: extractClampedNum(
+      "maxItems",
+      defaults.maxItems,
+      ranges.maxItems.min,
+      ranges.maxItems.max,
+    ),
     protectFeedback: extractBool("protectFeedback", defaults.protectFeedback),
     protectBookmarks: extractBool("protectBookmarks", defaults.protectBookmarks),
   };
@@ -324,6 +333,7 @@ export default function AdminTuningPage() {
   const [retentionMaxAgeDays, setRetentionMaxAgeDays] = useState(
     EMBEDDING_RETENTION_DEFAULTS.maxAgeDays,
   );
+  const [retentionMaxItems, setRetentionMaxItems] = useState(EMBEDDING_RETENTION_DEFAULTS.maxItems);
   const [retentionProtectFeedback, setRetentionProtectFeedback] = useState(
     EMBEDDING_RETENTION_DEFAULTS.protectFeedback,
   );
@@ -374,6 +384,7 @@ export default function AdminTuningPage() {
     const retention = parseEmbeddingRetention(topic.customSettings?.embedding_retention_v1);
     setRetentionEnabled(retention.enabled);
     setRetentionMaxAgeDays(retention.maxAgeDays);
+    setRetentionMaxItems(retention.maxItems);
     setRetentionProtectFeedback(retention.protectFeedback);
     setRetentionProtectBookmarks(retention.protectBookmarks);
 
@@ -431,6 +442,7 @@ export default function AdminTuningPage() {
       embedding_retention_v1: {
         enabled: retentionEnabled,
         maxAgeDays: retentionMaxAgeDays,
+        maxItems: retentionMaxItems,
         protectFeedback: retentionProtectFeedback,
         protectBookmarks: retentionProtectBookmarks,
       },
@@ -460,6 +472,7 @@ export default function AdminTuningPage() {
     // Reset embedding retention
     setRetentionEnabled(EMBEDDING_RETENTION_DEFAULTS.enabled);
     setRetentionMaxAgeDays(EMBEDDING_RETENTION_DEFAULTS.maxAgeDays);
+    setRetentionMaxItems(EMBEDDING_RETENTION_DEFAULTS.maxItems);
     setRetentionProtectFeedback(EMBEDDING_RETENTION_DEFAULTS.protectFeedback);
     setRetentionProtectBookmarks(EMBEDDING_RETENTION_DEFAULTS.protectBookmarks);
     // Reset AI guidance
@@ -507,6 +520,7 @@ export default function AdminTuningPage() {
     savedEmbeddingRetention &&
     (retentionEnabled !== savedEmbeddingRetention.enabled ||
       retentionMaxAgeDays !== savedEmbeddingRetention.maxAgeDays ||
+      retentionMaxItems !== savedEmbeddingRetention.maxItems ||
       retentionProtectFeedback !== savedEmbeddingRetention.protectFeedback ||
       retentionProtectBookmarks !== savedEmbeddingRetention.protectBookmarks);
 
@@ -539,6 +553,7 @@ export default function AdminTuningPage() {
   const isRetentionDefault =
     retentionEnabled === EMBEDDING_RETENTION_DEFAULTS.enabled &&
     retentionMaxAgeDays === EMBEDDING_RETENTION_DEFAULTS.maxAgeDays &&
+    retentionMaxItems === EMBEDDING_RETENTION_DEFAULTS.maxItems &&
     retentionProtectFeedback === EMBEDDING_RETENTION_DEFAULTS.protectFeedback &&
     retentionProtectBookmarks === EMBEDDING_RETENTION_DEFAULTS.protectBookmarks;
 
@@ -1095,6 +1110,39 @@ export default function AdminTuningPage() {
             </div>
             <p className={styles.sliderDescription}>
               Embeddings older than this window can be removed to control storage growth.
+            </p>
+          </div>
+        </div>
+
+        {/* Retention Max Items */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="retentionMaxItems" className={styles.sliderLabel}>
+                Embedding Cap (items)
+              </label>
+              <span className={styles.sliderValue}>
+                {retentionMaxItems === 0 ? "Off" : retentionMaxItems.toLocaleString()}
+              </span>
+            </div>
+            <input
+              id="retentionMaxItems"
+              type="range"
+              min={EMBEDDING_RETENTION_RANGES.maxItems.min}
+              max={EMBEDDING_RETENTION_RANGES.maxItems.max}
+              step={1000}
+              value={retentionMaxItems}
+              onChange={(e) => setRetentionMaxItems(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !retentionEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{EMBEDDING_RETENTION_RANGES.maxItems.min} (Off)</span>
+              <span>{EMBEDDING_RETENTION_RANGES.maxItems.max.toLocaleString()}</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              Optional hard cap on how many embeddings to retain for this topic. If exceeded, the
+              oldest embeddings are pruned after the age window is applied.
             </p>
           </div>
         </div>

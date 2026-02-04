@@ -1310,6 +1310,7 @@ export interface TopicCustomSettingsUpdateRequest {
   embedding_retention_v1?: {
     enabled?: boolean;
     maxAgeDays?: number;
+    maxItems?: number;
     protectFeedback?: boolean;
     protectBookmarks?: boolean;
   };

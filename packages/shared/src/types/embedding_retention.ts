@@ -15,6 +15,8 @@ export interface EmbeddingRetentionV1 {
   enabled?: boolean;
   /** Max age (days) to keep embeddings (30-120) */
   maxAgeDays?: number;
+  /** Max embeddings to keep per topic (0 = off) */
+  maxItems?: number;
   /** Keep embeddings for items with feedback events */
   protectFeedback?: boolean;
   /** Keep embeddings for bookmarked items */
@@ -27,6 +29,7 @@ export interface EmbeddingRetentionV1 {
 export interface EmbeddingRetentionResolved {
   enabled: boolean;
   maxAgeDays: number;
+  maxItems: number;
   protectFeedback: boolean;
   protectBookmarks: boolean;
 }
@@ -35,6 +38,7 @@ export interface EmbeddingRetentionResolved {
 export const EMBEDDING_RETENTION_DEFAULTS: EmbeddingRetentionResolved = {
   enabled: true,
   maxAgeDays: 90,
+  maxItems: 0,
   protectFeedback: true,
   protectBookmarks: true,
 };
@@ -42,6 +46,7 @@ export const EMBEDDING_RETENTION_DEFAULTS: EmbeddingRetentionResolved = {
 /** Clamp ranges for retention parameters */
 export const EMBEDDING_RETENTION_RANGES = {
   maxAgeDays: { min: 30, max: 120 },
+  maxItems: { min: 0, max: 200000 },
 } as const;
 
 /**
@@ -64,7 +69,7 @@ export function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolve
   }
 
   function extractClamped(
-    key: "maxAgeDays",
+    key: "maxAgeDays" | "maxItems",
     defaultValue: number,
     min: number,
     max: number,
@@ -83,6 +88,12 @@ export function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolve
       defaults.maxAgeDays,
       ranges.maxAgeDays.min,
       ranges.maxAgeDays.max,
+    ),
+    maxItems: extractClamped(
+      "maxItems",
+      defaults.maxItems,
+      ranges.maxItems.min,
+      ranges.maxItems.max,
     ),
     protectFeedback: extractBool("protectFeedback", defaults.protectFeedback),
     protectBookmarks: extractBool("protectBookmarks", defaults.protectBookmarks),
@@ -116,6 +127,14 @@ export function validateEmbeddingRetention(input: Partial<EmbeddingRetentionV1>)
       errors.push(
         `maxAgeDays must be between ${ranges.maxAgeDays.min} and ${ranges.maxAgeDays.max}`,
       );
+    }
+  }
+
+  if (input.maxItems !== undefined) {
+    if (typeof input.maxItems !== "number" || !Number.isFinite(input.maxItems)) {
+      errors.push("maxItems must be a finite number");
+    } else if (input.maxItems < ranges.maxItems.min || input.maxItems > ranges.maxItems.max) {
+      errors.push(`maxItems must be between ${ranges.maxItems.min} and ${ranges.maxItems.max}`);
     }
   }
 
