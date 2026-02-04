@@ -1925,6 +1925,7 @@ export async function persistDigestFromContentItems(params: {
       const tunedClusterResult = applyThemeLabelOverrides(themeClusterResult, {
         minLabelWords: themeTuning.minLabelWords,
         maxDominancePct: themeTuning.maxDominancePct,
+        baseThreshold: themeTuning.similarityThreshold,
       });
 
       for (const item of tunedClusterResult.items) {

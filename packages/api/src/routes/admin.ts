@@ -592,6 +592,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         clusterResult = applyThemeLabelOverrides(clusterResult, {
           minLabelWords: themeTuning.minLabelWords,
           maxDominancePct: themeTuning.maxDominancePct,
+          baseThreshold: themeTuning.similarityThreshold,
         });
       } catch (err) {
         return reply.code(500).send({

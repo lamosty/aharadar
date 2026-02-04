@@ -39,6 +39,12 @@ export interface ThemeLabelOverrideOptions {
   minLabelWords?: number;
   /** Dominance threshold (0-1). If a label exceeds this share, fall back to raw topics. */
   maxDominancePct?: number;
+  /** Base similarity threshold used for initial clustering. */
+  baseThreshold?: number;
+  /** Additional similarity boost for dominant-label re-clustering. */
+  dominanceSplitBoost?: number;
+  /** Minimum item count required to keep a split label. */
+  minSplitClusterSize?: number;
 }
 
 /**
@@ -117,6 +123,26 @@ function pickClusterLabel(topics: string[]): string {
     if (candidateWords === bestWords && candidateLength > bestLength) {
       best = candidate;
       bestLength = candidateLength;
+    }
+  }
+
+  return best;
+}
+
+function pickClusterLabelWithMinWords(topics: string[], minWords: number): string | null {
+  if (topics.length === 0) return null;
+  let best: string | null = null;
+  let bestWords = -1;
+  let bestLength = -1;
+
+  for (const topic of topics) {
+    const wordCount = countWords(topic);
+    if (wordCount < minWords) continue;
+    const len = topic.length;
+    if (wordCount > bestWords || (wordCount === bestWords && len > bestLength)) {
+      best = topic;
+      bestWords = wordCount;
+      bestLength = len;
     }
   }
 
@@ -355,17 +381,40 @@ export function applyThemeLabelOverrides(
 
   const minLabelWords = Math.max(1, Math.floor(options.minLabelWords ?? 1));
   const maxDominancePct = options.maxDominancePct ?? 0;
+  const baseThresholdRaw = options.baseThreshold ?? 0.7;
+  const baseThreshold = Math.max(0.3, Math.min(0.9, baseThresholdRaw));
+  const splitBoost = options.dominanceSplitBoost ?? 0.08;
+  const splitThreshold = Math.max(0.3, Math.min(0.9, baseThreshold + splitBoost));
+  const minSplitClusterSize = Math.max(2, Math.floor(options.minSplitClusterSize ?? 2));
 
   if (minLabelWords <= 1 && maxDominancePct <= 0) {
     return result;
   }
 
-  const totalItems = result.items.length;
-  const labelCounts = new Map<string, number>();
+  const labelOverrides = new Map<string, string>();
+  if (minLabelWords > 1) {
+    for (const [label, topics] of result.clusters) {
+      if (!label || label === "Uncategorized") continue;
+      const override = pickClusterLabelWithMinWords(topics, minLabelWords);
+      if (override && override !== label) {
+        labelOverrides.set(label, override);
+      }
+    }
+  }
 
-  for (const item of result.items) {
-    const label = item.themeLabel;
-    if (!label) continue;
+  const baseItems = result.items.map((item) => {
+    const label = item.themeLabel ?? item.topic;
+    const override = label ? labelOverrides.get(label) : null;
+    if (override) {
+      return { ...item, themeLabel: override };
+    }
+    return item;
+  });
+
+  const totalItems = baseItems.length;
+  const labelCounts = new Map<string, number>();
+  for (const item of baseItems) {
+    const label = item.themeLabel ?? "Uncategorized";
     labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
   }
 
@@ -379,33 +428,68 @@ export function applyThemeLabelOverrides(
     }
   }
 
-  let changed = false;
-  const updatedItems = result.items.map((item) => {
-    const rawTopic = item.topic?.trim() ?? "";
-    if (!rawTopic || rawTopic === "Uncategorized") {
-      return item;
+  if (dominantLabels.size === 0) {
+    if (labelOverrides.size === 0) return result;
+    const clustersMap = new Map<string, string[]>();
+    const topicsByLabel = new Map<string, Set<string>>();
+    for (const item of baseItems) {
+      const label = item.themeLabel ?? "Uncategorized";
+      const existing = topicsByLabel.get(label) ?? new Set<string>();
+      existing.add(item.topic);
+      topicsByLabel.set(label, existing);
     }
-
-    const label = item.themeLabel ?? rawTopic;
-    const labelWords = countWords(label);
-    const topicWords = countWords(rawTopic);
-    const shouldPreferRaw =
-      rawTopic !== label &&
-      topicWords >= minLabelWords &&
-      (labelWords < minLabelWords || dominantLabels.has(label));
-
-    if (!shouldPreferRaw) {
-      return item;
+    for (const [label, topics] of topicsByLabel) {
+      clustersMap.set(label, [...topics]);
     }
-
-    changed = true;
     return {
-      ...item,
-      themeLabel: rawTopic,
+      ...result,
+      items: baseItems,
+      clusters: clustersMap,
+      stats: { ...result.stats, clusterCount: clustersMap.size },
     };
-  });
+  }
 
-  if (!changed) return result;
+  const updatedItems = baseItems.map((item) => ({ ...item }));
+
+  for (const dominantLabel of dominantLabels) {
+    const groupItems = updatedItems.filter((item) => (item.themeLabel ?? "") === dominantLabel);
+    if (groupItems.length < minSplitClusterSize) continue;
+
+    const topicVectors = new Map<string, number[]>();
+    for (const item of groupItems) {
+      if (item.topic && item.vector.length > 0) {
+        topicVectors.set(item.topic, item.vector);
+      }
+    }
+
+    const topicsWithVectors = [...topicVectors.entries()].map(([topic, vector]) => ({
+      topic,
+      vector,
+    }));
+
+    if (topicsWithVectors.length === 0) continue;
+
+    const { topicToLabel } = clusterTopicsByEmbedding(topicsWithVectors, splitThreshold);
+
+    const proposedLabels = new Map<string, string>();
+    const proposedCounts = new Map<string, number>();
+    for (const item of groupItems) {
+      const rawTopic = item.topic?.trim() ?? "";
+      const proposed = rawTopic ? (topicToLabel.get(rawTopic) ?? rawTopic) : dominantLabel;
+      proposedLabels.set(item.candidateId, proposed);
+      proposedCounts.set(proposed, (proposedCounts.get(proposed) ?? 0) + 1);
+    }
+
+    for (const item of groupItems) {
+      const proposed = proposedLabels.get(item.candidateId) ?? dominantLabel;
+      const count = proposedCounts.get(proposed) ?? 0;
+      if (count < minSplitClusterSize) {
+        item.themeLabel = dominantLabel;
+      } else {
+        item.themeLabel = proposed;
+      }
+    }
+  }
 
   const clustersMap = new Map<string, string[]>();
   const topicsByLabel = new Map<string, Set<string>>();
@@ -415,7 +499,6 @@ export function applyThemeLabelOverrides(
     existing.add(item.topic);
     topicsByLabel.set(label, existing);
   }
-
   for (const [label, topics] of topicsByLabel) {
     clustersMap.set(label, [...topics]);
   }
@@ -424,10 +507,7 @@ export function applyThemeLabelOverrides(
     ...result,
     items: updatedItems,
     clusters: clustersMap,
-    stats: {
-      ...result.stats,
-      clusterCount: clustersMap.size,
-    },
+    stats: { ...result.stats, clusterCount: clustersMap.size },
   };
 }
 
