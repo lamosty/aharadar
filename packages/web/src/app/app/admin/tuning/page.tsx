@@ -21,11 +21,15 @@ const PERSONALIZATION_TUNING_RANGES = {
 const THEME_TUNING_DEFAULTS = {
   enabled: true,
   useClusterContext: false,
+  maxItemsPerTheme: 0,
+  subthemesEnabled: false,
+  refineLabels: false,
   similarityThreshold: 0.65,
   lookbackDays: 7,
 };
 
 const THEME_TUNING_RANGES = {
+  maxItemsPerTheme: { min: 0, max: 200 },
   similarityThreshold: { min: 0.3, max: 0.9 },
   lookbackDays: { min: 1, max: 14 },
 } as const;
@@ -48,6 +52,9 @@ interface PersonalizationTuningResolved {
 interface ThemeTuningResolved {
   enabled: boolean;
   useClusterContext: boolean;
+  maxItemsPerTheme: number;
+  subthemesEnabled: boolean;
+  refineLabels: boolean;
   similarityThreshold: number;
   lookbackDays: number;
 }
@@ -163,6 +170,14 @@ function parseThemeTuning(raw: unknown): ThemeTuningResolved {
   return {
     enabled: extractBool("enabled", defaults.enabled),
     useClusterContext: extractBool("useClusterContext", defaults.useClusterContext),
+    maxItemsPerTheme: extractClampedNum(
+      "maxItemsPerTheme",
+      defaults.maxItemsPerTheme,
+      ranges.maxItemsPerTheme.min,
+      ranges.maxItemsPerTheme.max,
+    ),
+    subthemesEnabled: extractBool("subthemesEnabled", defaults.subthemesEnabled),
+    refineLabels: extractBool("refineLabels", defaults.refineLabels),
     similarityThreshold: extractClampedNum(
       "similarityThreshold",
       defaults.similarityThreshold,
@@ -211,6 +226,13 @@ export default function AdminTuningPage() {
   const [themeUseClusterContext, setThemeUseClusterContext] = useState(
     THEME_TUNING_DEFAULTS.useClusterContext,
   );
+  const [themeMaxItemsPerTheme, setThemeMaxItemsPerTheme] = useState(
+    THEME_TUNING_DEFAULTS.maxItemsPerTheme,
+  );
+  const [themeSubthemesEnabled, setThemeSubthemesEnabled] = useState(
+    THEME_TUNING_DEFAULTS.subthemesEnabled,
+  );
+  const [themeRefineLabels, setThemeRefineLabels] = useState(THEME_TUNING_DEFAULTS.refineLabels);
   const [themeSimilarityThreshold, setThemeSimilarityThreshold] = useState(
     THEME_TUNING_DEFAULTS.similarityThreshold,
   );
@@ -247,6 +269,9 @@ export default function AdminTuningPage() {
     const themeTuning = parseThemeTuning(topic.customSettings?.theme_tuning_v1);
     setThemeEnabled(themeTuning.enabled);
     setThemeUseClusterContext(themeTuning.useClusterContext);
+    setThemeMaxItemsPerTheme(themeTuning.maxItemsPerTheme);
+    setThemeSubthemesEnabled(themeTuning.subthemesEnabled);
+    setThemeRefineLabels(themeTuning.refineLabels);
     setThemeSimilarityThreshold(themeTuning.similarityThreshold);
     setThemeLookbackDays(themeTuning.lookbackDays);
 
@@ -293,6 +318,9 @@ export default function AdminTuningPage() {
       theme_tuning_v1: {
         enabled: themeEnabled,
         useClusterContext: themeUseClusterContext,
+        maxItemsPerTheme: themeMaxItemsPerTheme,
+        subthemesEnabled: themeSubthemesEnabled,
+        refineLabels: themeRefineLabels,
         similarityThreshold: themeSimilarityThreshold,
         lookbackDays: themeLookbackDays,
       },
@@ -312,6 +340,9 @@ export default function AdminTuningPage() {
     // Reset theme tuning
     setThemeEnabled(THEME_TUNING_DEFAULTS.enabled);
     setThemeUseClusterContext(THEME_TUNING_DEFAULTS.useClusterContext);
+    setThemeMaxItemsPerTheme(THEME_TUNING_DEFAULTS.maxItemsPerTheme);
+    setThemeSubthemesEnabled(THEME_TUNING_DEFAULTS.subthemesEnabled);
+    setThemeRefineLabels(THEME_TUNING_DEFAULTS.refineLabels);
     setThemeSimilarityThreshold(THEME_TUNING_DEFAULTS.similarityThreshold);
     setThemeLookbackDays(THEME_TUNING_DEFAULTS.lookbackDays);
     // Reset AI guidance
@@ -344,6 +375,9 @@ export default function AdminTuningPage() {
     savedThemeTuning &&
     (themeEnabled !== savedThemeTuning.enabled ||
       themeUseClusterContext !== savedThemeTuning.useClusterContext ||
+      themeMaxItemsPerTheme !== savedThemeTuning.maxItemsPerTheme ||
+      themeSubthemesEnabled !== savedThemeTuning.subthemesEnabled ||
+      themeRefineLabels !== savedThemeTuning.refineLabels ||
       themeSimilarityThreshold !== savedThemeTuning.similarityThreshold ||
       themeLookbackDays !== savedThemeTuning.lookbackDays);
 
@@ -364,6 +398,9 @@ export default function AdminTuningPage() {
   const isThemeDefault =
     themeEnabled === THEME_TUNING_DEFAULTS.enabled &&
     themeUseClusterContext === THEME_TUNING_DEFAULTS.useClusterContext &&
+    themeMaxItemsPerTheme === THEME_TUNING_DEFAULTS.maxItemsPerTheme &&
+    themeSubthemesEnabled === THEME_TUNING_DEFAULTS.subthemesEnabled &&
+    themeRefineLabels === THEME_TUNING_DEFAULTS.refineLabels &&
     themeSimilarityThreshold === THEME_TUNING_DEFAULTS.similarityThreshold &&
     themeLookbackDays === THEME_TUNING_DEFAULTS.lookbackDays;
 
@@ -685,6 +722,87 @@ export default function AdminTuningPage() {
               this window.
             </p>
           </div>
+        </div>
+
+        {/* Max Items Per Theme */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="themeMaxItemsPerTheme" className={styles.sliderLabel}>
+                Theme Size Cap (items)
+              </label>
+              <span className={styles.sliderValue}>
+                {themeMaxItemsPerTheme === 0 ? "Off" : themeMaxItemsPerTheme}
+              </span>
+            </div>
+            <input
+              id="themeMaxItemsPerTheme"
+              type="range"
+              min={THEME_TUNING_RANGES.maxItemsPerTheme.min}
+              max={THEME_TUNING_RANGES.maxItemsPerTheme.max}
+              step={1}
+              value={themeMaxItemsPerTheme}
+              onChange={(e) => setThemeMaxItemsPerTheme(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !themeEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{THEME_TUNING_RANGES.maxItemsPerTheme.min} (Off)</span>
+              <span>{THEME_TUNING_RANGES.maxItemsPerTheme.max}</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              Split oversized themes into multiple groups in the feed. This is a UI-only cap and
+              does not change ranking or LLM usage.
+            </p>
+          </div>
+        </div>
+
+        {/* Subthemes Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="themeSubthemesEnabled" className={styles.toggleLabel}>
+              Enable Subthemes
+            </label>
+            <button
+              id="themeSubthemesEnabled"
+              type="button"
+              role="switch"
+              aria-checked={themeSubthemesEnabled}
+              className={`${styles.toggle} ${themeSubthemesEnabled ? styles.toggleOn : ""}`}
+              onClick={() => setThemeSubthemesEnabled(!themeSubthemesEnabled)}
+              disabled={isSaving || !themeEnabled}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            Group items within a theme into subthemes using simple keyword heuristics (no extra LLM
+            cost). Helps break up very broad themes.
+          </p>
+        </div>
+
+        {/* Refine Labels Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="themeRefineLabels" className={styles.toggleLabel}>
+              Refine Theme Labels
+            </label>
+            <button
+              id="themeRefineLabels"
+              type="button"
+              role="switch"
+              aria-checked={themeRefineLabels}
+              className={`${styles.toggle} ${themeRefineLabels ? styles.toggleOn : ""}`}
+              onClick={() => setThemeRefineLabels(!themeRefineLabels)}
+              disabled={isSaving || !themeEnabled}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            Clean up and enrich broad labels with lightweight, non-LLM hints (e.g., appending a
+            recurring keyword).
+          </p>
         </div>
 
         {/* Regenerate Themes */}

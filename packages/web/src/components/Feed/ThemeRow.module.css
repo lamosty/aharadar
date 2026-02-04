@@ -130,12 +130,109 @@
   padding-left: var(--space-4);
 }
 
-/* Add connecting line for nested items */
-.themeContainer[data-expanded="true"] .themeItems > *:not(:first-child) {
+.subthemeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.subthemeGroup:not(:first-child) {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.subthemeHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.subthemeLabel {
+  font-size: 0.7rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.subthemeCount {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+  white-space: nowrap;
+}
+
+.subthemeActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.subthemeActionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.subthemeActionButton:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border-color: var(--color-border-emphasis);
+}
+
+.subthemeActionButton:first-of-type:hover {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.subthemeActionButton:nth-of-type(2):hover {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.subthemeItems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-2);
+}
+
+/* Connector lines for flat items */
+.themeContainer[data-expanded="true"] .themeItems > [data-feed-item]:not(:first-child) {
   position: relative;
 }
 
-.themeContainer[data-expanded="true"] .themeItems > *:not(:first-child)::before {
+.themeContainer[data-expanded="true"] .themeItems > [data-feed-item]:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-3));
+  top: 50%;
+  width: var(--space-2);
+  height: 1px;
+  background: var(--color-border-subtle);
+}
+
+/* Connector lines inside subthemes */
+.themeContainer[data-expanded="true"] .subthemeItems > [data-feed-item]:not(:first-child) {
+  position: relative;
+}
+
+.themeContainer[data-expanded="true"] .subthemeItems > [data-feed-item]:not(:first-child)::before {
   content: "";
   position: absolute;
   left: calc(-1 * var(--space-3));

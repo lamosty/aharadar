@@ -15,6 +15,27 @@ export interface ThemeGroup {
   items: FeedItemType[];
   /** Top item score (for sorting themes) */
   topScore: number;
+  /** Optional subtheme groups for nested display */
+  subthemes?: SubthemeGroup[];
+}
+
+/** A subtheme group within a theme */
+export interface SubthemeGroup {
+  subthemeId: string;
+  label: string | null;
+  itemCount: number;
+  items: FeedItemType[];
+  topScore: number;
+}
+
+export interface ThemeGroupingOptions {
+  sort?: SortOption;
+  /** Cap items per theme group (0 = no cap) */
+  maxItemsPerTheme?: number;
+  /** Enable subtheme grouping within a theme */
+  subthemesEnabled?: boolean;
+  /** Apply non-LLM label refinement for display */
+  refineLabels?: boolean;
 }
 
 interface ThemeRowProps {
@@ -105,6 +126,38 @@ export function ThemeRow({
     await onBulkFeedback(itemIds, "dislike");
   }, [onBulkFeedback, theme.items]);
 
+  const handleSubthemeBulk = useCallback(
+    async (itemIds: string[], action: "like" | "dislike") => {
+      if (!onBulkFeedback) return;
+      await onBulkFeedback(itemIds, action);
+    },
+    [onBulkFeedback],
+  );
+
+  const renderItem = (item: FeedItemType) => (
+    <FeedItem
+      key={item.id}
+      item={item}
+      onFeedback={onFeedback}
+      onClear={onClear}
+      layout={layout}
+      showTopicBadge={showTopicBadge}
+      sort={sort}
+      onViewSummary={onViewSummary}
+      onSummaryGenerated={onSummaryGenerated}
+      onMobileClick={onMobileClick ? () => onMobileClick(item) : undefined}
+      fastTriageMode={fastTriageMode}
+      disableHoverExpansion={disableHoverExpansion}
+      forceExpanded={forceExpandedId === item.id}
+      onHover={onHover ? () => onHover(item.id) : undefined}
+      onSelect={onSelect ? () => onSelect(item.id) : undefined}
+      onClose={onClose}
+      onNext={onNext ? () => onNext(item.id) : undefined}
+      onUndo={onUndo}
+      canUndo={canUndo}
+    />
+  );
+
   if (theme.items.length === 0) {
     return null;
   }
@@ -191,29 +244,65 @@ export function ThemeRow({
       {/* Items list - ALL items hidden when collapsed, shown when expanded */}
       {isExpanded && (
         <div className={styles.themeItems}>
-          {theme.items.map((item) => (
-            <FeedItem
-              key={item.id}
-              item={item}
-              onFeedback={onFeedback}
-              onClear={onClear}
-              layout={layout}
-              showTopicBadge={showTopicBadge}
-              sort={sort}
-              onViewSummary={onViewSummary}
-              onSummaryGenerated={onSummaryGenerated}
-              onMobileClick={onMobileClick ? () => onMobileClick(item) : undefined}
-              fastTriageMode={fastTriageMode}
-              disableHoverExpansion={disableHoverExpansion}
-              forceExpanded={forceExpandedId === item.id}
-              onHover={onHover ? () => onHover(item.id) : undefined}
-              onSelect={onSelect ? () => onSelect(item.id) : undefined}
-              onClose={onClose}
-              onNext={onNext ? () => onNext(item.id) : undefined}
-              onUndo={onUndo}
-              canUndo={canUndo}
-            />
-          ))}
+          {theme.subthemes && theme.subthemes.length > 0
+            ? theme.subthemes.map((subtheme) => {
+                const itemIds = subtheme.items.map((item) => item.id);
+                return (
+                  <div key={subtheme.subthemeId} className={styles.subthemeGroup}>
+                    <div className={styles.subthemeHeader}>
+                      {subtheme.label && (
+                        <span className={styles.subthemeLabel}>{subtheme.label}</span>
+                      )}
+                      <span className={styles.subthemeCount}>{subtheme.items.length} items</span>
+                      {onBulkFeedback && (
+                        <div
+                          className={styles.subthemeActions}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className={styles.subthemeActionButton}
+                            onClick={() => handleSubthemeBulk(itemIds, "like")}
+                            title="Like all items in this subtheme"
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.subthemeActionButton}
+                            onClick={() => handleSubthemeBulk(itemIds, "dislike")}
+                            title="Dislike all items in this subtheme"
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.subthemeItems}>
+                      {subtheme.items.map((item) => renderItem(item))}
+                    </div>
+                  </div>
+                );
+              })
+            : theme.items.map((item) => renderItem(item))}
         </div>
       )}
     </div>
@@ -276,6 +365,364 @@ function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType)
   }
 }
 
+const STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "or",
+  "the",
+  "of",
+  "to",
+  "in",
+  "on",
+  "for",
+  "with",
+  "by",
+  "from",
+  "about",
+  "as",
+  "at",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "it",
+  "its",
+  "this",
+  "that",
+  "these",
+  "those",
+  "you",
+  "your",
+  "we",
+  "our",
+  "they",
+  "their",
+  "he",
+  "she",
+  "his",
+  "her",
+  "them",
+  "i",
+  "me",
+  "my",
+  "mine",
+  "us",
+  "vs",
+  "via",
+  "into",
+  "over",
+  "under",
+  "after",
+  "before",
+  "than",
+  "then",
+  "now",
+  "new",
+  "latest",
+  "today",
+  "yesterday",
+  "tomorrow",
+  "week",
+  "weeks",
+  "month",
+  "months",
+  "year",
+  "years",
+  "day",
+  "days",
+  "hour",
+  "hours",
+  "minute",
+  "minutes",
+  "second",
+  "seconds",
+  "discussion",
+  "thread",
+  "daily",
+  "weekly",
+  "update",
+  "report",
+  "analysis",
+]);
+
+const TOKEN_REGEX = /[A-Za-z0-9]+(?:[&.+-][A-Za-z0-9]+)*/g;
+
+function cleanLabel(label: string): string {
+  return label
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[.:;!?-]+$/g, "");
+}
+
+function tokenizeText(text: string): string[] {
+  if (!text) return [];
+  return text.match(TOKEN_REGEX) ?? [];
+}
+
+function normalizeToken(token: string): string {
+  return token.toLowerCase();
+}
+
+function normalizePhrase(phrase: string): string {
+  return phrase.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function isAcronym(token: string): boolean {
+  return (
+    token.length >= 2 && token.length <= 5 && token === token.toUpperCase() && /[A-Z]/.test(token)
+  );
+}
+
+function shouldKeepToken(
+  tokenNorm: string,
+  tokenOriginal: string,
+  themeWords: Set<string>,
+): boolean {
+  if (themeWords.has(tokenNorm)) return false;
+  if (STOPWORDS.has(tokenNorm)) return false;
+  if (/^\d+$/.test(tokenNorm)) return false;
+  if (tokenNorm.length < 3 && !isAcronym(tokenOriginal) && !/[0-9]/.test(tokenOriginal)) {
+    return false;
+  }
+  return true;
+}
+
+function displayScore(token: string): number {
+  if (!token) return 0;
+  if (token === token.toUpperCase() && /[A-Z]/.test(token)) return 3;
+  if (token !== token.toLowerCase() && token !== token.toUpperCase()) return 2;
+  if (/[0-9]/.test(token)) return 1.5;
+  return 1;
+}
+
+function pickDisplay(existing: string | null, next: string): string {
+  const cleanedNext = cleanLabel(next);
+  if (!existing) return cleanedNext;
+  const existingScore = displayScore(existing);
+  const nextScore = displayScore(cleanedNext);
+  if (nextScore > existingScore) return cleanedNext;
+  return existing;
+}
+
+interface KeywordStats {
+  count: number;
+  display: string;
+}
+
+interface KeywordStatsResult {
+  stats: Map<string, KeywordStats>;
+  candidatesByItem: Map<string, string[]>;
+}
+
+function buildKeywordStats(
+  items: FeedItemType[],
+  themeWords: Set<string>,
+  baseLabelNormalized: string,
+): KeywordStatsResult {
+  const stats = new Map<string, KeywordStats>();
+  const candidatesByItem = new Map<string, string[]>();
+
+  for (const item of items) {
+    const rawTitle = item.item.title ?? item.item.bodyText ?? "";
+    const title = rawTitle.slice(0, 160);
+    const tokens = tokenizeText(title);
+    const seen = new Set<string>();
+    const candidates: string[] = [];
+
+    tokens.forEach((token) => {
+      const normalized = normalizeToken(token);
+      if (!shouldKeepToken(normalized, token, themeWords)) return;
+      if (seen.has(normalized)) return;
+      seen.add(normalized);
+      candidates.push(normalized);
+      const existing = stats.get(normalized);
+      if (existing) {
+        existing.count += 1;
+        existing.display = pickDisplay(existing.display, token);
+      } else {
+        stats.set(normalized, { count: 1, display: cleanLabel(token) });
+      }
+    });
+
+    const triageData = item.triageJson as { categories?: unknown } | null;
+    const categories = Array.isArray(triageData?.categories) ? triageData?.categories : [];
+    if (categories.length > 0) {
+      categories.forEach((category) => {
+        if (typeof category !== "string") return;
+        const cleaned = cleanLabel(category);
+        const normalized = normalizePhrase(cleaned);
+        if (!normalized) return;
+        if (normalized === baseLabelNormalized) return;
+        if (seen.has(normalized)) return;
+        seen.add(normalized);
+        candidates.push(normalized);
+        const existing = stats.get(normalized);
+        if (existing) {
+          existing.count += 1;
+          existing.display = pickDisplay(existing.display, cleaned);
+        } else {
+          stats.set(normalized, { count: 1, display: cleaned });
+        }
+      });
+    }
+
+    if (candidates.length > 0) {
+      candidatesByItem.set(item.id, candidates);
+    }
+  }
+
+  return { stats, candidatesByItem };
+}
+
+function refineThemeLabel(
+  baseLabel: string,
+  keywordStats: KeywordStatsResult | null,
+  totalItems: number,
+): string {
+  const cleaned = cleanLabel(baseLabel);
+  if (!keywordStats || cleaned === "Uncategorized" || totalItems < 4) {
+    return cleaned;
+  }
+
+  const wordCount = tokenizeText(cleaned).length;
+  if (wordCount >= 3) {
+    return cleaned;
+  }
+
+  const themeWords = new Set(tokenizeText(cleaned).map(normalizeToken));
+  const maxCount = Math.max(2, Math.floor(totalItems * 0.8));
+  let bestKey: string | null = null;
+  let bestCount = -1;
+  let bestDisplay = "";
+
+  for (const [key, stat] of keywordStats.stats) {
+    if (stat.count < 2 || stat.count > maxCount) continue;
+    const keyWords = key
+      .split(" ")
+      .map((word) => normalizeToken(word))
+      .filter(Boolean);
+    if (keyWords.length > 0 && keyWords.every((word) => themeWords.has(word))) {
+      continue;
+    }
+    if (
+      stat.count > bestCount ||
+      (stat.count === bestCount && stat.display.length < bestDisplay.length)
+    ) {
+      bestKey = key;
+      bestCount = stat.count;
+      bestDisplay = stat.display;
+    }
+  }
+
+  if (!bestKey || !bestDisplay) return cleaned;
+  const refined = `${cleaned} · ${bestDisplay}`;
+  return refined.length <= 48 ? refined : cleaned;
+}
+
+function buildSubthemeGroups(
+  items: FeedItemType[],
+  comparator: (a: FeedItemType, b: FeedItemType) => number,
+  keywordStats: KeywordStatsResult | null,
+  refineLabels: boolean,
+): SubthemeGroup[] | null {
+  if (!keywordStats || items.length < 4) {
+    return null;
+  }
+
+  const minCount = 2;
+  const maxCount = Math.max(minCount, Math.floor(items.length * 0.8));
+  const groups = new Map<string, FeedItemType[]>();
+
+  for (const item of items) {
+    const candidates = keywordStats.candidatesByItem.get(item.id) ?? [];
+    let bestKey: string | null = null;
+    let bestCount = -1;
+    let bestIndex = Number.POSITIVE_INFINITY;
+
+    candidates.forEach((candidate, index) => {
+      const stat = keywordStats.stats.get(candidate);
+      if (!stat) return;
+      if (stat.count < minCount || stat.count > maxCount) return;
+      if (stat.count > bestCount || (stat.count === bestCount && index < bestIndex)) {
+        bestKey = candidate;
+        bestCount = stat.count;
+        bestIndex = index;
+      }
+    });
+
+    const key = bestKey ?? "other";
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+
+  const subthemes: SubthemeGroup[] = [];
+  const otherItems = groups.get("other") ?? [];
+
+  for (const [key, groupItems] of groups) {
+    if (key === "other") continue;
+    groupItems.sort(comparator);
+    const topItem = groupItems[0];
+    const display = keywordStats.stats.get(key)?.display ?? key;
+    subthemes.push({
+      subthemeId: key,
+      label: refineLabels ? cleanLabel(display) : display,
+      itemCount: groupItems.length,
+      items: groupItems,
+      topScore: topItem?.ahaScore ?? topItem?.score ?? 0,
+    });
+  }
+
+  if (subthemes.length === 0) {
+    return null;
+  }
+
+  if (subthemes.length === 1 && otherItems.length === 0) {
+    return null;
+  }
+
+  subthemes.sort((a, b) => {
+    const topA = a.items[0];
+    const topB = b.items[0];
+    if (!topA || !topB) return 0;
+    return comparator(topA, topB);
+  });
+
+  if (otherItems.length > 0) {
+    otherItems.sort(comparator);
+    const topItem = otherItems[0];
+    subthemes.push({
+      subthemeId: "other",
+      label: "Other",
+      itemCount: otherItems.length,
+      items: otherItems,
+      topScore: topItem?.ahaScore ?? topItem?.score ?? 0,
+    });
+  }
+
+  return subthemes;
+}
+
+function flattenSubthemes(subthemes: SubthemeGroup[]): FeedItemType[] {
+  return subthemes.flatMap((group) => group.items);
+}
+
+function chunkItems<T>(items: T[], size: number): T[][] {
+  if (size <= 0) return [items];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks.length > 0 ? chunks : [items];
+}
+
 /**
  * Group items by topic (from triage JSON).
  *
@@ -285,7 +732,16 @@ function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType)
  *
  * This keeps themed items grouped while preserving an "Uncategorized" bucket.
  */
-export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "best"): ThemeGroup[] {
+export function groupItemsByTheme(
+  items: FeedItemType[],
+  options: SortOption | ThemeGroupingOptions = "best",
+): ThemeGroup[] {
+  const resolvedOptions = typeof options === "string" ? { sort: options } : options;
+  const sort = resolvedOptions.sort ?? "best";
+  const maxItemsPerTheme = resolvedOptions.maxItemsPerTheme ?? 0;
+  const subthemesEnabled = resolvedOptions.subthemesEnabled ?? false;
+  const refineLabels = resolvedOptions.refineLabels ?? false;
+
   const topicMap = new Map<string, FeedItemType[]>();
 
   // First pass: group items by topic from triageJson
@@ -303,28 +759,61 @@ export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "bes
   const uncategorizedItems: FeedItemType[] = [];
   const comparator = getItemComparator(sort);
 
-  // Second pass: create groups for topics with 2+ items, collect singles
+  function buildGroupsForTheme(
+    themeKey: string,
+    themeItems: FeedItemType[],
+    allowSubthemes: boolean,
+    themeIdBase?: string,
+  ): ThemeGroup[] {
+    const sortedItems = [...themeItems].sort(comparator);
+    const chunks = maxItemsPerTheme > 0 ? chunkItems(sortedItems, maxItemsPerTheme) : [sortedItems];
+    const baseLabel = cleanLabel(themeKey);
+    const baseLabelNormalized = normalizePhrase(baseLabel);
+    const themeWords = new Set(tokenizeText(baseLabel).map(normalizeToken));
+    const groups: ThemeGroup[] = [];
+    const baseThemeId = themeIdBase ?? themeKey;
+
+    chunks.forEach((chunk, index) => {
+      const needsKeywords =
+        (refineLabels && baseLabel !== "Uncategorized") || (subthemesEnabled && allowSubthemes);
+      const keywordStats = needsKeywords
+        ? buildKeywordStats(chunk, themeWords, baseLabelNormalized)
+        : null;
+      const refinedLabel = refineLabels
+        ? refineThemeLabel(baseLabel, keywordStats, chunk.length)
+        : baseLabel;
+      const subthemes =
+        subthemesEnabled && allowSubthemes
+          ? (buildSubthemeGroups(chunk, comparator, keywordStats, refineLabels) ?? undefined)
+          : undefined;
+      const orderedItems = subthemes ? flattenSubthemes(subthemes) : chunk;
+      const topItem = orderedItems[0];
+      const suffix = chunks.length > 1 ? ` · ${index + 1}` : "";
+
+      groups.push({
+        themeId: chunks.length > 1 ? `${baseThemeId}::${index + 1}` : baseThemeId,
+        label: `${refinedLabel}${suffix}`,
+        itemCount: orderedItems.length,
+        items: orderedItems,
+        topScore: topItem?.ahaScore ?? topItem?.score ?? 0,
+        subthemes,
+      });
+    });
+
+    return groups;
+  }
+
+  // Second pass: create groups for topics, collect uncategorized
   for (const [topic, topicItems] of topicMap) {
     if (topic === "Uncategorized") {
-      // No topic → goes to uncategorized
       uncategorizedItems.push(...topicItems);
       continue;
     }
 
-    // Sort items within the group by the selected sort option
-    topicItems.sort(comparator);
-    const topItem = topicItems[0];
-    themedGroups.push({
-      themeId: topic, // Use topic as themeId for compatibility
-      label: topic, // Topic is the label
-      itemCount: topicItems.length,
-      items: topicItems,
-      topScore: topItem?.ahaScore ?? topItem?.score ?? 0,
-    });
+    themedGroups.push(...buildGroupsForTheme(topic, topicItems, true));
   }
 
   // Sort themed groups by top item (using same sort logic as items)
-  // This ensures theme order respects the selected sort option
   themedGroups.sort((a, b) => {
     const topA = a.items[0];
     const topB = b.items[0];
@@ -332,20 +821,13 @@ export function groupItemsByTheme(items: FeedItemType[], sort: SortOption = "bes
     return comparator(topA, topB);
   });
 
-  // Sort uncategorized items by the selected sort option
-  uncategorizedItems.sort(comparator);
-
-  // Add "Uncategorized" group at the end (always last)
+  // Add "Uncategorized" group(s) at the end (always last)
+  const uncategorizedGroups: ThemeGroup[] = [];
   if (uncategorizedItems.length > 0) {
-    const topUncategorized = uncategorizedItems[0];
-    themedGroups.push({
-      themeId: "ungrouped",
-      label: "Uncategorized",
-      itemCount: uncategorizedItems.length,
-      items: uncategorizedItems,
-      topScore: topUncategorized?.ahaScore ?? topUncategorized?.score ?? 0,
-    });
+    uncategorizedGroups.push(
+      ...buildGroupsForTheme("Uncategorized", uncategorizedItems, false, "ungrouped"),
+    );
   }
 
-  return themedGroups;
+  return [...themedGroups, ...uncategorizedGroups];
 }

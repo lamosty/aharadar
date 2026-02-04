@@ -15,6 +15,12 @@ export interface ThemeTuningV1 {
   enabled?: boolean;
   /** Include cluster member titles in triage input for more specific themes */
   useClusterContext?: boolean;
+  /** Cap items per theme group in the UI (0 = no cap) */
+  maxItemsPerTheme?: number;
+  /** Enable subtheme grouping within a theme in the UI */
+  subthemesEnabled?: boolean;
+  /** Apply non-LLM label refinement for display */
+  refineLabels?: boolean;
   /** Similarity threshold for theme clustering (0.3-0.9) */
   similarityThreshold?: number;
   /** Lookback window in days for theme continuity (1-14) */
@@ -27,6 +33,9 @@ export interface ThemeTuningV1 {
 export interface ThemeTuningResolved {
   enabled: boolean;
   useClusterContext: boolean;
+  maxItemsPerTheme: number;
+  subthemesEnabled: boolean;
+  refineLabels: boolean;
   similarityThreshold: number;
   lookbackDays: number;
 }
@@ -35,12 +44,16 @@ export interface ThemeTuningResolved {
 export const THEME_TUNING_DEFAULTS: ThemeTuningResolved = {
   enabled: true,
   useClusterContext: false,
+  maxItemsPerTheme: 0,
+  subthemesEnabled: false,
+  refineLabels: false,
   similarityThreshold: 0.65,
   lookbackDays: 7,
 };
 
 /** Clamp ranges for each tuning parameter */
 export const THEME_TUNING_RANGES = {
+  maxItemsPerTheme: { min: 0, max: 200 },
   similarityThreshold: { min: 0.3, max: 0.9 },
   lookbackDays: { min: 1, max: 14 },
 } as const;
@@ -64,6 +77,10 @@ export function parseThemeTuning(raw: unknown): ThemeTuningResolved {
   const enabled = typeof obj.enabled === "boolean" ? obj.enabled : defaults.enabled;
   const useClusterContext =
     typeof obj.useClusterContext === "boolean" ? obj.useClusterContext : defaults.useClusterContext;
+  const subthemesEnabled =
+    typeof obj.subthemesEnabled === "boolean" ? obj.subthemesEnabled : defaults.subthemesEnabled;
+  const refineLabels =
+    typeof obj.refineLabels === "boolean" ? obj.refineLabels : defaults.refineLabels;
 
   function extractClamped(
     key: keyof ThemeTuningResolved,
@@ -81,6 +98,14 @@ export function parseThemeTuning(raw: unknown): ThemeTuningResolved {
   return {
     enabled,
     useClusterContext,
+    maxItemsPerTheme: extractClamped(
+      "maxItemsPerTheme",
+      defaults.maxItemsPerTheme,
+      ranges.maxItemsPerTheme.min,
+      ranges.maxItemsPerTheme.max,
+    ),
+    subthemesEnabled,
+    refineLabels,
     similarityThreshold: extractClamped(
       "similarityThreshold",
       defaults.similarityThreshold,
@@ -110,6 +135,12 @@ export function validateThemeTuning(input: Partial<ThemeTuningV1>): string[] {
   if (input.useClusterContext !== undefined && typeof input.useClusterContext !== "boolean") {
     errors.push("useClusterContext must be a boolean");
   }
+  if (input.subthemesEnabled !== undefined && typeof input.subthemesEnabled !== "boolean") {
+    errors.push("subthemesEnabled must be a boolean");
+  }
+  if (input.refineLabels !== undefined && typeof input.refineLabels !== "boolean") {
+    errors.push("refineLabels must be a boolean");
+  }
 
   function validateField(key: keyof typeof ranges, value: unknown): void {
     if (value === undefined) return;
@@ -125,6 +156,7 @@ export function validateThemeTuning(input: Partial<ThemeTuningV1>): string[] {
 
   validateField("similarityThreshold", input.similarityThreshold);
   validateField("lookbackDays", input.lookbackDays);
+  validateField("maxItemsPerTheme", input.maxItemsPerTheme);
 
   return errors;
 }

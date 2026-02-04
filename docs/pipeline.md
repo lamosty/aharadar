@@ -320,6 +320,9 @@ After triage, we **cluster triage theme strings** for UI grouping. This is a lig
 
 - `enabled`: toggle theme grouping computation
 - `useClusterContext`: include a few cluster member titles in triage input to produce more specific theme labels (slightly higher token usage)
+- `maxItemsPerTheme`: UI-only cap that splits oversized themes into multiple groups (0 = off)
+- `subthemesEnabled`: UI-only nested grouping within a theme using lightweight keyword heuristics
+- `refineLabels`: UI-only label cleanup/enrichment (no extra LLM usage)
 - `similarityThreshold`: cosine similarity threshold for grouping
 - `lookbackDays`: how far back to reuse theme labels for continuity
   

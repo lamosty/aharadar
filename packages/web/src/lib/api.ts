@@ -1300,6 +1300,9 @@ export interface TopicCustomSettingsUpdateRequest {
   theme_tuning_v1?: {
     enabled?: boolean;
     useClusterContext?: boolean;
+    maxItemsPerTheme?: number;
+    subthemesEnabled?: boolean;
+    refineLabels?: boolean;
     similarityThreshold?: number;
     lookbackDays?: number;
   };

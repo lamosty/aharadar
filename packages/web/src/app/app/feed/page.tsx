@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FeedFilterBar,
   FeedItem,
@@ -37,6 +37,54 @@ import styles from "./page.module.css";
 
 // Default page size based on layout
 const DEFAULT_PAGE_SIZE: PageSize = 50;
+
+const THEME_GROUPING_DEFAULTS = {
+  maxItemsPerTheme: 0,
+  subthemesEnabled: false,
+  refineLabels: false,
+};
+
+const THEME_GROUPING_RANGES = {
+  maxItemsPerTheme: { min: 0, max: 200 },
+} as const;
+
+function parseThemeGroupingOptions(raw: unknown): {
+  maxItemsPerTheme: number;
+  subthemesEnabled: boolean;
+  refineLabels: boolean;
+} {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ...THEME_GROUPING_DEFAULTS };
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  function extractClampedNum(defaultValue: number, min: number, max: number): number {
+    const value = obj.maxItemsPerTheme;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return defaultValue;
+    }
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function extractBool(key: string, defaultValue: boolean): boolean {
+    const value = obj[key];
+    if (typeof value !== "boolean") {
+      return defaultValue;
+    }
+    return value;
+  }
+
+  return {
+    maxItemsPerTheme: extractClampedNum(
+      THEME_GROUPING_DEFAULTS.maxItemsPerTheme,
+      THEME_GROUPING_RANGES.maxItemsPerTheme.min,
+      THEME_GROUPING_RANGES.maxItemsPerTheme.max,
+    ),
+    subthemesEnabled: extractBool("subthemesEnabled", THEME_GROUPING_DEFAULTS.subthemesEnabled),
+    refineLabels: extractBool("refineLabels", THEME_GROUPING_DEFAULTS.refineLabels),
+  };
+}
 
 interface DesktopUndoEntry {
   item: FeedItemType;
@@ -170,6 +218,13 @@ function FeedPageContent() {
 
   // Determine if we're in "all topics" mode
   const isAllTopicsMode = currentTopicId === null;
+  const themeGroupingOptions = useMemo(() => {
+    if (!currentTopicId || !topicsData?.topics) {
+      return { ...THEME_GROUPING_DEFAULTS };
+    }
+    const topic = topicsData.topics.find((t) => t.id === currentTopicId);
+    return parseThemeGroupingOptions(topic?.customSettings?.theme_tuning_v1);
+  }, [currentTopicId, topicsData]);
 
   // Update URL when filters/page/topic/view change
   const updateUrl = useCallback(
@@ -274,9 +329,9 @@ function FeedPageContent() {
       return items;
     }
     // Flatten theme groups into visual order
-    const themeGroups = groupItemsByTheme(items, sort);
+    const themeGroups = groupItemsByTheme(items, { sort, ...themeGroupingOptions });
     return themeGroups.flatMap((group) => group.items);
-  }, [data?.items, groupByTheme, sort]);
+  }, [data?.items, groupByTheme, sort, themeGroupingOptions]);
 
   // Feedback mutation
   const feedbackMutation = useFeedback({
@@ -822,7 +877,7 @@ function FeedPageContent() {
           >
             {groupByTheme
               ? // Render items grouped by theme
-                groupItemsByTheme(items, sort).map((themeGroup) => (
+                groupItemsByTheme(items, { sort, ...themeGroupingOptions }).map((themeGroup) => (
                   <ThemeRow
                     key={themeGroup.themeId}
                     theme={themeGroup}
