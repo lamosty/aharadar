@@ -95,6 +95,11 @@ This mechanism allows different source types to have different natural frequenci
 
 - Embedding input text is deterministic: `title + "\n\n" + body_text`, truncated to max length.
 - Store embedding `model` and `dims` for audit.
+- **Embedding retention (new):** when enabled, prune embeddings older than a per-topic window
+  (default 90 days, configurable 30–120) after each pipeline run.
+  - Retention is topic-scoped and **never** deletes items with feedback or bookmarks (unless disabled).
+  - Effective retention is clamped to at least the novelty lookback window.
+  - Embeddings for items shared across multiple topics are preserved (safety-first).
 
 ### 3) Dedupe
 
@@ -323,6 +328,8 @@ After triage, we **cluster triage theme strings** for UI grouping. This is a lig
 - `maxItemsPerTheme`: UI-only cap that splits oversized themes into multiple groups (0 = off)
 - `subthemesEnabled`: UI-only nested grouping within a theme using lightweight keyword heuristics
 - `refineLabels`: UI-only label cleanup/enrichment (no extra LLM usage)
+- `minLabelWords`: minimum word count for clustered labels (fallback to raw triage theme if too short)
+- `maxDominancePct`: if a single label dominates above this share, fall back to raw themes to avoid giant buckets
 - `similarityThreshold`: cosine similarity threshold for grouping
 - `lookbackDays`: how far back to reuse theme labels for continuity
   

@@ -21,6 +21,10 @@ export interface ThemeTuningV1 {
   subthemesEnabled?: boolean;
   /** Apply non-LLM label refinement for display */
   refineLabels?: boolean;
+  /** Minimum word count for clustered theme labels (1-4) */
+  minLabelWords?: number;
+  /** If a single label dominates above this fraction, fall back to raw themes (0 = off) */
+  maxDominancePct?: number;
   /** Similarity threshold for theme clustering (0.3-0.9) */
   similarityThreshold?: number;
   /** Lookback window in days for theme continuity (1-14) */
@@ -36,6 +40,8 @@ export interface ThemeTuningResolved {
   maxItemsPerTheme: number;
   subthemesEnabled: boolean;
   refineLabels: boolean;
+  minLabelWords: number;
+  maxDominancePct: number;
   similarityThreshold: number;
   lookbackDays: number;
 }
@@ -46,14 +52,18 @@ export const THEME_TUNING_DEFAULTS: ThemeTuningResolved = {
   useClusterContext: false,
   maxItemsPerTheme: 0,
   subthemesEnabled: false,
-  refineLabels: false,
-  similarityThreshold: 0.65,
+  refineLabels: true,
+  minLabelWords: 2,
+  maxDominancePct: 0.7,
+  similarityThreshold: 0.7,
   lookbackDays: 7,
 };
 
 /** Clamp ranges for each tuning parameter */
 export const THEME_TUNING_RANGES = {
   maxItemsPerTheme: { min: 0, max: 200 },
+  minLabelWords: { min: 1, max: 4 },
+  maxDominancePct: { min: 0, max: 0.95 },
   similarityThreshold: { min: 0.3, max: 0.9 },
   lookbackDays: { min: 1, max: 14 },
 } as const;
@@ -106,6 +116,18 @@ export function parseThemeTuning(raw: unknown): ThemeTuningResolved {
     ),
     subthemesEnabled,
     refineLabels,
+    minLabelWords: extractClamped(
+      "minLabelWords",
+      defaults.minLabelWords,
+      ranges.minLabelWords.min,
+      ranges.minLabelWords.max,
+    ),
+    maxDominancePct: extractClamped(
+      "maxDominancePct",
+      defaults.maxDominancePct,
+      ranges.maxDominancePct.min,
+      ranges.maxDominancePct.max,
+    ),
     similarityThreshold: extractClamped(
       "similarityThreshold",
       defaults.similarityThreshold,
@@ -157,6 +179,8 @@ export function validateThemeTuning(input: Partial<ThemeTuningV1>): string[] {
   validateField("similarityThreshold", input.similarityThreshold);
   validateField("lookbackDays", input.lookbackDays);
   validateField("maxItemsPerTheme", input.maxItemsPerTheme);
+  validateField("minLabelWords", input.minLabelWords);
+  validateField("maxDominancePct", input.maxDominancePct);
 
   return errors;
 }

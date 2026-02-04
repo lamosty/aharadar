@@ -174,7 +174,7 @@ function buildSystemPrompt(ref: ModelRef, isRetry: boolean, aiGuidance?: string)
     "- ai_score: 0-100 (0=low-signal noise, 100=rare high-signal)\n" +
     "- reason: concise, topic-agnostic explanation\n" +
     "- categories: short generic labels\n" +
-    "- theme: 2-4 words capturing the subject + facet (e.g. 'Bitcoin ETFs', 'AI regulation', 'City transit plan', 'Kubernetes release'). This is used for UI GROUPING. Avoid ultra-broad single-word themes unless the item truly spans the entire subject.\n" +
+    "- theme: 2-4 words capturing the subject + facet (e.g. 'Bitcoin ETFs', 'AI regulation', 'City transit plan', 'Kubernetes release'). This is used for UI GROUPING. Never return a single-word theme if the title/body includes a concrete qualifier—add the most specific facet you can (event, product, policy, metric, etc.). Only use a single-word theme if the item is explicitly about the subject itself with no clear facet.\n" +
     "- If cluster_members are provided, use them to pick a more specific shared theme (not just the broad subject).\n" +
     "- one_liner: brief summary of what the content says (not why it's relevant)\n" +
     "- If user_preferences_summary is provided in the input, use it to judge relevance.\n" +

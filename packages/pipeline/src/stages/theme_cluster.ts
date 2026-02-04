@@ -34,6 +34,13 @@ export interface ThemeClusterResult {
   };
 }
 
+export interface ThemeLabelOverrideOptions {
+  /** Minimum word count for clustered labels (1-4). */
+  minLabelWords?: number;
+  /** Dominance threshold (0-1). If a label exceeds this share, fall back to raw topics. */
+  maxDominancePct?: number;
+}
+
 /**
  * Cosine similarity between two vectors.
  * Returns value in [-1, 1], where 1 = identical direction.
@@ -333,6 +340,93 @@ export async function clusterTriageThemesIntoLabels(
       clusterCount: clusters.length,
       inputTokens: embedResult.inputTokens,
       costEstimateCredits: embedResult.costEstimateCredits,
+    },
+  };
+}
+
+/**
+ * Apply post-clustering overrides to reduce theme drift and over-broad labels.
+ */
+export function applyThemeLabelOverrides(
+  result: ThemeClusterResult,
+  options?: ThemeLabelOverrideOptions,
+): ThemeClusterResult {
+  if (!options) return result;
+
+  const minLabelWords = Math.max(1, Math.floor(options.minLabelWords ?? 1));
+  const maxDominancePct = options.maxDominancePct ?? 0;
+
+  if (minLabelWords <= 1 && maxDominancePct <= 0) {
+    return result;
+  }
+
+  const totalItems = result.items.length;
+  const labelCounts = new Map<string, number>();
+
+  for (const item of result.items) {
+    const label = item.themeLabel;
+    if (!label) continue;
+    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  }
+
+  const dominantLabels = new Set<string>();
+  if (maxDominancePct > 0 && totalItems > 0) {
+    for (const [label, count] of labelCounts) {
+      if (label === "Uncategorized") continue;
+      if (count / totalItems >= maxDominancePct) {
+        dominantLabels.add(label);
+      }
+    }
+  }
+
+  let changed = false;
+  const updatedItems = result.items.map((item) => {
+    const rawTopic = item.topic?.trim() ?? "";
+    if (!rawTopic || rawTopic === "Uncategorized") {
+      return item;
+    }
+
+    const label = item.themeLabel ?? rawTopic;
+    const labelWords = countWords(label);
+    const topicWords = countWords(rawTopic);
+    const shouldPreferRaw =
+      rawTopic !== label &&
+      topicWords >= minLabelWords &&
+      (labelWords < minLabelWords || dominantLabels.has(label));
+
+    if (!shouldPreferRaw) {
+      return item;
+    }
+
+    changed = true;
+    return {
+      ...item,
+      themeLabel: rawTopic,
+    };
+  });
+
+  if (!changed) return result;
+
+  const clustersMap = new Map<string, string[]>();
+  const topicsByLabel = new Map<string, Set<string>>();
+  for (const item of updatedItems) {
+    const label = item.themeLabel ?? "Uncategorized";
+    const existing = topicsByLabel.get(label) ?? new Set<string>();
+    existing.add(item.topic);
+    topicsByLabel.set(label, existing);
+  }
+
+  for (const [label, topics] of topicsByLabel) {
+    clustersMap.set(label, [...topics]);
+  }
+
+  return {
+    ...result,
+    items: updatedItems,
+    clusters: clustersMap,
+    stats: {
+      ...result.stats,
+      clusterCount: clustersMap.size,
     },
   };
 }

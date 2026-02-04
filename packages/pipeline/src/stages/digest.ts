@@ -48,7 +48,7 @@ import {
   rankCandidates,
   type UserPreferences,
 } from "./rank";
-import { clusterTriageThemesIntoLabels } from "./theme_cluster";
+import { applyThemeLabelOverrides, clusterTriageThemesIntoLabels } from "./theme_cluster";
 
 // catch_up mode removed per task-121; now uses only BudgetTier values
 export type DigestMode = BudgetTier;
@@ -1922,7 +1922,12 @@ export async function persistDigestFromContentItems(params: {
         seedClusters,
       );
 
-      for (const item of themeClusterResult.items) {
+      const tunedClusterResult = applyThemeLabelOverrides(themeClusterResult, {
+        minLabelWords: themeTuning.minLabelWords,
+        maxDominancePct: themeTuning.maxDominancePct,
+      });
+
+      for (const item of tunedClusterResult.items) {
         themeLabelMap.set(item.candidateId, item.themeLabel);
         if (item.vector.length > 0) {
           themeVectorMap.set(item.candidateId, item.vector);
@@ -1931,9 +1936,9 @@ export async function persistDigestFromContentItems(params: {
 
       log.info(
         {
-          uniqueThemes: themeClusterResult.stats.uniqueTopics,
-          clusterCount: themeClusterResult.stats.clusterCount,
-          inputTokens: themeClusterResult.stats.inputTokens,
+          uniqueThemes: tunedClusterResult.stats.uniqueTopics,
+          clusterCount: tunedClusterResult.stats.clusterCount,
+          inputTokens: tunedClusterResult.stats.inputTokens,
         },
         "Theme clustering completed",
       );

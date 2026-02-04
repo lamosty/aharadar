@@ -1302,8 +1302,16 @@ export interface TopicCustomSettingsUpdateRequest {
     maxItemsPerTheme?: number;
     subthemesEnabled?: boolean;
     refineLabels?: boolean;
+    minLabelWords?: number;
+    maxDominancePct?: number;
     similarityThreshold?: number;
     lookbackDays?: number;
+  };
+  embedding_retention_v1?: {
+    enabled?: boolean;
+    maxAgeDays?: number;
+    protectFeedback?: boolean;
+    protectBookmarks?: boolean;
   };
   ai_guidance_v1?: {
     summary_prompt?: string;

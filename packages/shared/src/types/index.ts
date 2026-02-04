@@ -4,6 +4,7 @@ export * from "./budget";
 export * from "./catchup_pack";
 export * from "./connector";
 export * from "./content";
+export * from "./embedding_retention";
 export * from "./feedback";
 export * from "./personalization_tuning";
 export * from "./provider_calls";

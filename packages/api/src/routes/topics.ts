@@ -1,6 +1,7 @@
 import type { DigestMode, Topic } from "@aharadar/db";
 import {
   validateAiGuidance,
+  validateEmbeddingRetention,
   validatePersonalizationTuning,
   validateThemeTuning,
 } from "@aharadar/shared";
@@ -456,6 +457,27 @@ export async function topicsRoutes(fastify: FastifyInstance): Promise<void> {
               error: {
                 code: "INVALID_THEME_TUNING",
                 message: `Invalid theme tuning: ${errors.join("; ")}`,
+              },
+            });
+          }
+        }
+      }
+
+      // Validate embedding_retention_v1 if present
+      if (bodyObj.embedding_retention_v1 !== undefined) {
+        const retentionInput = bodyObj.embedding_retention_v1;
+        if (
+          retentionInput !== null &&
+          typeof retentionInput === "object" &&
+          !Array.isArray(retentionInput)
+        ) {
+          const errors = validateEmbeddingRetention(retentionInput as Record<string, unknown>);
+          if (errors.length > 0) {
+            return reply.code(400).send({
+              ok: false,
+              error: {
+                code: "INVALID_EMBEDDING_RETENTION",
+                message: `Invalid embedding retention: ${errors.join("; ")}`,
               },
             });
           }

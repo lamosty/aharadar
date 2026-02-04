@@ -1,6 +1,7 @@
 import type { LlmProvider, LlmSettingsUpdate, ReasoningEffort, SourceRow } from "@aharadar/db";
 import { checkQuotaForRun, getQuotaStatusAsync } from "@aharadar/llm";
 import {
+  applyThemeLabelOverrides,
   clusterTriageThemesIntoLabels,
   compileDigestPlan,
   computeCreditsStatus,
@@ -588,6 +589,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           (topic.digest_mode as BudgetTier) ?? "normal",
           themeTuning.similarityThreshold,
         );
+        clusterResult = applyThemeLabelOverrides(clusterResult, {
+          minLabelWords: themeTuning.minLabelWords,
+          maxDominancePct: themeTuning.maxDominancePct,
+        });
       } catch (err) {
         return reply.code(500).send({
           ok: false,

@@ -41,7 +41,7 @@ const DEFAULT_PAGE_SIZE: PageSize = 50;
 const THEME_GROUPING_DEFAULTS = {
   maxItemsPerTheme: 0,
   subthemesEnabled: false,
-  refineLabels: false,
+  refineLabels: true,
 };
 
 const THEME_GROUPING_RANGES = {

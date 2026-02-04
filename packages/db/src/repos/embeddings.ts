@@ -160,5 +160,98 @@ export function createEmbeddingsRepo(db: Queryable) {
 
       return res.rows;
     },
+
+    async pruneForTopic(params: {
+      userId: string;
+      topicId: string;
+      cutoffIso?: string;
+      maxItems?: number;
+      protectFeedback: boolean;
+      protectBookmarks: boolean;
+    }): Promise<{ deletedByAge: number; deletedByMaxItems: number; totalDeleted: number }> {
+      const protectFeedbackClause = params.protectFeedback
+        ? "and not exists (select 1 from feedback_events fe where fe.user_id = $1::uuid and fe.content_item_id = ci.id)"
+        : "";
+      const protectBookmarksClause = params.protectBookmarks
+        ? "and not exists (select 1 from bookmarks b where b.user_id = $1::uuid and b.content_item_id = ci.id)"
+        : "";
+      const sharedGuardClause =
+        "and not exists (select 1 from content_item_sources cis2 join sources s2 on s2.id = cis2.source_id where cis2.content_item_id = ci.id and s2.topic_id <> $2::uuid)";
+
+      let deletedByAge = 0;
+      if (params.cutoffIso) {
+        const res = await db.query<{ count: string }>(
+          `with candidates as (
+             select distinct e.content_item_id
+             from embeddings e
+             join content_items ci on ci.id = e.content_item_id
+             join content_item_sources cis on cis.content_item_id = ci.id
+             join sources s on s.id = cis.source_id
+             where ci.user_id = $1
+               and s.topic_id = $2::uuid
+               and ci.deleted_at is null
+               and ci.duplicate_of_content_item_id is null
+               and coalesce(ci.published_at, ci.fetched_at) < $3::timestamptz
+               ${sharedGuardClause}
+               ${protectFeedbackClause}
+               ${protectBookmarksClause}
+           ),
+           deleted as (
+             delete from embeddings e
+             using candidates c
+             where e.content_item_id = c.content_item_id
+             returning 1
+           )
+           select count(*)::text as count from deleted`,
+          [params.userId, params.topicId, params.cutoffIso],
+        );
+        deletedByAge = Number.parseInt(res.rows[0]?.count ?? "0", 10);
+      }
+
+      let deletedByMaxItems = 0;
+      const maxItems = params.maxItems ? Math.max(0, Math.floor(params.maxItems)) : 0;
+      if (maxItems > 0) {
+        const res = await db.query<{ count: string }>(
+          `with candidates as (
+             select distinct e.content_item_id,
+               coalesce(ci.published_at, ci.fetched_at) as item_ts
+             from embeddings e
+             join content_items ci on ci.id = e.content_item_id
+             join content_item_sources cis on cis.content_item_id = ci.id
+             join sources s on s.id = cis.source_id
+             where ci.user_id = $1
+               and s.topic_id = $2::uuid
+               and ci.deleted_at is null
+               and ci.duplicate_of_content_item_id is null
+               ${sharedGuardClause}
+               ${protectFeedbackClause}
+               ${protectBookmarksClause}
+           ),
+           ranked as (
+             select content_item_id,
+               row_number() over (order by item_ts desc) as rn
+             from candidates
+           ),
+           to_delete as (
+             select content_item_id from ranked where rn > $3
+           ),
+           deleted as (
+             delete from embeddings e
+             using to_delete d
+             where e.content_item_id = d.content_item_id
+             returning 1
+           )
+           select count(*)::text as count from deleted`,
+          [params.userId, params.topicId, maxItems],
+        );
+        deletedByMaxItems = Number.parseInt(res.rows[0]?.count ?? "0", 10);
+      }
+
+      return {
+        deletedByAge,
+        deletedByMaxItems,
+        totalDeleted: deletedByAge + deletedByMaxItems,
+      };
+    },
   };
 }

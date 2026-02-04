@@ -19,6 +19,7 @@ import { type ClusterRunResult, clusterTopicContentItems } from "../stages/clust
 import { type DedupeRunResult, dedupeTopicContentItems } from "../stages/dedupe";
 import { type DigestRunResult, persistDigestFromContentItems } from "../stages/digest";
 import { type EmbedRunResult, embedTopicContentItems } from "../stages/embed";
+import { pruneEmbeddingsForTopic } from "../stages/embedding_retention";
 import {
   type IngestLimits,
   type IngestRunResult,
@@ -322,6 +323,18 @@ export async function runPipelineOnce(
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
   });
+
+  try {
+    await pruneEmbeddingsForTopic({
+      db,
+      userId: params.userId,
+      topicId: params.topicId,
+      windowEnd: params.windowEnd,
+      customSettings: topic.custom_settings,
+    });
+  } catch (err) {
+    log.warn({ err }, "Embedding retention failed; continuing without pruning");
+  }
 
   // Policy=STOP: skip digest creation entirely when paid calls are not allowed
   if (!paidCallsAllowed) {

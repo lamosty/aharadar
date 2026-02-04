@@ -23,15 +23,31 @@ const THEME_TUNING_DEFAULTS = {
   useClusterContext: false,
   maxItemsPerTheme: 0,
   subthemesEnabled: false,
-  refineLabels: false,
-  similarityThreshold: 0.65,
+  refineLabels: true,
+  minLabelWords: 2,
+  maxDominancePct: 0.7,
+  similarityThreshold: 0.7,
   lookbackDays: 7,
 };
 
 const THEME_TUNING_RANGES = {
   maxItemsPerTheme: { min: 0, max: 200 },
+  minLabelWords: { min: 1, max: 4 },
+  maxDominancePct: { min: 0, max: 0.95 },
   similarityThreshold: { min: 0.3, max: 0.9 },
   lookbackDays: { min: 1, max: 14 },
+} as const;
+
+// Embedding retention defaults and ranges
+const EMBEDDING_RETENTION_DEFAULTS = {
+  enabled: true,
+  maxAgeDays: 90,
+  protectFeedback: true,
+  protectBookmarks: true,
+};
+
+const EMBEDDING_RETENTION_RANGES = {
+  maxAgeDays: { min: 30, max: 120 },
 } as const;
 
 // AI Guidance defaults and max length
@@ -55,6 +71,8 @@ interface ThemeTuningResolved {
   maxItemsPerTheme: number;
   subthemesEnabled: boolean;
   refineLabels: boolean;
+  minLabelWords: number;
+  maxDominancePct: number;
   similarityThreshold: number;
   lookbackDays: number;
 }
@@ -62,6 +80,13 @@ interface ThemeTuningResolved {
 interface AiGuidanceResolved {
   summary_prompt: string;
   triage_prompt: string;
+}
+
+interface EmbeddingRetentionResolved {
+  enabled: boolean;
+  maxAgeDays: number;
+  protectFeedback: boolean;
+  protectBookmarks: boolean;
 }
 
 /** Parse personalization tuning from custom_settings with defaults and clamping */
@@ -178,6 +203,18 @@ function parseThemeTuning(raw: unknown): ThemeTuningResolved {
     ),
     subthemesEnabled: extractBool("subthemesEnabled", defaults.subthemesEnabled),
     refineLabels: extractBool("refineLabels", defaults.refineLabels),
+    minLabelWords: extractClampedNum(
+      "minLabelWords",
+      defaults.minLabelWords,
+      ranges.minLabelWords.min,
+      ranges.minLabelWords.max,
+    ),
+    maxDominancePct: extractClampedNum(
+      "maxDominancePct",
+      defaults.maxDominancePct,
+      ranges.maxDominancePct.min,
+      ranges.maxDominancePct.max,
+    ),
     similarityThreshold: extractClampedNum(
       "similarityThreshold",
       defaults.similarityThreshold,
@@ -190,6 +227,46 @@ function parseThemeTuning(raw: unknown): ThemeTuningResolved {
       ranges.lookbackDays.min,
       ranges.lookbackDays.max,
     ),
+  };
+}
+
+/** Parse embedding retention from custom_settings with defaults and clamping */
+function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolved {
+  const defaults = EMBEDDING_RETENTION_DEFAULTS;
+  const ranges = EMBEDDING_RETENTION_RANGES;
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ...defaults };
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  function extractBool(key: string, defaultValue: boolean): boolean {
+    const value = obj[key];
+    if (typeof value !== "boolean") {
+      return defaultValue;
+    }
+    return value;
+  }
+
+  function extractClampedNum(key: string, defaultValue: number, min: number, max: number): number {
+    const value = obj[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return defaultValue;
+    }
+    return Math.max(min, Math.min(max, Math.floor(value)));
+  }
+
+  return {
+    enabled: extractBool("enabled", defaults.enabled),
+    maxAgeDays: extractClampedNum(
+      "maxAgeDays",
+      defaults.maxAgeDays,
+      ranges.maxAgeDays.min,
+      ranges.maxAgeDays.max,
+    ),
+    protectFeedback: extractBool("protectFeedback", defaults.protectFeedback),
+    protectBookmarks: extractBool("protectBookmarks", defaults.protectBookmarks),
   };
 }
 
@@ -233,10 +310,26 @@ export default function AdminTuningPage() {
     THEME_TUNING_DEFAULTS.subthemesEnabled,
   );
   const [themeRefineLabels, setThemeRefineLabels] = useState(THEME_TUNING_DEFAULTS.refineLabels);
+  const [themeMinLabelWords, setThemeMinLabelWords] = useState(THEME_TUNING_DEFAULTS.minLabelWords);
+  const [themeMaxDominancePct, setThemeMaxDominancePct] = useState(
+    THEME_TUNING_DEFAULTS.maxDominancePct,
+  );
   const [themeSimilarityThreshold, setThemeSimilarityThreshold] = useState(
     THEME_TUNING_DEFAULTS.similarityThreshold,
   );
   const [themeLookbackDays, setThemeLookbackDays] = useState(THEME_TUNING_DEFAULTS.lookbackDays);
+
+  // Form state for embedding retention
+  const [retentionEnabled, setRetentionEnabled] = useState(EMBEDDING_RETENTION_DEFAULTS.enabled);
+  const [retentionMaxAgeDays, setRetentionMaxAgeDays] = useState(
+    EMBEDDING_RETENTION_DEFAULTS.maxAgeDays,
+  );
+  const [retentionProtectFeedback, setRetentionProtectFeedback] = useState(
+    EMBEDDING_RETENTION_DEFAULTS.protectFeedback,
+  );
+  const [retentionProtectBookmarks, setRetentionProtectBookmarks] = useState(
+    EMBEDDING_RETENTION_DEFAULTS.protectBookmarks,
+  );
 
   // Form state for AI guidance
   const [aiSummaryPrompt, setAiSummaryPrompt] = useState(AI_GUIDANCE_DEFAULTS.summary_prompt);
@@ -272,8 +365,17 @@ export default function AdminTuningPage() {
     setThemeMaxItemsPerTheme(themeTuning.maxItemsPerTheme);
     setThemeSubthemesEnabled(themeTuning.subthemesEnabled);
     setThemeRefineLabels(themeTuning.refineLabels);
+    setThemeMinLabelWords(themeTuning.minLabelWords);
+    setThemeMaxDominancePct(themeTuning.maxDominancePct);
     setThemeSimilarityThreshold(themeTuning.similarityThreshold);
     setThemeLookbackDays(themeTuning.lookbackDays);
+
+    // Load embedding retention
+    const retention = parseEmbeddingRetention(topic.customSettings?.embedding_retention_v1);
+    setRetentionEnabled(retention.enabled);
+    setRetentionMaxAgeDays(retention.maxAgeDays);
+    setRetentionProtectFeedback(retention.protectFeedback);
+    setRetentionProtectBookmarks(retention.protectBookmarks);
 
     // Load AI guidance
     const aiGuidance = parseAiGuidance(topic.customSettings?.ai_guidance_v1);
@@ -321,8 +423,16 @@ export default function AdminTuningPage() {
         maxItemsPerTheme: themeMaxItemsPerTheme,
         subthemesEnabled: themeSubthemesEnabled,
         refineLabels: themeRefineLabels,
+        minLabelWords: themeMinLabelWords,
+        maxDominancePct: themeMaxDominancePct,
         similarityThreshold: themeSimilarityThreshold,
         lookbackDays: themeLookbackDays,
+      },
+      embedding_retention_v1: {
+        enabled: retentionEnabled,
+        maxAgeDays: retentionMaxAgeDays,
+        protectFeedback: retentionProtectFeedback,
+        protectBookmarks: retentionProtectBookmarks,
       },
       ai_guidance_v1: {
         summary_prompt: aiSummaryPrompt,
@@ -343,8 +453,15 @@ export default function AdminTuningPage() {
     setThemeMaxItemsPerTheme(THEME_TUNING_DEFAULTS.maxItemsPerTheme);
     setThemeSubthemesEnabled(THEME_TUNING_DEFAULTS.subthemesEnabled);
     setThemeRefineLabels(THEME_TUNING_DEFAULTS.refineLabels);
+    setThemeMinLabelWords(THEME_TUNING_DEFAULTS.minLabelWords);
+    setThemeMaxDominancePct(THEME_TUNING_DEFAULTS.maxDominancePct);
     setThemeSimilarityThreshold(THEME_TUNING_DEFAULTS.similarityThreshold);
     setThemeLookbackDays(THEME_TUNING_DEFAULTS.lookbackDays);
+    // Reset embedding retention
+    setRetentionEnabled(EMBEDDING_RETENTION_DEFAULTS.enabled);
+    setRetentionMaxAgeDays(EMBEDDING_RETENTION_DEFAULTS.maxAgeDays);
+    setRetentionProtectFeedback(EMBEDDING_RETENTION_DEFAULTS.protectFeedback);
+    setRetentionProtectBookmarks(EMBEDDING_RETENTION_DEFAULTS.protectBookmarks);
     // Reset AI guidance
     setAiSummaryPrompt(AI_GUIDANCE_DEFAULTS.summary_prompt);
     setAiTriagePrompt(AI_GUIDANCE_DEFAULTS.triage_prompt);
@@ -359,6 +476,9 @@ export default function AdminTuningPage() {
     : null;
   const savedThemeTuning = selectedTopic
     ? parseThemeTuning(selectedTopic.customSettings?.theme_tuning_v1)
+    : null;
+  const savedEmbeddingRetention = selectedTopic
+    ? parseEmbeddingRetention(selectedTopic.customSettings?.embedding_retention_v1)
     : null;
   const savedAiGuidance = selectedTopic
     ? parseAiGuidance(selectedTopic.customSettings?.ai_guidance_v1)
@@ -378,15 +498,25 @@ export default function AdminTuningPage() {
       themeMaxItemsPerTheme !== savedThemeTuning.maxItemsPerTheme ||
       themeSubthemesEnabled !== savedThemeTuning.subthemesEnabled ||
       themeRefineLabels !== savedThemeTuning.refineLabels ||
+      themeMinLabelWords !== savedThemeTuning.minLabelWords ||
+      themeMaxDominancePct !== savedThemeTuning.maxDominancePct ||
       themeSimilarityThreshold !== savedThemeTuning.similarityThreshold ||
       themeLookbackDays !== savedThemeTuning.lookbackDays);
+
+  const hasRetentionChanges =
+    savedEmbeddingRetention &&
+    (retentionEnabled !== savedEmbeddingRetention.enabled ||
+      retentionMaxAgeDays !== savedEmbeddingRetention.maxAgeDays ||
+      retentionProtectFeedback !== savedEmbeddingRetention.protectFeedback ||
+      retentionProtectBookmarks !== savedEmbeddingRetention.protectBookmarks);
 
   const hasAiGuidanceChanges =
     savedAiGuidance &&
     (aiSummaryPrompt !== savedAiGuidance.summary_prompt ||
       aiTriagePrompt !== savedAiGuidance.triage_prompt);
 
-  const hasChanges = hasPersonalChanges || hasThemeChanges || hasAiGuidanceChanges;
+  const hasChanges =
+    hasPersonalChanges || hasThemeChanges || hasRetentionChanges || hasAiGuidanceChanges;
 
   // Check if current values differ from defaults
   const isPersonalDefault =
@@ -401,14 +531,23 @@ export default function AdminTuningPage() {
     themeMaxItemsPerTheme === THEME_TUNING_DEFAULTS.maxItemsPerTheme &&
     themeSubthemesEnabled === THEME_TUNING_DEFAULTS.subthemesEnabled &&
     themeRefineLabels === THEME_TUNING_DEFAULTS.refineLabels &&
+    themeMinLabelWords === THEME_TUNING_DEFAULTS.minLabelWords &&
+    themeMaxDominancePct === THEME_TUNING_DEFAULTS.maxDominancePct &&
     themeSimilarityThreshold === THEME_TUNING_DEFAULTS.similarityThreshold &&
     themeLookbackDays === THEME_TUNING_DEFAULTS.lookbackDays;
+
+  const isRetentionDefault =
+    retentionEnabled === EMBEDDING_RETENTION_DEFAULTS.enabled &&
+    retentionMaxAgeDays === EMBEDDING_RETENTION_DEFAULTS.maxAgeDays &&
+    retentionProtectFeedback === EMBEDDING_RETENTION_DEFAULTS.protectFeedback &&
+    retentionProtectBookmarks === EMBEDDING_RETENTION_DEFAULTS.protectBookmarks;
 
   const isAiGuidanceDefault =
     aiSummaryPrompt === AI_GUIDANCE_DEFAULTS.summary_prompt &&
     aiTriagePrompt === AI_GUIDANCE_DEFAULTS.triage_prompt;
 
-  const isDefault = isPersonalDefault && isThemeDefault && isAiGuidanceDefault;
+  const isDefault =
+    isPersonalDefault && isThemeDefault && isRetentionDefault && isAiGuidanceDefault;
 
   if (isLoading) {
     return (
@@ -687,7 +826,72 @@ export default function AdminTuningPage() {
             </div>
             <p className={styles.sliderDescription}>
               How similar items must be to group into the same theme. Lower = bigger themes with
-              more items, Higher = smaller themes with tighter grouping. 0.65 recommended.
+              more items, Higher = smaller themes with tighter grouping. 0.70 recommended.
+            </p>
+          </div>
+        </div>
+
+        {/* Minimum Label Words */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="themeMinLabelWords" className={styles.sliderLabel}>
+                Minimum Label Words
+              </label>
+              <span className={styles.sliderValue}>{themeMinLabelWords}</span>
+            </div>
+            <input
+              id="themeMinLabelWords"
+              type="range"
+              min={THEME_TUNING_RANGES.minLabelWords.min}
+              max={THEME_TUNING_RANGES.minLabelWords.max}
+              step={1}
+              value={themeMinLabelWords}
+              onChange={(e) => setThemeMinLabelWords(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !themeEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{THEME_TUNING_RANGES.minLabelWords.min}</span>
+              <span>{THEME_TUNING_RANGES.minLabelWords.max}</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              If a clustered label has fewer words than this, items fall back to their raw triage
+              theme. Helps avoid giant buckets like &quot;Bitcoin&quot; when more specific themes
+              exist.
+            </p>
+          </div>
+        </div>
+
+        {/* Dominant Theme Cap */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="themeMaxDominancePct" className={styles.sliderLabel}>
+                Dominant Theme Cap
+              </label>
+              <span className={styles.sliderValue}>
+                {themeMaxDominancePct <= 0 ? "Off" : `${Math.round(themeMaxDominancePct * 100)}%`}
+              </span>
+            </div>
+            <input
+              id="themeMaxDominancePct"
+              type="range"
+              min={THEME_TUNING_RANGES.maxDominancePct.min}
+              max={THEME_TUNING_RANGES.maxDominancePct.max}
+              step={0.05}
+              value={themeMaxDominancePct}
+              onChange={(e) => setThemeMaxDominancePct(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !themeEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{THEME_TUNING_RANGES.maxDominancePct.min} (Off)</span>
+              <span>{THEME_TUNING_RANGES.maxDominancePct.max}</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              If a single theme covers more than this share of items, the pipeline falls back to
+              item-specific triage themes to keep groups from swallowing the feed.
             </p>
           </div>
         </div>
@@ -828,6 +1032,116 @@ export default function AdminTuningPage() {
           <p className={styles.sliderDescription}>
             Delete all existing themes and rebuild from current inbox items. Use this if themes seem
             stale or after changing settings.
+          </p>
+        </div>
+
+        {/* Embedding Retention Section */}
+        <div className={styles.sectionDivider}>
+          <h2 className={styles.sectionTitle}>Embedding Retention</h2>
+          <p className={styles.sectionSubtitle}>
+            Keep embeddings bounded without losing your best signals. Retention is topic-scoped and
+            never deletes items with feedback or bookmarks unless you disable those protections.
+            Items shared across topics are preserved.
+          </p>
+        </div>
+
+        {/* Retention Enabled Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="retentionEnabled" className={styles.toggleLabel}>
+              Enable Embedding Retention
+            </label>
+            <button
+              id="retentionEnabled"
+              type="button"
+              role="switch"
+              aria-checked={retentionEnabled}
+              className={`${styles.toggle} ${retentionEnabled ? styles.toggleOn : ""}`}
+              onClick={() => setRetentionEnabled(!retentionEnabled)}
+              disabled={isSaving}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            When enabled, embeddings older than the retention window are pruned during pipeline
+            runs.
+          </p>
+        </div>
+
+        {/* Retention Window */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="retentionMaxAgeDays" className={styles.sliderLabel}>
+                Retention Window (days)
+              </label>
+              <span className={styles.sliderValue}>{retentionMaxAgeDays}</span>
+            </div>
+            <input
+              id="retentionMaxAgeDays"
+              type="range"
+              min={EMBEDDING_RETENTION_RANGES.maxAgeDays.min}
+              max={EMBEDDING_RETENTION_RANGES.maxAgeDays.max}
+              step={1}
+              value={retentionMaxAgeDays}
+              onChange={(e) => setRetentionMaxAgeDays(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !retentionEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{EMBEDDING_RETENTION_RANGES.maxAgeDays.min} days</span>
+              <span>{EMBEDDING_RETENTION_RANGES.maxAgeDays.max} days</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              Embeddings older than this window can be removed to control storage growth.
+            </p>
+          </div>
+        </div>
+
+        {/* Protect Feedback Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="retentionProtectFeedback" className={styles.toggleLabel}>
+              Protect Feedback Items
+            </label>
+            <button
+              id="retentionProtectFeedback"
+              type="button"
+              role="switch"
+              aria-checked={retentionProtectFeedback}
+              className={`${styles.toggle} ${retentionProtectFeedback ? styles.toggleOn : ""}`}
+              onClick={() => setRetentionProtectFeedback(!retentionProtectFeedback)}
+              disabled={isSaving || !retentionEnabled}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            Keep embeddings for items you liked or disliked so preference profiles remain stable.
+          </p>
+        </div>
+
+        {/* Protect Bookmarks Toggle */}
+        <div className={styles.section}>
+          <div className={styles.toggleGroup}>
+            <label htmlFor="retentionProtectBookmarks" className={styles.toggleLabel}>
+              Protect Bookmarked Items
+            </label>
+            <button
+              id="retentionProtectBookmarks"
+              type="button"
+              role="switch"
+              aria-checked={retentionProtectBookmarks}
+              className={`${styles.toggle} ${retentionProtectBookmarks ? styles.toggleOn : ""}`}
+              onClick={() => setRetentionProtectBookmarks(!retentionProtectBookmarks)}
+              disabled={isSaving || !retentionEnabled}
+            >
+              <span className={styles.toggleKnob} />
+            </button>
+          </div>
+          <p className={styles.sliderDescription}>
+            Preserve embeddings for saved items you might revisit later.
           </p>
         </div>
 
