@@ -1311,6 +1311,7 @@ export interface TopicCustomSettingsUpdateRequest {
     enabled?: boolean;
     maxAgeDays?: number;
     maxItems?: number;
+    maxTokens?: number;
     protectFeedback?: boolean;
     protectBookmarks?: boolean;
   };
@@ -2540,9 +2541,11 @@ export interface EmbeddingRetentionRun {
   windowEnd: string;
   maxAgeDays: number;
   maxItems: number;
+  maxTokens: number;
   effectiveMaxAgeDays: number;
   cutoffAt: string;
   deletedByAge: number;
+  deletedByMaxTokens: number;
   deletedByMaxItems: number;
   totalDeleted: number;
   createdAt: string;

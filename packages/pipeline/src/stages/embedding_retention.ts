@@ -9,9 +9,11 @@ export interface EmbeddingRetentionResult {
   enabled: boolean;
   maxAgeDays: number;
   maxItems: number;
+  maxTokens: number;
   effectiveMaxAgeDays: number;
   cutoffIso: string;
   deletedByAge: number;
+  deletedByMaxTokens: number;
   deletedByMaxItems: number;
   totalDeleted: number;
 }
@@ -41,6 +43,7 @@ export async function pruneEmbeddingsForTopic(params: {
     topicId: params.topicId,
     cutoffIso,
     maxItems: retention.maxItems,
+    maxTokens: retention.maxTokens,
     protectFeedback: retention.protectFeedback,
     protectBookmarks: retention.protectBookmarks,
   });
@@ -52,9 +55,11 @@ export async function pruneEmbeddingsForTopic(params: {
       windowEnd: params.windowEnd,
       maxAgeDays: retention.maxAgeDays,
       maxItems: retention.maxItems,
+      maxTokens: retention.maxTokens,
       effectiveMaxAgeDays,
       cutoffIso,
       deletedByAge: result.deletedByAge,
+      deletedByMaxTokens: result.deletedByMaxTokens,
       deletedByMaxItems: result.deletedByMaxItems,
       totalDeleted: result.totalDeleted,
     });
@@ -67,8 +72,10 @@ export async function pruneEmbeddingsForTopic(params: {
       topicId: params.topicId.slice(0, 8),
       maxAgeDays: retention.maxAgeDays,
       maxItems: retention.maxItems,
+      maxTokens: retention.maxTokens,
       effectiveMaxAgeDays,
       deletedByAge: result.deletedByAge,
+      deletedByMaxTokens: result.deletedByMaxTokens,
       deletedByMaxItems: result.deletedByMaxItems,
       totalDeleted: result.totalDeleted,
     },
@@ -79,9 +86,11 @@ export async function pruneEmbeddingsForTopic(params: {
     enabled: retention.enabled,
     maxAgeDays: retention.maxAgeDays,
     maxItems: retention.maxItems,
+    maxTokens: retention.maxTokens,
     effectiveMaxAgeDays,
     cutoffIso,
     deletedByAge: result.deletedByAge,
+    deletedByMaxTokens: result.deletedByMaxTokens,
     deletedByMaxItems: result.deletedByMaxItems,
     totalDeleted: result.totalDeleted,
   };

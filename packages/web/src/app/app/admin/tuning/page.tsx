@@ -43,6 +43,7 @@ const EMBEDDING_RETENTION_DEFAULTS = {
   enabled: true,
   maxAgeDays: 90,
   maxItems: 0,
+  maxTokens: 0,
   protectFeedback: true,
   protectBookmarks: true,
 };
@@ -50,6 +51,7 @@ const EMBEDDING_RETENTION_DEFAULTS = {
 const EMBEDDING_RETENTION_RANGES = {
   maxAgeDays: { min: 30, max: 120 },
   maxItems: { min: 0, max: 200000 },
+  maxTokens: { min: 0, max: 50000000 },
 } as const;
 
 // AI Guidance defaults and max length
@@ -88,6 +90,7 @@ interface EmbeddingRetentionResolved {
   enabled: boolean;
   maxAgeDays: number;
   maxItems: number;
+  maxTokens: number;
   protectFeedback: boolean;
   protectBookmarks: boolean;
 }
@@ -274,6 +277,12 @@ function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolved {
       ranges.maxItems.min,
       ranges.maxItems.max,
     ),
+    maxTokens: extractClampedNum(
+      "maxTokens",
+      defaults.maxTokens,
+      ranges.maxTokens.min,
+      ranges.maxTokens.max,
+    ),
     protectFeedback: extractBool("protectFeedback", defaults.protectFeedback),
     protectBookmarks: extractBool("protectBookmarks", defaults.protectBookmarks),
   };
@@ -339,6 +348,9 @@ export default function AdminTuningPage() {
     EMBEDDING_RETENTION_DEFAULTS.maxAgeDays,
   );
   const [retentionMaxItems, setRetentionMaxItems] = useState(EMBEDDING_RETENTION_DEFAULTS.maxItems);
+  const [retentionMaxTokens, setRetentionMaxTokens] = useState(
+    EMBEDDING_RETENTION_DEFAULTS.maxTokens,
+  );
   const [retentionProtectFeedback, setRetentionProtectFeedback] = useState(
     EMBEDDING_RETENTION_DEFAULTS.protectFeedback,
   );
@@ -390,6 +402,7 @@ export default function AdminTuningPage() {
     setRetentionEnabled(retention.enabled);
     setRetentionMaxAgeDays(retention.maxAgeDays);
     setRetentionMaxItems(retention.maxItems);
+    setRetentionMaxTokens(retention.maxTokens);
     setRetentionProtectFeedback(retention.protectFeedback);
     setRetentionProtectBookmarks(retention.protectBookmarks);
 
@@ -450,6 +463,7 @@ export default function AdminTuningPage() {
         enabled: retentionEnabled,
         maxAgeDays: retentionMaxAgeDays,
         maxItems: retentionMaxItems,
+        maxTokens: retentionMaxTokens,
         protectFeedback: retentionProtectFeedback,
         protectBookmarks: retentionProtectBookmarks,
       },
@@ -480,6 +494,7 @@ export default function AdminTuningPage() {
     setRetentionEnabled(EMBEDDING_RETENTION_DEFAULTS.enabled);
     setRetentionMaxAgeDays(EMBEDDING_RETENTION_DEFAULTS.maxAgeDays);
     setRetentionMaxItems(EMBEDDING_RETENTION_DEFAULTS.maxItems);
+    setRetentionMaxTokens(EMBEDDING_RETENTION_DEFAULTS.maxTokens);
     setRetentionProtectFeedback(EMBEDDING_RETENTION_DEFAULTS.protectFeedback);
     setRetentionProtectBookmarks(EMBEDDING_RETENTION_DEFAULTS.protectBookmarks);
     // Reset AI guidance
@@ -528,6 +543,7 @@ export default function AdminTuningPage() {
     (retentionEnabled !== savedEmbeddingRetention.enabled ||
       retentionMaxAgeDays !== savedEmbeddingRetention.maxAgeDays ||
       retentionMaxItems !== savedEmbeddingRetention.maxItems ||
+      retentionMaxTokens !== savedEmbeddingRetention.maxTokens ||
       retentionProtectFeedback !== savedEmbeddingRetention.protectFeedback ||
       retentionProtectBookmarks !== savedEmbeddingRetention.protectBookmarks);
 
@@ -561,6 +577,7 @@ export default function AdminTuningPage() {
     retentionEnabled === EMBEDDING_RETENTION_DEFAULTS.enabled &&
     retentionMaxAgeDays === EMBEDDING_RETENTION_DEFAULTS.maxAgeDays &&
     retentionMaxItems === EMBEDDING_RETENTION_DEFAULTS.maxItems &&
+    retentionMaxTokens === EMBEDDING_RETENTION_DEFAULTS.maxTokens &&
     retentionProtectFeedback === EMBEDDING_RETENTION_DEFAULTS.protectFeedback &&
     retentionProtectBookmarks === EMBEDDING_RETENTION_DEFAULTS.protectBookmarks;
 
@@ -575,6 +592,16 @@ export default function AdminTuningPage() {
   const retentionStatusLabel = retentionRun
     ? new Date(retentionRun.createdAt).toLocaleString()
     : "No retention runs yet";
+
+  function formatTokenCount(value: number): string {
+    if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)}M`;
+    }
+    if (value >= 1_000) {
+      return `${Math.round(value / 1_000)}k`;
+    }
+    return value.toLocaleString();
+  }
 
   if (isLoading) {
     return (
@@ -1084,7 +1111,7 @@ export default function AdminTuningPage() {
             {retentionStatusQuery.isError
               ? "Unable to load retention history."
               : retentionRun
-                ? `Cutoff: ${new Date(retentionRun.cutoffAt).toLocaleDateString()} · Deleted ${retentionRun.totalDeleted.toLocaleString()} embeddings (${retentionRun.deletedByAge.toLocaleString()} age, ${retentionRun.deletedByMaxItems.toLocaleString()} cap).`
+                ? `Cutoff: ${new Date(retentionRun.cutoffAt).toLocaleDateString()} · Deleted ${retentionRun.totalDeleted.toLocaleString()} embeddings (${retentionRun.deletedByAge.toLocaleString()} age, ${retentionRun.deletedByMaxTokens.toLocaleString()} token cap, ${retentionRun.deletedByMaxItems.toLocaleString()} item cap).`
                 : "Retention stats appear after the next pipeline run completes."}
           </p>
         </div>
@@ -1172,6 +1199,39 @@ export default function AdminTuningPage() {
             <p className={styles.sliderDescription}>
               Optional hard cap on how many embeddings to retain for this topic. If exceeded, the
               oldest embeddings are pruned after the age window is applied.
+            </p>
+          </div>
+        </div>
+
+        {/* Retention Max Tokens */}
+        <div className={styles.section}>
+          <div className={styles.sliderGroup}>
+            <div className={styles.sliderHeader}>
+              <label htmlFor="retentionMaxTokens" className={styles.sliderLabel}>
+                Embedding Cap (tokens, estimated)
+              </label>
+              <span className={styles.sliderValue}>
+                {retentionMaxTokens === 0 ? "Off" : formatTokenCount(retentionMaxTokens)}
+              </span>
+            </div>
+            <input
+              id="retentionMaxTokens"
+              type="range"
+              min={EMBEDDING_RETENTION_RANGES.maxTokens.min}
+              max={EMBEDDING_RETENTION_RANGES.maxTokens.max}
+              step={100000}
+              value={retentionMaxTokens}
+              onChange={(e) => setRetentionMaxTokens(Number(e.target.value))}
+              className={styles.slider}
+              disabled={isSaving || !retentionEnabled}
+            />
+            <div className={styles.sliderRange}>
+              <span>{EMBEDDING_RETENTION_RANGES.maxTokens.min} (Off)</span>
+              <span>{formatTokenCount(EMBEDDING_RETENTION_RANGES.maxTokens.max)}</span>
+            </div>
+            <p className={styles.sliderDescription}>
+              Optional cap based on estimated input tokens for embeddings. Token counts are recorded
+              only for new embeddings going forward.
             </p>
           </div>
         </div>

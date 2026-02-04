@@ -101,6 +101,8 @@ This mechanism allows different source types to have different natural frequenci
   - Effective retention is clamped to at least the novelty lookback window.
   - Embeddings for items shared across multiple topics are preserved (safety-first).
   - Optional hard cap by item count can prune the oldest embeddings beyond a per-topic limit.
+  - Optional hard cap by **estimated tokens** can prune older embeddings once the token budget is exceeded
+    (token estimates are only recorded for new embeddings going forward).
 
 ### 3) Dedupe
 

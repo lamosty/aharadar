@@ -7,9 +7,11 @@ export interface EmbeddingRetentionRunRow {
   window_end: string;
   max_age_days: number;
   max_items: number;
+  max_tokens: number;
   effective_max_age_days: number;
   cutoff_at: string;
   deleted_by_age: number;
+  deleted_by_max_tokens: number;
   deleted_by_max_items: number;
   total_deleted: number;
   created_at: string;
@@ -23,27 +25,31 @@ export function createEmbeddingRetentionRunsRepo(db: Queryable) {
       windowEnd: string;
       maxAgeDays: number;
       maxItems: number;
+      maxTokens: number;
       effectiveMaxAgeDays: number;
       cutoffIso: string;
       deletedByAge: number;
+      deletedByMaxTokens: number;
       deletedByMaxItems: number;
       totalDeleted: number;
     }): Promise<void> {
       await db.query(
         `insert into embedding_retention_runs (
            user_id, topic_id, window_end,
-           max_age_days, max_items, effective_max_age_days,
-           cutoff_at, deleted_by_age, deleted_by_max_items, total_deleted
-         ) values ($1::uuid, $2::uuid, $3::timestamptz, $4, $5, $6, $7::timestamptz, $8, $9, $10)`,
+           max_age_days, max_items, max_tokens, effective_max_age_days,
+           cutoff_at, deleted_by_age, deleted_by_max_tokens, deleted_by_max_items, total_deleted
+         ) values ($1::uuid, $2::uuid, $3::timestamptz, $4, $5, $6, $7, $8::timestamptz, $9, $10, $11, $12)`,
         [
           params.userId,
           params.topicId,
           params.windowEnd,
           Math.max(0, Math.floor(params.maxAgeDays)),
           Math.max(0, Math.floor(params.maxItems)),
+          Math.max(0, Math.floor(params.maxTokens)),
           Math.max(0, Math.floor(params.effectiveMaxAgeDays)),
           params.cutoffIso,
           Math.max(0, Math.floor(params.deletedByAge)),
+          Math.max(0, Math.floor(params.deletedByMaxTokens)),
           Math.max(0, Math.floor(params.deletedByMaxItems)),
           Math.max(0, Math.floor(params.totalDeleted)),
         ],
@@ -62,9 +68,11 @@ export function createEmbeddingRetentionRunsRepo(db: Queryable) {
            window_end::text as window_end,
            max_age_days,
            max_items,
+           max_tokens,
            effective_max_age_days,
            cutoff_at::text as cutoff_at,
            deleted_by_age,
+           deleted_by_max_tokens,
            deleted_by_max_items,
            total_deleted,
            created_at::text as created_at

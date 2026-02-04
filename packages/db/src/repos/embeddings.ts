@@ -5,6 +5,7 @@ export interface EmbeddingUpsert {
   model: string;
   dims: number;
   vector: number[]; // must match embeddings.vector dims (currently 1536)
+  inputTokensEstimate?: number | null;
 }
 
 export interface EmbeddingCandidateRow {
@@ -76,16 +77,25 @@ export function createEmbeddingsRepo(db: Queryable) {
 
     async upsert(params: EmbeddingUpsert): Promise<{ inserted: boolean }> {
       const res = await db.query<{ inserted: boolean }>(
-        `insert into embeddings (content_item_id, model, dims, vector)
-         values ($1::uuid, $2, $3, $4::vector)
+        `insert into embeddings (content_item_id, model, dims, vector, input_tokens_estimate)
+         values ($1::uuid, $2, $3, $4::vector, $5)
          on conflict (content_item_id)
          do update set
            model = excluded.model,
            dims = excluded.dims,
            vector = excluded.vector,
+           input_tokens_estimate = excluded.input_tokens_estimate,
            created_at = now()
          returning (xmax = 0) as inserted`,
-        [params.contentItemId, params.model, params.dims, asVectorLiteral(params.vector)],
+        [
+          params.contentItemId,
+          params.model,
+          params.dims,
+          asVectorLiteral(params.vector),
+          typeof params.inputTokensEstimate === "number"
+            ? Math.max(0, Math.floor(params.inputTokensEstimate))
+            : null,
+        ],
       );
       const row = res.rows[0];
       if (!row) throw new Error("embeddings.upsert failed: no row returned");
@@ -166,9 +176,15 @@ export function createEmbeddingsRepo(db: Queryable) {
       topicId: string;
       cutoffIso?: string;
       maxItems?: number;
+      maxTokens?: number;
       protectFeedback: boolean;
       protectBookmarks: boolean;
-    }): Promise<{ deletedByAge: number; deletedByMaxItems: number; totalDeleted: number }> {
+    }): Promise<{
+      deletedByAge: number;
+      deletedByMaxTokens: number;
+      deletedByMaxItems: number;
+      totalDeleted: number;
+    }> {
       const protectFeedbackClause = params.protectFeedback
         ? "and not exists (select 1 from feedback_events fe where fe.user_id = $1::uuid and fe.content_item_id = ci.id)"
         : "";
@@ -206,6 +222,47 @@ export function createEmbeddingsRepo(db: Queryable) {
           [params.userId, params.topicId, params.cutoffIso],
         );
         deletedByAge = Number.parseInt(res.rows[0]?.count ?? "0", 10);
+      }
+
+      let deletedByMaxTokens = 0;
+      const maxTokens = params.maxTokens ? Math.max(0, Math.floor(params.maxTokens)) : 0;
+      if (maxTokens > 0) {
+        const res = await db.query<{ count: string }>(
+          `with candidates as (
+             select distinct e.content_item_id,
+               coalesce(ci.published_at, ci.fetched_at) as item_ts,
+               e.input_tokens_estimate as token_count
+             from embeddings e
+             join content_items ci on ci.id = e.content_item_id
+             join content_item_sources cis on cis.content_item_id = ci.id
+             join sources s on s.id = cis.source_id
+             where ci.user_id = $1
+               and s.topic_id = $2::uuid
+               and ci.deleted_at is null
+               and ci.duplicate_of_content_item_id is null
+               and e.input_tokens_estimate is not null
+               ${sharedGuardClause}
+               ${protectFeedbackClause}
+               ${protectBookmarksClause}
+           ),
+           ranked as (
+             select content_item_id,
+               sum(token_count) over (order by item_ts desc rows unbounded preceding) as token_sum
+             from candidates
+           ),
+           to_delete as (
+             select content_item_id from ranked where token_sum > $3
+           ),
+           deleted as (
+             delete from embeddings e
+             using to_delete d
+             where e.content_item_id = d.content_item_id
+             returning 1
+           )
+           select count(*)::text as count from deleted`,
+          [params.userId, params.topicId, maxTokens],
+        );
+        deletedByMaxTokens = Number.parseInt(res.rows[0]?.count ?? "0", 10);
       }
 
       let deletedByMaxItems = 0;
@@ -249,8 +306,9 @@ export function createEmbeddingsRepo(db: Queryable) {
 
       return {
         deletedByAge,
+        deletedByMaxTokens,
         deletedByMaxItems,
-        totalDeleted: deletedByAge + deletedByMaxItems,
+        totalDeleted: deletedByAge + deletedByMaxTokens + deletedByMaxItems,
       };
     },
   };

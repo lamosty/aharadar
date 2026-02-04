@@ -31,6 +31,11 @@ function clampText(value: string, maxChars: number): string {
   return value.slice(0, maxChars);
 }
 
+function estimateTokensFromText(text: string): number {
+  const estimated = Math.ceil(text.length / 4);
+  return Math.max(1, estimated);
+}
+
 function normalizeText(value: string | null): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -158,6 +163,7 @@ export async function embedTopicContentItems(params: {
     hashText: string;
     sourceId: string;
     sourceType: string;
+    estimatedTokens: number;
   }> = [];
 
   for (const row of candidates) {
@@ -203,6 +209,7 @@ export async function embedTopicContentItems(params: {
       hashText,
       sourceId: row.source_id,
       sourceType: row.source_type,
+      estimatedTokens: estimateTokensFromText(text),
     });
   }
 
@@ -247,10 +254,17 @@ export async function embedTopicContentItems(params: {
         }
       }
 
+      const batchEstimatedTotal = batch.reduce((sum, item) => sum + item.estimatedTokens, 0);
+      const scale =
+        call.inputTokens > 0 && batchEstimatedTotal > 0
+          ? call.inputTokens / batchEstimatedTotal
+          : 1;
+
       await params.db.tx(async (tx) => {
         for (let i = 0; i < batch.length; i += 1) {
           const item = batch[i]!;
           const vector = call.vectors[i]!;
+          const inputTokensEstimate = Math.max(1, Math.round(item.estimatedTokens * scale));
           await tx.query(`update content_items set hash_text = $2 where id = $1::uuid`, [
             item.contentItemId,
             item.hashText,
@@ -260,6 +274,7 @@ export async function embedTopicContentItems(params: {
             model: ref.model,
             dims: EXPECTED_DIMS,
             vector,
+            inputTokensEstimate,
           });
         }
       });

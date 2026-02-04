@@ -17,6 +17,8 @@ export interface EmbeddingRetentionV1 {
   maxAgeDays?: number;
   /** Max embeddings to keep per topic (0 = off) */
   maxItems?: number;
+  /** Max embedding input tokens (estimated) to keep per topic (0 = off) */
+  maxTokens?: number;
   /** Keep embeddings for items with feedback events */
   protectFeedback?: boolean;
   /** Keep embeddings for bookmarked items */
@@ -30,6 +32,7 @@ export interface EmbeddingRetentionResolved {
   enabled: boolean;
   maxAgeDays: number;
   maxItems: number;
+  maxTokens: number;
   protectFeedback: boolean;
   protectBookmarks: boolean;
 }
@@ -39,6 +42,7 @@ export const EMBEDDING_RETENTION_DEFAULTS: EmbeddingRetentionResolved = {
   enabled: true,
   maxAgeDays: 90,
   maxItems: 0,
+  maxTokens: 0,
   protectFeedback: true,
   protectBookmarks: true,
 };
@@ -47,6 +51,7 @@ export const EMBEDDING_RETENTION_DEFAULTS: EmbeddingRetentionResolved = {
 export const EMBEDDING_RETENTION_RANGES = {
   maxAgeDays: { min: 30, max: 120 },
   maxItems: { min: 0, max: 200000 },
+  maxTokens: { min: 0, max: 50000000 },
 } as const;
 
 /**
@@ -69,7 +74,7 @@ export function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolve
   }
 
   function extractClamped(
-    key: "maxAgeDays" | "maxItems",
+    key: "maxAgeDays" | "maxItems" | "maxTokens",
     defaultValue: number,
     min: number,
     max: number,
@@ -94,6 +99,12 @@ export function parseEmbeddingRetention(raw: unknown): EmbeddingRetentionResolve
       defaults.maxItems,
       ranges.maxItems.min,
       ranges.maxItems.max,
+    ),
+    maxTokens: extractClamped(
+      "maxTokens",
+      defaults.maxTokens,
+      ranges.maxTokens.min,
+      ranges.maxTokens.max,
     ),
     protectFeedback: extractBool("protectFeedback", defaults.protectFeedback),
     protectBookmarks: extractBool("protectBookmarks", defaults.protectBookmarks),
@@ -135,6 +146,14 @@ export function validateEmbeddingRetention(input: Partial<EmbeddingRetentionV1>)
       errors.push("maxItems must be a finite number");
     } else if (input.maxItems < ranges.maxItems.min || input.maxItems > ranges.maxItems.max) {
       errors.push(`maxItems must be between ${ranges.maxItems.min} and ${ranges.maxItems.max}`);
+    }
+  }
+
+  if (input.maxTokens !== undefined) {
+    if (typeof input.maxTokens !== "number" || !Number.isFinite(input.maxTokens)) {
+      errors.push("maxTokens must be a finite number");
+    } else if (input.maxTokens < ranges.maxTokens.min || input.maxTokens > ranges.maxTokens.max) {
+      errors.push(`maxTokens must be between ${ranges.maxTokens.min} and ${ranges.maxTokens.max}`);
     }
   }
 

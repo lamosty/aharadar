@@ -149,6 +149,7 @@ create table embeddings (
   model text not null,
   dims int not null,
   vector vector(1536) not null,
+  input_tokens_estimate integer, -- estimated input tokens for embeddings (optional)
   created_at timestamptz not null default now()
 );
 create index embeddings_vector_hnsw
@@ -162,9 +163,11 @@ create table embedding_retention_runs (
   window_end timestamptz not null,
   max_age_days integer not null,
   max_items integer not null default 0,
+  max_tokens integer not null default 0,
   effective_max_age_days integer not null,
   cutoff_at timestamptz not null,
   deleted_by_age integer not null default 0,
+  deleted_by_max_tokens integer not null default 0,
   deleted_by_max_items integer not null default 0,
   total_deleted integer not null default 0,
   created_at timestamptz not null default now()
