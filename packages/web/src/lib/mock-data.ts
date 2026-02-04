@@ -141,6 +141,8 @@ export interface DigestDetail {
   mode: "low" | "normal" | "high";
   status: "complete" | "failed";
   creditsUsed: number;
+  usageEstimate: Record<string, unknown> | null;
+  usageActual: Record<string, unknown> | null;
   sourceResults: Array<{
     sourceId: string;
     sourceName: string;
@@ -447,6 +449,62 @@ function getMockDigestDetail(id: string): DigestDetail | null {
 
   return {
     ...digest,
+    usageEstimate: {
+      schema_version: "digest_usage_estimate_v1",
+      basis: { lookbackDays: 30, source: "history", creditsSource: "history" },
+      triage: {
+        items: 40,
+        avgInputTokens: 980,
+        avgOutputTokens: 220,
+        estimatedInputTokens: 39200,
+        estimatedOutputTokens: 8800,
+        estimatedCredits: 0.18,
+      },
+      deep_summary: {
+        items: 8,
+        avgInputTokens: 1500,
+        avgOutputTokens: 650,
+        estimatedInputTokens: 12000,
+        estimatedOutputTokens: 5200,
+        estimatedCredits: 0.12,
+      },
+      totals: {
+        inputTokens: 51200,
+        outputTokens: 14000,
+        totalTokens: 65200,
+        credits: 0.3,
+      },
+      notes: ["llm_only"],
+    },
+    usageActual: {
+      schema_version: "digest_usage_actual_v1",
+      totals: {
+        inputTokens: 49500,
+        outputTokens: 13000,
+        totalTokens: 62500,
+        credits: 0.28,
+        callCount: 12,
+        itemCount: 48,
+      },
+      byPurpose: {
+        triage: {
+          inputTokens: 31200,
+          outputTokens: 6200,
+          totalTokens: 37400,
+          credits: 0.15,
+          callCount: 10,
+          itemCount: 40,
+        },
+        deep_summary: {
+          inputTokens: 18300,
+          outputTokens: 6800,
+          totalTokens: 25100,
+          credits: 0.13,
+          callCount: 8,
+          itemCount: 8,
+        },
+      },
+    },
     sourceResults: [
       {
         sourceId: "s1",
@@ -617,6 +675,8 @@ function adaptDigestDetail(response: DigestDetailResponse): DigestDetail {
     mode: response.digest.mode as DigestDetail["mode"],
     status: response.digest.status,
     creditsUsed: response.digest.creditsUsed,
+    usageEstimate: response.digest.usageEstimate,
+    usageActual: response.digest.usageActual,
     sourceResults: response.digest.sourceResults,
     errorMessage: response.digest.errorMessage,
     itemCount: response.items.length,

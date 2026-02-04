@@ -154,6 +154,15 @@ This is applied to the computed digest plan (triage calls, deep summary calls, c
 
 Scoring modes can optionally apply an **LLM usage scale** (default `1.0x`) to increase or decrease triage coverage and deep summaries per topic. This is applied **before** budget warning scaling.
 
+### Digest LLM usage estimates (implemented)
+
+Each digest stores:
+
+- `usage_estimate`: best-effort pre-run estimate of LLM tokens/credits (triage + deep summary)
+- `usage_actual`: post-run aggregation from `provider_calls`
+
+Estimates are intended to be transparent and **conservative**; they currently exclude embeddings/signals unless explicitly added later.
+
 ## Budget tier semantics (policy presets)
 
 ### low (previously “dial_down”)

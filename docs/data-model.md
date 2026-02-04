@@ -184,7 +184,14 @@ create table digests (
   topic_id uuid not null references topics(id) on delete cascade,
   window_start timestamptz not null,
   window_end timestamptz not null,
-  mode text not null, -- low|normal|high|catch_up
+  mode text not null, -- low|normal|high
+  status text not null default 'complete', -- complete|failed
+  credits_used numeric(12,6) not null default 0, -- USD cost estimate
+  source_results jsonb not null default '[]'::jsonb,
+  usage_estimate jsonb,
+  usage_actual jsonb,
+  error_message text,
+  scoring_mode_id uuid references scoring_modes(id) on delete set null,
   created_at timestamptz not null default now()
 );
 create unique index digests_user_topic_window_mode_uniq

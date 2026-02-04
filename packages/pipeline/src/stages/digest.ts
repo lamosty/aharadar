@@ -1,6 +1,13 @@
-import type { Db } from "@aharadar/db";
+import type {
+  Db,
+  DigestUsageActual,
+  DigestUsageEstimate,
+  ScoringModeConfig,
+  SourceCalibration,
+} from "@aharadar/db";
 import {
   createConfiguredLlmRouter,
+  estimateLlmCredits,
   type LlmRuntimeConfig,
   type TriageCandidateInput,
   type TriageOutput,
@@ -24,7 +31,6 @@ const TRIAGE_BATCH_SIZE = 15;
 /** Maximum total input characters per batch (safety limit) */
 const TRIAGE_BATCH_MAX_CHARS = 60000;
 
-import type { ScoringModeConfig, SourceCalibration } from "@aharadar/db";
 import { DEFAULT_SCORING_MODE_CONFIG } from "@aharadar/db";
 import { type DiversityCandidate, selectWithDiversity } from "../lib/diversity_selection";
 import { type SamplingCandidate, stratifiedSample } from "../lib/fair_sampling";
@@ -125,6 +131,39 @@ function parseIntEnv(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+const DEFAULT_DEEP_SUMMARY_RATIO = 0.25;
+
+function estimateTokensFromChars(chars: number): number {
+  const safe = Math.max(0, Math.floor(chars));
+  return Math.max(1, Math.ceil(safe / 4));
+}
+
+function resolveTriageTokenDefaults(): { inputTokens: number; outputTokens: number } {
+  const maxInputChars = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_INPUT_CHARS) ?? 4000;
+  const maxOutputTokens = parseIntEnv(process.env.OPENAI_TRIAGE_MAX_OUTPUT_TOKENS) ?? 600;
+  return {
+    inputTokens: estimateTokensFromChars(maxInputChars),
+    outputTokens: Math.max(1, maxOutputTokens),
+  };
+}
+
+function resolveDeepSummaryTokenDefaults(): { inputTokens: number; outputTokens: number } {
+  const maxInputChars = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_INPUT_CHARS) ?? 8000;
+  const maxOutputTokens = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_OUTPUT_TOKENS) ?? 700;
+  return {
+    inputTokens: estimateTokensFromChars(maxInputChars),
+    outputTokens: Math.max(1, maxOutputTokens),
+  };
+}
+
+function resolveDeepSummaryLimit(params: { mode: DigestMode; override?: number }): number {
+  const tier = resolveBudgetTier(params.mode);
+  if (tier === "low") return 0;
+  const envLimit = parseIntEnv(process.env.OPENAI_DEEP_SUMMARY_MAX_CALLS_PER_RUN) ?? 0;
+  const maxCalls = params.override ?? envLimit;
+  return Math.max(0, Math.min(500, Math.floor(maxCalls)));
 }
 
 function parseIsoMs(value: string): number {
@@ -446,6 +485,214 @@ function resolveTriageLimit(params: {
     Math.max(params.maxItems, params.maxItems * 5),
   );
   return defaultLimit;
+}
+
+async function estimateDigestUsage(params: {
+  db: Db;
+  userId: string;
+  mode: DigestMode;
+  triageItems: number;
+  maxItems: number;
+  deepSummaryOverride?: number;
+  llmConfig?: LlmRuntimeConfig;
+}): Promise<DigestUsageEstimate> {
+  const lookbackDays = parseIntEnv(process.env.DIGEST_USAGE_LOOKBACK_DAYS) ?? 30;
+  const usageAverages = await params.db.providerCalls.getUsageAverages({
+    userId: params.userId,
+    lookbackDays,
+  });
+
+  const emptyUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    credits: 0,
+    callCount: 0,
+    itemCount: 0,
+  };
+
+  const mergeUsage = (entries: Array<typeof emptyUsage | undefined>) => {
+    const merged = { ...emptyUsage };
+    for (const entry of entries) {
+      if (!entry) continue;
+      merged.inputTokens += entry.inputTokens;
+      merged.outputTokens += entry.outputTokens;
+      merged.totalTokens += entry.totalTokens;
+      merged.credits += entry.credits;
+      merged.callCount += entry.callCount;
+      merged.itemCount += entry.itemCount;
+    }
+    return merged;
+  };
+
+  const triageUsage = mergeUsage([
+    usageAverages.byPurpose["triage"],
+    usageAverages.byPurpose["triage_batch"],
+  ]);
+  const deepUsage = usageAverages.byPurpose["deep_summary"] ?? { ...emptyUsage };
+
+  const triageDefaults = resolveTriageTokenDefaults();
+  const deepDefaults = resolveDeepSummaryTokenDefaults();
+
+  const triageHistoryItems = triageUsage.itemCount;
+  const deepHistoryItems = deepUsage.itemCount;
+
+  const triageAvgInputTokens =
+    triageHistoryItems > 0
+      ? triageUsage.inputTokens / triageHistoryItems
+      : triageDefaults.inputTokens;
+  const triageAvgOutputTokens =
+    triageHistoryItems > 0
+      ? triageUsage.outputTokens / triageHistoryItems
+      : triageDefaults.outputTokens;
+
+  const deepAvgInputTokens =
+    deepHistoryItems > 0 ? deepUsage.inputTokens / deepHistoryItems : deepDefaults.inputTokens;
+  const deepAvgOutputTokens =
+    deepHistoryItems > 0 ? deepUsage.outputTokens / deepHistoryItems : deepDefaults.outputTokens;
+
+  const tier = resolveBudgetTier(params.mode);
+  const deepSummaryLimit = resolveDeepSummaryLimit({
+    mode: params.mode,
+    override: params.deepSummaryOverride,
+  });
+
+  const deepSummaryRatio =
+    triageHistoryItems > 0 && deepHistoryItems > 0
+      ? deepHistoryItems / triageHistoryItems
+      : DEFAULT_DEEP_SUMMARY_RATIO;
+
+  const deepSummaryItems = Math.min(
+    deepSummaryLimit,
+    params.maxItems,
+    Math.max(0, Math.round(params.triageItems * deepSummaryRatio)),
+  );
+
+  const triageEstimatedInputTokens = Math.round(triageAvgInputTokens * params.triageItems);
+  const triageEstimatedOutputTokens = Math.round(triageAvgOutputTokens * params.triageItems);
+  const deepEstimatedInputTokens = Math.round(deepAvgInputTokens * deepSummaryItems);
+  const deepEstimatedOutputTokens = Math.round(deepAvgOutputTokens * deepSummaryItems);
+
+  let triageCreditsEstimate = 0;
+  let deepCreditsEstimate = 0;
+  let creditsSource: "history" | "env" | "mixed" | "none" = "none";
+
+  const triageCreditsPerItem =
+    triageHistoryItems > 0 && triageUsage.credits > 0
+      ? triageUsage.credits / triageHistoryItems
+      : null;
+  const deepCreditsPerItem =
+    deepHistoryItems > 0 && deepUsage.credits > 0 ? deepUsage.credits / deepHistoryItems : null;
+
+  if (triageCreditsPerItem !== null || deepCreditsPerItem !== null) {
+    if (triageCreditsPerItem !== null) {
+      triageCreditsEstimate = triageCreditsPerItem * params.triageItems;
+    }
+    if (deepCreditsPerItem !== null) {
+      deepCreditsEstimate = deepCreditsPerItem * deepSummaryItems;
+    }
+    creditsSource = "history";
+  }
+
+  if (creditsSource === "none") {
+    try {
+      const router = createConfiguredLlmRouter(process.env, params.llmConfig);
+      const triageRef = router.chooseModel("triage", tier);
+      const deepRef = router.chooseModel("deep_summary", tier);
+
+      triageCreditsEstimate = estimateLlmCredits({
+        provider: triageRef.provider,
+        inputTokens: triageEstimatedInputTokens,
+        outputTokens: triageEstimatedOutputTokens,
+      });
+      deepCreditsEstimate = estimateLlmCredits({
+        provider: deepRef.provider,
+        inputTokens: deepEstimatedInputTokens,
+        outputTokens: deepEstimatedOutputTokens,
+      });
+      creditsSource = triageCreditsEstimate > 0 || deepCreditsEstimate > 0 ? "env" : "none";
+    } catch {
+      creditsSource = "none";
+    }
+  } else if (creditsSource === "history") {
+    const hasEnvFallback = triageCreditsPerItem === null || deepCreditsPerItem === null;
+    if (hasEnvFallback) {
+      try {
+        const router = createConfiguredLlmRouter(process.env, params.llmConfig);
+        const triageRef = router.chooseModel("triage", tier);
+        const deepRef = router.chooseModel("deep_summary", tier);
+
+        if (triageCreditsPerItem === null) {
+          triageCreditsEstimate = estimateLlmCredits({
+            provider: triageRef.provider,
+            inputTokens: triageEstimatedInputTokens,
+            outputTokens: triageEstimatedOutputTokens,
+          });
+        }
+        if (deepCreditsPerItem === null) {
+          deepCreditsEstimate = estimateLlmCredits({
+            provider: deepRef.provider,
+            inputTokens: deepEstimatedInputTokens,
+            outputTokens: deepEstimatedOutputTokens,
+          });
+        }
+        creditsSource = "mixed";
+      } catch {
+        creditsSource = "mixed";
+      }
+    }
+  }
+
+  const basisSource = triageHistoryItems > 0 || deepHistoryItems > 0 ? "history" : "defaults";
+
+  const notes: string[] = ["llm_only"];
+  if (basisSource === "defaults") {
+    notes.push("no_recent_history");
+  }
+  if (deepHistoryItems === 0) {
+    notes.push("deep_summary_ratio_default");
+  }
+
+  return {
+    schema_version: "digest_usage_estimate_v1",
+    basis: {
+      lookbackDays: usageAverages.lookbackDays,
+      source: basisSource,
+      sampleCalls: {
+        triage: usageAverages.byPurpose["triage"]?.callCount ?? 0,
+        triage_batch: usageAverages.byPurpose["triage_batch"]?.callCount ?? 0,
+        deep_summary: usageAverages.byPurpose["deep_summary"]?.callCount ?? 0,
+      },
+      creditsSource,
+    },
+    triage: {
+      items: params.triageItems,
+      avgInputTokens: Math.round(triageAvgInputTokens),
+      avgOutputTokens: Math.round(triageAvgOutputTokens),
+      estimatedInputTokens: triageEstimatedInputTokens,
+      estimatedOutputTokens: triageEstimatedOutputTokens,
+      estimatedCredits: triageCreditsEstimate,
+    },
+    deep_summary: {
+      items: deepSummaryItems,
+      avgInputTokens: Math.round(deepAvgInputTokens),
+      avgOutputTokens: Math.round(deepAvgOutputTokens),
+      estimatedInputTokens: deepEstimatedInputTokens,
+      estimatedOutputTokens: deepEstimatedOutputTokens,
+      estimatedCredits: deepCreditsEstimate,
+    },
+    totals: {
+      inputTokens: triageEstimatedInputTokens + deepEstimatedInputTokens,
+      outputTokens: triageEstimatedOutputTokens + deepEstimatedOutputTokens,
+      totalTokens:
+        triageEstimatedInputTokens +
+        triageEstimatedOutputTokens +
+        deepEstimatedInputTokens +
+        deepEstimatedOutputTokens,
+      credits: triageCreditsEstimate + deepCreditsEstimate,
+    },
+    notes,
+  };
 }
 
 function applyCandidateFilterSql(params: {
@@ -1302,6 +1549,21 @@ export async function persistDigestFromContentItems(params: {
     triageMaxCalls,
   });
 
+  let usageEstimate: DigestUsageEstimate | null = null;
+  try {
+    usageEstimate = await estimateDigestUsage({
+      db: params.db,
+      userId: params.userId,
+      mode: params.mode,
+      triageItems: triageLimit,
+      maxItems,
+      deepSummaryOverride: params.limits?.deepSummaryMaxCalls,
+      llmConfig: params.llmConfig,
+    });
+  } catch (err) {
+    log.warn({ err }, "Digest usage estimate failed");
+  }
+
   // Build triage candidates for allocation
   const triageCandidatesForAlloc: TriageCandidate[] = sampledScored.map((c) => ({
     candidateId: c.candidateId,
@@ -1606,6 +1868,17 @@ export async function persistDigestFromContentItems(params: {
 
   // Sum LLM costs incurred during this digest run (triage + deep_summary)
   const runCosts = await params.db.providerCalls.getDigestRunCosts(params.userId, runStartedAt);
+  let usageActual: DigestUsageActual | null = null;
+  try {
+    const usage = await params.db.providerCalls.getDigestRunUsage(params.userId, runStartedAt);
+    usageActual = {
+      schema_version: "digest_usage_actual_v1",
+      totals: usage.totals,
+      byPurpose: usage.byPurpose,
+    };
+  } catch (err) {
+    log.warn({ err }, "Digest usage actual aggregation failed");
+  }
 
   const digest = await params.db.tx(async (tx) => {
     const res = await tx.digests.upsert({
@@ -1617,6 +1890,8 @@ export async function persistDigestFromContentItems(params: {
       status: "complete",
       creditsUsed: runCosts.totalUsd,
       sourceResults: params.sourceResults ?? [],
+      usageEstimate,
+      usageActual,
       scoringModeId: effectiveScoringModeId,
     });
     await tx.digestItems.replaceForDigest({ digestId: res.id, items });

@@ -9,6 +9,20 @@ export interface UsageSummary {
   callCount: number;
 }
 
+export interface PurposeUsageTotals {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  credits: number;
+  callCount: number;
+  itemCount: number;
+}
+
+export interface DigestRunUsage {
+  totals: PurposeUsageTotals;
+  byPurpose: Record<string, PurposeUsageTotals>;
+}
+
 export interface UsageByProvider {
   provider: string;
   totalUsd: number;
@@ -28,6 +42,11 @@ export interface DailyUsage {
   date: string; // YYYY-MM-DD
   totalUsd: number;
   callCount: number;
+}
+
+export interface UsageAverages {
+  lookbackDays: number;
+  byPurpose: Record<string, PurposeUsageTotals>;
 }
 
 export interface ProviderCallListItem {
@@ -271,6 +290,166 @@ export function createProviderCallsRepo(db: Queryable) {
       return {
         totalUsd: parseFloat(row?.totalUsd ?? "0"),
         callCount: parseInt(row?.callCount ?? "0", 10),
+      };
+    },
+
+    /**
+     * Get token/credit usage for a digest run.
+     * Aggregates triage, triage_batch, and deep_summary calls after run start time.
+     */
+    async getDigestRunUsage(userId: string, runStartedAt: Date): Promise<DigestRunUsage> {
+      const result = await db.query<{
+        purpose: string;
+        inputTokens: string;
+        outputTokens: string;
+        credits: string;
+        callCount: string;
+        itemCount: string;
+      }>(
+        `SELECT
+           purpose,
+           COALESCE(SUM(input_tokens), 0) as "inputTokens",
+           COALESCE(SUM(output_tokens), 0) as "outputTokens",
+           COALESCE(SUM(cost_estimate_credits), 0) as "credits",
+           COUNT(*) as "callCount",
+           COALESCE(SUM(
+             CASE
+               WHEN purpose = 'triage_batch' THEN
+                 CASE
+                   WHEN (meta_json->>'itemCount') ~ '^[0-9]+$' THEN (meta_json->>'itemCount')::int
+                   ELSE 0
+                 END
+               WHEN purpose IN ('triage', 'deep_summary') THEN 1
+               ELSE 0
+             END
+           ), 0) as "itemCount"
+         FROM provider_calls
+         WHERE user_id = $1
+           AND started_at >= $2
+           AND purpose IN ('triage', 'triage_batch', 'deep_summary')
+           AND status = 'ok'
+         GROUP BY purpose`,
+        [userId, runStartedAt.toISOString()],
+      );
+
+      const byPurpose: Record<string, PurposeUsageTotals> = {};
+      let totalInputTokens = 0;
+      let totalOutputTokens = 0;
+      let totalCredits = 0;
+      let totalCallCount = 0;
+      let totalItemCount = 0;
+
+      for (const row of result.rows) {
+        const inputTokens = parseInt(row.inputTokens, 10) || 0;
+        const outputTokens = parseInt(row.outputTokens, 10) || 0;
+        const credits = parseFloat(row.credits) || 0;
+        const callCount = parseInt(row.callCount, 10) || 0;
+        let itemCount = parseInt(row.itemCount, 10) || 0;
+
+        if (itemCount <= 0 && callCount > 0) {
+          // Fallback when itemCount isn't recorded (treat as 1 per call)
+          itemCount = callCount;
+        }
+
+        const totalTokens = inputTokens + outputTokens;
+        byPurpose[row.purpose] = {
+          inputTokens,
+          outputTokens,
+          totalTokens,
+          credits,
+          callCount,
+          itemCount,
+        };
+
+        totalInputTokens += inputTokens;
+        totalOutputTokens += outputTokens;
+        totalCredits += credits;
+        totalCallCount += callCount;
+        totalItemCount += itemCount;
+      }
+
+      return {
+        totals: {
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          totalTokens: totalInputTokens + totalOutputTokens,
+          credits: totalCredits,
+          callCount: totalCallCount,
+          itemCount: totalItemCount,
+        },
+        byPurpose,
+      };
+    },
+
+    /**
+     * Get usage averages over a recent lookback window.
+     * Used to estimate per-item token/credit costs for upcoming digests.
+     */
+    async getUsageAverages(params: {
+      userId: string;
+      lookbackDays: number;
+    }): Promise<UsageAverages> {
+      const lookbackDays = Math.max(1, Math.min(90, Math.floor(params.lookbackDays)));
+      const result = await db.query<{
+        purpose: string;
+        inputTokens: string;
+        outputTokens: string;
+        credits: string;
+        callCount: string;
+        itemCount: string;
+      }>(
+        `SELECT
+           purpose,
+           COALESCE(SUM(input_tokens), 0) as "inputTokens",
+           COALESCE(SUM(output_tokens), 0) as "outputTokens",
+           COALESCE(SUM(cost_estimate_credits), 0) as "credits",
+           COUNT(*) as "callCount",
+           COALESCE(SUM(
+             CASE
+               WHEN purpose = 'triage_batch' THEN
+                 CASE
+                   WHEN (meta_json->>'itemCount') ~ '^[0-9]+$' THEN (meta_json->>'itemCount')::int
+                   ELSE 0
+                 END
+               WHEN purpose IN ('triage', 'deep_summary') THEN 1
+               ELSE 0
+             END
+           ), 0) as "itemCount"
+         FROM provider_calls
+         WHERE user_id = $1
+           AND started_at >= NOW() - $2 * INTERVAL '1 day'
+           AND purpose IN ('triage', 'triage_batch', 'deep_summary')
+           AND status = 'ok'
+         GROUP BY purpose`,
+        [params.userId, lookbackDays],
+      );
+
+      const byPurpose: Record<string, PurposeUsageTotals> = {};
+
+      for (const row of result.rows) {
+        const inputTokens = parseInt(row.inputTokens, 10) || 0;
+        const outputTokens = parseInt(row.outputTokens, 10) || 0;
+        const credits = parseFloat(row.credits) || 0;
+        const callCount = parseInt(row.callCount, 10) || 0;
+        let itemCount = parseInt(row.itemCount, 10) || 0;
+
+        if (itemCount <= 0 && callCount > 0) {
+          itemCount = callCount;
+        }
+
+        byPurpose[row.purpose] = {
+          inputTokens,
+          outputTokens,
+          totalTokens: inputTokens + outputTokens,
+          credits,
+          callCount,
+          itemCount,
+        };
+      }
+
+      return {
+        lookbackDays,
+        byPurpose,
       };
     },
 

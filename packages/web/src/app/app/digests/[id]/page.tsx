@@ -355,9 +355,80 @@ function InfoIcon() {
   );
 }
 
+type UsageTotals = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  credits: number;
+  callCount?: number;
+  itemCount?: number;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function parseUsageTotals(payload: Record<string, unknown> | null): UsageTotals | null {
+  const totals = asRecord(payload?.totals);
+  if (!totals) return null;
+  const inputTokens = asNumber(totals.inputTokens) ?? 0;
+  const outputTokens = asNumber(totals.outputTokens) ?? 0;
+  const totalTokens = asNumber(totals.totalTokens);
+  const computedTotal = totalTokens ?? inputTokens + outputTokens;
+  const credits = asNumber(totals.credits) ?? 0;
+  const callCount = asNumber(totals.callCount) ?? undefined;
+  const itemCount = asNumber(totals.itemCount) ?? undefined;
+
+  if (inputTokens === 0 && outputTokens === 0 && computedTotal === 0 && credits === 0) {
+    return null;
+  }
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: computedTotal,
+    credits,
+    callCount,
+    itemCount,
+  };
+}
+
+function parseUsageBasis(payload: Record<string, unknown> | null): {
+  source: string | null;
+  lookbackDays: number | null;
+  creditsSource: string | null;
+} | null {
+  const basis = asRecord(payload?.basis);
+  if (!basis) return null;
+  const source = typeof basis.source === "string" ? basis.source : null;
+  const creditsSource = typeof basis.creditsSource === "string" ? basis.creditsSource : null;
+  const lookbackDays = asNumber(basis.lookbackDays) ?? null;
+  return { source, lookbackDays, creditsSource };
+}
+
+function formatTokensSummary(totals: UsageTotals): string {
+  const input = Math.round(totals.inputTokens).toLocaleString();
+  const output = Math.round(totals.outputTokens).toLocaleString();
+  const total = Math.round(totals.totalTokens).toLocaleString();
+  return `${input} in / ${output} out (${total} total)`;
+}
+
+function formatCreditsSummary(credits: number): string {
+  return credits > 0 ? credits.toFixed(4) : "0.0000";
+}
+
 // Run Details Section - shows status, credits, and source results
 function RunDetailsSection({ digest }: { digest: DigestDetailData }) {
   const hasSourceResults = digest.sourceResults && digest.sourceResults.length > 0;
+  const usageEstimateTotals = parseUsageTotals(digest.usageEstimate);
+  const usageActualTotals = parseUsageTotals(digest.usageActual);
+  const usageEstimateBasis = parseUsageBasis(digest.usageEstimate);
+  const hasUsage = usageEstimateTotals !== null || usageActualTotals !== null;
 
   return (
     <section className={styles.runDetails} aria-labelledby="run-details-heading">
@@ -395,6 +466,66 @@ function RunDetailsSection({ digest }: { digest: DigestDetailData }) {
           </div>
         )}
       </div>
+
+      {hasUsage && (
+        <div className={styles.usageGrid}>
+          {usageEstimateTotals && (
+            <div className={styles.usageCard}>
+              <div className={styles.usageTitle}>
+                <InfoIcon />
+                <span>{t("digests.detail.usageEstimate")}</span>
+              </div>
+              <div className={styles.usageValue}>
+                {t("digests.detail.usageTokens")}: {formatTokensSummary(usageEstimateTotals)}
+              </div>
+              <div className={styles.usageValue}>
+                {t("digests.detail.usageCredits")}:{" "}
+                {formatCreditsSummary(usageEstimateTotals.credits)}
+              </div>
+              {usageEstimateBasis?.source === "history" && usageEstimateBasis.lookbackDays ? (
+                <div className={styles.usageNote}>
+                  {t("digests.detail.usageBasisHistory", {
+                    days: usageEstimateBasis.lookbackDays,
+                  })}
+                </div>
+              ) : (
+                <div className={styles.usageNote}>{t("digests.detail.usageBasisDefaults")}</div>
+              )}
+            </div>
+          )}
+
+          {usageActualTotals && (
+            <div className={styles.usageCard}>
+              <div className={styles.usageTitle}>
+                <InfoIcon />
+                <span>{t("digests.detail.usageActual")}</span>
+              </div>
+              <div className={styles.usageValue}>
+                {t("digests.detail.usageTokens")}: {formatTokensSummary(usageActualTotals)}
+              </div>
+              <div className={styles.usageValue}>
+                {t("digests.detail.usageCredits")}:{" "}
+                {formatCreditsSummary(usageActualTotals.credits)}
+              </div>
+              {(usageActualTotals.callCount || usageActualTotals.itemCount) && (
+                <div className={styles.usageNote}>
+                  {usageActualTotals.callCount
+                    ? `${t("digests.detail.usageCalls")}: ${Math.round(
+                        usageActualTotals.callCount,
+                      ).toLocaleString()}`
+                    : ""}
+                  {usageActualTotals.callCount && usageActualTotals.itemCount ? " · " : ""}
+                  {usageActualTotals.itemCount
+                    ? `${t("digests.detail.usageItems")}: ${Math.round(
+                        usageActualTotals.itemCount,
+                      ).toLocaleString()}`
+                    : ""}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {hasSourceResults && (
         <div className={styles.sourceResultsTable}>

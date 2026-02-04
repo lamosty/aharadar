@@ -144,6 +144,8 @@ export interface DigestDetailResponse {
     mode: string;
     status: "complete" | "failed";
     creditsUsed: number;
+    usageEstimate: Record<string, unknown> | null;
+    usageActual: Record<string, unknown> | null;
     sourceResults: DigestSourceResult[];
     errorMessage: string | null;
     windowStart: string;

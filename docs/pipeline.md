@@ -311,6 +311,8 @@ Create:
   - reference to `cluster_id` (preferred) or `content_item_id`
   - `rank` starting at 1
   - `aha_score` and JSON outputs
+- `digests.usage_estimate` (pre-run estimate of LLM tokens/credits)
+- `digests.usage_actual` (post-run aggregation from `provider_calls`)
 
 ### Theme grouping (UI helper)
 

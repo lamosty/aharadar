@@ -23,6 +23,8 @@ interface DigestDetailRow {
   mode: string;
   status: string;
   credits_used: string; // numeric comes as string from pg
+  usage_estimate: unknown; // JSONB
+  usage_actual: unknown; // JSONB
   source_results: unknown; // JSONB
   error_message: string | null;
   window_start: string;
@@ -377,8 +379,8 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
     const db = getDb();
 
     const digestResult = await db.query<DigestDetailRow>(
-      `SELECT id, user_id, topic_id::text, mode, status, credits_used, source_results, error_message,
-              window_start::text, window_end::text, created_at::text
+      `SELECT id, user_id, topic_id::text, mode, status, credits_used, usage_estimate, usage_actual,
+              source_results, error_message, window_start::text, window_end::text, created_at::text
        FROM digests
        WHERE id = $1`,
       [id],
@@ -442,6 +444,15 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         : (digest.source_results ?? [])
     ) as SourceResult[];
 
+    const usageEstimate =
+      typeof digest.usage_estimate === "string"
+        ? JSON.parse(digest.usage_estimate)
+        : (digest.usage_estimate ?? null);
+    const usageActual =
+      typeof digest.usage_actual === "string"
+        ? JSON.parse(digest.usage_actual)
+        : (digest.usage_actual ?? null);
+
     // Query for aggregate summary if present
     const summaryResult = await db.query<{
       id: string;
@@ -471,6 +482,8 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         mode: digest.mode,
         status: digest.status,
         creditsUsed: parseFloat(digest.credits_used) || 0,
+        usageEstimate,
+        usageActual,
         sourceResults,
         errorMessage: digest.error_message,
         windowStart: digest.window_start,
