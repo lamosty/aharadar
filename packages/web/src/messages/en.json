@@ -925,10 +925,16 @@
         "tech": "Tech & products",
         "general": "General analysis"
       },
+      "promptCitationStyle": "Citation style",
+      "promptCitationOptions": {
+        "mainOff": "Clean main output (no IDs)",
+        "appendix": "IDs in appendix only (recommended)",
+        "inline": "Inline IDs in text"
+      },
       "promptText": "Prompt text",
       "promptLensResolved": "Resolved lens: {lens}",
       "promptReset": "Reset to template",
-      "promptHint": "Use investing/trading/insider/value/ultimate goals for crash-vs-fundamentals ranking, scenario playbooks, and evidence checks.",
+      "promptHint": "Keep citation style on appendix to reduce noise in summary while preserving traceability.",
       "datePresets": {
         "today": "Today",
         "since2d": "Since 2d ago",

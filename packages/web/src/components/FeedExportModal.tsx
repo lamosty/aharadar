@@ -41,6 +41,7 @@ type PromptGoal =
   | "ultimate_stock_playbook";
 type PromptLens = "auto" | "investing" | "trading" | "tech" | "general";
 type ResolvedPromptLens = Exclude<PromptLens, "auto">;
+type PromptCitationStyle = "main_off" | "appendix" | "inline";
 
 const CONTINUE_RESEARCH_HEADING = "## Continue Research Prompt";
 
@@ -142,9 +143,10 @@ function promptLensInstruction(lens: ResolvedPromptLens): string {
 function buildPromptTemplate(params: {
   goal: PromptGoal;
   lens: ResolvedPromptLens;
+  citationStyle: PromptCitationStyle;
   topicName: string | null | undefined;
 }): string {
-  const { goal, lens, topicName } = params;
+  const { goal, lens, citationStyle, topicName } = params;
   const topicLine = topicName
     ? `Topic focus: ${topicName}`
     : "Topic focus: infer from dossier context";
@@ -175,6 +177,14 @@ function buildPromptTemplate(params: {
       "Build an ultimate stock playbook that combines value, trading setup quality, insider/policy network factors, and AI bull-vs-bear framing into one ranked list with clear short-term and long-term tracks.",
   };
 
+  const citationModeInstruction: Record<PromptCitationStyle, string> = {
+    main_off:
+      "No item IDs in main output. Keep the writeup clean and readable; only mention evidence provenance in plain language.",
+    appendix:
+      "Do not include item IDs in the executive summary/actions. Put item-ID citations only in a final 'Evidence trace appendix' section.",
+    inline: "Use lightweight item-ID citations inline for material claims.",
+  };
+
   const goalSpecificRequirementLines: Record<PromptGoal, string[]> = {
     decision_memo: [],
     connect_dots: [],
@@ -184,20 +194,26 @@ function buildPromptTemplate(params: {
     trading_setup_review: [],
     insider_policy_network: [],
     ai_bullish_bearish: [
-      "6. For AI bull/bear mode, state the strongest case for each side before concluding.",
+      "For AI bull/bear mode, state the strongest case for each side before concluding.",
     ],
     value_investor_best_buy: [
-      "6. Rank candidates by drawdown severity versus verified fundamental damage.",
-      "7. Separate short-term rebound setups from long-term value theses.",
+      "Rank candidates by drawdown severity versus verified fundamental damage.",
+      "Separate short-term rebound setups from long-term value theses.",
     ],
     wsb_high_risk_playbook: [
-      "6. For WSB mode, include max-loss guardrails and a clear warning that this is speculative/high-variance.",
-      "7. Distinguish catalyst-driven trades from unsupported hype.",
+      "For WSB mode, include max-loss guardrails and a clear warning that this is speculative/high-variance.",
+      "Distinguish catalyst-driven trades from unsupported hype.",
     ],
     ultimate_stock_playbook: [
-      "6. Combine and weight: valuation, fundamentals, insider/policy links, and technical/catalyst setup quality.",
-      "7. Split final picks into short-term tactical and long-term conviction buckets.",
+      "Combine and weight: valuation, fundamentals, insider/policy links, and technical/catalyst setup quality.",
+      "Split final picks into short-term tactical and long-term conviction buckets.",
     ],
+  };
+
+  const citationModeOutputSections: Record<PromptCitationStyle, string[]> = {
+    main_off: [],
+    appendix: ["- Evidence trace appendix (item IDs only)"],
+    inline: [],
   };
 
   const goalSpecificOutputSections: Record<PromptGoal, string[]> = {
@@ -228,18 +244,19 @@ function buildPromptTemplate(params: {
     topicLine,
     `Goal: ${goalInstructionMap[goal]}`,
     `Lens: ${lensInstruction}`,
+    `Citation mode: ${citationModeInstruction[citationStyle]}`,
     "Requirements:",
-    "1. Cite item IDs for every major claim.",
-    "2. Flag weak evidence, stale data, and assumptions that need verification.",
-    "3. Use web checks for time-sensitive facts and clearly mark inferred conclusions.",
-    "4. Keep this educational and risk-first (not personalized financial advice).",
-    "5. End with a concise action plan (next checks, decisions, and monitoring triggers).",
+    "1. Ground claims in evidence and explicitly flag uncertainty.",
+    "2. Use web checks for time-sensitive facts and clearly mark inferred conclusions.",
+    "3. Keep this educational and risk-first (not personalized financial advice).",
+    "4. End with a concise action plan (next checks, decisions, monitoring triggers).",
     ...goalSpecificRequirementLines[goal],
     "Output sections:",
     "- Executive summary",
     "- Evidence map",
     "- Key disagreements and uncertainty",
     "- Recommended actions",
+    ...citationModeOutputSections[citationStyle],
     ...goalSpecificOutputSections[goal],
   ].join("\n");
 }
@@ -266,6 +283,7 @@ export function FeedExportModal({
   const [until, setUntil] = useState("");
   const [promptGoal, setPromptGoal] = useState<PromptGoal>("decision_memo");
   const [promptLens, setPromptLens] = useState<PromptLens>("auto");
+  const [promptCitationStyle, setPromptCitationStyle] = useState<PromptCitationStyle>("appendix");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [exportData, setExportData] = useState<ExportData | null>(null);
 
@@ -274,8 +292,14 @@ export function FeedExportModal({
     [promptLens, topicName],
   );
   const promptTemplate = useMemo(
-    () => buildPromptTemplate({ goal: promptGoal, lens: resolvedPromptLens, topicName }),
-    [promptGoal, resolvedPromptLens, topicName],
+    () =>
+      buildPromptTemplate({
+        goal: promptGoal,
+        lens: resolvedPromptLens,
+        citationStyle: promptCitationStyle,
+        topicName,
+      }),
+    [promptGoal, resolvedPromptLens, promptCitationStyle, topicName],
   );
   const [promptDraft, setPromptDraft] = useState(promptTemplate);
 
@@ -455,8 +479,14 @@ export function FeedExportModal({
     setUntil("");
     setPromptGoal("decision_memo");
     setPromptLens("auto");
+    setPromptCitationStyle("appendix");
     setPromptDraft(
-      buildPromptTemplate({ goal: "decision_memo", lens: inferPromptLens(topicName), topicName }),
+      buildPromptTemplate({
+        goal: "decision_memo",
+        lens: inferPromptLens(topicName),
+        citationStyle: "appendix",
+        topicName,
+      }),
     );
     setSubmitError(null);
     setExportData(null);
@@ -672,6 +702,22 @@ export function FeedExportModal({
               <option value="trading">{t("feed.export.promptLensOptions.trading")}</option>
               <option value="tech">{t("feed.export.promptLensOptions.tech")}</option>
               <option value="general">{t("feed.export.promptLensOptions.general")}</option>
+            </select>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="feed-export-prompt-citations">
+              {t("feed.export.promptCitationStyle")}
+            </label>
+            <select
+              id="feed-export-prompt-citations"
+              className={styles.select}
+              value={promptCitationStyle}
+              onChange={(e) => setPromptCitationStyle(e.target.value as PromptCitationStyle)}
+            >
+              <option value="main_off">{t("feed.export.promptCitationOptions.mainOff")}</option>
+              <option value="appendix">{t("feed.export.promptCitationOptions.appendix")}</option>
+              <option value="inline">{t("feed.export.promptCitationOptions.inline")}</option>
             </select>
           </div>
 
