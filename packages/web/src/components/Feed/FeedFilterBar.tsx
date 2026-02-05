@@ -6,7 +6,13 @@ import type { Layout } from "@/lib/theme";
 import styles from "./FeedFilterBar.module.css";
 import { SourceFilterCombobox } from "./SourceFilterCombobox";
 
-export type SortOption = "best" | "latest" | "trending" | "ai_score" | "has_ai_summary";
+export type SortOption =
+  | "best"
+  | "latest"
+  | "trending"
+  | "comments_desc"
+  | "ai_score"
+  | "has_ai_summary";
 
 interface FeedFilterBarProps {
   selectedSources: string[];
@@ -31,6 +37,7 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "best", label: "Best" },
   { value: "latest", label: "Latest" },
   { value: "trending", label: "Trending" },
+  { value: "comments_desc", label: "Most Comments" },
   { value: "ai_score", label: "AI Score" },
   { value: "has_ai_summary", label: "Has AI Summary" },
 ];
@@ -48,6 +55,9 @@ function SortHelpContent() {
         </li>
         <li className={styles.sortHelpItem}>
           <strong>Trending:</strong> Popular items with recency boost
+        </li>
+        <li className={styles.sortHelpItem}>
+          <strong>Most Comments:</strong> Items with the largest discussion first
         </li>
         <li className={styles.sortHelpItem}>
           <strong>AI Score:</strong> Raw AI-assigned relevance score

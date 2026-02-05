@@ -262,7 +262,7 @@ export interface ItemsListParams {
   minScore?: number;
   since?: string;
   until?: string;
-  sort?: "best" | "latest" | "trending" | "ai_score" | "has_ai_summary";
+  sort?: "best" | "latest" | "trending" | "comments_desc" | "ai_score" | "has_ai_summary";
   topicId?: string;
   view?: FeedView;
 }
@@ -1953,7 +1953,13 @@ export async function postItemSummary(
 // ============================================================================
 
 export type FeedDossierExportMode = "ai_summaries" | "top_n" | "liked_or_bookmarked";
-export type FeedDossierExportSort = "best" | "latest" | "trending" | "ai_score" | "has_ai_summary";
+export type FeedDossierExportSort =
+  | "best"
+  | "latest"
+  | "trending"
+  | "comments_desc"
+  | "ai_score"
+  | "has_ai_summary";
 
 export interface FeedDossierExportRequest {
   topicId?: string | "all";

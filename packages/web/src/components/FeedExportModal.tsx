@@ -161,6 +161,7 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
               <option value="best">{t("feed.export.sortOptions.best")}</option>
               <option value="latest">{t("feed.export.sortOptions.latest")}</option>
               <option value="trending">{t("feed.export.sortOptions.trending")}</option>
+              <option value="comments_desc">{t("feed.export.sortOptions.mostComments")}</option>
               <option value="ai_score">{t("feed.export.sortOptions.aiScore")}</option>
               <option value="has_ai_summary">{t("feed.export.sortOptions.hasAiSummary")}</option>
             </select>

@@ -57,7 +57,7 @@ interface ThemeRowProps {
   /** Disable hover expansion (used when fast triage selection is active) */
   disableHoverExpansion?: boolean;
   /** Called when bulk action is performed on all items in theme */
-  onBulkFeedback?: (contentItemIds: string[], action: "like" | "dislike") => Promise<void>;
+  onBulkFeedback?: (contentItemIds: string[], action: "like" | "dislike" | "skip") => Promise<void>;
   /** Called when all items in theme are marked as read */
   onBulkMarkRead?: (contentItemIds: string[]) => Promise<void>;
   /** ID of currently force-expanded item */
@@ -130,8 +130,14 @@ export function ThemeRow({
     await onBulkFeedback(itemIds, "dislike");
   }, [onBulkFeedback, theme.items]);
 
+  const handleBulkSkip = useCallback(async () => {
+    if (!onBulkFeedback) return;
+    const itemIds = theme.items.map((item) => item.id);
+    await onBulkFeedback(itemIds, "skip");
+  }, [onBulkFeedback, theme.items]);
+
   const handleSubthemeBulk = useCallback(
-    async (itemIds: string[], action: "like" | "dislike") => {
+    async (itemIds: string[], action: "like" | "dislike" | "skip") => {
       if (!onBulkFeedback) return;
       await onBulkFeedback(itemIds, action);
     },
@@ -241,6 +247,24 @@ export function ThemeRow({
                 <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
               </svg>
             </button>
+            <button
+              type="button"
+              className={`${styles.bulkActionButton} ${styles.desktopOnly}`}
+              onClick={handleBulkSkip}
+              title="Skip all items in this theme"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
       </div>
@@ -297,6 +321,24 @@ export function ThemeRow({
                               <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
                             </svg>
                           </button>
+                          <button
+                            type="button"
+                            className={`${styles.subthemeActionButton} ${styles.desktopOnly}`}
+                            onClick={() => handleSubthemeBulk(itemIds, "skip")}
+                            title="Skip all items in this subtheme"
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <circle cx="12" cy="12" r="9" />
+                              <path d="M6 6l12 12" />
+                            </svg>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -339,6 +381,32 @@ export function getItemThemeKey(item: FeedItemType): string {
 /**
  * Sort comparator for items based on sort option.
  */
+function toCommentCount(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.trunc(value));
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, parsed);
+    }
+  }
+  return 0;
+}
+
+function getCommentCount(item: FeedItemType): number {
+  const metadata = item.item.metadata as Record<string, unknown> | null | undefined;
+  if (!metadata) return 0;
+
+  if (item.item.sourceType === "reddit") {
+    return toCommentCount(metadata.num_comments);
+  }
+  if (item.item.sourceType === "hn") {
+    return toCommentCount(metadata.descendants);
+  }
+  return 0;
+}
+
 function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType) => number {
   switch (sort) {
     case "latest":
@@ -349,6 +417,13 @@ function getItemComparator(sort: SortOption): (a: FeedItemType, b: FeedItemType)
       };
     case "trending":
       return (a, b) => (b.trendingScore ?? b.score ?? 0) - (a.trendingScore ?? a.score ?? 0);
+    case "comments_desc":
+      return (a, b) => {
+        const commentsA = getCommentCount(a);
+        const commentsB = getCommentCount(b);
+        if (commentsA !== commentsB) return commentsB - commentsA;
+        return (b.ahaScore ?? b.score ?? 0) - (a.ahaScore ?? a.score ?? 0);
+      };
     case "ai_score":
       return (a, b) => {
         const scoreA = (a.triageJson as { ai_score?: number } | null)?.ai_score ?? 0;

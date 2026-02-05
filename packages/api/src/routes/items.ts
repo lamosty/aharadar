@@ -191,8 +191,16 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
 
     // Validate sort
     // "best" = raw score (no decay), "latest" = by publication date, "trending" = decayed score
+    // "comments_desc" = most comments first (reddit num_comments / HN descendants)
     // "ai_score" = raw LLM triage score, "has_ai_summary" = items with AI summary first
-    const validSorts = ["best", "latest", "trending", "ai_score", "has_ai_summary"];
+    const validSorts = [
+      "best",
+      "latest",
+      "trending",
+      "comments_desc",
+      "ai_score",
+      "has_ai_summary",
+    ];
     if (!validSorts.includes(sort)) {
       return reply.code(400).send({
         ok: false,
@@ -269,10 +277,20 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
     // - "best": raw score (no decay) - default, shows highest quality items first
     // - "latest": by publication date - shows newest items first
     // - "trending": decayed score - balances quality with recency
+    // - "comments_desc": highest discussion volume first (reddit/HN comments)
     // - "ai_score": raw LLM triage score - useful for debugging ranking issues
     // - "has_ai_summary": items with AI summary first, then by score
     // Note: All modes include li.content_item_id as tie-breaker for deterministic pagination
     let orderBy: string;
+    const commentsCountExpression = `
+      CASE
+        WHEN ci.source_type = 'reddit' AND (ci.metadata_json->>'num_comments') ~ '^[0-9]+$'
+          THEN (ci.metadata_json->>'num_comments')::int
+        WHEN ci.source_type = 'hn' AND (ci.metadata_json->>'descendants') ~ '^[0-9]+$'
+          THEN (ci.metadata_json->>'descendants')::int
+        ELSE 0
+      END
+    `;
     switch (sort) {
       case "latest":
         orderBy = "ci.published_at DESC NULLS LAST, li.content_item_id DESC";
@@ -280,6 +298,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       case "trending":
         // Order by decayed score (computed in SELECT)
         orderBy = "trending_score DESC, li.content_item_id DESC";
+        break;
+      case "comments_desc":
+        // Order by discussion volume, then by personalized score
+        orderBy = `${commentsCountExpression} DESC, li.aha_score DESC, li.content_item_id DESC`;
         break;
       case "ai_score":
         // Order by raw LLM triage score (ai_score from triage_json)

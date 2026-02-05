@@ -119,6 +119,11 @@
   border-color: var(--color-error);
 }
 
+.bulkActionButton:nth-of-type(3):hover {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
 .themeItems {
   display: flex;
   flex-direction: column;
@@ -205,6 +210,15 @@
   border-color: var(--color-error);
 }
 
+.subthemeActionButton:nth-of-type(3):hover {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
+.desktopOnly {
+  display: flex;
+}
+
 .subthemeItems {
   display: flex;
   flex-direction: column;
@@ -240,4 +254,10 @@
   width: var(--space-2);
   height: 1px;
   background: var(--color-border-subtle);
+}
+
+@media (max-width: 768px) {
+  .desktopOnly {
+    display: none;
+  }
 }

@@ -73,11 +73,11 @@
   box-shadow: 0 2px 8px 0 rgb(220 38 38 / 0.15);
 }
 
-.button.save.active {
-  color: var(--color-primary);
-  background-color: var(--color-primary-subtle);
-  border-color: var(--color-primary);
-  box-shadow: 0 2px 8px 0 rgb(79 70 229 / 0.15);
+.button.skip.active {
+  color: var(--color-warning);
+  background-color: var(--color-warning-subtle, rgba(245, 158, 11, 0.15));
+  border-color: var(--color-warning);
+  box-shadow: 0 2px 8px 0 rgb(245 158 11 / 0.15);
 }
 
 /* Hover states when active - now with visible feedback */
@@ -95,17 +95,17 @@
   box-shadow: 0 4px 12px 0 rgb(220 38 38 / 0.25);
 }
 
-.button.save.active:hover:not(:disabled) {
-  color: var(--color-primary-hover, var(--color-primary));
-  background-color: var(--color-primary-subtle-hover, var(--color-primary-subtle));
+.button.skip.active:hover:not(:disabled) {
+  color: var(--color-warning);
+  background-color: var(--color-warning-subtle, rgba(245, 158, 11, 0.15));
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px 0 rgb(79 70 229 / 0.25);
+  box-shadow: 0 4px 12px 0 rgb(245 158 11 / 0.25);
 }
 
 /* Active state press effect */
 .button.like.active:active:not(:disabled),
 .button.dislike.active:active:not(:disabled),
-.button.save.active:active:not(:disabled) {
+.button.skip.active:active:not(:disabled) {
   transform: scale(0.97) translateY(0);
 }
 

@@ -766,6 +766,7 @@ export function FeedItem({
               onFeedback={handleFeedback}
               onClear={handleClear}
               variant="compact"
+              showSkip={!onMobileClick}
             />
           </div>
         </div>

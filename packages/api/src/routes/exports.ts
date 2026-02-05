@@ -10,7 +10,7 @@ const MAX_EXPORT_CHARS = 1_200_000;
 const EXCERPT_MAX_CHARS = 500;
 
 type ExportMode = "ai_summaries" | "top_n" | "liked_or_bookmarked";
-type ExportSort = "best" | "latest" | "trending" | "ai_score" | "has_ai_summary";
+type ExportSort = "best" | "latest" | "trending" | "comments_desc" | "ai_score" | "has_ai_summary";
 type TruncateReason = "line_cap" | "char_cap" | "item_cap";
 
 interface FeedDossierExportBody {
@@ -70,6 +70,7 @@ function isExportSort(value: unknown): value is ExportSort {
     value === "best" ||
     value === "latest" ||
     value === "trending" ||
+    value === "comments_desc" ||
     value === "ai_score" ||
     value === "has_ai_summary"
   );
@@ -319,6 +320,7 @@ function sortLabel(sort: ExportSort): string {
     best: "best",
     latest: "latest",
     trending: "trending",
+    comments_desc: "comments_desc",
     ai_score: "ai_score",
     has_ai_summary: "has_ai_summary",
   };
@@ -334,12 +336,24 @@ function modeLabel(mode: ExportMode): string {
   return labels[mode];
 }
 
+const COMMENTS_COUNT_SQL = `
+  CASE
+    WHEN ci.source_type = 'reddit' AND (ci.metadata_json->>'num_comments') ~ '^[0-9]+$'
+      THEN (ci.metadata_json->>'num_comments')::int
+    WHEN ci.source_type = 'hn' AND (ci.metadata_json->>'descendants') ~ '^[0-9]+$'
+      THEN (ci.metadata_json->>'descendants')::int
+    ELSE 0
+  END
+`;
+
 function orderByClause(sort: ExportSort): string {
   switch (sort) {
     case "latest":
       return "base.published_at DESC NULLS LAST, base.digest_created_at DESC, base.content_item_id DESC";
     case "trending":
       return "base.trending_score DESC, base.content_item_id DESC";
+    case "comments_desc":
+      return "base.comments_count DESC, base.aha_score DESC, base.content_item_id DESC";
     case "ai_score":
       return "base.ai_score DESC NULLS LAST, base.content_item_id DESC";
     case "has_ai_summary":
@@ -388,7 +402,8 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
         ok: false,
         error: {
           code: "INVALID_PARAM",
-          message: "sort must be one of best, latest, trending, ai_score, has_ai_summary",
+          message:
+            "sort must be one of best, latest, trending, comments_desc, ai_score, has_ai_summary",
         },
       });
     }
@@ -506,6 +521,7 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
             -GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(ci.published_at, li.digest_created_at))) / 3600.0)
             / GREATEST(1, $2::float)
           ))::real as trending_score,
+          ${COMMENTS_COUNT_SQL} as comments_count,
           (li.triage_json->>'ai_score')::float8 as ai_score,
           li.triage_json,
           t.name as topic_name,
@@ -578,6 +594,7 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
             -GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(ci.published_at, li.digest_created_at))) / 3600.0)
             / GREATEST(1, $2::float)
           ))::real as trending_score,
+          ${COMMENTS_COUNT_SQL} as comments_count,
           (li.triage_json->>'ai_score')::float8 as ai_score,
           li.triage_json,
           t.name as topic_name,

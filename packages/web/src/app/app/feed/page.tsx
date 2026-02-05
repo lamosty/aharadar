@@ -511,7 +511,7 @@ function FeedPageContent() {
 
   // Bulk feedback handler for theme rows
   const handleBulkFeedback = useCallback(
-    async (contentItemIds: string[], action: "like" | "dislike") => {
+    async (contentItemIds: string[], action: "like" | "dislike" | "skip") => {
       await Promise.all(contentItemIds.map((id) => handleFeedback(id, action)));
     },
     [handleFeedback],
