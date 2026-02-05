@@ -2373,6 +2373,10 @@ export interface SourceHealthItem {
   itemsLast24h: number;
   itemsLast7d: number;
   lastFetchedAt: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  lastRunErrors: number;
+  errorsLast24h: number;
   isEnabled: boolean;
 }
 

@@ -292,6 +292,8 @@ function IngestionTab() {
                   <th>24h</th>
                   <th>7d</th>
                   <th>Last Fetch</th>
+                  <th>Last Run</th>
+                  <th>Errors 24h</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -307,6 +309,25 @@ function IngestionTab() {
                     <td className={styles.mono}>{formatNumber(source.itemsLast7d)}</td>
                     <td className={`${styles.mono} ${styles.muted}`}>
                       {source.lastFetchedAt ? formatTimeAgo(source.lastFetchedAt) : "-"}
+                    </td>
+                    <td>
+                      {source.lastRunStatus ? (
+                        <div className={styles.nowrap}>
+                          <StatusBadge status={source.lastRunStatus} />
+                          <div className={`${styles.mono} ${styles.muted}`}>
+                            {source.lastRunAt ? formatTimeAgo(source.lastRunAt) : "-"}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className={styles.muted}>-</span>
+                      )}
+                    </td>
+                    <td
+                      className={`${styles.mono} ${
+                        source.errorsLast24h > 0 ? styles.errorRateHigh : styles.muted
+                      }`}
+                    >
+                      {source.errorsLast24h}
                     </td>
                     <td>
                       {source.isEnabled ? (

@@ -8,6 +8,10 @@ export interface SourceHealthRow {
   itemsLast24h: number;
   itemsLast7d: number;
   lastFetchedAt: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  lastRunErrors: number;
+  errorsLast24h: number;
   isEnabled: boolean;
 }
 
@@ -32,6 +36,10 @@ export function createIngestionHealthRepo(db: Queryable) {
         items_last_24h: string;
         items_last_7d: string;
         last_fetched_at: string | null;
+        last_run_at: string | null;
+        last_run_status: string | null;
+        last_run_errors: string | null;
+        errors_last_24h: string | null;
         is_enabled: boolean;
       }>(
         `select
@@ -42,11 +50,36 @@ export function createIngestionHealthRepo(db: Queryable) {
            count(ci.id) filter (where ci.fetched_at > now() - interval '24 hours') as items_last_24h,
            count(ci.id) filter (where ci.fetched_at > now() - interval '7 days') as items_last_7d,
            max(ci.fetched_at)::text as last_fetched_at,
+           last_run.ended_at::text as last_run_at,
+           last_run.status as last_run_status,
+           coalesce((last_run.counts_json->>'errors')::int, 0)::text as last_run_errors,
+           coalesce(recent_errors.errors_24h, 0)::text as errors_last_24h,
            s.is_enabled
          from sources s
          left join content_items ci on ci.source_id = s.id and ci.deleted_at is null
+         left join lateral (
+           select fr.status, fr.ended_at, fr.counts_json
+           from fetch_runs fr
+           where fr.source_id = s.id
+           order by fr.started_at desc
+           limit 1
+         ) last_run on true
+         left join lateral (
+           select count(*) filter (where fr.status in ('error','partial')) as errors_24h
+           from fetch_runs fr
+           where fr.source_id = s.id
+             and fr.started_at > now() - interval '24 hours'
+         ) recent_errors on true
          where s.user_id = $1
-         group by s.id, s.name, s.type, s.is_enabled
+         group by
+           s.id,
+           s.name,
+           s.type,
+           s.is_enabled,
+           last_run.status,
+           last_run.ended_at,
+           last_run.counts_json,
+           recent_errors.errors_24h
          order by max(ci.fetched_at) desc nulls last`,
         [params.userId],
       );
@@ -59,6 +92,10 @@ export function createIngestionHealthRepo(db: Queryable) {
         itemsLast24h: Number(row.items_last_24h),
         itemsLast7d: Number(row.items_last_7d),
         lastFetchedAt: row.last_fetched_at,
+        lastRunAt: row.last_run_at,
+        lastRunStatus: row.last_run_status,
+        lastRunErrors: Number(row.last_run_errors ?? 0),
+        errorsLast24h: Number(row.errors_last_24h ?? 0),
         isEnabled: row.is_enabled,
       }));
     },
