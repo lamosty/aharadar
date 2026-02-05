@@ -18,6 +18,8 @@ interface FeedDossierExportBody {
   mode?: ExportMode;
   topN?: number;
   sort?: ExportSort;
+  since?: string;
+  until?: string;
   includeExcerpt?: boolean;
 }
 
@@ -83,6 +85,12 @@ function toInt(value: unknown): number | null {
     if (Number.isInteger(parsed)) return parsed;
   }
   return null;
+}
+
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const d = new Date(value);
+  return !Number.isNaN(d.getTime());
 }
 
 function sourceLabel(sourceType: string): string {
@@ -423,6 +431,36 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    if (payload.since !== undefined && !isValidIsoDate(payload.since)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "since must be an ISO date string",
+        },
+      });
+    }
+
+    if (payload.until !== undefined && !isValidIsoDate(payload.until)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "until must be an ISO date string",
+        },
+      });
+    }
+
+    if (payload.since && payload.until && new Date(payload.since) > new Date(payload.until)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "since must be before or equal to until",
+        },
+      });
+    }
+
     let effectiveTopicId: string | null = ctx.topicId;
     const requestedTopicId = payload.topicId;
     if (requestedTopicId === "all") {
@@ -480,6 +518,22 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
             return `AND d.topic_id = $${params.length}::uuid`;
           })()
         : "";
+
+    const dateFilterParts: string[] = [];
+    if (payload.since) {
+      params.push(payload.since);
+      dateFilterParts.push(
+        `COALESCE(ci.published_at, li.digest_created_at) >= $${params.length}::timestamptz`,
+      );
+    }
+    if (payload.until) {
+      params.push(payload.until);
+      dateFilterParts.push(
+        `COALESCE(ci.published_at, li.digest_created_at) <= $${params.length}::timestamptz`,
+      );
+    }
+    const dateFilterClause =
+      dateFilterParts.length > 0 ? `AND ${dateFilterParts.join(" AND ")}` : "";
 
     const selectionFilterParts: string[] = [];
     if (mode === "ai_summaries") {
@@ -549,6 +603,7 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
         LEFT JOIN bookmarks b
           ON b.user_id = $1::uuid AND b.content_item_id = li.content_item_id
         WHERE ci.deleted_at IS NULL
+          ${dateFilterClause}
       )
       SELECT count(*)::int as total
       FROM base
@@ -622,6 +677,7 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
         LEFT JOIN bookmarks b
           ON b.user_id = $1::uuid AND b.content_item_id = li.content_item_id
         WHERE ci.deleted_at IS NULL
+          ${dateFilterClause}
       )
       SELECT
         base.content_item_id,
@@ -669,6 +725,9 @@ export async function exportsRoutes(fastify: FastifyInstance): Promise<void> {
     lines.push(`- Selection mode: ${modeLabel(mode)}`);
     lines.push(`- Sort: ${sortLabel(sort)}`);
     lines.push(`- Topic scope: ${effectiveTopicId ? `topic:${effectiveTopicId}` : "all-topics"}`);
+    if (payload.since || payload.until) {
+      lines.push(`- Date range: ${payload.since ?? "any"} -> ${payload.until ?? "any"}`);
+    }
     lines.push(`- Selected items (before filters): ${selectedCount}`);
     lines.push("");
 

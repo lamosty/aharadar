@@ -1966,6 +1966,8 @@ export interface FeedDossierExportRequest {
   mode: FeedDossierExportMode;
   topN?: number;
   sort?: FeedDossierExportSort;
+  since?: string;
+  until?: string;
   includeExcerpt?: boolean;
 }
 

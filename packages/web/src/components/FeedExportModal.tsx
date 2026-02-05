@@ -25,11 +25,25 @@ const TOP_N_MAX = 200;
 
 type ExportData = FeedDossierExportResponse["export"];
 
+function toIsoStartOfDay(dateString: string): string {
+  const d = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateString;
+  return d.toISOString();
+}
+
+function toIsoEndOfDay(dateString: string): string {
+  const d = new Date(`${dateString}T23:59:59.999`);
+  if (Number.isNaN(d.getTime())) return dateString;
+  return d.toISOString();
+}
+
 export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedExportModalProps) {
   const { addToast } = useToast();
   const [mode, setMode] = useState<FeedDossierExportMode>("ai_summaries");
   const [sort, setSort] = useState<FeedDossierExportSort>(defaultSort);
   const [topN, setTopN] = useState<number>(50);
+  const [since, setSince] = useState("");
+  const [until, setUntil] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [exportData, setExportData] = useState<ExportData | null>(null);
 
@@ -50,6 +64,8 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
   useEffect(() => {
     if (!isOpen) return;
     setSort(defaultSort);
+    setSince("");
+    setUntil("");
     setSubmitError(null);
   }, [isOpen, defaultSort]);
 
@@ -74,12 +90,18 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
       setSubmitError(t("feed.export.errors.invalidTopN", { min: TOP_N_MIN, max: TOP_N_MAX }));
       return;
     }
+    if (since && until && new Date(since) > new Date(until)) {
+      setSubmitError(t("feed.export.errors.invalidDateRange"));
+      return;
+    }
 
     exportMutation.mutate({
       topicId: scopeTopicId,
       mode,
       topN: mode === "top_n" ? topN : undefined,
       sort,
+      since: since ? toIsoStartOfDay(since) : undefined,
+      until: until ? toIsoEndOfDay(until) : undefined,
       includeExcerpt: true,
     });
   };
@@ -112,6 +134,8 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
     setMode("ai_summaries");
     setTopN(50);
     setSort(defaultSort);
+    setSince("");
+    setUntil("");
     setSubmitError(null);
     setExportData(null);
     onClose();
@@ -167,6 +191,32 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
             </select>
           </div>
 
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="feed-export-since">
+              {t("feed.export.startDate")}
+            </label>
+            <input
+              id="feed-export-since"
+              className={styles.input}
+              type="date"
+              value={since}
+              onChange={(e) => setSince(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="feed-export-until">
+              {t("feed.export.endDate")}
+            </label>
+            <input
+              id="feed-export-until"
+              className={styles.input}
+              type="date"
+              value={until}
+              onChange={(e) => setUntil(e.target.value)}
+            />
+          </div>
+
           {mode === "top_n" && (
             <div className={styles.row}>
               <label className={styles.label} htmlFor="feed-export-topn">
@@ -199,7 +249,14 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
             >
               {t("common.cancel")}
             </button>
-            <button type="submit" className="btn btn-primary" disabled={exportMutation.isPending}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={
+                exportMutation.isPending ||
+                Boolean(since && until && new Date(since) > new Date(until))
+              }
+            >
               {exportMutation.isPending ? t("feed.export.generating") : t("feed.export.generate")}
             </button>
           </div>

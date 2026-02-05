@@ -900,6 +900,8 @@
         "likedOrBookmarked": "Liked or bookmarked"
       },
       "sort": "Sort",
+      "startDate": "Start date",
+      "endDate": "End date",
       "sortOptions": {
         "best": "Best",
         "latest": "Latest",
@@ -927,7 +929,8 @@
       "downloadSuccess": "Dossier downloaded",
       "errors": {
         "generateFailed": "Failed to generate dossier",
-        "invalidTopN": "Top N must be between {min} and {max}"
+        "invalidTopN": "Top N must be between {min} and {max}",
+        "invalidDateRange": "Start date must be before or equal to end date"
       }
     },
     "pasteToSummarize": "Paste content to generate AI summary...",
