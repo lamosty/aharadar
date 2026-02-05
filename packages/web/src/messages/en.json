@@ -902,6 +902,16 @@
       "sort": "Sort",
       "startDate": "Start date",
       "endDate": "End date",
+      "quickRange": "Quick range",
+      "datePresets": {
+        "today": "Today",
+        "since2d": "Since 2d ago",
+        "since4d": "Since 4d ago",
+        "since7d": "Since 7d ago",
+        "since14d": "Since 14d ago",
+        "since30d": "Since 30d ago",
+        "all": "All time"
+      },
       "sortOptions": {
         "best": "Best",
         "latest": "Latest",
@@ -926,6 +936,8 @@
       "preview": "Preview markdown",
       "copySuccess": "Dossier copied to clipboard",
       "copyFailed": "Failed to copy dossier to clipboard",
+      "copyFailedPermission": "Clipboard access blocked. Allow clipboard for this site and try again.",
+      "copyFailedInsecure": "Clipboard requires a secure context (HTTPS or localhost).",
       "downloadSuccess": "Dossier downloaded",
       "errors": {
         "generateFailed": "Failed to generate dossier",

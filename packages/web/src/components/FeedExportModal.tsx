@@ -25,6 +25,8 @@ const TOP_N_MAX = 200;
 
 type ExportData = FeedDossierExportResponse["export"];
 
+type DatePreset = "today" | "since2d" | "since4d" | "since7d" | "since14d" | "since30d" | "all";
+
 function toIsoStartOfDay(dateString: string): string {
   const d = new Date(`${dateString}T00:00:00`);
   if (Number.isNaN(d.getTime())) return dateString;
@@ -35,6 +37,27 @@ function toIsoEndOfDay(dateString: string): string {
   const d = new Date(`${dateString}T23:59:59.999`);
   if (Number.isNaN(d.getTime())) return dateString;
   return d.toISOString();
+}
+
+function toDateInputValue(date: Date): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().split("T")[0];
+}
+
+function copyWithExecCommandFallback(text: string): boolean {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
 }
 
 export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedExportModalProps) {
@@ -106,12 +129,73 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
     });
   };
 
+  const applyDatePreset = (preset: DatePreset) => {
+    if (preset === "all") {
+      setSince("");
+      setUntil("");
+      return;
+    }
+
+    const now = new Date();
+    const untilDate = toDateInputValue(now);
+
+    if (preset === "today") {
+      setSince(untilDate);
+      setUntil(untilDate);
+      return;
+    }
+
+    const daysBackByPreset: Record<Exclude<DatePreset, "today" | "all">, number> = {
+      since2d: 2,
+      since4d: 4,
+      since7d: 7,
+      since14d: 14,
+      since30d: 30,
+    };
+    const daysBack = daysBackByPreset[preset];
+    const sinceDate = new Date(now);
+    sinceDate.setDate(sinceDate.getDate() - daysBack);
+
+    setSince(toDateInputValue(sinceDate));
+    setUntil(untilDate);
+  };
+
   const handleCopy = async () => {
     if (!exportData) return;
+
+    let copied = false;
+    let clipboardError: unknown = null;
+
     try {
-      await navigator.clipboard.writeText(exportData.content);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(exportData.content);
+        copied = true;
+      }
+    } catch (err) {
+      clipboardError = err;
+    }
+
+    if (!copied) {
+      try {
+        copied = copyWithExecCommandFallback(exportData.content);
+      } catch {
+        copied = false;
+      }
+    }
+
+    if (copied) {
       addToast(t("feed.export.copySuccess"), "success");
-    } catch {
+    } else {
+      if (!window.isSecureContext) {
+        addToast(t("feed.export.copyFailedInsecure"), "error");
+        return;
+      }
+
+      if (clipboardError instanceof DOMException && clipboardError.name === "NotAllowedError") {
+        addToast(t("feed.export.copyFailedPermission"), "error");
+        return;
+      }
+
       addToast(t("feed.export.copyFailed"), "error");
     }
   };
@@ -215,6 +299,61 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
               value={until}
               onChange={(e) => setUntil(e.target.value)}
             />
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label}>{t("feed.export.quickRange")}</label>
+            <div className={styles.presetButtons}>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("today")}
+              >
+                {t("feed.export.datePresets.today")}
+              </button>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("since2d")}
+              >
+                {t("feed.export.datePresets.since2d")}
+              </button>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("since4d")}
+              >
+                {t("feed.export.datePresets.since4d")}
+              </button>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("since7d")}
+              >
+                {t("feed.export.datePresets.since7d")}
+              </button>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("since14d")}
+              >
+                {t("feed.export.datePresets.since14d")}
+              </button>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("since30d")}
+              >
+                {t("feed.export.datePresets.since30d")}
+              </button>
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() => applyDatePreset("all")}
+              >
+                {t("feed.export.datePresets.all")}
+              </button>
+            </div>
           </div>
 
           {mode === "top_n" && (
