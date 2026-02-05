@@ -1949,6 +1949,51 @@ export async function postItemSummary(
 }
 
 // ============================================================================
+// Feed Dossier Export API
+// ============================================================================
+
+export type FeedDossierExportMode = "ai_summaries" | "top_n" | "liked_or_bookmarked";
+export type FeedDossierExportSort = "best" | "latest" | "trending" | "ai_score" | "has_ai_summary";
+
+export interface FeedDossierExportRequest {
+  topicId?: string | "all";
+  mode: FeedDossierExportMode;
+  topN?: number;
+  sort?: FeedDossierExportSort;
+  includeExcerpt?: boolean;
+}
+
+export interface FeedDossierExportStats {
+  selectedCount: number;
+  exportedCount: number;
+  skippedNoSummaryCount: number;
+  truncated: boolean;
+  truncatedBy: "line_cap" | "char_cap" | "item_cap" | null;
+  charCount: number;
+}
+
+export interface FeedDossierExportResponse {
+  ok: true;
+  export: {
+    filename: string;
+    mimeType: string;
+    content: string;
+    stats: FeedDossierExportStats;
+  };
+}
+
+export async function postFeedDossierExport(
+  request: FeedDossierExportRequest,
+  signal?: AbortSignal,
+): Promise<FeedDossierExportResponse> {
+  return apiFetch<FeedDossierExportResponse>("/exports/feed-dossier", {
+    method: "POST",
+    body: request,
+    signal,
+  });
+}
+
+// ============================================================================
 // Aggregate Summaries API
 // ============================================================================
 

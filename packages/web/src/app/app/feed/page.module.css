@@ -38,6 +38,10 @@
   flex-shrink: 0;
 }
 
+.exportBtn {
+  flex-shrink: 0;
+}
+
 .packsBtn {
   flex-shrink: 0;
 }

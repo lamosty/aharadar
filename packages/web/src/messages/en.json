@@ -890,6 +890,45 @@
       "back": "Back to list",
       "itemsReady": "{count} items ready"
     },
+    "export": {
+      "button": "Export Dossier",
+      "title": "Export Feed Dossier",
+      "mode": "Selection mode",
+      "modes": {
+        "aiSummaries": "Items with AI summary",
+        "topN": "Top N items",
+        "likedOrBookmarked": "Liked or bookmarked"
+      },
+      "sort": "Sort",
+      "sortOptions": {
+        "best": "Best",
+        "latest": "Latest",
+        "trending": "Trending",
+        "aiScore": "AI score",
+        "hasAiSummary": "Has AI summary"
+      },
+      "topN": "Top N",
+      "scope": {
+        "currentTopic": "Scope: current topic",
+        "allTopics": "Scope: all topics"
+      },
+      "generate": "Generate dossier",
+      "generating": "Generating dossier...",
+      "readyTitle": "Dossier ready",
+      "summaryLine": "Mode: {mode} - Exported {exported} of {selected} selected",
+      "statsLine": "Skipped (no summary): {skipped} - Characters: {chars}",
+      "truncated": "Output was truncated ({reason}). Narrow scope or reduce Top N.",
+      "copy": "Copy Dossier",
+      "download": "Download .md",
+      "preview": "Preview markdown",
+      "copySuccess": "Dossier copied to clipboard",
+      "copyFailed": "Failed to copy dossier to clipboard",
+      "downloadSuccess": "Dossier downloaded",
+      "errors": {
+        "generateFailed": "Failed to generate dossier",
+        "invalidTopN": "Top N must be between {min} and {max}"
+      }
+    },
     "pasteToSummarize": "Paste content to generate AI summary...",
     "generate": "Generate",
     "generating": "Generating...",

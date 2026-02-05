@@ -75,6 +75,8 @@ import {
   type FeedbackRequest,
   type FeedbackResponse,
   type FeedbackSummaryResponse,
+  type FeedDossierExportRequest,
+  type FeedDossierExportResponse,
   type FetchRunsLogResponse,
   getAdminAbtest,
   getAdminAbtests,
@@ -150,6 +152,7 @@ import {
   postAdminRun,
   postAdminSource,
   postFeedback,
+  postFeedDossierExport,
   postItemSummary,
   postMarkChecked,
   postScoringExperiment,
@@ -1627,6 +1630,20 @@ export function useItemSummary(options?: {
       queryClient.invalidateQueries({ queryKey: ["items"] });
       options?.onSuccess?.(data);
     },
+    onError: options?.onError,
+  });
+}
+
+/**
+ * Mutation to generate feed dossier export markdown for copy/download.
+ */
+export function useFeedDossierExport(options?: {
+  onSuccess?: (data: FeedDossierExportResponse) => void;
+  onError?: (error: ApiError | NetworkError) => void;
+}) {
+  return useMutation({
+    mutationFn: (request: FeedDossierExportRequest) => postFeedDossierExport(request),
+    onSuccess: options?.onSuccess,
     onError: options?.onError,
   });
 }

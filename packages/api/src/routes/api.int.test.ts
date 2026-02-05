@@ -23,6 +23,8 @@ describe("API Routes Integration Tests", () => {
   let userId: string;
   let topicId: string;
   let contentItemId: string;
+  let contentItemId2: string;
+  let contentItemId3: string;
   let sourceId: string;
 
   beforeAll(async () => {
@@ -60,12 +62,14 @@ describe("API Routes Integration Tests", () => {
     const { topicsRoutes } = await import("./topics.js");
     const { feedbackRoutes } = await import("./feedback.js");
     const { itemsRoutes } = await import("./items.js");
+    const { exportsRoutes } = await import("./exports.js");
 
     // Build Fastify app with routes
     app = Fastify({ logger: false });
     await app.register(topicsRoutes, { prefix: "/api" });
     await app.register(feedbackRoutes, { prefix: "/api" });
     await app.register(itemsRoutes, { prefix: "/api" });
+    await app.register(exportsRoutes, { prefix: "/api" });
     await app.ready();
   }, 120000); // 2 minute timeout for container startup
 
@@ -116,10 +120,35 @@ describe("API Routes Integration Tests", () => {
     );
     contentItemId = contentResult.rows[0].id;
 
+    // Create additional content items for export tests
+    const contentResult2 = await db.query<{ id: string }>(
+      `INSERT INTO content_items (user_id, source_id, source_type, title, body_text, canonical_url, author, published_at, metadata_json)
+       VALUES ($1, $2, 'reddit', 'Second Summary Item', 'Second test content body with enough detail for excerpts', 'https://example.com/second', 'author2', NOW() - INTERVAL '2 hours', '{}')
+       RETURNING id`,
+      [userId, sourceId],
+    );
+    contentItemId2 = contentResult2.rows[0].id;
+
+    const contentResult3 = await db.query<{ id: string }>(
+      `INSERT INTO content_items (user_id, source_id, source_type, title, body_text, canonical_url, author, published_at, metadata_json)
+       VALUES ($1, $2, 'rss', 'Third Unsummarized Item', 'Third item intentionally has no manual summary', 'https://example.com/third', 'author3', NOW() - INTERVAL '4 hours', '{}')
+       RETURNING id`,
+      [userId, sourceId],
+    );
+    contentItemId3 = contentResult3.rows[0].id;
+
     // Link content item to source (junction table for multi-source support)
     await db.query(
       `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
       [contentItemId, sourceId],
+    );
+    await db.query(
+      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+      [contentItemId2, sourceId],
+    );
+    await db.query(
+      `INSERT INTO content_item_sources (content_item_id, source_id) VALUES ($1, $2)`,
+      [contentItemId3, sourceId],
     );
 
     // Create embedding for the content item (needed for preference updates)
@@ -148,6 +177,37 @@ describe("API Routes Integration Tests", () => {
       `INSERT INTO digest_items (digest_id, content_item_id, aha_score, rank, triage_json)
        VALUES ($1, $2, 0.85, 1, '{"ai_score": 85, "reason": "Test item"}')`,
       [digestId, contentItemId],
+    );
+    await db.query(
+      `INSERT INTO digest_items (digest_id, content_item_id, aha_score, rank, triage_json)
+       VALUES ($1, $2, 0.77, 2, '{"ai_score": 77, "reason": "Second test item"}')`,
+      [digestId, contentItemId2],
+    );
+    await db.query(
+      `INSERT INTO digest_items (digest_id, content_item_id, aha_score, rank, triage_json)
+       VALUES ($1, $2, 0.55, 3, '{"ai_score": 55, "reason": "Unsummarized item"}')`,
+      [digestId, contentItemId3],
+    );
+
+    // Seed manual summaries for item 1 and 2 (item 3 intentionally missing summary)
+    await db.query(
+      `INSERT INTO content_item_summaries (user_id, content_item_id, summary_json, source)
+       VALUES
+       ($1, $2, '{"schema_version":"manual_summary_v2","prompt_id":"manual_summary_v2","provider":"test","model":"test-model","one_liner":"Summary for item one","bullets":["Point A","Point B"],"discussion_highlights":["Debate A"]}'::jsonb, 'manual_paste'),
+       ($1, $3, '{"schema_version":"manual_summary_v2","prompt_id":"manual_summary_v2","provider":"test","model":"test-model","one_liner":"Summary for item two","bullets":["Point C"],"discussion_highlights":["Debate B"]}'::jsonb, 'manual_paste')`,
+      [userId, contentItemId, contentItemId2],
+    );
+
+    // Seed one bookmark-only item and one liked+bookmarked item for selector coverage
+    await db.query(`INSERT INTO bookmarks (user_id, content_item_id) VALUES ($1, $2), ($1, $3)`, [
+      userId,
+      contentItemId,
+      contentItemId3,
+    ]);
+    await db.query(
+      `INSERT INTO feedback_events (user_id, digest_id, content_item_id, action)
+       VALUES ($1, $2, $3, 'like')`,
+      [userId, digestId, contentItemId2],
     );
   }
 
@@ -415,6 +475,71 @@ describe("API Routes Integration Tests", () => {
       });
 
       expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe("Feed Dossier Exports", () => {
+    it("POST /api/exports/feed-dossier - exports summarized items mode", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/exports/feed-dossier",
+        payload: {
+          topicId,
+          mode: "ai_summaries",
+          sort: "best",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.export.mimeType).toBe("text/markdown; charset=utf-8");
+      expect(body.export.content).toContain("# AhaRadar Research Dossier");
+      expect(body.export.content).toContain("Summary for item one");
+      expect(body.export.content).toContain("Summary for item two");
+      expect(body.export.stats.exportedCount).toBeGreaterThanOrEqual(2);
+      expect(body.export.stats.skippedNoSummaryCount).toBe(0);
+    });
+
+    it("POST /api/exports/feed-dossier - supports top_n and skips unsummarized", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/exports/feed-dossier",
+        payload: {
+          topicId,
+          mode: "top_n",
+          topN: 3,
+          sort: "best",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.export.stats.selectedCount).toBe(3);
+      expect(body.export.stats.skippedNoSummaryCount).toBe(1);
+      expect(body.export.content).toContain("## Continue Research Prompt");
+    });
+
+    it("POST /api/exports/feed-dossier - liked_or_bookmarked selector returns union", async () => {
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/exports/feed-dossier",
+        payload: {
+          topicId,
+          mode: "liked_or_bookmarked",
+          sort: "best",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      // item 1 bookmarked + item 2 liked + item 3 bookmarked (no summary, skipped)
+      expect(body.export.stats.selectedCount).toBeGreaterThanOrEqual(3);
+      expect(body.export.stats.skippedNoSummaryCount).toBeGreaterThanOrEqual(1);
+      expect(body.export.content).toContain("Summary for item one");
+      expect(body.export.content).toContain("Summary for item two");
     });
   });
 });

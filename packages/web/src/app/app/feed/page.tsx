@@ -13,6 +13,7 @@ import {
   ThemeRow,
 } from "@/components/Feed";
 import { FeedItemModal } from "@/components/Feed/FeedItemModal";
+import { FeedExportModal } from "@/components/FeedExportModal";
 import { InboxSummaryModal } from "@/components/InboxSummaryModal";
 import { ItemSummaryModal } from "@/components/ItemSummaryModal";
 import { type PageSize, Pagination } from "@/components/Pagination";
@@ -169,6 +170,7 @@ function FeedPageContent() {
 
   // Inbox summary modal state
   const [isInboxSummaryModalOpen, setIsInboxSummaryModalOpen] = useState(false);
+  const [isFeedExportModalOpen, setIsFeedExportModalOpen] = useState(false);
 
   // Mobile modal state
   const [mobileModalItem, setMobileModalItem] = useState<FeedItemType | null>(null);
@@ -804,6 +806,13 @@ function FeedPageContent() {
             >
               {t("summaries.inboxModal.button")}
             </button>
+            <button
+              type="button"
+              className={`btn btn-secondary ${styles.exportBtn}`}
+              onClick={() => setIsFeedExportModalOpen(true)}
+            >
+              {t("feed.export.button")}
+            </button>
             <TopicSwitcher onTopicChange={handleTopicChange} />
             {isAllTopicsMode ? (
               <Tooltip content={t("feed.selectTopicForCaughtUp")}>
@@ -1051,6 +1060,13 @@ function FeedPageContent() {
         isOpen={isInboxSummaryModalOpen}
         topicId={currentTopicId}
         onClose={() => setIsInboxSummaryModalOpen(false)}
+      />
+
+      <FeedExportModal
+        isOpen={isFeedExportModalOpen}
+        topicId={currentTopicId}
+        defaultSort={sort}
+        onClose={() => setIsFeedExportModalOpen(false)}
       />
 
       {/* Mobile Feed Item Modal */}

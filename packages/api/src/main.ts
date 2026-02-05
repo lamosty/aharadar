@@ -15,6 +15,7 @@ import { bookmarksRoutes } from "./routes/bookmarks.js";
 import { catchupPacksRoutes } from "./routes/catchup-packs.js";
 import { devRoutes } from "./routes/dev.js";
 import { digestsRoutes } from "./routes/digests.js";
+import { exportsRoutes } from "./routes/exports.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { healthRoutes } from "./routes/health.js";
 import { itemSummariesRoutes } from "./routes/item-summaries.js";
@@ -116,6 +117,7 @@ async function buildServer() {
       await api.register(catchupPacksRoutes);
       await api.register(itemSummariesRoutes);
       await api.register(digestsRoutes);
+      await api.register(exportsRoutes);
       await api.register(feedbackRoutes);
       await api.register(itemsRoutes);
       await api.register(notificationsRoutes);
