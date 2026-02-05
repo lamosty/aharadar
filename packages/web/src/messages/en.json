@@ -910,7 +910,10 @@
         "claimVerification": "Verify key claims",
         "contrarianReview": "Contrarian review",
         "investingDecisionSupport": "Investing decision support",
-        "tradingSetupReview": "Trading setup review"
+        "tradingSetupReview": "Trading setup review",
+        "insiderPolicyNetwork": "Insider + policy network",
+        "aiBullishBearish": "AI bullish vs bearish case",
+        "valueInvestorBestBuy": "Value investor best buy"
       },
       "promptLens": "Prompt lens",
       "promptLensOptions": {
@@ -923,7 +926,7 @@
       "promptText": "Prompt text",
       "promptLensResolved": "Resolved lens: {lens}",
       "promptReset": "Reset to template",
-      "promptHint": "Use investing/trading goals for scenario playbooks with triggers and risk limits, then switch goals and copy again.",
+      "promptHint": "Use investing/trading/insider/value goals for crash-vs-fundamentals ranking, scenario playbooks, and evidence checks.",
       "datePresets": {
         "today": "Today",
         "since2d": "Since 2d ago",

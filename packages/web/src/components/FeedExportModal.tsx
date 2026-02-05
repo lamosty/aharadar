@@ -33,7 +33,10 @@ type PromptGoal =
   | "claim_verification"
   | "contrarian_review"
   | "investing_decision_support"
-  | "trading_setup_review";
+  | "trading_setup_review"
+  | "insider_policy_network"
+  | "ai_bullish_bearish"
+  | "value_investor_best_buy";
 type PromptLens = "auto" | "investing" | "trading" | "tech" | "general";
 type ResolvedPromptLens = Exclude<PromptLens, "auto">;
 
@@ -158,6 +161,44 @@ function buildPromptTemplate(params: {
       "Build an investing decision-support brief: list the top candidate opportunities, key risks, and scenario-based action options (accumulate / wait / avoid) with specific evidence triggers.",
     trading_setup_review:
       "Build a trading setup review: identify high-conviction setups, define entry zones, invalidation levels, target ladders, and position-size constraints under base/upside/downside paths.",
+    insider_policy_network:
+      "Build an insider-and-policy network brief: map insider activity, leadership/board ties to government or influential networks (including PayPal-mafia style links), and likely policy exposure pathways. Verify with primary sources and avoid implying wrongdoing without evidence.",
+    ai_bullish_bearish:
+      "Build a balanced AI bull-vs-bear case: quantify strongest upside thesis, strongest downside thesis, key assumptions on each side, and what evidence would flip the conclusion.",
+    value_investor_best_buy:
+      "Build a value-investor ranking of best buy candidates during this selloff: compare valuation, balance-sheet strength, cash-flow quality, insider activity, execution credibility, and policy/network risk. Emphasize where price drawdown appears larger than verified fundamental deterioration.",
+  };
+
+  const goalSpecificRequirementLines: Record<PromptGoal, string[]> = {
+    decision_memo: [],
+    connect_dots: [],
+    claim_verification: [],
+    contrarian_review: [],
+    investing_decision_support: [],
+    trading_setup_review: [],
+    insider_policy_network: [],
+    ai_bullish_bearish: [
+      "6. For AI bull/bear mode, state the strongest case for each side before concluding.",
+    ],
+    value_investor_best_buy: [
+      "6. Rank candidates by drawdown severity versus verified fundamental damage.",
+      "7. Separate short-term rebound setups from long-term value theses.",
+    ],
+  };
+
+  const goalSpecificOutputSections: Record<PromptGoal, string[]> = {
+    decision_memo: [],
+    connect_dots: [],
+    claim_verification: [],
+    contrarian_review: [],
+    investing_decision_support: [],
+    trading_setup_review: [],
+    insider_policy_network: [],
+    ai_bullish_bearish: ["- Bull case vs bear case matrix"],
+    value_investor_best_buy: [
+      "- Crash vs fundamentals table (drawdown, fundamentals delta, confidence)",
+      "- Ranked opportunities: short-term rebound vs long-term value",
+    ],
   };
 
   return [
@@ -171,11 +212,13 @@ function buildPromptTemplate(params: {
     "3. Use web checks for time-sensitive facts and clearly mark inferred conclusions.",
     "4. Keep this educational and risk-first (not personalized financial advice).",
     "5. End with a concise action plan (next checks, decisions, and monitoring triggers).",
+    ...goalSpecificRequirementLines[goal],
     "Output sections:",
     "- Executive summary",
     "- Evidence map",
     "- Key disagreements and uncertainty",
     "- Recommended actions",
+    ...goalSpecificOutputSections[goal],
   ].join("\n");
 }
 
@@ -573,6 +616,15 @@ export function FeedExportModal({
               </option>
               <option value="trading_setup_review">
                 {t("feed.export.promptGoals.tradingSetupReview")}
+              </option>
+              <option value="insider_policy_network">
+                {t("feed.export.promptGoals.insiderPolicyNetwork")}
+              </option>
+              <option value="ai_bullish_bearish">
+                {t("feed.export.promptGoals.aiBullishBearish")}
+              </option>
+              <option value="value_investor_best_buy">
+                {t("feed.export.promptGoals.valueInvestorBestBuy")}
               </option>
             </select>
           </div>
