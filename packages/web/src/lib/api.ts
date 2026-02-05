@@ -983,6 +983,7 @@ export interface LlmSettings {
   provider: LlmProvider;
   anthropicModel: string;
   openaiModel: string;
+  deepSummaryEnabled: boolean;
   claudeSubscriptionEnabled: boolean;
   claudeTriageThinking: boolean;
   claudeCallsPerHour: number;
@@ -1005,6 +1006,7 @@ export interface LlmSettingsUpdateRequest {
   provider?: LlmProvider;
   anthropicModel?: string;
   openaiModel?: string;
+  deepSummaryEnabled?: boolean;
   claudeSubscriptionEnabled?: boolean;
   claudeTriageThinking?: boolean;
   claudeCallsPerHour?: number;

@@ -131,6 +131,7 @@ async function handleRunWindowJob(
       windowStart,
       windowEnd,
       mode,
+      digest: { deepSummaryEnabled: llmSettings.deep_summary_enabled },
       budget: {
         monthlyCredits: env.monthlyCredits,
         dailyThrottleCredits: env.dailyThrottleCredits,

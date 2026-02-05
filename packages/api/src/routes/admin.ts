@@ -1109,6 +1109,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         provider: settings.provider,
         anthropicModel: settings.anthropic_model,
         openaiModel: settings.openai_model,
+        deepSummaryEnabled: settings.deep_summary_enabled,
         claudeSubscriptionEnabled: settings.claude_subscription_enabled,
         claudeTriageThinking: settings.claude_triage_thinking,
         claudeCallsPerHour: settings.claude_calls_per_hour,
@@ -1218,6 +1219,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       provider,
       anthropicModel,
       openaiModel,
+      deepSummaryEnabled,
       claudeSubscriptionEnabled,
       claudeTriageThinking,
       claudeCallsPerHour,
@@ -1262,6 +1264,16 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         error: {
           code: "INVALID_PARAM",
           message: "openaiModel must be a string",
+        },
+      });
+    }
+
+    if (deepSummaryEnabled !== undefined && typeof deepSummaryEnabled !== "boolean") {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "deepSummaryEnabled must be a boolean",
         },
       });
     }
@@ -1379,6 +1391,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     if (provider !== undefined) updateParams.provider = provider as LlmProvider;
     if (anthropicModel !== undefined) updateParams.anthropic_model = anthropicModel as string;
     if (openaiModel !== undefined) updateParams.openai_model = openaiModel as string;
+    if (deepSummaryEnabled !== undefined)
+      updateParams.deep_summary_enabled = deepSummaryEnabled as boolean;
     if (claudeSubscriptionEnabled !== undefined)
       updateParams.claude_subscription_enabled = claudeSubscriptionEnabled as boolean;
     if (claudeTriageThinking !== undefined)
@@ -1404,6 +1418,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         provider: settings.provider,
         anthropicModel: settings.anthropic_model,
         openaiModel: settings.openai_model,
+        deepSummaryEnabled: settings.deep_summary_enabled,
         claudeSubscriptionEnabled: settings.claude_subscription_enabled,
         claudeTriageThinking: settings.claude_triage_thinking,
         claudeCallsPerHour: settings.claude_calls_per_hour,

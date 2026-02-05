@@ -9,6 +9,7 @@ export interface LlmSettingsRow {
   provider: LlmProvider;
   anthropic_model: string;
   openai_model: string;
+  deep_summary_enabled: boolean;
   claude_subscription_enabled: boolean;
   claude_triage_thinking: boolean;
   claude_calls_per_hour: number;
@@ -24,6 +25,7 @@ export interface LlmSettingsUpdate {
   provider?: LlmProvider;
   anthropic_model?: string;
   openai_model?: string;
+  deep_summary_enabled?: boolean;
   claude_subscription_enabled?: boolean;
   claude_triage_thinking?: boolean;
   claude_calls_per_hour?: number;
@@ -39,6 +41,7 @@ export function createLlmSettingsRepo(db: Queryable) {
     async get(): Promise<LlmSettingsRow> {
       const result = await db.query<LlmSettingsRow>(
         `SELECT id, provider, anthropic_model, openai_model,
+                deep_summary_enabled,
                 claude_subscription_enabled, claude_triage_thinking,
                 claude_calls_per_hour, codex_subscription_enabled,
                 codex_calls_per_hour, reasoning_effort,
@@ -70,6 +73,10 @@ export function createLlmSettingsRepo(db: Queryable) {
       if (params.openai_model !== undefined) {
         setClauses.push(`openai_model = $${paramIndex++}`);
         values.push(params.openai_model);
+      }
+      if (params.deep_summary_enabled !== undefined) {
+        setClauses.push(`deep_summary_enabled = $${paramIndex++}`);
+        values.push(params.deep_summary_enabled);
       }
       if (params.claude_subscription_enabled !== undefined) {
         setClauses.push(`claude_subscription_enabled = $${paramIndex++}`);
@@ -114,6 +121,7 @@ export function createLlmSettingsRepo(db: Queryable) {
          SET ${setClauses.join(", ")}, updated_at = now()
          WHERE id = 1
          RETURNING id, provider, anthropic_model, openai_model,
+                   deep_summary_enabled,
                    claude_subscription_enabled, claude_triage_thinking,
                    claude_calls_per_hour, codex_subscription_enabled,
                    codex_calls_per_hour, reasoning_effort,

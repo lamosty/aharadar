@@ -406,6 +406,12 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
 
     const llmSettings = await db.llmSettings.get();
     const llmConfig = buildLlmRuntimeConfig(llmSettings);
+    const digestLimits: { maxItems: number; deepSummaryMaxCalls?: number } = {
+      maxItems: digestMaxItems,
+    };
+    if (!llmSettings.deep_summary_enabled) {
+      digestLimits.deepSummaryMaxCalls = 0;
+    }
 
     const digest = await persistDigestFromContentItems({
       db,
@@ -414,7 +420,7 @@ export async function adminRunNowCommand(args: string[] = []): Promise<void> {
       windowStart,
       windowEnd,
       mode: env.defaultTier,
-      limits: { maxItems: digestMaxItems },
+      limits: digestLimits,
       filter: ingestFilter,
       llmConfig,
     });
@@ -690,6 +696,17 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
 
     const llmSettings = await db.llmSettings.get();
     const llmConfig = buildLlmRuntimeConfig(llmSettings);
+    const digestLimits: {
+      maxItems: number;
+      candidatePoolMax?: number;
+      deepSummaryMaxCalls?: number;
+    } = {
+      maxItems: digestMaxItems,
+      candidatePoolMax: opts.candidatePool ?? undefined,
+    };
+    if (!llmSettings.deep_summary_enabled) {
+      digestLimits.deepSummaryMaxCalls = 0;
+    }
 
     const digest = await persistDigestFromContentItems({
       db,
@@ -698,10 +715,7 @@ export async function adminDigestNowCommand(args: string[] = []): Promise<void> 
       windowStart,
       windowEnd,
       mode: env.defaultTier,
-      limits: {
-        maxItems: digestMaxItems,
-        candidatePoolMax: opts.candidatePool ?? undefined,
-      },
+      limits: digestLimits,
       filter:
         opts.sourceTypes.length > 0 || opts.sourceIds.length > 0
           ? {

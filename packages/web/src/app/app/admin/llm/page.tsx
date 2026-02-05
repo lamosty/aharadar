@@ -36,6 +36,7 @@ export default function AdminLlmPage() {
   const [provider, setProvider] = useState<LlmProvider>("openai");
   const [anthropicModel, setAnthropicModel] = useState("");
   const [openaiModel, setOpenaiModel] = useState("");
+  const [deepSummaryEnabled, setDeepSummaryEnabled] = useState(true);
   const [claudeCallsPerHour, setClaudeCallsPerHour] = useState(100);
   const [codexCallsPerHour, setCodexCallsPerHour] = useState(25);
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("none");
@@ -48,6 +49,7 @@ export default function AdminLlmPage() {
       setProvider(settings.provider);
       setAnthropicModel(settings.anthropicModel);
       setOpenaiModel(settings.openaiModel);
+      setDeepSummaryEnabled(settings.deepSummaryEnabled);
       setClaudeCallsPerHour(settings.claudeCallsPerHour);
       setCodexCallsPerHour(settings.codexCallsPerHour);
       setReasoningEffort(settings.reasoningEffort);
@@ -71,6 +73,7 @@ export default function AdminLlmPage() {
       provider,
       anthropicModel,
       openaiModel,
+      deepSummaryEnabled,
       // Enable subscription flags based on provider selection
       claudeSubscriptionEnabled: provider === "claude-subscription",
       claudeTriageThinking: false,
@@ -89,6 +92,7 @@ export default function AdminLlmPage() {
     (provider !== settings.provider ||
       anthropicModel !== settings.anthropicModel ||
       openaiModel !== settings.openaiModel ||
+      deepSummaryEnabled !== settings.deepSummaryEnabled ||
       claudeCallsPerHour !== settings.claudeCallsPerHour ||
       codexCallsPerHour !== settings.codexCallsPerHour ||
       reasoningEffort !== settings.reasoningEffort ||
@@ -287,6 +291,23 @@ export default function AdminLlmPage() {
             </div>
           </div>
         )}
+
+        {/* Deep Summary Toggle */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t("admin.llm.deepSummary")}</h2>
+          <p className={styles.sectionDescription}>{t("admin.llm.deepSummaryDescription")}</p>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={deepSummaryEnabled}
+              onChange={(e) => setDeepSummaryEnabled(e.target.checked)}
+              className={styles.checkbox}
+              disabled={isSaving}
+            />
+            <span>{t("admin.llm.deepSummaryEnabled")}</span>
+          </label>
+          <p className={styles.hint}>{t("admin.llm.deepSummaryHint")}</p>
+        </div>
 
         {/* Batch Triage Settings */}
         <div className={styles.section}>

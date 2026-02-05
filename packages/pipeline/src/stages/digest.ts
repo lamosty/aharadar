@@ -1886,6 +1886,7 @@ export async function persistDigestFromContentItems(params: {
     summaryGuidance: aiGuidance.summary_prompt || undefined,
     candidates: enrichCandidates,
     limits: enrichLimits,
+    llmConfig: params.llmConfig,
   });
 
   // =========================================================================

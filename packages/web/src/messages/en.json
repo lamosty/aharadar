@@ -477,6 +477,10 @@
         "high": "High - 4000 tokens"
       },
       "reasoningTokenNote": "Higher reasoning effort requires more output tokens. Token budget is automatically adjusted based on this setting. Use 'None' for budget-friendly non-reasoning models.",
+      "deepSummary": "Deep Summaries",
+      "deepSummaryDescription": "Generate richer per-item summaries. Uses additional LLM calls.",
+      "deepSummaryEnabled": "Enable deep summaries",
+      "deepSummaryHint": "If disabled, items fall back to the triage reason as the summary line.",
       "batchTriage": "Batch Triage",
       "batchTriageDescription": "Process multiple items in a single API call to reduce costs (10-15x fewer calls).",
       "batchTriageEnabled": "Enable batch triage processing",

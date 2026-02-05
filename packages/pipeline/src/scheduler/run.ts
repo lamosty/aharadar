@@ -40,7 +40,7 @@ export interface PipelineRunParams {
   // catch_up mode removed per task-121; now uses only BudgetTier values
   mode?: BudgetTier;
   /** Optional digest overrides (mostly for manual/admin runs) */
-  digest?: { maxItems?: number };
+  digest?: { maxItems?: number; deepSummaryEnabled?: boolean };
   /** Budget config (optional; if not provided, paid calls are always allowed) */
   budget?: {
     monthlyCredits: number;
@@ -220,6 +220,20 @@ export async function runPipelineOnce(
   const budgetScale = computeBudgetScale(creditsStatus);
   const effectivePlan =
     budgetScale.scale < 1 ? applyBudgetScale(usagePlan, budgetScale.scale) : usagePlan;
+  const deepSummaryEnabled = params.digest?.deepSummaryEnabled ?? true;
+  const finalPlan = deepSummaryEnabled
+    ? effectivePlan
+    : { ...effectivePlan, deepSummaryMaxCalls: 0 };
+
+  if (!deepSummaryEnabled && effectivePlan.deepSummaryMaxCalls > 0) {
+    log.info(
+      {
+        topicId: params.topicId.slice(0, 8),
+        previousMaxCalls: effectivePlan.deepSummaryMaxCalls,
+      },
+      "Deep summaries disabled for this run",
+    );
+  }
 
   if (budgetScale.scale < 1) {
     log.info(
@@ -229,9 +243,9 @@ export async function runPipelineOnce(
         scale: budgetScale.scale,
         reason: budgetScale.reason,
         plan: {
-          digestMaxItems: effectivePlan.digestMaxItems,
-          triageMaxCalls: effectivePlan.triageMaxCalls,
-          deepSummaryMaxCalls: effectivePlan.deepSummaryMaxCalls,
+          digestMaxItems: finalPlan.digestMaxItems,
+          triageMaxCalls: finalPlan.triageMaxCalls,
+          deepSummaryMaxCalls: finalPlan.deepSummaryMaxCalls,
         },
       },
       "Budget warning: scaling digest plan",
@@ -245,7 +259,7 @@ export async function runPipelineOnce(
       depth: digestDepth,
       sources: enabledSourceCount,
       usageScale,
-      plan: effectivePlan,
+      plan: finalPlan,
     },
     "Compiled digest plan",
   );
@@ -348,7 +362,7 @@ export async function runPipelineOnce(
       dedupe,
       cluster,
       digest: null,
-      digestPlan: effectivePlan,
+      digestPlan: finalPlan,
       creditsStatus,
       digestSkippedDueToCredits: true,
     };
@@ -437,7 +451,7 @@ export async function runPipelineOnce(
   }
 
   // Use plan's digestMaxItems, unless explicitly overridden in params
-  const effectiveMaxItems = params.digest?.maxItems ?? effectivePlan.digestMaxItems;
+  const effectiveMaxItems = params.digest?.maxItems ?? finalPlan.digestMaxItems;
 
   const digest = await persistDigestFromContentItems({
     db,
@@ -448,9 +462,9 @@ export async function runPipelineOnce(
     mode: digestMode,
     limits: {
       maxItems: effectiveMaxItems,
-      triageMaxCalls: effectivePlan.triageMaxCalls,
-      candidatePoolMax: effectivePlan.candidatePoolMax,
-      deepSummaryMaxCalls: effectivePlan.deepSummaryMaxCalls,
+      triageMaxCalls: finalPlan.triageMaxCalls,
+      candidatePoolMax: finalPlan.candidatePoolMax,
+      deepSummaryMaxCalls: finalPlan.deepSummaryMaxCalls,
     },
     filter: params.ingestFilter,
     paidCallsAllowed,
@@ -468,7 +482,7 @@ export async function runPipelineOnce(
     dedupe,
     cluster,
     digest,
-    digestPlan: effectivePlan,
+    digestPlan: finalPlan,
     creditsStatus,
   };
 }
