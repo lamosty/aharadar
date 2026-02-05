@@ -913,7 +913,9 @@
         "tradingSetupReview": "Trading setup review",
         "insiderPolicyNetwork": "Insider + policy network",
         "aiBullishBearish": "AI bullish vs bearish case",
-        "valueInvestorBestBuy": "Value investor best buy"
+        "valueInvestorBestBuy": "Value investor best buy",
+        "wsbHighRiskPlaybook": "WSB high-risk playbook",
+        "ultimateStockPlaybook": "Ultimate stock playbook"
       },
       "promptLens": "Prompt lens",
       "promptLensOptions": {
@@ -926,7 +928,7 @@
       "promptText": "Prompt text",
       "promptLensResolved": "Resolved lens: {lens}",
       "promptReset": "Reset to template",
-      "promptHint": "Use investing/trading/insider/value goals for crash-vs-fundamentals ranking, scenario playbooks, and evidence checks.",
+      "promptHint": "Use investing/trading/insider/value/ultimate goals for crash-vs-fundamentals ranking, scenario playbooks, and evidence checks.",
       "datePresets": {
         "today": "Today",
         "since2d": "Since 2d ago",

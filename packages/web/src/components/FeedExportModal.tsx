@@ -36,7 +36,9 @@ type PromptGoal =
   | "trading_setup_review"
   | "insider_policy_network"
   | "ai_bullish_bearish"
-  | "value_investor_best_buy";
+  | "value_investor_best_buy"
+  | "wsb_high_risk_playbook"
+  | "ultimate_stock_playbook";
 type PromptLens = "auto" | "investing" | "trading" | "tech" | "general";
 type ResolvedPromptLens = Exclude<PromptLens, "auto">;
 
@@ -167,6 +169,10 @@ function buildPromptTemplate(params: {
       "Build a balanced AI bull-vs-bear case: quantify strongest upside thesis, strongest downside thesis, key assumptions on each side, and what evidence would flip the conclusion.",
     value_investor_best_buy:
       "Build a value-investor ranking of best buy candidates during this selloff: compare valuation, balance-sheet strength, cash-flow quality, insider activity, execution credibility, and policy/network risk. Emphasize where price drawdown appears larger than verified fundamental deterioration.",
+    wsb_high_risk_playbook:
+      "Build a WallStreetBets-style high-risk playbook: identify asymmetric upside setups (squeeze potential, momentum, near-term catalysts), but keep strict risk controls and explicit invalidation triggers.",
+    ultimate_stock_playbook:
+      "Build an ultimate stock playbook that combines value, trading setup quality, insider/policy network factors, and AI bull-vs-bear framing into one ranked list with clear short-term and long-term tracks.",
   };
 
   const goalSpecificRequirementLines: Record<PromptGoal, string[]> = {
@@ -184,6 +190,14 @@ function buildPromptTemplate(params: {
       "6. Rank candidates by drawdown severity versus verified fundamental damage.",
       "7. Separate short-term rebound setups from long-term value theses.",
     ],
+    wsb_high_risk_playbook: [
+      "6. For WSB mode, include max-loss guardrails and a clear warning that this is speculative/high-variance.",
+      "7. Distinguish catalyst-driven trades from unsupported hype.",
+    ],
+    ultimate_stock_playbook: [
+      "6. Combine and weight: valuation, fundamentals, insider/policy links, and technical/catalyst setup quality.",
+      "7. Split final picks into short-term tactical and long-term conviction buckets.",
+    ],
   };
 
   const goalSpecificOutputSections: Record<PromptGoal, string[]> = {
@@ -198,6 +212,14 @@ function buildPromptTemplate(params: {
     value_investor_best_buy: [
       "- Crash vs fundamentals table (drawdown, fundamentals delta, confidence)",
       "- Ranked opportunities: short-term rebound vs long-term value",
+    ],
+    wsb_high_risk_playbook: [
+      "- Speculative setup board (catalyst, squeeze potential, invalidation, risk budget)",
+      "- High-risk warnings and failure modes",
+    ],
+    ultimate_stock_playbook: [
+      "- Composite scorecard (value + quality + insider/policy + setup strength)",
+      "- Final ranked list: tactical (short-term) and conviction (long-term)",
     ],
   };
 
@@ -625,6 +647,12 @@ export function FeedExportModal({
               </option>
               <option value="value_investor_best_buy">
                 {t("feed.export.promptGoals.valueInvestorBestBuy")}
+              </option>
+              <option value="wsb_high_risk_playbook">
+                {t("feed.export.promptGoals.wsbHighRiskPlaybook")}
+              </option>
+              <option value="ultimate_stock_playbook">
+                {t("feed.export.promptGoals.ultimateStockPlaybook")}
               </option>
             </select>
           </div>
