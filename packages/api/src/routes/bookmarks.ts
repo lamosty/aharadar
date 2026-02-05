@@ -135,13 +135,13 @@ export async function bookmarksRoutes(fastify: FastifyInstance): Promise<void> {
            ci.id::text as id,
            ci.title,
            ci.body_text,
-           ci.url,
+           ci.canonical_url as url,
            ci.external_id,
            ci.author,
            ci.published_at::text as published_at,
            ci.source_type,
            cis.source_id::text as source_id,
-           ci.metadata,
+           ci.metadata_json as metadata,
            b.created_at::text as bookmarked_at
          from content_items ci
          join bookmarks b on b.content_item_id = ci.id
