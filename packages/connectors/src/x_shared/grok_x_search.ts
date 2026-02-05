@@ -39,24 +39,24 @@ export interface GrokXSearchResult {
   inputTokens?: number;
   outputTokens?: number;
   /**
-   * Best-effort parse of the assistant's strict-JSON output (Responses or Chat Completions).
-   * When present, callers can inspect `results`/`error` without re-parsing.
+   * Best-effort parse of the assistant's delimiter output (Responses or Chat Completions).
+   * When present, callers can inspect `results` without re-parsing.
    */
   assistantJson?: Record<string, unknown>;
-  /** True if assistant text existed but JSON parsing failed. */
+  /** True if assistant text existed but parsing failed. */
   assistantParseError?: boolean;
-  /** True if emit_results function call was present. */
-  emitResultsPresent?: boolean;
-  /** True if emit_results arguments failed to parse. */
-  emitResultsParseError?: boolean;
-  /** emit_results arguments snippets (debug). */
-  emitResultsArgsHead?: string;
-  emitResultsArgsTail?: string;
-  emitResultsArgsLength?: number;
   /** Debug snippets when parse fails. */
   assistantTextHead?: string;
   assistantTextTail?: string;
   assistantTextLength?: number;
+  /** Line parse stats for delimiter format. */
+  lineStats?: {
+    linesTotal: number;
+    linesValid: number;
+    linesInvalid: number;
+    missingTimestamp: number;
+    missingHandle: number;
+  };
   structuredError?: { code: string; message: string | null };
 }
 
@@ -148,76 +148,115 @@ function extractAssistantContent(response: unknown): string | null {
   return null;
 }
 
-function extractFunctionCallArguments(response: unknown, name: string): string | null {
-  const rec = asRecord(response);
-  const output = rec.output;
-  if (!Array.isArray(output)) return null;
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const it = item as Record<string, unknown>;
-    if (it.type !== "function_call") continue;
-    if (it.name !== name) continue;
-    const args = it.arguments;
-    if (typeof args === "string" && args.length > 0) return args;
-    if (args && typeof args === "object" && !Array.isArray(args)) {
-      return JSON.stringify(args);
+type GrokLineParseStats = {
+  linesTotal: number;
+  linesValid: number;
+  linesInvalid: number;
+  missingTimestamp: number;
+  missingHandle: number;
+};
+
+type GrokLineResult = {
+  id?: string | null;
+  date?: string | null;
+  url?: string | null;
+  text: string;
+  user_handle?: string | null;
+  user_display_name?: string | null;
+};
+
+function normalizeNullable(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.toUpperCase() === "NULL") return null;
+  return trimmed;
+}
+
+function normalizeTextField(value: string): string {
+  return value.replace(/\\n/g, " ").replace(/\\t/g, "\t").replace(/\s+/g, " ").trim();
+}
+
+function parsePostLines(text: string): { results: GrokLineResult[]; stats: GrokLineParseStats } {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const stats: GrokLineParseStats = {
+    linesTotal: lines.length,
+    linesValid: 0,
+    linesInvalid: 0,
+    missingTimestamp: 0,
+    missingHandle: 0,
+  };
+
+  const results: GrokLineResult[] = [];
+
+  for (const line of lines) {
+    if (!line.startsWith("POST")) {
+      stats.linesInvalid += 1;
+      continue;
     }
-    return null;
-  }
-  return null;
-}
 
-function tryParseJsonObject(text: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    if (Array.isArray(parsed)) {
-      return { results: parsed };
+    const rest = line.slice(4).replace(/^\s+/, "");
+    const parts = rest.split("\t");
+    if (parts.length < 3) {
+      stats.linesInvalid += 1;
+      continue;
     }
-    if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
-    return null;
-  } catch {
-    return null;
-  }
-}
 
-function stripMarkdownFence(text: string): string {
-  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  return match ? (match[1]?.trim() ?? "") : text;
-}
+    const rawTimestamp = normalizeNullable(parts[0] ?? null);
+    const rawHandle = normalizeNullable(parts[1] ?? null);
 
-function extractBracketedChunk(text: string, open: string, close: string): string | null {
-  const start = text.indexOf(open);
-  const end = text.lastIndexOf(close);
-  if (start === -1 || end === -1 || end <= start) return null;
-  return text.slice(start, end + 1);
-}
+    let rawUrl: string | null = null;
+    let rawText = "";
+    if (parts.length >= 4) {
+      rawUrl = normalizeNullable(parts[2] ?? null);
+      rawText = parts.slice(3).join("\t");
+    } else {
+      rawText = parts.slice(2).join("\t");
+    }
 
-function parseAssistantJsonFromText(text: string): Record<string, unknown> | null {
-  const stripped = stripMarkdownFence(text)
-    .replace(/^\uFEFF/, "")
-    .trim();
-  const direct = tryParseJsonObject(stripped);
-  if (direct) return direct;
+    const textValue = normalizeTextField(rawText);
+    if (!textValue) {
+      stats.linesInvalid += 1;
+      continue;
+    }
 
-  const arrayChunk = extractBracketedChunk(stripped, "[", "]");
-  if (arrayChunk) {
-    const parsed = tryParseJsonObject(arrayChunk);
-    if (parsed) return parsed;
-  }
+    if (!rawTimestamp) stats.missingTimestamp += 1;
+    if (!rawHandle) stats.missingHandle += 1;
 
-  const objectChunk = extractBracketedChunk(stripped, "{", "}");
-  if (objectChunk) {
-    const parsed = tryParseJsonObject(objectChunk);
-    if (parsed) return parsed;
+    const handleValue =
+      rawHandle && rawHandle.startsWith("@") ? rawHandle : rawHandle ? `@${rawHandle}` : null;
+
+    results.push({
+      id: null,
+      date: rawTimestamp,
+      url: rawUrl,
+      text: textValue,
+      user_handle: handleValue,
+      user_display_name: null,
+    });
+    stats.linesValid += 1;
   }
 
-  return null;
+  return { results, stats };
 }
 
 function extractStructuredErrorCodeFromText(
   text: string,
 ): { code: string; message: string | null } | null {
-  const obj = parseAssistantJsonFromText(text);
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{")) return null;
+  let obj: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      obj = parsed as Record<string, unknown>;
+  } catch {
+    obj = null;
+  }
   if (!obj) return null;
   const err = obj.error;
   if (!err || typeof err !== "object" || Array.isArray(err)) return null;
@@ -359,49 +398,6 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   // external_id handles any overlap from fetching slightly beyond the window.
   const queryWithDates = fromDate ? `${params.query} since:${fromDate}` : params.query;
 
-  const emitResultsSchema = {
-    type: "object",
-    additionalProperties: false,
-    required: ["results"],
-    properties: {
-      results: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["id", "date", "url", "text", "user_handle", "user_display_name"],
-          properties: {
-            id: { type: "string" },
-            date: { type: ["string", "null"] },
-            url: { type: ["string", "null"] },
-            text: { type: "string" },
-            user_handle: { type: ["string", "null"] },
-            user_display_name: { type: ["string", "null"] },
-            metrics: {
-              type: "object",
-              additionalProperties: false,
-              required: ["reply_count", "repost_count", "like_count", "quote_count", "view_count"],
-              properties: {
-                reply_count: { type: "number" },
-                repost_count: { type: "number" },
-                like_count: { type: "number" },
-                quote_count: { type: "number" },
-                view_count: { type: "number" },
-              },
-            },
-          },
-        },
-      },
-    },
-  };
-
-  const emitResultsTool = {
-    type: "function",
-    name: "emit_results",
-    description: "Return structured X post results",
-    parameters: emitResultsSchema,
-  };
-
   const tools = enableXSearchTool
     ? [
         {
@@ -410,9 +406,8 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
             ? { allowed_x_handles: params.allowedXHandles }
             : {}),
         },
-        emitResultsTool,
       ]
-    : [emitResultsTool];
+    : undefined;
 
   const startedAt = Date.now();
   // System prompt optimized for canonical data + token safety
@@ -424,19 +419,17 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
       ? `\nThis query covers ${groupSize} accounts. Aim for ~${perAccountTarget} results per account, distributed fairly across all accounts.`
       : "";
   const systemPrompt = `Use the x_search tool to fetch real posts.
-Then call the emit_results function with a JSON object containing a "results" array.
-Do NOT output any normal assistant message or prose.
-If the x_search tool is unavailable or returns no posts, call emit_results with {"results": []}.
-Do NOT fabricate. If a field is unavailable from the tool results, use null.
+Then output ONLY plain text lines. No JSON, no markdown, no prose.
+Each line must start with "POST" and use TAB separators:
+POST<TAB>timestamp<TAB>@handle<TAB>url<TAB>text
 
-Each result object MUST include:
-- id (string, digits): the status ID
-- date (string|null): prefer ISO 8601 UTC timestamp (e.g. 2026-01-08T05:23:00Z). If only day-level is available, use YYYY-MM-DD.
-- url (string|null): status URL (https://x.com/<handle>/status/<id> or twitter.com). If tool doesn't provide url but you have id + user_handle, construct it.
-- text (string): post text, <= ${maxTextChars} chars, no newlines (truncate with "..." if needed)
-- user_handle (string|null): handle (with or without "@")
-- user_display_name (string|null): display name shown on profile
-- metrics (optional object): include ONLY if the tool provides counts; keys reply_count, repost_count, like_count, quote_count, view_count (all numbers)
+Rules:
+- One post per line, no blank lines.
+- timestamp: ISO 8601 UTC preferred (e.g., 2026-01-08T05:23:00Z). If unknown, output NULL.
+- handle: include @ if available; if unknown, output NULL.
+- url: status URL if available; else NULL.
+- text: single line, <= ${maxTextChars} chars; replace newlines with spaces.
+- If a field is unavailable, output NULL (literal).
 
 Ordering: newest first. Return at most the requested limit.${batchingHint}
 
@@ -460,8 +453,7 @@ Light filtering (cost + quality):
           `Return up to ${params.limit} results.`,
       },
     ],
-    ...(tools ? { tools } : {}),
-    tool_choice: "required",
+    ...(tools ? { tools, tool_choice: "required" } : {}),
     temperature: 0,
     stream: false,
     max_output_tokens: maxTokens,
@@ -507,21 +499,20 @@ Light filtering (cost + quality):
   const usage = extractUsageTokens(response);
   const assistantText = extractAssistantContent(response);
   const assistantTextInfo = assistantText ? buildAssistantTextSnippets(assistantText) : null;
-  const emitArgs = extractFunctionCallArguments(response, "emit_results");
-  const emitArgsInfo = emitArgs ? buildAssistantTextSnippets(emitArgs) : null;
-  const emitResultsPresent = Boolean(emitArgs);
+
   let assistantJson: Record<string, unknown> | undefined;
-  let emitResultsParseError = false;
-  if (emitArgs) {
-    const parsedArgs = tryParseJsonObject(emitArgs);
-    if (parsedArgs) {
-      assistantJson = parsedArgs;
-    } else {
-      emitResultsParseError = true;
-    }
+  let lineStats: GrokLineParseStats | undefined;
+  let assistantParseError = false;
+
+  if (assistantText) {
+    const parsed = parsePostLines(assistantText);
+    assistantJson = { results: parsed.results };
+    lineStats = parsed.stats;
+    assistantParseError = parsed.stats.linesTotal > 0 ? parsed.stats.linesValid === 0 : false;
+  } else {
+    assistantParseError = true;
   }
 
-  const assistantParseError = emitResultsPresent ? emitResultsParseError : true;
   const structuredError = assistantText
     ? (extractStructuredErrorCodeFromText(assistantText) ?? undefined)
     : undefined;
@@ -533,14 +524,10 @@ Light filtering (cost + quality):
     outputTokens: usage?.outputTokens,
     assistantJson,
     assistantParseError,
-    emitResultsPresent,
-    emitResultsParseError,
-    emitResultsArgsHead: emitArgsInfo?.head,
-    emitResultsArgsTail: emitArgsInfo?.tail,
-    emitResultsArgsLength: emitArgsInfo?.length,
     assistantTextHead: assistantTextInfo?.head,
     assistantTextTail: assistantTextInfo?.tail,
     assistantTextLength: assistantTextInfo?.length,
+    lineStats,
     structuredError,
   };
 }

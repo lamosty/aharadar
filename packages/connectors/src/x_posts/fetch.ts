@@ -221,11 +221,11 @@ function extractPostRawItems(params: {
       windowEnd: params.windowEnd,
       // New fields from updated prompt
       id: asString(r.id),
-      date: asString(r.date),
+      date: asString(r.date) ?? params.windowEnd,
       url: asString(r.url),
       text: asString(r.text),
       text_b64: asString(r.text_b64) ?? asString(r.textB64),
-      user_handle: asString(r.user_handle),
+      user_handle: asString(r.user_handle) ?? (asString(r.url) ? null : "@unknown"),
       user_display_name: asString(r.user_display_name),
       ...(metrics ? { metrics } : {}),
     });
@@ -394,13 +394,7 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
             assistant_text_length: result.assistantTextLength,
           }
         : {};
-      const emitResultsMeta = {
-        emit_results_present: result.emitResultsPresent ?? false,
-        emit_results_parse_error: result.emitResultsParseError ?? false,
-        emit_results_args_head: result.emitResultsArgsHead,
-        emit_results_args_tail: result.emitResultsArgsTail,
-        emit_results_args_length: result.emitResultsArgsLength,
-      };
+      const lineStats = result.lineStats;
 
       providerCalls.push({
         userId: params.userId,
@@ -422,7 +416,11 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           results_count: resultsCount,
           tool_error_code: toolErrorCode,
           assistant_parse_error: result.assistantParseError ?? false,
-          ...emitResultsMeta,
+          lines_total: lineStats?.linesTotal ?? 0,
+          lines_valid: lineStats?.linesValid ?? 0,
+          lines_invalid: lineStats?.linesInvalid ?? 0,
+          missing_timestamp_count: lineStats?.missingTimestamp ?? 0,
+          missing_handle_count: lineStats?.missingHandle ?? 0,
           ...parseMeta,
           maxSearchCallsPerRun,
           // Batching experiment metadata

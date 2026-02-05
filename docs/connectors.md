@@ -1023,6 +1023,9 @@ Notes:
 
 - Use the provider client (e.g., Grok) to search for posts matching the compiled queries.
 - The fetch function returns `rawItems` **one per post** (not bundles).
+- Provider output is **plain text lines** (not JSON) to maximize reliability:
+  - One post per line: `POST<TAB>timestamp<TAB>@handle<TAB>url<TAB>text`
+  - Missing fields are encoded as `NULL` and salvaged downstream.
 - Respect `limits.maxItems` as the total cap across all queries.
 
 **Normalize**
@@ -1035,7 +1038,7 @@ Each post becomes one `ContentItemDraft`:
 - `title`: `null` (short-form content)
 - `body_text`: post text excerpt (no paraphrasing)
 - `author`: `@<handle>` when parseable
-- `published_at`: best-effort; keep `null` if only a day bucket is available (do not fabricate a timestamp)
+- `published_at`: best-effort; prefer actual post timestamp if provided, else snowflake decode, else **fallback to the run window end** to avoid dropping paid results
 - `metadata_json`:
   - `vendor`: the vendor adapter used (e.g., `"grok"`)
   - `query`: the query string used for this fetch
