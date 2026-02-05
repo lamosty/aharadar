@@ -13,6 +13,7 @@ import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
 import type { SortOption } from "./FeedFilterBar";
 import styles from "./FeedItem.module.css";
+import { getPrimaryLinkUrl } from "./linkUtils";
 import { ScoreDebugTooltip } from "./ScoreDebugTooltip";
 import { XAccountHealthNudge } from "./XAccountHealthNudge";
 
@@ -166,32 +167,9 @@ interface SourceSecondaryInfo {
   /** Comment count if available */
   commentCount?: number;
 }
-
 /**
  * Get source-specific secondary info for the second line of source display
  */
-/**
- * Get the primary link URL for an item (title/body click target).
- * For Reddit: link to comments (Reddit posts often link to images/external sites)
- * For HN: link to original article (comments are accessed via comments button)
- * For others: link to original URL
- */
-function getPrimaryLinkUrl(
-  sourceType: string,
-  originalUrl: string | null | undefined,
-  metadata: Record<string, unknown> | null | undefined,
-  _externalId: string | null | undefined,
-): string | null {
-  // Reddit: prefer permalink (comments) over original URL
-  // Reddit posts often link to images or external sites, comments are more useful
-  if (sourceType === "reddit" && metadata?.permalink) {
-    const permalink = metadata.permalink as string;
-    return permalink.startsWith("http") ? permalink : `https://www.reddit.com${permalink}`;
-  }
-
-  // HN and all others: use original URL (comments accessed via comments button)
-  return originalUrl || null;
-}
 
 /**
  * Abbreviate scoring mode name for badge display
@@ -539,12 +517,12 @@ export function FeedItem({
   const expandedBodyText = bodyText ? truncateText(bodyText, 600) : null;
 
   // Get primary link URL (comments for Reddit/HN, original for others)
-  const primaryLinkUrl = getPrimaryLinkUrl(
-    item.item.sourceType,
-    item.item.url,
-    item.item.metadata,
-    item.item.externalId,
-  );
+  const primaryLinkUrl = getPrimaryLinkUrl({
+    sourceType: item.item.sourceType,
+    originalUrl: item.item.url,
+    metadata: item.item.metadata,
+    clusterItems: item.clusterItems,
+  });
 
   // Get secondary info for expanded metadata
   const secondaryInfo = getSourceSecondaryInfo(
@@ -580,7 +558,10 @@ export function FeedItem({
             <button
               type="button"
               className={styles.summaryReadyBadge}
-              onClick={() => onViewSummary?.(item, summary)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewSummary?.(item, summary);
+              }}
             >
               AI
             </button>
@@ -595,6 +576,7 @@ export function FeedItem({
               target="_blank"
               rel="noopener noreferrer"
               className={styles.scanTitleLink}
+              onClick={(e) => e.stopPropagation()}
             >
               {getDisplayTitle(item)}
             </a>

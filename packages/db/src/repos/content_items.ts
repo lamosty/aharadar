@@ -65,7 +65,7 @@ export function createContentItemsRepo(db: Queryable) {
        )
        on conflict (source_id, external_id) where external_id is not null
        do update set
-         canonical_url = excluded.canonical_url,
+         canonical_url = coalesce(excluded.canonical_url, content_items.canonical_url),
          title = excluded.title,
          body_text = excluded.body_text,
          author = excluded.author,

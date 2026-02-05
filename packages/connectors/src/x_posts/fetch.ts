@@ -225,7 +225,7 @@ function extractPostRawItems(params: {
       url: asString(r.url),
       text: asString(r.text),
       text_b64: asString(r.text_b64) ?? asString(r.textB64),
-      user_handle: asString(r.user_handle) ?? (asString(r.url) ? null : "@unknown"),
+      user_handle: asString(r.user_handle),
       user_display_name: asString(r.user_display_name),
       ...(metrics ? { metrics } : {}),
     });
@@ -421,6 +421,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           lines_invalid: lineStats?.linesInvalid ?? 0,
           missing_timestamp_count: lineStats?.missingTimestamp ?? 0,
           missing_handle_count: lineStats?.missingHandle ?? 0,
+          missing_url_count: lineStats?.missingUrl ?? 0,
+          missing_status_id_count: lineStats?.missingStatusId ?? 0,
           ...parseMeta,
           maxSearchCallsPerRun,
           // Batching experiment metadata

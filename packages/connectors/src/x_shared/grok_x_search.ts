@@ -56,6 +56,8 @@ export interface GrokXSearchResult {
     linesInvalid: number;
     missingTimestamp: number;
     missingHandle: number;
+    missingUrl: number;
+    missingStatusId: number;
   };
   structuredError?: { code: string; message: string | null };
 }
@@ -154,6 +156,8 @@ type GrokLineParseStats = {
   linesInvalid: number;
   missingTimestamp: number;
   missingHandle: number;
+  missingUrl: number;
+  missingStatusId: number;
 };
 
 type GrokLineResult = {
@@ -177,6 +181,14 @@ function normalizeTextField(value: string): string {
   return value.replace(/\\n/g, " ").replace(/\\t/g, "\t").replace(/\s+/g, " ").trim();
 }
 
+function looksLikeStatusId(value: string | null): value is string {
+  return typeof value === "string" && /^\d{5,25}$/.test(value);
+}
+
+function looksLikeHttpUrl(value: string | null): value is string {
+  return typeof value === "string" && /^https?:\/\//i.test(value);
+}
+
 function parsePostLines(text: string): { results: GrokLineResult[]; stats: GrokLineParseStats } {
   const lines = text
     .split(/\r?\n/)
@@ -189,6 +201,8 @@ function parsePostLines(text: string): { results: GrokLineResult[]; stats: GrokL
     linesInvalid: 0,
     missingTimestamp: 0,
     missingHandle: 0,
+    missingUrl: 0,
+    missingStatusId: 0,
   };
 
   const results: GrokLineResult[] = [];
@@ -209,9 +223,31 @@ function parsePostLines(text: string): { results: GrokLineResult[]; stats: GrokL
     const rawTimestamp = normalizeNullable(parts[0] ?? null);
     const rawHandle = normalizeNullable(parts[1] ?? null);
 
+    let rawStatusId: string | null = null;
     let rawUrl: string | null = null;
     let rawText = "";
-    if (parts.length >= 4) {
+    if (parts.length >= 5) {
+      const third = normalizeNullable(parts[2] ?? null);
+      const fourth = normalizeNullable(parts[3] ?? null);
+      if (looksLikeStatusId(third) || third === null) {
+        // Preferred format:
+        // POST<TAB>timestamp<TAB>@handle<TAB>status_id<TAB>url<TAB>text
+        rawStatusId = third;
+        rawUrl = fourth;
+        rawText = parts.slice(4).join("\t");
+      } else if (looksLikeHttpUrl(third)) {
+        // Backward-compat with older format where the 3rd field is URL.
+        rawUrl = third;
+        rawText = parts.slice(3).join("\t");
+      } else if (looksLikeHttpUrl(fourth)) {
+        // Salvage: malformed status_id + valid URL in 4th field.
+        rawUrl = fourth;
+        rawText = parts.slice(4).join("\t");
+      } else {
+        rawUrl = third;
+        rawText = parts.slice(3).join("\t");
+      }
+    } else if (parts.length >= 4) {
       rawUrl = normalizeNullable(parts[2] ?? null);
       rawText = parts.slice(3).join("\t");
     } else {
@@ -226,12 +262,14 @@ function parsePostLines(text: string): { results: GrokLineResult[]; stats: GrokL
 
     if (!rawTimestamp) stats.missingTimestamp += 1;
     if (!rawHandle) stats.missingHandle += 1;
+    if (!rawUrl) stats.missingUrl += 1;
+    if (!rawStatusId) stats.missingStatusId += 1;
 
     const handleValue =
       rawHandle && rawHandle.startsWith("@") ? rawHandle : rawHandle ? `@${rawHandle}` : null;
 
     results.push({
-      id: null,
+      id: rawStatusId,
       date: rawTimestamp,
       url: rawUrl,
       text: textValue,
@@ -421,13 +459,14 @@ export async function grokXSearch(params: GrokXSearchParams): Promise<GrokXSearc
   const systemPrompt = `Use the x_search tool to fetch real posts.
 Then output ONLY plain text lines. No JSON, no markdown, no prose.
 Each line must start with "POST" and use TAB separators:
-POST<TAB>timestamp<TAB>@handle<TAB>url<TAB>text
+POST<TAB>timestamp<TAB>@handle<TAB>status_id<TAB>url<TAB>text
 
 Rules:
 - One post per line, no blank lines.
 - timestamp: ISO 8601 UTC preferred (e.g., 2026-01-08T05:23:00Z). If unknown, output NULL.
 - handle: include @ if available; if unknown, output NULL.
-- url: status URL if available; else NULL.
+- status_id: numeric status ID if available; else NULL.
+- url: status URL if available. If missing but you have handle+status_id, output https://x.com/<handle>/status/<status_id>. Else NULL.
 - text: single line, <= ${maxTextChars} chars; replace newlines with spaces.
 - If a field is unavailable, output NULL (literal).
 

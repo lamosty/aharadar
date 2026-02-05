@@ -36,6 +36,17 @@ export function parseXStatusUrl(url: string): { handle: string | null; statusId:
   return { handle: m[1] ?? null, statusId: m[2] ?? null };
 }
 
+function looksLikeStatusId(value: string | null): value is string {
+  return typeof value === "string" && /^\d{5,25}$/.test(value);
+}
+
+function buildCanonicalXStatusUrl(handle: string | null, statusId: string | null): string | null {
+  if (!looksLikeStatusId(statusId) || !handle) return null;
+  const normalized = normalizeHandle(handle);
+  if (!normalized) return null;
+  return `https://x.com/${normalized}/status/${statusId}`;
+}
+
 /**
  * Parse date/timestamp from Grok response.
  * Returns { full, dayOnly } where:
@@ -140,36 +151,53 @@ export async function normalizeXPosts(
   const dayBucket = asString(rec.day_bucket) ?? params.windowEnd.slice(0, 10);
 
   const url = asString(rec.url);
-  const canonicalUrl = url && looksLikeUrl(url) ? url : null;
+  const sourceUrl = url && looksLikeUrl(url) ? url : null;
+  const parsedSourceUrl = sourceUrl ? parseXStatusUrl(sourceUrl) : { handle: null, statusId: null };
+  const canonicalUrlFromSource =
+    sourceUrl &&
+    (buildCanonicalXStatusUrl(parsedSourceUrl.handle, parsedSourceUrl.statusId) ?? sourceUrl);
+
+  const rawStatusId = asString(rec.id);
+  const rawUserHandle = asString(rec.user_handle);
+  const normalizedRawHandle = rawUserHandle ? normalizeHandle(rawUserHandle) : null;
+
   const textBase64 = asString(rec.text_b64);
   const decodedText = textBase64 ? decodeBase64Text(textBase64) : null;
   const textRaw = decodedText ?? asString(rec.text);
   const bodyText = textRaw ? clampText(textRaw.replaceAll("\n", " ").trim(), 10_000) : null;
+  const allTextUrls = bodyText && bodyText.length > 0 ? extractUrlsFromText(bodyText) : [];
+  const statusUrlFromText =
+    allTextUrls.find((candidateUrl) => parseXStatusUrl(candidateUrl).statusId !== null) ?? null;
+  const parsedTextStatusUrl = statusUrlFromText
+    ? parseXStatusUrl(statusUrlFromText)
+    : { handle: null, statusId: null };
+  const canonicalUrlFromText =
+    statusUrlFromText &&
+    (buildCanonicalXStatusUrl(parsedTextStatusUrl.handle, parsedTextStatusUrl.statusId) ??
+      statusUrlFromText);
 
   // Parse date - may be full timestamp or day-only
   const dateInfo = parseGrokDate(rec.date);
 
-  // Get status ID from raw.id (new), URL, or fallback to hash
-  const rawStatusId = asString(rec.id);
-  const parsed = canonicalUrl ? parseXStatusUrl(canonicalUrl) : { handle: null, statusId: null };
-  const statusId = rawStatusId ?? parsed.statusId;
-
-  // Get handle from raw.user_handle (new) or URL
-  const rawUserHandle = asString(rec.user_handle);
-  const handle = rawUserHandle
-    ? normalizeHandle(rawUserHandle)
-    : parsed.handle
-      ? normalizeHandle(parsed.handle)
-      : null;
+  // Resolve status identity from best available fields (raw id/handle, URL, text URL).
+  const statusId = rawStatusId ?? parsedSourceUrl.statusId ?? parsedTextStatusUrl.statusId;
+  const handle =
+    normalizedRawHandle ??
+    (parsedSourceUrl.handle ? normalizeHandle(parsedSourceUrl.handle) : null) ??
+    (parsedTextStatusUrl.handle ? normalizeHandle(parsedTextStatusUrl.handle) : null);
+  const canonicalUrl =
+    canonicalUrlFromSource ?? buildCanonicalXStatusUrl(handle, statusId) ?? canonicalUrlFromText;
 
   // External ID: prefer status ID, else hash
   const fallbackKey = canonicalUrl ?? bodyText ?? "";
   const externalId = statusId ?? sha256Hex([vendor, query, dayBucket, fallbackKey].join("|"));
 
-  const extractedUrls =
-    bodyText && bodyText.length > 0
-      ? extractUrlsFromText(bodyText).filter((u) => (canonicalUrl ? u !== canonicalUrl : true))
-      : [];
+  const extractedUrls = allTextUrls.filter((u) => {
+    if (canonicalUrl && u === canonicalUrl) return false;
+    const parsedUrl = parseXStatusUrl(u);
+    if (statusId && parsedUrl.statusId === statusId) return false;
+    return true;
+  });
   const primaryUrl = extractedUrls[0] ?? canonicalUrl ?? null;
 
   // User display name from Grok response (e.g., "Elon Musk")

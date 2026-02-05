@@ -1,5 +1,17 @@
+import type { FetchParams } from "@aharadar/shared";
 import { describe, expect, it } from "vitest";
-import { parseXStatusUrl } from "./normalize";
+import { normalizeXPosts, parseXStatusUrl } from "./normalize";
+
+const baseParams: FetchParams = {
+  userId: "test-user",
+  sourceId: "test-source",
+  sourceType: "x_posts",
+  config: {},
+  cursor: {},
+  limits: { maxItems: 20 },
+  windowStart: "2026-02-05T00:00:00.000Z",
+  windowEnd: "2026-02-05T23:59:59.000Z",
+};
 
 describe("parseXStatusUrl", () => {
   it("parses x.com status URL", () => {
@@ -61,5 +73,62 @@ describe("parseXStatusUrl", () => {
   it("handles URL with query parameters", () => {
     const result = parseXStatusUrl("https://x.com/user/status/123456?s=20&t=abc");
     expect(result).toEqual({ handle: "user", statusId: "123456" });
+  });
+});
+
+describe("normalizeXPosts", () => {
+  it("reconstructs canonical URL from status id and handle when URL is missing", async () => {
+    const result = await normalizeXPosts(
+      {
+        vendor: "grok",
+        query: "from:aleabitoreddit",
+        day_bucket: "2026-02-05",
+        id: "2019405783562351021",
+        user_handle: "@aleabitoreddit",
+        url: null,
+        text: "Silver is crashing.",
+      },
+      baseParams,
+    );
+
+    expect(result.canonicalUrl).toBe("https://x.com/aleabitoreddit/status/2019405783562351021");
+    expect(result.externalId).toBe("2019405783562351021");
+    expect(result.author).toBe("@aleabitoreddit");
+    expect(result.metadata.post_url).toBe(
+      "https://x.com/aleabitoreddit/status/2019405783562351021",
+    );
+  });
+
+  it("normalizes twitter.com status URLs to x.com canonical URL", async () => {
+    const result = await normalizeXPosts(
+      {
+        vendor: "grok",
+        query: "from:user",
+        day_bucket: "2026-02-05",
+        url: "https://twitter.com/user/status/1234567890?s=20",
+        text: "Post text",
+      },
+      baseParams,
+    );
+
+    expect(result.canonicalUrl).toBe("https://x.com/user/status/1234567890");
+    expect(result.externalId).toBe("1234567890");
+    expect(result.author).toBe("@user");
+  });
+
+  it("extracts canonical status URL from text when url field is missing", async () => {
+    const result = await normalizeXPosts(
+      {
+        vendor: "grok",
+        query: "topic query",
+        day_bucket: "2026-02-05",
+        text: "Context https://x.com/foo/status/777777 and more context",
+      },
+      baseParams,
+    );
+
+    expect(result.canonicalUrl).toBe("https://x.com/foo/status/777777");
+    expect(result.externalId).toBe("777777");
+    expect(result.author).toBe("@foo");
   });
 });
