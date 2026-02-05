@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const webPort = process.env.PLAYWRIGHT_WEB_PORT ?? process.env.WEB_PORT ?? "3000";
+const baseURL = `http://localhost:${webPort}`;
+
 /**
  * Playwright configuration for @aharadar/web E2E tests.
  *
@@ -14,7 +17,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
@@ -24,8 +27,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000",
+    command: `WEB_PORT=${webPort} pnpm dev`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

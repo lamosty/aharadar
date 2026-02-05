@@ -5,12 +5,16 @@
  * - Feed item rendering with scores and timestamps
  * - Tooltip interactions (score badge, source tags)
  * - Feedback button tooltips
+ * - Link fallback and row click propagation behavior
+ * - Stable row-level visual baselines
  */
 
 import { expect, type Page, test } from "@playwright/test";
 
-// Mock data for feed items
-const mockFeedItems = [
+const FALLBACK_X_URL = "https://x.com/fallback_author/status/987654321";
+
+// Default mock data for feed items
+const defaultFeedItems: Array<Record<string, unknown>> = [
   {
     id: "feed-item-1",
     score: 0.72,
@@ -70,6 +74,89 @@ const mockFeedItems = [
   },
 ];
 
+const fallbackFeedItems: Array<Record<string, unknown>> = [
+  {
+    id: "feed-link-fallback",
+    score: 0.78,
+    rawScore: 0.82,
+    rank: 1,
+    digestId: "digest-fallback",
+    digestCreatedAt: "2026-01-08T10:00:00Z",
+    isNew: false,
+    item: {
+      title: "X post without canonical URL",
+      bodyText: "Representative item has no canonical URL.",
+      url: null,
+      externalId: "x-fallback-1",
+      author: "@fallback_author",
+      publishedAt: "2026-01-08T07:30:00Z",
+      sourceType: "x_posts",
+      sourceId: "source-x",
+      metadata: {},
+    },
+    triageJson: {
+      ai_score: 78,
+      reason: "Useful macro commentary",
+      topic: "Markets",
+    },
+    feedback: null,
+    clusterItems: [
+      {
+        id: "cluster-url-item",
+        title: "Cluster URL Source",
+        url: FALLBACK_X_URL,
+        sourceType: "x_posts",
+        author: "@fallback_author",
+        similarity: 0.95,
+      },
+      {
+        id: "cluster-no-url-item",
+        title: "Cluster Missing URL",
+        url: null,
+        sourceType: "reddit",
+        author: "RedditUser2",
+        similarity: 0.81,
+      },
+    ],
+    manualSummaryJson: {
+      schema_version: "deep_summary_v2",
+      prompt_id: "test-prompt",
+      provider: "test",
+      model: "test",
+      one_liner: "Concise one-liner",
+      bullets: ["First bullet"],
+    },
+  },
+  {
+    id: "feed-no-link",
+    score: 0.41,
+    rawScore: 0.5,
+    rank: 2,
+    digestId: "digest-fallback",
+    digestCreatedAt: "2026-01-08T10:00:00Z",
+    isNew: false,
+    item: {
+      title: "No Link Item",
+      bodyText: "No usable URL anywhere",
+      url: null,
+      externalId: "x-no-link-2",
+      author: "@nolink",
+      publishedAt: "2026-01-08T05:00:00Z",
+      sourceType: "x_posts",
+      sourceId: "source-x",
+      metadata: {},
+    },
+    triageJson: {
+      ai_score: 55,
+      reason: "Still relevant but lacks URL",
+      topic: "Markets",
+    },
+    feedback: null,
+    clusterItems: [],
+    manualSummaryJson: null,
+  },
+];
+
 const mockTopics = [
   {
     id: "topic-1",
@@ -83,7 +170,14 @@ const mockTopics = [
   },
 ];
 
-async function setupFeedMocks(page: Page) {
+async function setupFeedMocks(
+  page: Page,
+  options: {
+    items?: Array<Record<string, unknown>>;
+  } = {},
+) {
+  const items = options.items ?? defaultFeedItems;
+
   // Mock topics
   await page.route("**/api/topics**", async (route) => {
     await route.fulfill({
@@ -104,9 +198,9 @@ async function setupFeedMocks(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        items: mockFeedItems,
+        items,
         pagination: {
-          total: mockFeedItems.length,
+          total: items.length,
           limit: 20,
           offset: 0,
           hasMore: false,
@@ -131,6 +225,34 @@ async function setupFeedMocks(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({ ok: true }),
     });
+  });
+}
+
+async function gotoFeed(page: Page): Promise<void> {
+  await page.context().addCookies([
+    {
+      name: "BYPASS_AUTH",
+      value: "admin",
+      domain: "localhost",
+      path: "/",
+    },
+  ]);
+  await page.goto("/app/feed");
+  await page.waitForLoadState("networkidle");
+}
+
+async function preventAnchorNavigation(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    document.addEventListener(
+      "click",
+      (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest("a")) {
+          event.preventDefault();
+        }
+      },
+      true,
+    );
   });
 }
 
@@ -307,5 +429,112 @@ test.describe("Highlights View", () => {
     // Verify the API was called with sort=ai_score
     const aiScoreRequest = apiRequests.find((url) => url.includes("sort=ai_score"));
     expect(aiScoreRequest).toBeDefined();
+  });
+});
+
+test.describe("Feed Link Fallbacks", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupFeedMocks(page, { items: fallbackFeedItems });
+  });
+
+  test("title link uses cluster fallback when representative URL is missing", async ({ page }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    const titleLink = row.getByRole("link", { name: "X post without canonical URL", exact: true });
+
+    await expect(titleLink).toBeVisible();
+    await expect(titleLink).toHaveAttribute("href", FALLBACK_X_URL);
+  });
+
+  test("source label link uses the same fallback URL", async ({ page }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    const sourceLink = row.locator("a", { hasText: /^X$/ }).first();
+
+    await expect(sourceLink).toBeVisible();
+    await expect(sourceLink).toHaveAttribute("href", FALLBACK_X_URL);
+  });
+
+  test("clicking title link does not toggle row expansion", async ({ page }) => {
+    await gotoFeed(page);
+    await preventAnchorNavigation(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    const titleLink = row.getByRole("link", { name: "X post without canonical URL", exact: true });
+
+    await expect(row).not.toHaveClass(/scanItemExpanded/);
+    await titleLink.click();
+    await expect(row).not.toHaveClass(/scanItemExpanded/);
+  });
+
+  test("clicking AI badge does not toggle row expansion", async ({ page }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    const aiBadge = row.getByRole("button", { name: "AI", exact: true });
+
+    await expect(row).not.toHaveClass(/scanItemExpanded/);
+    await aiBadge.click();
+    await expect(row).not.toHaveClass(/scanItemExpanded/);
+  });
+
+  test("item without any recoverable URL renders plain text with no title link", async ({
+    page,
+  }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-no-link");
+
+    await expect(row.getByText("No Link Item")).toBeVisible();
+    await expect(row.getByRole("link", { name: "No Link Item", exact: true })).toHaveCount(0);
+  });
+
+  test("related sources link only URL-capable cluster items", async ({ page }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    await row.locator('[class*="scanRow"]').first().click();
+    await expect(row).toHaveClass(/scanItemExpanded/);
+
+    const clusterLink = row.getByRole("link", { name: "Cluster URL Source", exact: true });
+    await expect(clusterLink).toBeVisible();
+    await expect(clusterLink).toHaveAttribute("href", FALLBACK_X_URL);
+    await expect(row.getByText("Cluster Missing URL")).toBeVisible();
+    await expect(row.getByRole("link", { name: "Cluster Missing URL", exact: true })).toHaveCount(
+      0,
+    );
+  });
+});
+
+test.describe("Feed Visual Baselines", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupFeedMocks(page, { items: fallbackFeedItems });
+  });
+
+  test("collapsed fallback row snapshot", async ({ page }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    await expect(row).toBeVisible();
+
+    await expect(row).toHaveScreenshot("feed-row-fallback-collapsed.png", {
+      animations: "disabled",
+      mask: [row.locator("time")],
+    });
+  });
+
+  test("expanded fallback row snapshot", async ({ page }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-link-fallback");
+    await row.locator('[class*="scanRow"]').first().click();
+    await expect(row).toHaveClass(/scanItemExpanded/);
+
+    await expect(row).toHaveScreenshot("feed-row-fallback-expanded.png", {
+      animations: "disabled",
+      mask: [row.locator("time")],
+    });
   });
 });
