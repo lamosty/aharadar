@@ -934,7 +934,7 @@
       "promptText": "Prompt text",
       "promptLensResolved": "Resolved lens: {lens}",
       "promptReset": "Reset to template",
-      "promptHint": "Keep citation style on appendix to reduce noise in summary while preserving traceability.",
+      "promptHint": "Prompts now enforce verify-first output: unverified claims are excluded from rankings and listed separately.",
       "datePresets": {
         "today": "Today",
         "since2d": "Since 2d ago",
