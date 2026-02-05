@@ -13,7 +13,7 @@ import type { TriageFeatures } from "@/lib/mock-data";
 import type { Layout } from "@/lib/theme";
 import type { SortOption } from "./FeedFilterBar";
 import styles from "./FeedItem.module.css";
-import { getPrimaryLinkUrl } from "./linkUtils";
+import { getPrimaryLinkUrl, getXProfileUrl } from "./linkUtils";
 import { ScoreDebugTooltip } from "./ScoreDebugTooltip";
 import { XAccountHealthNudge } from "./XAccountHealthNudge";
 
@@ -520,9 +520,23 @@ export function FeedItem({
   const primaryLinkUrl = getPrimaryLinkUrl({
     sourceType: item.item.sourceType,
     originalUrl: item.item.url,
+    author: item.item.author,
     metadata: item.item.metadata,
     clusterItems: item.clusterItems,
   });
+  const xProfileFallbackUrl =
+    item.item.sourceType === "x_posts"
+      ? getXProfileUrl(item.item.author, item.item.metadata)
+      : null;
+  const isXProfileFallbackLink =
+    item.item.sourceType === "x_posts" &&
+    primaryLinkUrl !== null &&
+    xProfileFallbackUrl !== null &&
+    primaryLinkUrl === xProfileFallbackUrl &&
+    !item.item.url;
+  const fallbackLinkHint = isXProfileFallbackLink
+    ? "Post URL unavailable. Opening author profile."
+    : undefined;
 
   // Get secondary info for expanded metadata
   const secondaryInfo = getSourceSecondaryInfo(
@@ -577,6 +591,7 @@ export function FeedItem({
               rel="noopener noreferrer"
               className={styles.scanTitleLink}
               onClick={(e) => e.stopPropagation()}
+              title={fallbackLinkHint}
             >
               {getDisplayTitle(item)}
             </a>
@@ -620,6 +635,7 @@ export function FeedItem({
               rel="noopener noreferrer"
               className={styles.scanSourceLabel}
               onClick={(e) => e.stopPropagation()}
+              title={fallbackLinkHint}
             >
               {formatSourceType(item.item.sourceType)}
             </a>

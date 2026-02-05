@@ -128,7 +128,7 @@ const fallbackFeedItems: Array<Record<string, unknown>> = [
     },
   },
   {
-    id: "feed-no-link",
+    id: "feed-profile-fallback",
     score: 0.41,
     rawScore: 0.5,
     rank: 2,
@@ -136,10 +136,10 @@ const fallbackFeedItems: Array<Record<string, unknown>> = [
     digestCreatedAt: "2026-01-08T10:00:00Z",
     isNew: false,
     item: {
-      title: "No Link Item",
-      bodyText: "No usable URL anywhere",
+      title: "Profile Fallback Item",
+      bodyText: "No post URL, but author handle exists.",
       url: null,
-      externalId: "x-no-link-2",
+      externalId: "x-profile-link-2",
       author: "@nolink",
       publishedAt: "2026-01-08T05:00:00Z",
       sourceType: "x_posts",
@@ -149,6 +149,34 @@ const fallbackFeedItems: Array<Record<string, unknown>> = [
     triageJson: {
       ai_score: 55,
       reason: "Still relevant but lacks URL",
+      topic: "Markets",
+    },
+    feedback: null,
+    clusterItems: [],
+    manualSummaryJson: null,
+  },
+  {
+    id: "feed-no-link",
+    score: 0.39,
+    rawScore: 0.49,
+    rank: 3,
+    digestId: "digest-fallback",
+    digestCreatedAt: "2026-01-08T10:00:00Z",
+    isNew: false,
+    item: {
+      title: "No Link Item",
+      bodyText: "No usable URL and no author handle",
+      url: null,
+      externalId: "x-no-link-3",
+      author: null,
+      publishedAt: "2026-01-08T04:00:00Z",
+      sourceType: "x_posts",
+      sourceId: "source-x",
+      metadata: {},
+    },
+    triageJson: {
+      ai_score: 53,
+      reason: "No URL and no author handle",
       topic: "Markets",
     },
     feedback: null,
@@ -489,6 +517,22 @@ test.describe("Feed Link Fallbacks", () => {
 
     await expect(row.getByText("No Link Item")).toBeVisible();
     await expect(row.getByRole("link", { name: "No Link Item", exact: true })).toHaveCount(0);
+  });
+
+  test("x profile link fallback is used when handle exists but post URL is missing", async ({
+    page,
+  }) => {
+    await gotoFeed(page);
+
+    const row = page.getByTestId("feed-item-feed-profile-fallback");
+    const titleLink = row.getByRole("link", { name: "Profile Fallback Item", exact: true });
+
+    await expect(titleLink).toBeVisible();
+    await expect(titleLink).toHaveAttribute("href", "https://x.com/nolink");
+    await expect(titleLink).toHaveAttribute(
+      "title",
+      "Post URL unavailable. Opening author profile.",
+    );
   });
 
   test("related sources link only URL-capable cluster items", async ({ page }) => {
