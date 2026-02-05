@@ -27,8 +27,14 @@ const TOP_N_MAX = 200;
 type ExportData = FeedDossierExportResponse["export"];
 
 type DatePreset = "today" | "since2d" | "since4d" | "since7d" | "since14d" | "since30d" | "all";
-type PromptGoal = "decision_memo" | "connect_dots" | "claim_verification" | "contrarian_review";
-type PromptLens = "auto" | "investing" | "tech" | "general";
+type PromptGoal =
+  | "decision_memo"
+  | "connect_dots"
+  | "claim_verification"
+  | "contrarian_review"
+  | "investing_decision_support"
+  | "trading_setup_review";
+type PromptLens = "auto" | "investing" | "trading" | "tech" | "general";
 type ResolvedPromptLens = Exclude<PromptLens, "auto">;
 
 const CONTINUE_RESEARCH_HEADING = "## Continue Research Prompt";
@@ -70,16 +76,19 @@ function inferPromptLens(topicName: string | null | undefined): ResolvedPromptLe
   const normalized = (topicName ?? "").toLowerCase();
   if (!normalized) return "general";
 
-  const investingKeywords = [
-    "invest",
-    "finance",
-    "market",
-    "macro",
-    "stock",
+  const tradingKeywords = [
     "trading",
-    "crypto",
-    "bitcoin",
+    "day trading",
+    "swing",
+    "momentum",
+    "technical analysis",
+    "ta",
   ];
+  if (tradingKeywords.some((keyword) => normalized.includes(keyword))) {
+    return "trading";
+  }
+
+  const investingKeywords = ["invest", "finance", "market", "macro", "stock", "crypto", "bitcoin"];
   if (investingKeywords.some((keyword) => normalized.includes(keyword))) {
     return "investing";
   }
@@ -116,6 +125,9 @@ function promptLensInstruction(lens: ResolvedPromptLens): string {
   if (lens === "investing") {
     return "Prioritize market regime, position sizing, downside scenarios, and decision-ready risk framing. Avoid direct financial-advice language; present options and confidence levels.";
   }
+  if (lens === "trading") {
+    return "Prioritize setup quality, entry/exit structure, invalidation levels, time horizon, and risk budget. Frame outputs as scenario playbooks, not direct buy/sell instructions.";
+  }
   if (lens === "tech") {
     return "Prioritize product, platform, moat, GTM, adoption signals, and technical feasibility. Separate hype narratives from implementation reality.";
   }
@@ -142,6 +154,10 @@ function buildPromptTemplate(params: {
       "Extract the highest-impact factual claims from the dossier, verify them with current web sources, and separate verified, disputed, and unverified claims.",
     contrarian_review:
       "Challenge the dominant narrative in the dossier. Identify strongest counter-theses, what the crowd is likely missing, and conditions where consensus could fail.",
+    investing_decision_support:
+      "Build an investing decision-support brief: list the top candidate opportunities, key risks, and scenario-based action options (accumulate / wait / avoid) with specific evidence triggers.",
+    trading_setup_review:
+      "Build a trading setup review: identify high-conviction setups, define entry zones, invalidation levels, target ladders, and position-size constraints under base/upside/downside paths.",
   };
 
   return [
@@ -153,7 +169,8 @@ function buildPromptTemplate(params: {
     "1. Cite item IDs for every major claim.",
     "2. Flag weak evidence, stale data, and assumptions that need verification.",
     "3. Use web checks for time-sensitive facts and clearly mark inferred conclusions.",
-    "4. End with a concise action plan (next checks, decisions, and monitoring triggers).",
+    "4. Keep this educational and risk-first (not personalized financial advice).",
+    "5. End with a concise action plan (next checks, decisions, and monitoring triggers).",
     "Output sections:",
     "- Executive summary",
     "- Evidence map",
@@ -551,6 +568,12 @@ export function FeedExportModal({
               <option value="contrarian_review">
                 {t("feed.export.promptGoals.contrarianReview")}
               </option>
+              <option value="investing_decision_support">
+                {t("feed.export.promptGoals.investingDecisionSupport")}
+              </option>
+              <option value="trading_setup_review">
+                {t("feed.export.promptGoals.tradingSetupReview")}
+              </option>
             </select>
           </div>
 
@@ -566,6 +589,7 @@ export function FeedExportModal({
             >
               <option value="auto">{t("feed.export.promptLensOptions.auto")}</option>
               <option value="investing">{t("feed.export.promptLensOptions.investing")}</option>
+              <option value="trading">{t("feed.export.promptLensOptions.trading")}</option>
               <option value="tech">{t("feed.export.promptLensOptions.tech")}</option>
               <option value="general">{t("feed.export.promptLensOptions.general")}</option>
             </select>

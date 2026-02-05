@@ -908,19 +908,22 @@
         "decisionMemo": "Decision memo",
         "connectDots": "Connect the dots",
         "claimVerification": "Verify key claims",
-        "contrarianReview": "Contrarian review"
+        "contrarianReview": "Contrarian review",
+        "investingDecisionSupport": "Investing decision support",
+        "tradingSetupReview": "Trading setup review"
       },
       "promptLens": "Prompt lens",
       "promptLensOptions": {
         "auto": "Auto (from topic)",
         "investing": "Investing & macro",
+        "trading": "Trading setups",
         "tech": "Tech & products",
         "general": "General analysis"
       },
       "promptText": "Prompt text",
       "promptLensResolved": "Resolved lens: {lens}",
       "promptReset": "Reset to template",
-      "promptHint": "Edit this prompt once, then switch goals and copy again for multiple research threads.",
+      "promptHint": "Use investing/trading goals for scenario playbooks with triggers and risk limits, then switch goals and copy again.",
       "datePresets": {
         "today": "Today",
         "since2d": "Since 2d ago",
