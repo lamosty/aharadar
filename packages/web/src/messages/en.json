@@ -903,6 +903,24 @@
       "startDate": "Start date",
       "endDate": "End date",
       "quickRange": "Quick range",
+      "promptGoal": "Research goal",
+      "promptGoals": {
+        "decisionMemo": "Decision memo",
+        "connectDots": "Connect the dots",
+        "claimVerification": "Verify key claims",
+        "contrarianReview": "Contrarian review"
+      },
+      "promptLens": "Prompt lens",
+      "promptLensOptions": {
+        "auto": "Auto (from topic)",
+        "investing": "Investing & macro",
+        "tech": "Tech & products",
+        "general": "General analysis"
+      },
+      "promptText": "Prompt text",
+      "promptLensResolved": "Resolved lens: {lens}",
+      "promptReset": "Reset to template",
+      "promptHint": "Edit this prompt once, then switch goals and copy again for multiple research threads.",
       "datePresets": {
         "today": "Today",
         "since2d": "Since 2d ago",
@@ -932,13 +950,16 @@
       "statsLine": "Skipped (no summary): {skipped} - Characters: {chars}",
       "truncated": "Output was truncated ({reason}). Narrow scope or reduce Top N.",
       "copy": "Copy Dossier",
+      "copyWithPrompt": "Copy Dossier + Prompt",
       "download": "Download .md",
       "preview": "Preview markdown",
       "copySuccess": "Dossier copied to clipboard",
+      "copyWithPromptSuccess": "Dossier and prompt copied to clipboard",
       "copyFailed": "Failed to copy dossier to clipboard",
       "copyFailedPermission": "Clipboard access blocked. Allow clipboard for this site and try again.",
       "copyFailedInsecure": "Clipboard requires a secure context (HTTPS or localhost).",
       "downloadSuccess": "Dossier downloaded",
+      "multiResearchHint": "Tip: switch Research goal and copy again to run multiple ChatGPT research threads from the same dossier.",
       "errors": {
         "generateFailed": "Failed to generate dossier",
         "invalidTopN": "Top N must be between {min} and {max}",

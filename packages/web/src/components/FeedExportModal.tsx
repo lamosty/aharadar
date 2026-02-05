@@ -16,6 +16,7 @@ import styles from "./FeedExportModal.module.css";
 interface FeedExportModalProps {
   isOpen: boolean;
   topicId: string | null;
+  topicName?: string | null;
   defaultSort: FeedDossierExportSort;
   onClose: () => void;
 }
@@ -26,6 +27,11 @@ const TOP_N_MAX = 200;
 type ExportData = FeedDossierExportResponse["export"];
 
 type DatePreset = "today" | "since2d" | "since4d" | "since7d" | "since14d" | "since30d" | "all";
+type PromptGoal = "decision_memo" | "connect_dots" | "claim_verification" | "contrarian_review";
+type PromptLens = "auto" | "investing" | "tech" | "general";
+type ResolvedPromptLens = Exclude<PromptLens, "auto">;
+
+const CONTINUE_RESEARCH_HEADING = "## Continue Research Prompt";
 
 function toIsoStartOfDay(dateString: string): string {
   const d = new Date(`${dateString}T00:00:00`);
@@ -60,15 +66,136 @@ function copyWithExecCommandFallback(text: string): boolean {
   return copied;
 }
 
-export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedExportModalProps) {
+function inferPromptLens(topicName: string | null | undefined): ResolvedPromptLens {
+  const normalized = (topicName ?? "").toLowerCase();
+  if (!normalized) return "general";
+
+  const investingKeywords = [
+    "invest",
+    "finance",
+    "market",
+    "macro",
+    "stock",
+    "trading",
+    "crypto",
+    "bitcoin",
+  ];
+  if (investingKeywords.some((keyword) => normalized.includes(keyword))) {
+    return "investing";
+  }
+
+  const techKeywords = [
+    "ai",
+    "tech",
+    "software",
+    "startup",
+    "product",
+    "engineering",
+    "saas",
+    "dev",
+  ];
+  if (techKeywords.some((keyword) => normalized.includes(keyword))) {
+    return "tech";
+  }
+
+  return "general";
+}
+
+function stripBuiltInPromptTail(content: string): string {
+  let index = content.indexOf(`\n${CONTINUE_RESEARCH_HEADING}`);
+  if (index === -1 && content.startsWith(CONTINUE_RESEARCH_HEADING)) {
+    index = 0;
+  }
+  if (index === -1) return content;
+
+  const withoutTail = content.slice(0, index).replace(/\s+$/, "");
+  return `${withoutTail}\n`;
+}
+
+function promptLensInstruction(lens: ResolvedPromptLens): string {
+  if (lens === "investing") {
+    return "Prioritize market regime, position sizing, downside scenarios, and decision-ready risk framing. Avoid direct financial-advice language; present options and confidence levels.";
+  }
+  if (lens === "tech") {
+    return "Prioritize product, platform, moat, GTM, adoption signals, and technical feasibility. Separate hype narratives from implementation reality.";
+  }
+  return "Prioritize cross-source synthesis, uncertainty tracking, and practical decisions with explicit evidence quality.";
+}
+
+function buildPromptTemplate(params: {
+  goal: PromptGoal;
+  lens: ResolvedPromptLens;
+  topicName: string | null | undefined;
+}): string {
+  const { goal, lens, topicName } = params;
+  const topicLine = topicName
+    ? `Topic focus: ${topicName}`
+    : "Topic focus: infer from dossier context";
+  const lensInstruction = promptLensInstruction(lens);
+
+  const goalInstructionMap: Record<PromptGoal, string> = {
+    decision_memo:
+      "Build a decision memo that translates this dossier into 2-4 actionable options, with trigger conditions, base/upside/downside cases, and what evidence would invalidate each option.",
+    connect_dots:
+      "Find non-obvious links across items (causal chains, second-order effects, hidden dependencies, repeated actors/themes) and surface the strongest 'connect-the-dots' insights.",
+    claim_verification:
+      "Extract the highest-impact factual claims from the dossier, verify them with current web sources, and separate verified, disputed, and unverified claims.",
+    contrarian_review:
+      "Challenge the dominant narrative in the dossier. Identify strongest counter-theses, what the crowd is likely missing, and conditions where consensus could fail.",
+  };
+
+  return [
+    "You are my research copilot.",
+    topicLine,
+    `Goal: ${goalInstructionMap[goal]}`,
+    `Lens: ${lensInstruction}`,
+    "Requirements:",
+    "1. Cite item IDs for every major claim.",
+    "2. Flag weak evidence, stale data, and assumptions that need verification.",
+    "3. Use web checks for time-sensitive facts and clearly mark inferred conclusions.",
+    "4. End with a concise action plan (next checks, decisions, and monitoring triggers).",
+    "Output sections:",
+    "- Executive summary",
+    "- Evidence map",
+    "- Key disagreements and uncertainty",
+    "- Recommended actions",
+  ].join("\n");
+}
+
+function buildDossierWithPrompt(dossierContent: string, prompt: string): string {
+  const trimmedPrompt = prompt.trim();
+  if (!trimmedPrompt) return dossierContent;
+
+  return `${dossierContent.replace(/\s+$/, "")}\n\n---\n\n## Research Goal Prompt\n\n${trimmedPrompt}\n`;
+}
+
+export function FeedExportModal({
+  isOpen,
+  topicId,
+  topicName,
+  defaultSort,
+  onClose,
+}: FeedExportModalProps) {
   const { addToast } = useToast();
   const [mode, setMode] = useState<FeedDossierExportMode>("ai_summaries");
   const [sort, setSort] = useState<FeedDossierExportSort>(defaultSort);
   const [topN, setTopN] = useState<number>(50);
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
+  const [promptGoal, setPromptGoal] = useState<PromptGoal>("decision_memo");
+  const [promptLens, setPromptLens] = useState<PromptLens>("auto");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [exportData, setExportData] = useState<ExportData | null>(null);
+
+  const resolvedPromptLens = useMemo<ResolvedPromptLens>(
+    () => (promptLens === "auto" ? inferPromptLens(topicName) : promptLens),
+    [promptLens, topicName],
+  );
+  const promptTemplate = useMemo(
+    () => buildPromptTemplate({ goal: promptGoal, lens: resolvedPromptLens, topicName }),
+    [promptGoal, resolvedPromptLens, topicName],
+  );
+  const [promptDraft, setPromptDraft] = useState(promptTemplate);
 
   const exportMutation = useFeedDossierExport({
     onSuccess: (data) => {
@@ -92,6 +219,11 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
     setSubmitError(null);
   }, [isOpen, defaultSort]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setPromptDraft(promptTemplate);
+  }, [isOpen, promptTemplate]);
+
   const scopeTopicId = topicId ?? "all";
 
   const selectedModeLabel = useMemo(() => {
@@ -104,6 +236,16 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
         return t("feed.export.modes.aiSummaries");
     }
   }, [mode]);
+
+  const dossierContent = useMemo(() => {
+    if (!exportData) return "";
+    return stripBuiltInPromptTail(exportData.content);
+  }, [exportData]);
+
+  const dossierWithPrompt = useMemo(() => {
+    if (!exportData) return "";
+    return buildDossierWithPrompt(dossierContent, promptDraft);
+  }, [dossierContent, exportData, promptDraft]);
 
   const handleGenerate = (e: FormEvent) => {
     e.preventDefault();
@@ -160,15 +302,13 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
     setUntil(untilDate);
   };
 
-  const handleCopy = async () => {
-    if (!exportData) return;
-
+  const copyText = async (text: string, successMessage: string) => {
     let copied = false;
     let clipboardError: unknown = null;
 
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(exportData.content);
+        await navigator.clipboard.writeText(text);
         copied = true;
       }
     } catch (err) {
@@ -177,32 +317,43 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
 
     if (!copied) {
       try {
-        copied = copyWithExecCommandFallback(exportData.content);
+        copied = copyWithExecCommandFallback(text);
       } catch {
         copied = false;
       }
     }
 
     if (copied) {
-      addToast(t("feed.export.copySuccess"), "success");
-    } else {
-      if (!window.isSecureContext) {
-        addToast(t("feed.export.copyFailedInsecure"), "error");
-        return;
-      }
-
-      if (clipboardError instanceof DOMException && clipboardError.name === "NotAllowedError") {
-        addToast(t("feed.export.copyFailedPermission"), "error");
-        return;
-      }
-
-      addToast(t("feed.export.copyFailed"), "error");
+      addToast(successMessage, "success");
+      return;
     }
+
+    if (!window.isSecureContext) {
+      addToast(t("feed.export.copyFailedInsecure"), "error");
+      return;
+    }
+
+    if (clipboardError instanceof DOMException && clipboardError.name === "NotAllowedError") {
+      addToast(t("feed.export.copyFailedPermission"), "error");
+      return;
+    }
+
+    addToast(t("feed.export.copyFailed"), "error");
+  };
+
+  const handleCopyDossier = async () => {
+    if (!exportData) return;
+    await copyText(dossierContent, t("feed.export.copySuccess"));
+  };
+
+  const handleCopyWithPrompt = async () => {
+    if (!exportData) return;
+    await copyText(dossierWithPrompt, t("feed.export.copyWithPromptSuccess"));
   };
 
   const handleDownload = () => {
     if (!exportData) return;
-    const blob = new Blob([exportData.content], { type: "text/markdown;charset=utf-8" });
+    const blob = new Blob([dossierContent], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -220,6 +371,11 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
     setSort(defaultSort);
     setSince("");
     setUntil("");
+    setPromptGoal("decision_memo");
+    setPromptLens("auto");
+    setPromptDraft(
+      buildPromptTemplate({ goal: "decision_memo", lens: inferPromptLens(topicName), topicName }),
+    );
     setSubmitError(null);
     setExportData(null);
     onClose();
@@ -377,6 +533,74 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
             {topicId ? t("feed.export.scope.currentTopic") : t("feed.export.scope.allTopics")}
           </p>
 
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="feed-export-prompt-goal">
+              {t("feed.export.promptGoal")}
+            </label>
+            <select
+              id="feed-export-prompt-goal"
+              className={styles.select}
+              value={promptGoal}
+              onChange={(e) => setPromptGoal(e.target.value as PromptGoal)}
+            >
+              <option value="decision_memo">{t("feed.export.promptGoals.decisionMemo")}</option>
+              <option value="connect_dots">{t("feed.export.promptGoals.connectDots")}</option>
+              <option value="claim_verification">
+                {t("feed.export.promptGoals.claimVerification")}
+              </option>
+              <option value="contrarian_review">
+                {t("feed.export.promptGoals.contrarianReview")}
+              </option>
+            </select>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="feed-export-prompt-lens">
+              {t("feed.export.promptLens")}
+            </label>
+            <select
+              id="feed-export-prompt-lens"
+              className={styles.select}
+              value={promptLens}
+              onChange={(e) => setPromptLens(e.target.value as PromptLens)}
+            >
+              <option value="auto">{t("feed.export.promptLensOptions.auto")}</option>
+              <option value="investing">{t("feed.export.promptLensOptions.investing")}</option>
+              <option value="tech">{t("feed.export.promptLensOptions.tech")}</option>
+              <option value="general">{t("feed.export.promptLensOptions.general")}</option>
+            </select>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="feed-export-prompt-text">
+              {t("feed.export.promptText")}
+            </label>
+            <div className={styles.promptEditor}>
+              <div className={styles.promptMeta}>
+                {t("feed.export.promptLensResolved", {
+                  lens: t(`feed.export.promptLensOptions.${resolvedPromptLens}`),
+                })}
+              </div>
+              <textarea
+                id="feed-export-prompt-text"
+                className={styles.promptInput}
+                value={promptDraft}
+                onChange={(e) => setPromptDraft(e.target.value)}
+                spellCheck={false}
+              />
+              <div className={styles.promptControls}>
+                <button
+                  type="button"
+                  className={styles.presetButton}
+                  onClick={() => setPromptDraft(promptTemplate)}
+                >
+                  {t("feed.export.promptReset")}
+                </button>
+                <span className={styles.promptHint}>{t("feed.export.promptHint")}</span>
+              </div>
+            </div>
+          </div>
+
           {submitError && <p className={styles.error}>{submitError}</p>}
 
           <div className={styles.actions}>
@@ -426,7 +650,10 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
             )}
 
             <div className={styles.resultActions}>
-              <button type="button" className="btn btn-primary" onClick={handleCopy}>
+              <button type="button" className="btn btn-primary" onClick={handleCopyWithPrompt}>
+                {t("feed.export.copyWithPrompt")}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={handleCopyDossier}>
                 {t("feed.export.copy")}
               </button>
               <button type="button" className="btn btn-secondary" onClick={handleDownload}>
@@ -434,9 +661,11 @@ export function FeedExportModal({ isOpen, topicId, defaultSort, onClose }: FeedE
               </button>
             </div>
 
+            <p className={styles.resultMeta}>{t("feed.export.multiResearchHint")}</p>
+
             <details className={styles.preview}>
               <summary>{t("feed.export.preview")}</summary>
-              <textarea readOnly className={styles.previewText} value={exportData.content} />
+              <textarea readOnly className={styles.previewText} value={dossierContent} />
             </details>
           </div>
         )}

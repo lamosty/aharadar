@@ -221,6 +221,11 @@ function FeedPageContent() {
 
   // Determine if we're in "all topics" mode
   const isAllTopicsMode = currentTopicId === null;
+  const currentTopicName = useMemo(() => {
+    if (!currentTopicId || !topicsData?.topics) return null;
+    return topicsData.topics.find((topic) => topic.id === currentTopicId)?.name ?? null;
+  }, [currentTopicId, topicsData]);
+
   const themeGroupingOptions = useMemo(() => {
     if (!currentTopicId || !topicsData?.topics) {
       return { ...THEME_GROUPING_DEFAULTS };
@@ -1065,6 +1070,7 @@ function FeedPageContent() {
       <FeedExportModal
         isOpen={isFeedExportModalOpen}
         topicId={currentTopicId}
+        topicName={currentTopicName}
         defaultSort={sort}
         onClose={() => setIsFeedExportModalOpen(false)}
       />
