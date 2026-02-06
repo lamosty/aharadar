@@ -1,0 +1,8 @@
+# Add one marker per line.
+# Any marker found in tracked content will fail the OSS checklist.
+# Keep this list focused on private/company identifiers.
+
+stavartikel
+stavportal
+storeware
+10.6.0.1

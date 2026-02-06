@@ -24,6 +24,10 @@ build/
 out/
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+**/playwright-report/
+**/test-results/
 
 # TypeScript
 *.tsbuildinfo
