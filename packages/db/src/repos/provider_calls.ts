@@ -85,6 +85,17 @@ export interface ProviderCallErrorSummaryParams {
   hoursAgo?: number;
 }
 
+export interface XPostsParseTrendPoint {
+  bucketStart: string;
+  totalCalls: number;
+  parseErrors: number;
+  parseErrorRatePct: number;
+  linesTotal: number;
+  linesValid: number;
+  linesInvalid: number;
+  lineValidRatePct: number;
+}
+
 export function createProviderCallsRepo(db: Queryable) {
   return {
     async insert(draft: ProviderCallDraft): Promise<{ id: string }> {
@@ -563,6 +574,123 @@ export function createProviderCallsRepo(db: Queryable) {
         errorCount: parseInt(r.errorCount, 10),
         totalCount: parseInt(r.totalCount, 10),
       }));
+    },
+
+    /**
+     * Get x_posts parse-quality trend from provider_calls meta fields.
+     * Buckets by fixed hour windows and fills missing buckets with zeros.
+     */
+    async getXPostsParseTrend(params: {
+      userId: string;
+      hoursAgo?: number;
+      bucketHours?: number;
+      sourceId?: string;
+    }): Promise<XPostsParseTrendPoint[]> {
+      const hoursAgo = Math.max(1, Math.min(720, Math.floor(params.hoursAgo ?? 168)));
+      const bucketHours = Math.max(1, Math.min(24, Math.floor(params.bucketHours ?? 6)));
+
+      const conditions: string[] = [
+        "user_id = $1",
+        "purpose = 'x_posts_fetch'",
+        "started_at >= NOW() - $2 * INTERVAL '1 hour'",
+      ];
+      const values: unknown[] = [params.userId, hoursAgo];
+      let paramIndex = 3;
+
+      if (params.sourceId) {
+        conditions.push(`meta_json->>'sourceId' = $${paramIndex}`);
+        values.push(params.sourceId);
+        paramIndex += 1;
+      }
+
+      values.push(bucketHours);
+
+      const result = await db.query<{
+        bucket_start: Date;
+        total_calls: string;
+        parse_errors: string;
+        lines_total: string;
+        lines_valid: string;
+        lines_invalid: string;
+      }>(
+        `SELECT
+           to_timestamp(
+             floor(extract(epoch from started_at) / ($${paramIndex}::int * 3600))
+             * ($${paramIndex}::int * 3600)
+           ) as bucket_start,
+           COUNT(*)::text as total_calls,
+           COUNT(*) FILTER (WHERE meta_json->>'assistant_parse_error' = 'true')::text as parse_errors,
+           COALESCE(SUM(
+             CASE
+               WHEN COALESCE(meta_json->>'lines_total', '') ~ '^[0-9]+$'
+               THEN (meta_json->>'lines_total')::int
+               ELSE 0
+             END
+           ), 0)::text as lines_total,
+           COALESCE(SUM(
+             CASE
+               WHEN COALESCE(meta_json->>'lines_valid', '') ~ '^[0-9]+$'
+               THEN (meta_json->>'lines_valid')::int
+               ELSE 0
+             END
+           ), 0)::text as lines_valid,
+           COALESCE(SUM(
+             CASE
+               WHEN COALESCE(meta_json->>'lines_invalid', '') ~ '^[0-9]+$'
+               THEN (meta_json->>'lines_invalid')::int
+               ELSE 0
+             END
+           ), 0)::text as lines_invalid
+         FROM provider_calls
+         WHERE ${conditions.join(" AND ")}
+         GROUP BY bucket_start
+         ORDER BY bucket_start ASC`,
+        values,
+      );
+
+      const bucketMs = bucketHours * 60 * 60 * 1000;
+      const nowMs = Date.now();
+      const startMs = Math.floor((nowMs - hoursAgo * 60 * 60 * 1000) / bucketMs) * bucketMs;
+      const endMs = Math.floor(nowMs / bucketMs) * bucketMs;
+
+      const byBucket = new Map<number, XPostsParseTrendPoint>();
+      for (const row of result.rows) {
+        const bucketStartMs = new Date(row.bucket_start).getTime();
+        const totalCalls = parseInt(row.total_calls, 10) || 0;
+        const parseErrors = parseInt(row.parse_errors, 10) || 0;
+        const linesTotal = parseInt(row.lines_total, 10) || 0;
+        const linesValid = parseInt(row.lines_valid, 10) || 0;
+        const linesInvalid = parseInt(row.lines_invalid, 10) || 0;
+        byBucket.set(bucketStartMs, {
+          bucketStart: new Date(bucketStartMs).toISOString(),
+          totalCalls,
+          parseErrors,
+          parseErrorRatePct: totalCalls > 0 ? (parseErrors / totalCalls) * 100 : 0,
+          linesTotal,
+          linesValid,
+          linesInvalid,
+          lineValidRatePct: linesTotal > 0 ? (linesValid / linesTotal) * 100 : 0,
+        });
+      }
+
+      const points: XPostsParseTrendPoint[] = [];
+      for (let ms = startMs; ms <= endMs; ms += bucketMs) {
+        const existing = byBucket.get(ms);
+        points.push(
+          existing ?? {
+            bucketStart: new Date(ms).toISOString(),
+            totalCalls: 0,
+            parseErrors: 0,
+            parseErrorRatePct: 0,
+            linesTotal: 0,
+            linesValid: 0,
+            linesInvalid: 0,
+            lineValidRatePct: 0,
+          },
+        );
+      }
+
+      return points;
     },
   };
 }

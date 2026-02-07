@@ -822,6 +822,66 @@ export async function adminSourcesListCommand(): Promise<void> {
   }
 }
 
+export async function adminXHandlesNormalizeCommand(args: string[] = []): Promise<void> {
+  const env = loadRuntimeEnv();
+  const db = createDb(env.databaseUrl);
+  try {
+    const user = await db.users.getOrCreateSingleton();
+
+    let sourceId: string | null = null;
+    let dryRun = false;
+    for (let i = 0; i < args.length; i += 1) {
+      const a = args[i];
+      if (a === "--source-id") {
+        sourceId = args[i + 1] ? String(args[i + 1]).trim() : null;
+        i += 1;
+        continue;
+      }
+      if (a === "--dry-run") {
+        dryRun = true;
+        continue;
+      }
+      if (a === "--help" || a === "-h") {
+        console.log("Usage:");
+        console.log("  admin:x-handles-normalize [--source-id <uuid>] [--dry-run]");
+        console.log("");
+        console.log("Examples:");
+        console.log("  pnpm dev:cli -- admin:x-handles-normalize --dry-run");
+        console.log(
+          "  pnpm dev:cli -- admin:x-handles-normalize --source-id <x_posts-source-uuid>",
+        );
+        return;
+      }
+    }
+
+    if (sourceId) {
+      const source = await db.sources.getById(sourceId);
+      if (!source || source.user_id !== user.id) {
+        throw new Error(`Source not found for current user: ${sourceId}`);
+      }
+      if (source.type !== "x_posts") {
+        throw new Error(`Source ${sourceId} is type "${source.type}", expected "x_posts"`);
+      }
+    }
+
+    const result = await db.ingestionHealth.normalizeStoredXUserHandles({
+      userId: user.id,
+      sourceId: sourceId ?? undefined,
+      dryRun,
+    });
+
+    console.log("X handle normalization:");
+    console.log(`- scope: ${sourceId ? `source ${sourceId}` : "all x_posts sources"}`);
+    console.log(`- candidates: ${result.candidates}`);
+    console.log(`- updated: ${result.updated}`);
+    if (dryRun) {
+      console.log("- mode: dry-run (no rows updated)");
+    }
+  } finally {
+    await db.close();
+  }
+}
+
 export async function adminSourcesAddCommand(args: string[]): Promise<void> {
   const env = loadRuntimeEnv();
   const db = createDb(env.databaseUrl);

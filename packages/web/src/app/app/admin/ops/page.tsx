@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   useAdminBudgets,
+  useAdminLogsXPostsParseTrend,
   useDrainQueue,
   useEmergencyStop,
   useObliterateQueue,
@@ -21,6 +22,17 @@ export default function AdminOpsPage() {
   const { data, isLoading, isError, error } = useOpsStatus();
   const { data: queueData, isLoading: queueLoading } = useQueueStatus();
   const { data: budgetData } = useAdminBudgets();
+  const parseTrendHours = 168;
+  const parseTrendBucketHours = 6;
+  const {
+    data: parseTrendData,
+    isLoading: parseTrendLoading,
+    isError: parseTrendIsError,
+    error: parseTrendError,
+  } = useAdminLogsXPostsParseTrend({
+    hoursAgo: parseTrendHours,
+    bucketHours: parseTrendBucketHours,
+  });
 
   const [confirmObliterate, setConfirmObliterate] = useState(false);
   const [confirmEmergencyStop, setConfirmEmergencyStop] = useState(false);
@@ -90,6 +102,9 @@ export default function AdminOpsPage() {
 
   const { worker, queue, links } = data;
   const hasAnyLinks = links.grafana || links.prometheus || links.queue || links.logs;
+  const parseSummary = parseTrendData?.trend.summary;
+  const parsePoints = parseTrendData?.trend.points ?? [];
+  const recentParsePoints = parsePoints.slice(-12).reverse();
 
   // Combine jobs from queue status
   const activeJobs = queueData?.queue?.active ?? [];
@@ -155,6 +170,94 @@ export default function AdminOpsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Grok Parse Quality Section */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Grok Parse Quality</h2>
+          <span className={styles.windowBadge}>
+            Last {Math.round(parseTrendHours / 24)}d · {parseTrendBucketHours}h buckets
+          </span>
+        </div>
+        <p className={styles.sectionHint}>
+          Tracks x_posts parse health from provider-call metadata (
+          <code>assistant_parse_error</code>, <code>lines_valid</code>, <code>lines_invalid</code>
+          ).
+        </p>
+
+        {parseTrendLoading ? (
+          <div className={styles.loadingInline}>
+            <LoadingSpinner />
+            <span>Loading parse trend...</span>
+          </div>
+        ) : parseTrendIsError ? (
+          <div className={styles.errorInline}>
+            {parseTrendError?.message || "Failed to load parse trend"}
+          </div>
+        ) : !parseSummary || parseSummary.totalCalls === 0 ? (
+          <p className={styles.notConfigured}>No x_posts_fetch calls in this time window.</p>
+        ) : (
+          <>
+            <div className={styles.parseStats}>
+              <div className={styles.parseStatCard}>
+                <span className={styles.parseStatLabel}>Calls</span>
+                <span className={styles.parseStatValue}>{parseSummary.totalCalls}</span>
+              </div>
+              <div className={styles.parseStatCard}>
+                <span className={styles.parseStatLabel}>Parse Errors</span>
+                <span className={styles.parseStatValue}>
+                  {parseSummary.parseErrors} ({formatPercent(parseSummary.parseErrorRatePct)})
+                </span>
+              </div>
+              <div className={styles.parseStatCard}>
+                <span className={styles.parseStatLabel}>Line Valid Rate</span>
+                <span className={styles.parseStatValue}>
+                  {formatPercent(parseSummary.lineValidRatePct)}
+                </span>
+              </div>
+              <div className={styles.parseStatCard}>
+                <span className={styles.parseStatLabel}>Lines (valid/invalid)</span>
+                <span className={styles.parseStatValue}>
+                  {parseSummary.linesValid} / {parseSummary.linesInvalid}
+                </span>
+              </div>
+            </div>
+
+            {recentParsePoints.length > 0 && (
+              <div className={styles.parseTableWrap}>
+                <table className={styles.parseTable}>
+                  <thead>
+                    <tr>
+                      <th>Bucket</th>
+                      <th>Calls</th>
+                      <th>Parse Err</th>
+                      <th>Lines (v/i)</th>
+                      <th>Line Valid %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentParsePoints.map((point) => (
+                      <tr key={point.bucketStart}>
+                        <td>{formatBucket(point.bucketStart)}</td>
+                        <td>{point.totalCalls}</td>
+                        <td className={rateClass(point.parseErrorRatePct, true)}>
+                          {point.parseErrors} ({formatPercent(point.parseErrorRatePct)})
+                        </td>
+                        <td>
+                          {point.linesValid} / {point.linesInvalid}
+                        </td>
+                        <td className={rateClass(point.lineValidRatePct, false)}>
+                          {formatPercent(point.lineValidRatePct)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Queue Controls Section */}
@@ -702,4 +805,30 @@ function XIcon() {
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
+}
+
+function formatPercent(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
+
+function formatBucket(isoString: string): string {
+  const d = new Date(isoString);
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function rateClass(rate: number, lowerIsBetter: boolean): string {
+  if (lowerIsBetter) {
+    if (rate >= 20) return styles.rateBad;
+    if (rate >= 5) return styles.rateWarn;
+    return styles.rateGood;
+  }
+  if (rate < 50) return styles.rateBad;
+  if (rate < 80) return styles.rateWarn;
+  return styles.rateGood;
 }

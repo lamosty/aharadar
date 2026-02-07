@@ -89,6 +89,7 @@ import {
   getAdminLogsProviderCallErrors,
   getAdminLogsProviderCalls,
   getAdminLogsSourceHealth,
+  getAdminLogsXPostsParseTrend,
   getAdminSources,
   getAggregateSummary as getAggregateSummaryApi,
   getBookmarks,
@@ -205,6 +206,7 @@ import {
   type XAccountPoliciesResponse,
   type XAccountPolicyMode,
   type XAccountPolicyResponse,
+  type XPostsParseTrendResponse,
 } from "./api";
 
 // ============================================================================
@@ -2135,6 +2137,17 @@ export function useAdminLogsHandleHealth(params?: { sourceId?: string }) {
   return useQuery({
     queryKey: ["admin", "logs", "ingestion", "handles", params],
     queryFn: ({ signal }) => getAdminLogsHandleHealth(params, signal),
+  });
+}
+
+export function useAdminLogsXPostsParseTrend(params?: {
+  hoursAgo?: number;
+  bucketHours?: number;
+  sourceId?: string;
+}) {
+  return useQuery<XPostsParseTrendResponse, ApiError | NetworkError>({
+    queryKey: ["admin", "logs", "provider-calls", "x-posts-parse-trend", params],
+    queryFn: ({ signal }) => getAdminLogsXPostsParseTrend(params, signal),
   });
 }
 

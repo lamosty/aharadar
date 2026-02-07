@@ -2458,6 +2458,38 @@ export interface HandleHealthResponse {
   handles: HandleHealthItem[];
 }
 
+/** x_posts parse trend data point */
+export interface XPostsParseTrendPoint {
+  bucketStart: string;
+  totalCalls: number;
+  parseErrors: number;
+  parseErrorRatePct: number;
+  linesTotal: number;
+  linesValid: number;
+  linesInvalid: number;
+  lineValidRatePct: number;
+}
+
+/** x_posts parse trend response */
+export interface XPostsParseTrendResponse {
+  ok: true;
+  trend: {
+    hoursAgo: number;
+    bucketHours: number;
+    sourceId: string | null;
+    points: XPostsParseTrendPoint[];
+    summary: {
+      totalCalls: number;
+      parseErrors: number;
+      parseErrorRatePct: number;
+      linesTotal: number;
+      linesValid: number;
+      linesInvalid: number;
+      lineValidRatePct: number;
+    };
+  };
+}
+
 /**
  * Get provider call logs with optional filters.
  */
@@ -2557,6 +2589,31 @@ export async function getAdminLogsHandleHealth(
   const path = query ? `/admin/logs/ingestion/handles?${query}` : "/admin/logs/ingestion/handles";
 
   return apiFetch<HandleHealthResponse>(path, { signal });
+}
+
+/**
+ * Get x_posts parse-quality trend based on provider call meta.
+ */
+export async function getAdminLogsXPostsParseTrend(
+  params?: {
+    hoursAgo?: number;
+    bucketHours?: number;
+    sourceId?: string;
+  },
+  signal?: AbortSignal,
+): Promise<XPostsParseTrendResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.hoursAgo !== undefined) searchParams.set("hoursAgo", String(params.hoursAgo));
+  if (params?.bucketHours !== undefined)
+    searchParams.set("bucketHours", String(params.bucketHours));
+  if (params?.sourceId) searchParams.set("sourceId", params.sourceId);
+
+  const query = searchParams.toString();
+  const path = query
+    ? `/admin/logs/provider-calls/x-posts-parse-trend?${query}`
+    : "/admin/logs/provider-calls/x-posts-parse-trend";
+
+  return apiFetch<XPostsParseTrendResponse>(path, { signal });
 }
 
 // ============================================================================

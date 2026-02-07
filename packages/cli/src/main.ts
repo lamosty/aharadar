@@ -11,6 +11,7 @@ import {
   adminSourcesSetWeightCommand,
   adminTopicsAddCommand,
   adminTopicsListCommand,
+  adminXHandlesNormalizeCommand,
 } from "./commands/admin";
 import { inboxCommand } from "./commands/inbox";
 import { reviewCommand } from "./commands/review";
@@ -46,6 +47,7 @@ function printHelp(): void {
   console.log(
     "  admin:sources-set-enabled (--source-id <uuid> | --topic <name> --source-type <type>) --enabled <true|false> [--dry-run]",
   );
+  console.log("  admin:x-handles-normalize [--source-id <uuid>] [--dry-run]");
 }
 
 async function main(): Promise<void> {
@@ -100,6 +102,9 @@ async function main(): Promise<void> {
       break;
     case "admin:sources-set-enabled":
       result = adminSourcesSetEnabledCommand(rest);
+      break;
+    case "admin:x-handles-normalize":
+      result = adminXHandlesNormalizeCommand(rest);
       break;
     default:
       printHelp();

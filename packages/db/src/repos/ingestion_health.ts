@@ -104,7 +104,8 @@ export function createIngestionHealthRepo(db: Queryable) {
       userId: string;
       sourceId?: string;
     }): Promise<HandleHealthRow[]> {
-      const conditions = ["s.user_id = $1", "ci.raw_json->>'user_handle' is not null"];
+      const handleExpr = "lower(ltrim(btrim(ci.raw_json->>'user_handle'), '@'))";
+      const conditions = ["s.user_id = $1", `${handleExpr} <> ''`];
       const values: unknown[] = [params.userId];
 
       if (params.sourceId) {
@@ -122,7 +123,7 @@ export function createIngestionHealthRepo(db: Queryable) {
         last_post_date: string | null;
       }>(
         `select
-           ci.raw_json->>'user_handle' as handle,
+           ${handleExpr} as handle,
            s.id as source_id,
            s.name as source_name,
            count(ci.id) as total_items,
@@ -132,7 +133,7 @@ export function createIngestionHealthRepo(db: Queryable) {
          from content_items ci
          join sources s on s.id = ci.source_id
          where ${conditions.join(" and ")} and ci.deleted_at is null
-         group by ci.raw_json->>'user_handle', s.id, s.name
+         group by ${handleExpr}, s.id, s.name
          order by max(ci.fetched_at) desc nulls last`,
         values,
       );
@@ -146,6 +147,58 @@ export function createIngestionHealthRepo(db: Queryable) {
         lastFetchedAt: row.last_fetched_at,
         lastPostDate: row.last_post_date,
       }));
+    },
+
+    async normalizeStoredXUserHandles(params: {
+      userId: string;
+      sourceId?: string;
+      dryRun?: boolean;
+    }): Promise<{ candidates: number; updated: number }> {
+      const handleExpr = "lower(ltrim(btrim(raw_json->>'user_handle'), '@'))";
+      const conditions = [
+        "user_id = $1",
+        "source_type = 'x_posts'",
+        "raw_json is not null",
+        "raw_json->>'user_handle' is not null",
+        `${handleExpr} <> ''`,
+        `(raw_json->>'user_handle') IS DISTINCT FROM ${handleExpr}`,
+      ];
+      const values: unknown[] = [params.userId];
+
+      if (params.sourceId) {
+        values.push(params.sourceId);
+        conditions.push(`source_id = $${values.length}::uuid`);
+      }
+
+      const whereClause = conditions.join(" and ");
+      const countRes = await db.query<{ count: string }>(
+        `select count(*)::text as count
+         from content_items
+         where ${whereClause}`,
+        values,
+      );
+      const candidates = Number(countRes.rows[0]?.count ?? "0");
+
+      if (params.dryRun || candidates === 0) {
+        return { candidates, updated: 0 };
+      }
+
+      const updateRes = await db.query(
+        `update content_items
+         set raw_json = jsonb_set(
+           raw_json,
+           '{user_handle}',
+           to_jsonb(${handleExpr}),
+           true
+         )
+         where ${whereClause}`,
+        values,
+      );
+
+      return {
+        candidates,
+        updated: updateRes.rowCount ?? 0,
+      };
     },
   };
 }

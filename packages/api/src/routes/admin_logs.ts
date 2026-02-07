@@ -182,6 +182,132 @@ export async function adminLogsRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
+  // GET /admin/logs/provider-calls/x-posts-parse-trend - Parse quality trend for x_posts
+  fastify.get("/admin/logs/provider-calls/x-posts-parse-trend", async (request, reply) => {
+    const db = getDb();
+
+    // Get current user and verify admin role
+    let userId: string;
+    try {
+      userId = getUserId(request);
+      const user = await db.users.getById(userId);
+      if (!user || user.role !== "admin") {
+        return reply.code(403).send({
+          ok: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Admin access required",
+          },
+        });
+      }
+    } catch {
+      return reply.code(401).send({
+        ok: false,
+        error: {
+          code: "NOT_AUTHENTICATED",
+          message: "Authentication required",
+        },
+      });
+    }
+
+    // Get singleton context for userId
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const query = request.query as Record<string, string | undefined>;
+    const hoursAgo = query.hoursAgo ? parseInt(query.hoursAgo, 10) : 168;
+    const bucketHours = query.bucketHours ? parseInt(query.bucketHours, 10) : 6;
+    const sourceId = query.sourceId;
+
+    // Validate hoursAgo
+    if (Number.isNaN(hoursAgo) || hoursAgo < 1 || hoursAgo > 720) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "hoursAgo must be a number between 1 and 720",
+        },
+      });
+    }
+
+    // Validate bucketHours
+    if (Number.isNaN(bucketHours) || bucketHours < 1 || bucketHours > 24) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "bucketHours must be a number between 1 and 24",
+        },
+      });
+    }
+
+    // Validate sourceId if provided
+    if (sourceId !== undefined && !isValidUuid(sourceId)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "sourceId must be a valid UUID",
+        },
+      });
+    }
+
+    const points = await db.providerCalls.getXPostsParseTrend({
+      userId: ctx.userId,
+      hoursAgo,
+      bucketHours,
+      sourceId,
+    });
+
+    const summary = points.reduce<{
+      totalCalls: number;
+      parseErrors: number;
+      linesTotal: number;
+      linesValid: number;
+      linesInvalid: number;
+    }>(
+      (acc, point) => ({
+        totalCalls: acc.totalCalls + point.totalCalls,
+        parseErrors: acc.parseErrors + point.parseErrors,
+        linesTotal: acc.linesTotal + point.linesTotal,
+        linesValid: acc.linesValid + point.linesValid,
+        linesInvalid: acc.linesInvalid + point.linesInvalid,
+      }),
+      {
+        totalCalls: 0,
+        parseErrors: 0,
+        linesTotal: 0,
+        linesValid: 0,
+        linesInvalid: 0,
+      },
+    );
+
+    return {
+      ok: true,
+      trend: {
+        hoursAgo,
+        bucketHours,
+        sourceId: sourceId ?? null,
+        points,
+        summary: {
+          ...summary,
+          parseErrorRatePct:
+            summary.totalCalls > 0 ? (summary.parseErrors / summary.totalCalls) * 100 : 0,
+          lineValidRatePct:
+            summary.linesTotal > 0 ? (summary.linesValid / summary.linesTotal) * 100 : 0,
+        },
+      },
+    };
+  });
+
   // GET /admin/logs/fetch-runs - List recent fetch runs
   fastify.get("/admin/logs/fetch-runs", async (request, reply) => {
     const db = getDb();
