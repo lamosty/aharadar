@@ -12,6 +12,8 @@ import type { XPostsSourceConfig } from "./config";
 
 let lastRunKey: string | null = null;
 let runSearchCallsUsed = 0;
+// Reliability cap from production experience: Grok output quality drops on larger handle batches.
+const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
 
 function parseIntEnv(value: string | undefined): number | null {
   if (!value) return null;
@@ -92,14 +94,14 @@ function clampInt(value: number, min: number, max: number): number {
 
 function buildAutoGroups(accounts: string[], batchSize: number): string[][] {
   const cleaned = accounts.map((a) => a.trim()).filter((a) => a.length > 0);
-  const size = clampInt(batchSize, 1, 10);
+  const size = clampInt(batchSize, 1, MAX_X_SEARCH_HANDLES_PER_CALL);
   const out: string[][] = [];
   for (let i = 0; i < cleaned.length; i += size) out.push(cleaned.slice(i, i + size));
   return out;
 }
 
 function chunkGroup(group: string[], maxSize: number): string[][] {
-  const size = clampInt(maxSize, 1, 10);
+  const size = clampInt(maxSize, 1, MAX_X_SEARCH_HANDLES_PER_CALL);
   if (group.length <= size) return [group];
   const out: string[][] = [];
   for (let i = 0; i < group.length; i += size) out.push(group.slice(i, i + size));
@@ -221,7 +223,7 @@ function extractPostRawItems(params: {
       windowEnd: params.windowEnd,
       // New fields from updated prompt
       id: asString(r.id),
-      date: asString(r.date) ?? params.windowEnd,
+      date: asString(r.date),
       url: asString(r.url),
       text: asString(r.text),
       text_b64: asString(r.text_b64) ?? asString(r.textB64),
@@ -264,7 +266,7 @@ function buildQueryJobs(config: XPostsSourceConfig): QueryJob[] {
   // Check for batching
   if (config.batching?.mode === "manual" && config.batching.groups) {
     return config.batching.groups.flatMap((group) =>
-      chunkGroup(group, 10).map((g) => {
+      chunkGroup(group, MAX_X_SEARCH_HANDLES_PER_CALL).map((g) => {
         const { query, handles } = compileBatchedQuery(g, config);
         return { query, handles, groupSize: handles.length };
       }),
@@ -272,7 +274,7 @@ function buildQueryJobs(config: XPostsSourceConfig): QueryJob[] {
   }
 
   if (config.batching?.mode === "auto") {
-    const batchSize = clampInt(config.batching.batchSize ?? 5, 1, 10);
+    const batchSize = clampInt(config.batching.batchSize ?? 5, 1, MAX_X_SEARCH_HANDLES_PER_CALL);
     // Auto batching is account-driven. If there are no accounts configured,
     // fall back to a normal (non-batched) query compilation (e.g., keywords-only).
     const accounts = (config.accounts ?? []).map((a) => a.trim()).filter((a) => a.length > 0);
@@ -288,7 +290,7 @@ function buildQueryJobs(config: XPostsSourceConfig): QueryJob[] {
         ? config.batching.groups
         : buildAutoGroups(accounts, batchSize);
     return baseGroups.flatMap((group) =>
-      chunkGroup(group, 10).map((g) => {
+      chunkGroup(group, MAX_X_SEARCH_HANDLES_PER_CALL).map((g) => {
         const { query, handles } = compileBatchedQuery(g, config);
         return { query, handles, groupSize: handles.length };
       }),
@@ -333,6 +335,9 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
   let jobsExecuted = 0;
 
   for (const job of jobs) {
+    const remainingItems = Math.max(0, params.limits.maxItems - rawItems.length);
+    if (remainingItems === 0) break;
+
     if (maxSearchCallsPerRun !== null && runSearchCallsUsed >= maxSearchCallsPerRun) {
       // Log warning if we're truncating due to limit
       const skipped = jobs.length - jobsExecuted;
@@ -349,8 +354,8 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
     // Calculate limit: perAccountLimit * groupSize, capped at maxItems.
     // Note: We do not enforce a fixed per-call cap here; cost is controlled by maxResultsPerQuery,
     // batch sizing, and token budgets.
-    const scaledLimit = Math.min(perAccountLimit * job.groupSize, params.limits.maxItems);
-    const limit = Math.max(1, scaledLimit);
+    const scaledLimit = perAccountLimit * job.groupSize;
+    const limit = Math.max(1, Math.min(scaledLimit, remainingItems));
 
     // Calculate max output tokens: maxOutputTokensPerAccount * groupSize if set
     const maxOutputTokens =
@@ -441,16 +446,17 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
         anySuccess = true;
 
         if (resultsCount && resultsCount > 0) {
-          rawItems.push(
-            ...extractPostRawItems({
-              assistantJson: result.assistantJson,
-              vendor: config.vendor,
-              query: job.query,
-              dayBucket,
-              windowStart: params.windowStart,
-              windowEnd: params.windowEnd,
-            }),
-          );
+          const remainingAfterCall = Math.max(0, params.limits.maxItems - rawItems.length);
+          if (remainingAfterCall === 0) continue;
+          const extracted = extractPostRawItems({
+            assistantJson: result.assistantJson,
+            vendor: config.vendor,
+            query: job.query,
+            dayBucket,
+            windowStart: params.windowStart,
+            windowEnd: params.windowEnd,
+          });
+          rawItems.push(...extracted.slice(0, remainingAfterCall));
         }
       }
     } catch (err) {

@@ -5,7 +5,7 @@ import { HelpTooltip } from "@/components/HelpTooltip";
 import styles from "./SourceConfigForms.module.css";
 import type { SourceConfigFormProps, XPostsConfig } from "./types";
 
-// Grok's fast model struggles with batches > 5, producing truncated JSON
+// Grok output reliability drops with large handle batches; keep a conservative ceiling.
 const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
 
 /** Serialize groups to textarea format (one line per group, comma-separated) */

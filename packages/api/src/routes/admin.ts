@@ -97,9 +97,57 @@ const SUPPORTED_SOURCE_TYPES = [
   "telegram",
 ] as const;
 type SupportedSourceType = (typeof SUPPORTED_SOURCE_TYPES)[number];
+const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
 
 function isSupportedSourceType(value: unknown): value is SupportedSourceType {
   return typeof value === "string" && SUPPORTED_SOURCE_TYPES.includes(value as SupportedSourceType);
+}
+
+function validateXPostsConfig(config: Record<string, unknown>): string | null {
+  const batching = config.batching;
+  if (batching === undefined) return null;
+  if (!batching || typeof batching !== "object" || Array.isArray(batching)) {
+    return "x_posts config batching must be an object";
+  }
+
+  const batchingObj = batching as Record<string, unknown>;
+  const mode = batchingObj.mode;
+  if (mode !== undefined && mode !== "off" && mode !== "manual" && mode !== "auto") {
+    return 'x_posts config batching.mode must be one of: "off", "manual", "auto"';
+  }
+
+  const batchSize = batchingObj.batchSize;
+  if (mode === "auto" || batchSize !== undefined) {
+    if (
+      typeof batchSize !== "number" ||
+      !Number.isFinite(batchSize) ||
+      !Number.isInteger(batchSize) ||
+      batchSize < 1 ||
+      batchSize > MAX_X_SEARCH_HANDLES_PER_CALL
+    ) {
+      return `x_posts config batching.batchSize must be an integer between 1 and ${MAX_X_SEARCH_HANDLES_PER_CALL}`;
+    }
+  }
+
+  const groups = batchingObj.groups;
+  if (groups !== undefined) {
+    if (!Array.isArray(groups)) {
+      return "x_posts config batching.groups must be an array";
+    }
+    for (const group of groups) {
+      if (!Array.isArray(group)) {
+        return "x_posts config batching.groups entries must be arrays of handles";
+      }
+      const validHandles = group.filter(
+        (handle): handle is string => typeof handle === "string" && handle.trim().length > 0,
+      );
+      if (validHandles.length > MAX_X_SEARCH_HANDLES_PER_CALL) {
+        return `x_posts config batching.groups entries can have at most ${MAX_X_SEARCH_HANDLES_PER_CALL} handles`;
+      }
+    }
+  }
+
+  return null;
 }
 
 interface AdminSourcesCreateBody {
@@ -192,6 +240,19 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           message: "config must be an object if provided",
         },
       });
+    }
+
+    if (type === "x_posts") {
+      const xPostsError = validateXPostsConfig((config as Record<string, unknown>) ?? {});
+      if (xPostsError) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: xPostsError,
+          },
+        });
+      }
     }
 
     // Validate isEnabled (optional, must be boolean if provided)
@@ -951,6 +1012,21 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
             error: {
               code: "INVALID_PARAM",
               message: "configPatch.weight must be a number or null",
+            },
+          });
+        }
+      }
+
+      if (existing.type === "x_posts" && "batching" in patch) {
+        const existingConfig = (existing.config_json ?? {}) as Record<string, unknown>;
+        const mergedConfig = { ...existingConfig, ...patch };
+        const xPostsError = validateXPostsConfig(mergedConfig);
+        if (xPostsError) {
+          return reply.code(400).send({
+            ok: false,
+            error: {
+              code: "INVALID_PARAM",
+              message: xPostsError,
             },
           });
         }

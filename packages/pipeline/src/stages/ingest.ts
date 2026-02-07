@@ -261,6 +261,7 @@ function extractProviderCalls(meta: unknown): ProviderCallDraft[] {
         inputTokens: e.inputTokens,
         outputTokens: e.outputTokens,
         costEstimateCredits: e.costEstimateCredits,
+        costEstimateUsd: typeof e.costEstimateUsd === "number" ? e.costEstimateUsd : undefined,
         meta: e.meta as Record<string, unknown>,
         startedAt: e.startedAt,
         endedAt: e.endedAt,

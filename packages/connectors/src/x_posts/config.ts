@@ -13,7 +13,7 @@ export interface XPostsBatchingConfig {
   /** Batching mode: off (default), manual (explicit groups), or auto (generated groups) */
   mode: "off" | "manual" | "auto";
   /**
-   * Auto mode: number of accounts per batch (1-10).
+   * Auto mode: number of accounts per batch (1-5).
    * Auto-batched groups should be persisted in `groups` for deterministic runs.
    */
   batchSize?: number;

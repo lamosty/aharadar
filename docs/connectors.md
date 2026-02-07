@@ -997,8 +997,8 @@ Notes:
 - `batching`: optional experimental cost control:
   - `mode`: `"off"` (default) | `"manual"` | `"auto"`
   - `groups`: explicit account groups for `"manual"`, or stored generated groups for `"auto"` (used for deterministic runs / testing)
-  - `batchSize`: accounts per group for `"auto"` (1-10)
-  - Constraint: each group must have **<= 10 accounts** (xAI `allowed_x_handles` limit).
+  - `batchSize`: accounts per group for `"auto"` (1-5)
+  - Constraint: each group must have **<= 5 accounts** (reliability ceiling for Grok line output quality).
 - `maxOutputTokensPerAccount`: optional override; when batching, total output tokens scale by batch size (may increase cost).
 - `fairnessByAccount`: when true, treat each account as its own fairness bucket during sampling/triage (no UI source splitting).
 - `accountHealthMode`: `"nudge"` (default) = informational only; `"throttle"` = enable automatic fetch rate reduction for low-signal accounts.
@@ -1024,7 +1024,7 @@ Notes:
 - Use the provider client (e.g., Grok) to search for posts matching the compiled queries.
 - The fetch function returns `rawItems` **one per post** (not bundles).
 - Provider output is **plain text lines** (not JSON) to maximize reliability:
-  - One post per line: `POST<TAB>timestamp<TAB>@handle<TAB>url<TAB>text`
+  - One post per line: `POST<TAB>timestamp<TAB>@handle<TAB>status_id<TAB>url<TAB>text`
   - Missing fields are encoded as `NULL` and salvaged downstream.
 - Respect `limits.maxItems` as the total cap across all queries.
 

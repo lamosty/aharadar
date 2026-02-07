@@ -262,22 +262,29 @@ export function validateSourceConfig(
   config: Partial<SourceTypeConfig>,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
+  const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
 
   const validateXPostsBatching = (xConfig: Partial<XPostsConfig>) => {
     const batching = xConfig.batching;
     if (!batching || batching.mode === "off") return;
 
     const groups = batching.groups ?? [];
-    const hasOversizeGroup = groups.some((g) => Array.isArray(g) && g.length > 10);
+    const hasOversizeGroup = groups.some(
+      (g) => Array.isArray(g) && g.length > MAX_X_SEARCH_HANDLES_PER_CALL,
+    );
     if (hasOversizeGroup) {
-      errors.batching =
-        "Each batch group can have at most 10 accounts (xAI x_search allowed_x_handles limit).";
+      errors.batching = `Each batch group can have at most ${MAX_X_SEARCH_HANDLES_PER_CALL} accounts for Grok reliability.`;
     }
 
     if (batching.mode === "auto") {
       const size = batching.batchSize;
-      if (typeof size !== "number" || !Number.isFinite(size) || size < 1 || size > 10) {
-        errors.batching = "Auto batch size must be between 1 and 10 accounts.";
+      if (
+        typeof size !== "number" ||
+        !Number.isFinite(size) ||
+        size < 1 ||
+        size > MAX_X_SEARCH_HANDLES_PER_CALL
+      ) {
+        errors.batching = `Auto batch size must be between 1 and ${MAX_X_SEARCH_HANDLES_PER_CALL} accounts.`;
       }
     }
   };
