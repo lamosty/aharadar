@@ -44,6 +44,20 @@ export interface XPostsSourceConfig {
 
   // Override max output tokens per account (scaled by group size)
   maxOutputTokensPerAccount?: number;
+  /**
+   * Batched mode fallback when maxOutputTokensPerAccount is not set.
+   * Applies only when querying multiple accounts in one Grok call.
+   */
+  batchedDefaultMaxOutputTokensPerAccount?: number;
+  /**
+   * Additional output-token safety margin (0-1, e.g. 0.25 = +25%).
+   * Helps avoid truncation when one account has unusually long posts.
+   */
+  outputTokenHeadroomPct?: number;
+  /**
+   * Minimum absolute token headroom added to each call budget.
+   */
+  outputTokenHeadroomMin?: number;
 
   /**
    * Prompt detail level for Grok responses.

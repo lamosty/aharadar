@@ -7,6 +7,9 @@ import type { SourceConfigFormProps, XPostsConfig } from "./types";
 
 // Grok output reliability drops with large handle batches; keep a conservative ceiling.
 const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
+const DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT = 1000;
+const DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT = 0.25;
+const DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN = 300;
 
 /** Serialize groups to textarea format (one line per group, comma-separated) */
 function serializeGroups(groups: string[][] | undefined): string {
@@ -789,7 +792,7 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                     size + automatic safety headroom
                   </p>
                   <p>
-                    <strong>Default:</strong> Uses system default (~900 tokens)
+                    <strong>If empty:</strong> uses the batched defaults configured below.
                   </p>
                   <p>
                     <strong>Example:</strong> Set to 500 for 2-account batches = 1000 tokens per
@@ -812,9 +815,139 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                 e.target.value ? parseInt(e.target.value, 10) : undefined,
               )
             }
-            placeholder="Default"
+            placeholder="Optional override"
             className={styles.numberInput}
           />
+          {errors?.maxOutputTokensPerAccount && (
+            <p className={styles.error}>{errors.maxOutputTokensPerAccount}</p>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="x-batchedDefaultMaxOutputTokens" className={styles.label}>
+            Batched Default Output Tokens Per Account
+            <HelpTooltip
+              title="Batched Default Tokens"
+              content={
+                <>
+                  <p>
+                    Used when <code>Max Output Tokens Per Account</code> is empty and batching is
+                    enabled.
+                  </p>
+                  <p>Effective call budget = this value × group size + headroom.</p>
+                  <p>
+                    <strong>Default:</strong> {DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT}
+                    /account.
+                  </p>
+                </>
+              }
+            />
+          </label>
+          <input
+            type="number"
+            id="x-batchedDefaultMaxOutputTokens"
+            min={100}
+            max={4000}
+            value={value.batchedDefaultMaxOutputTokensPerAccount ?? ""}
+            onChange={(e) =>
+              handleChange(
+                "batchedDefaultMaxOutputTokensPerAccount",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
+            }
+            placeholder={String(DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT)}
+            className={styles.numberInput}
+          />
+          {errors?.batchedDefaultMaxOutputTokensPerAccount && (
+            <p className={styles.error}>{errors.batchedDefaultMaxOutputTokensPerAccount}</p>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="x-outputHeadroomPct" className={styles.label}>
+            Output Headroom (%)
+            <HelpTooltip
+              title="Token Headroom Percent"
+              content={
+                <>
+                  <p>
+                    Adds percentage headroom to reduce truncation when one account has unusually
+                    long posts.
+                  </p>
+                  <p>
+                    <strong>Example:</strong> 25% on a 5000-token base adds 1250 extra tokens.
+                  </p>
+                  <p>
+                    <strong>Default:</strong> {Math.round(DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT * 100)}
+                    %.
+                  </p>
+                </>
+              }
+            />
+          </label>
+          <input
+            type="number"
+            id="x-outputHeadroomPct"
+            min={0}
+            max={100}
+            step={1}
+            value={
+              typeof value.outputTokenHeadroomPct === "number"
+                ? Math.round(value.outputTokenHeadroomPct * 100)
+                : ""
+            }
+            onChange={(e) => {
+              if (!e.target.value) {
+                handleChange("outputTokenHeadroomPct", undefined);
+                return;
+              }
+              const pct = clampInt(parseInt(e.target.value, 10), 0, 100);
+              handleChange("outputTokenHeadroomPct", pct / 100);
+            }}
+            placeholder={String(Math.round(DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT * 100))}
+            className={styles.numberInput}
+          />
+          {errors?.outputTokenHeadroomPct && (
+            <p className={styles.error}>{errors.outputTokenHeadroomPct}</p>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="x-outputHeadroomMin" className={styles.label}>
+            Minimum Headroom Tokens
+            <HelpTooltip
+              title="Minimum Token Headroom"
+              content={
+                <>
+                  <p>
+                    Ensures every call gets at least this many extra tokens, even when percentage
+                    headroom is small.
+                  </p>
+                  <p>
+                    <strong>Default:</strong> {DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN} tokens.
+                  </p>
+                </>
+              }
+            />
+          </label>
+          <input
+            type="number"
+            id="x-outputHeadroomMin"
+            min={0}
+            max={8000}
+            value={value.outputTokenHeadroomMin ?? ""}
+            onChange={(e) =>
+              handleChange(
+                "outputTokenHeadroomMin",
+                e.target.value ? parseInt(e.target.value, 10) : undefined,
+              )
+            }
+            placeholder={String(DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN)}
+            className={styles.numberInput}
+          />
+          {errors?.outputTokenHeadroomMin && (
+            <p className={styles.error}>{errors.outputTokenHeadroomMin}</p>
+          )}
         </div>
       </div>
     </div>

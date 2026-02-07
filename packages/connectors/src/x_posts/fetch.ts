@@ -14,8 +14,8 @@ let lastRunKey: string | null = null;
 let runSearchCallsUsed = 0;
 // Reliability cap from production experience: Grok output quality drops on larger handle batches.
 const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
-const DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT = 900;
-const DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT = 0.2;
+const DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT = 1000;
+const DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT = 0.25;
 const DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN = 300;
 
 function parseIntEnv(value: string | undefined): number | null {
@@ -88,6 +88,11 @@ function getOutputTokenBudget(config: XPostsSourceConfig, groupSize: number): Ou
     mode = "per_account_override";
   } else if (groupSize > 1) {
     basePerAccountTokens =
+      (typeof config.batchedDefaultMaxOutputTokensPerAccount === "number" &&
+      Number.isFinite(config.batchedDefaultMaxOutputTokensPerAccount) &&
+      config.batchedDefaultMaxOutputTokensPerAccount > 0
+        ? Math.floor(config.batchedDefaultMaxOutputTokensPerAccount)
+        : null) ??
       parseIntEnv(process.env.X_POSTS_DEFAULT_MAX_OUTPUT_TOKENS_PER_ACCOUNT) ??
       DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT;
     mode = "batched_default_per_account";
@@ -96,11 +101,19 @@ function getOutputTokenBudget(config: XPostsSourceConfig, groupSize: number): Ou
   if (!basePerAccountTokens || basePerAccountTokens <= 0) return { mode };
 
   const baseTokens = basePerAccountTokens * groupSize;
-  const headroomPctRaw = parseFloatEnv(process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_PCT);
+  const headroomPctRaw =
+    (typeof config.outputTokenHeadroomPct === "number" &&
+    Number.isFinite(config.outputTokenHeadroomPct)
+      ? config.outputTokenHeadroomPct
+      : null) ?? parseFloatEnv(process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_PCT);
   const headroomPct = Math.max(0, Math.min(1, headroomPctRaw ?? DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT));
   const headroomMin = Math.max(
     0,
-    parseIntEnv(process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_MIN) ??
+    (typeof config.outputTokenHeadroomMin === "number" &&
+    Number.isFinite(config.outputTokenHeadroomMin)
+      ? Math.floor(config.outputTokenHeadroomMin)
+      : null) ??
+      parseIntEnv(process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_MIN) ??
       DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN,
   );
   const headroomTokens = Math.max(headroomMin, Math.floor(baseTokens * headroomPct));
@@ -197,6 +210,21 @@ function asConfig(value: Record<string, unknown>): XPostsSourceConfig {
       typeof value.maxOutputTokensPerAccount === "number" &&
       Number.isFinite(value.maxOutputTokensPerAccount)
         ? value.maxOutputTokensPerAccount
+        : undefined,
+    batchedDefaultMaxOutputTokensPerAccount:
+      typeof value.batchedDefaultMaxOutputTokensPerAccount === "number" &&
+      Number.isFinite(value.batchedDefaultMaxOutputTokensPerAccount)
+        ? value.batchedDefaultMaxOutputTokensPerAccount
+        : undefined,
+    outputTokenHeadroomPct:
+      typeof value.outputTokenHeadroomPct === "number" &&
+      Number.isFinite(value.outputTokenHeadroomPct)
+        ? value.outputTokenHeadroomPct
+        : undefined,
+    outputTokenHeadroomMin:
+      typeof value.outputTokenHeadroomMin === "number" &&
+      Number.isFinite(value.outputTokenHeadroomMin)
+        ? value.outputTokenHeadroomMin
         : undefined,
     promptProfile: asPromptProfile(value.promptProfile),
     fairnessByAccount:

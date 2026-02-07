@@ -104,6 +104,60 @@ function isSupportedSourceType(value: unknown): value is SupportedSourceType {
 }
 
 function validateXPostsConfig(config: Record<string, unknown>): string | null {
+  const maxOutputTokensPerAccount = config.maxOutputTokensPerAccount;
+  if (maxOutputTokensPerAccount !== undefined && maxOutputTokensPerAccount !== null) {
+    if (
+      typeof maxOutputTokensPerAccount !== "number" ||
+      !Number.isFinite(maxOutputTokensPerAccount) ||
+      !Number.isInteger(maxOutputTokensPerAccount) ||
+      maxOutputTokensPerAccount < 100 ||
+      maxOutputTokensPerAccount > 4000
+    ) {
+      return "x_posts config maxOutputTokensPerAccount must be an integer between 100 and 4000";
+    }
+  }
+
+  const batchedDefaultMaxOutputTokensPerAccount = config.batchedDefaultMaxOutputTokensPerAccount;
+  if (
+    batchedDefaultMaxOutputTokensPerAccount !== undefined &&
+    batchedDefaultMaxOutputTokensPerAccount !== null
+  ) {
+    if (
+      typeof batchedDefaultMaxOutputTokensPerAccount !== "number" ||
+      !Number.isFinite(batchedDefaultMaxOutputTokensPerAccount) ||
+      !Number.isInteger(batchedDefaultMaxOutputTokensPerAccount) ||
+      batchedDefaultMaxOutputTokensPerAccount < 100 ||
+      batchedDefaultMaxOutputTokensPerAccount > 4000
+    ) {
+      return "x_posts config batchedDefaultMaxOutputTokensPerAccount must be an integer between 100 and 4000";
+    }
+  }
+
+  const outputTokenHeadroomPct = config.outputTokenHeadroomPct;
+  if (outputTokenHeadroomPct !== undefined && outputTokenHeadroomPct !== null) {
+    if (
+      typeof outputTokenHeadroomPct !== "number" ||
+      !Number.isFinite(outputTokenHeadroomPct) ||
+      outputTokenHeadroomPct < 0 ||
+      outputTokenHeadroomPct > 1
+    ) {
+      return "x_posts config outputTokenHeadroomPct must be between 0 and 1";
+    }
+  }
+
+  const outputTokenHeadroomMin = config.outputTokenHeadroomMin;
+  if (outputTokenHeadroomMin !== undefined && outputTokenHeadroomMin !== null) {
+    if (
+      typeof outputTokenHeadroomMin !== "number" ||
+      !Number.isFinite(outputTokenHeadroomMin) ||
+      !Number.isInteger(outputTokenHeadroomMin) ||
+      outputTokenHeadroomMin < 0 ||
+      outputTokenHeadroomMin > 8000
+    ) {
+      return "x_posts config outputTokenHeadroomMin must be an integer between 0 and 8000";
+    }
+  }
+
   const batching = config.batching;
   if (batching === undefined) return null;
   if (!batching || typeof batching !== "object" || Array.isArray(batching)) {
@@ -1017,7 +1071,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         }
       }
 
-      if (existing.type === "x_posts" && "batching" in patch) {
+      if (existing.type === "x_posts") {
         const existingConfig = (existing.config_json ?? {}) as Record<string, unknown>;
         const mergedConfig = { ...existingConfig, ...patch };
         const xPostsError = validateXPostsConfig(mergedConfig);

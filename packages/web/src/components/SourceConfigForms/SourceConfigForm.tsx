@@ -337,6 +337,43 @@ export function validateSourceConfig(
       if (!hasContent) {
         errors.accounts = "At least one account, keyword, or query is required";
       }
+      if (
+        xConfig.maxOutputTokensPerAccount !== undefined &&
+        (typeof xConfig.maxOutputTokensPerAccount !== "number" ||
+          !Number.isFinite(xConfig.maxOutputTokensPerAccount) ||
+          xConfig.maxOutputTokensPerAccount < 100 ||
+          xConfig.maxOutputTokensPerAccount > 4000)
+      ) {
+        errors.maxOutputTokensPerAccount = "Per-account output tokens must be between 100 and 4000";
+      }
+      if (
+        xConfig.batchedDefaultMaxOutputTokensPerAccount !== undefined &&
+        (typeof xConfig.batchedDefaultMaxOutputTokensPerAccount !== "number" ||
+          !Number.isFinite(xConfig.batchedDefaultMaxOutputTokensPerAccount) ||
+          xConfig.batchedDefaultMaxOutputTokensPerAccount < 100 ||
+          xConfig.batchedDefaultMaxOutputTokensPerAccount > 4000)
+      ) {
+        errors.batchedDefaultMaxOutputTokensPerAccount =
+          "Batched default output tokens must be between 100 and 4000";
+      }
+      if (
+        xConfig.outputTokenHeadroomPct !== undefined &&
+        (typeof xConfig.outputTokenHeadroomPct !== "number" ||
+          !Number.isFinite(xConfig.outputTokenHeadroomPct) ||
+          xConfig.outputTokenHeadroomPct < 0 ||
+          xConfig.outputTokenHeadroomPct > 1)
+      ) {
+        errors.outputTokenHeadroomPct = "Headroom percent must be between 0 and 100";
+      }
+      if (
+        xConfig.outputTokenHeadroomMin !== undefined &&
+        (typeof xConfig.outputTokenHeadroomMin !== "number" ||
+          !Number.isFinite(xConfig.outputTokenHeadroomMin) ||
+          xConfig.outputTokenHeadroomMin < 0 ||
+          xConfig.outputTokenHeadroomMin > 8000)
+      ) {
+        errors.outputTokenHeadroomMin = "Minimum headroom tokens must be between 0 and 8000";
+      }
       validateXPostsBatching(xConfig);
       break;
     }
@@ -464,6 +501,9 @@ export function getDefaultConfig(sourceType: SupportedSourceType): Partial<Sourc
         queries: [],
         excludeReplies: true,
         excludeRetweets: true,
+        batchedDefaultMaxOutputTokensPerAccount: 1000,
+        outputTokenHeadroomPct: 0.25,
+        outputTokenHeadroomMin: 300,
         fairnessByAccount: false,
       } as Partial<XPostsConfig>;
 

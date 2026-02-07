@@ -184,6 +184,47 @@ describe("fetchXPosts", () => {
     expect(providerCalls?.[0]?.meta?.max_output_tokens_mode).toBe("batched_default_per_account");
   });
 
+  it("prefers source-config token knobs over env defaults", async () => {
+    process.env.X_POSTS_DEFAULT_MAX_OUTPUT_TOKENS_PER_ACCOUNT = "700";
+    process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_PCT = "0.1";
+    process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_MIN = "50";
+
+    vi.mocked(grokXSearch).mockResolvedValue({
+      response: {},
+      endpoint: "https://example.test/v1/responses",
+      model: "grok-4-1-fast-non-reasoning",
+      inputTokens: 10,
+      outputTokens: 10,
+      assistantJson: { results: [] },
+      assistantParseError: false,
+    });
+
+    const result = await fetchXPosts(
+      baseParams({
+        config: {
+          vendor: "grok",
+          accounts: ["alpha", "beta"],
+          batching: { mode: "auto", batchSize: 2 },
+          batchedDefaultMaxOutputTokensPerAccount: 1200,
+          outputTokenHeadroomPct: 0.5,
+          outputTokenHeadroomMin: 200,
+          maxResultsPerQuery: 5,
+        },
+        limits: { maxItems: 10 },
+      }),
+    );
+
+    expect(vi.mocked(grokXSearch)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(grokXSearch).mock.calls[0]?.[0].maxOutputTokens).toBe(3600);
+
+    const providerCalls = (
+      result.meta as { providerCalls?: Array<{ meta?: Record<string, unknown> }> }
+    ).providerCalls;
+    expect(providerCalls?.[0]?.meta?.max_output_tokens_base).toBe(2400);
+    expect(providerCalls?.[0]?.meta?.max_output_tokens_headroom).toBe(1200);
+    expect(providerCalls?.[0]?.meta?.max_output_tokens_mode).toBe("batched_default_per_account");
+  });
+
   it("applies headroom to explicit maxOutputTokensPerAccount", async () => {
     process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_PCT = "0.1";
     process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_MIN = "50";

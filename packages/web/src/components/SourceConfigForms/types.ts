@@ -53,6 +53,19 @@ export interface XPostsConfig {
   batching?: XPostsBatchingConfig;
   maxOutputTokensPerAccount?: number;
   /**
+   * Batched fallback when maxOutputTokensPerAccount is unset.
+   * Applied per account, then multiplied by group size.
+   */
+  batchedDefaultMaxOutputTokensPerAccount?: number;
+  /**
+   * Output token headroom ratio (0-1, e.g. 0.25 = 25%).
+   */
+  outputTokenHeadroomPct?: number;
+  /**
+   * Minimum absolute output token headroom.
+   */
+  outputTokenHeadroomMin?: number;
+  /**
    * Prompt detail level for Grok responses.
    * - light (default): shorter text capture (~500 chars), cheaper
    * - heavy: longer text capture (~1500 chars), more detail, costs more tokens
