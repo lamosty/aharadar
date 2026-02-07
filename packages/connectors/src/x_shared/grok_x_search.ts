@@ -108,18 +108,15 @@ function collectAssistantTextFromOutput(output: unknown): string | null {
     const it = asRecord(item);
     if (it.type === "message" && it.role === "assistant") {
       const content = it.content;
-      if (Array.isArray(content)) {
-        for (const part of content) {
-          const p = asRecord(part);
-          if (p.type === "output_text" || p.type === "text") {
-            const text = p.text;
-            if (typeof text === "string" && text.length > 0) {
-              parts.push(text);
-            }
+      if (!Array.isArray(content)) continue;
+      for (const part of content) {
+        const p = asRecord(part);
+        if (p.type === "output_text") {
+          const text = p.text;
+          if (typeof text === "string" && text.length > 0) {
+            parts.push(text);
           }
         }
-      } else if (typeof content === "string" && content.length > 0) {
-        parts.push(content);
       }
     }
   }
@@ -128,26 +125,9 @@ function collectAssistantTextFromOutput(output: unknown): string | null {
 
 function extractAssistantContent(response: unknown): string | null {
   const rec = asRecord(response);
-
-  // Responses API: output[] may contain an assistant message with output_text parts.
-  const output = rec.output;
-  const combined = collectAssistantTextFromOutput(output);
-  if (combined && combined.length > 0) return combined;
-
-  // OpenAI-compatible Responses API: output_text is a convenience field.
-  const outputText = rec.output_text;
-  if (typeof outputText === "string" && outputText.length > 0) return outputText;
-
-  // OpenAI-compatible Chat Completions API.
-  const choices = rec.choices;
-  if (Array.isArray(choices) && choices.length > 0) {
-    const first = asRecord(choices[0]);
-    const msg = asRecord(first.message);
-    const content = msg.content;
-    if (typeof content === "string" && content.length > 0) return content;
-  }
-
-  return null;
+  // Single parser path by design:
+  // Responses API -> output[] -> assistant message -> output_text parts.
+  return collectAssistantTextFromOutput(rec.output);
 }
 
 type GrokLineParseStats = {
@@ -215,44 +195,30 @@ function parsePostLines(text: string): { results: GrokLineResult[]; stats: GrokL
 
     const rest = line.slice(4).replace(/^\s+/, "");
     const parts = rest.split("\t");
-    if (parts.length < 3) {
+    // Strict expected format:
+    // POST<TAB>timestamp<TAB>@handle<TAB>status_id<TAB>url<TAB>text
+    if (parts.length < 5) {
       stats.linesInvalid += 1;
       continue;
     }
 
     const rawTimestamp = normalizeNullable(parts[0] ?? null);
     const rawHandle = normalizeNullable(parts[1] ?? null);
+    const rawStatusIdCandidate = normalizeNullable(parts[2] ?? null);
+    const rawUrlCandidate = normalizeNullable(parts[3] ?? null);
+    const rawText = parts.slice(4).join("\t");
 
-    let rawStatusId: string | null = null;
-    let rawUrl: string | null = null;
-    let rawText = "";
-    if (parts.length >= 5) {
-      const third = normalizeNullable(parts[2] ?? null);
-      const fourth = normalizeNullable(parts[3] ?? null);
-      if (looksLikeStatusId(third) || third === null) {
-        // Preferred format:
-        // POST<TAB>timestamp<TAB>@handle<TAB>status_id<TAB>url<TAB>text
-        rawStatusId = third;
-        rawUrl = fourth;
-        rawText = parts.slice(4).join("\t");
-      } else if (looksLikeHttpUrl(third)) {
-        // Backward-compat with older format where the 3rd field is URL.
-        rawUrl = third;
-        rawText = parts.slice(3).join("\t");
-      } else if (looksLikeHttpUrl(fourth)) {
-        // Salvage: malformed status_id + valid URL in 4th field.
-        rawUrl = fourth;
-        rawText = parts.slice(4).join("\t");
-      } else {
-        rawUrl = third;
-        rawText = parts.slice(3).join("\t");
-      }
-    } else if (parts.length >= 4) {
-      rawUrl = normalizeNullable(parts[2] ?? null);
-      rawText = parts.slice(3).join("\t");
-    } else {
-      rawText = parts.slice(2).join("\t");
+    if (rawStatusIdCandidate !== null && !looksLikeStatusId(rawStatusIdCandidate)) {
+      stats.linesInvalid += 1;
+      continue;
     }
+    if (rawUrlCandidate !== null && !looksLikeHttpUrl(rawUrlCandidate)) {
+      stats.linesInvalid += 1;
+      continue;
+    }
+
+    const rawStatusId = rawStatusIdCandidate;
+    const rawUrl = rawUrlCandidate;
 
     const textValue = normalizeTextField(rawText);
     if (!textValue) {
