@@ -786,7 +786,7 @@ export function XPostsConfigForm({ value, onChange, errors }: SourceConfigFormPr
                   <p>Override the default output token limit per account.</p>
                   <p>
                     <strong>How it works:</strong> When batching, total tokens = this value × group
-                    size
+                    size + automatic safety headroom
                   </p>
                   <p>
                     <strong>Default:</strong> Uses system default (~900 tokens)

@@ -14,10 +14,19 @@ let lastRunKey: string | null = null;
 let runSearchCallsUsed = 0;
 // Reliability cap from production experience: Grok output quality drops on larger handle batches.
 const MAX_X_SEARCH_HANDLES_PER_CALL = 5;
+const DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT = 900;
+const DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT = 0.2;
+const DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN = 300;
 
 function parseIntEnv(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseFloatEnv(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -47,6 +56,61 @@ function getMaxSearchCallsPerRun(): number | null {
   return parseIntEnv(
     process.env.X_POSTS_MAX_SEARCH_CALLS_PER_RUN ?? process.env.SIGNAL_MAX_SEARCH_CALLS_PER_RUN,
   );
+}
+
+type OutputTokenBudget = {
+  maxOutputTokens?: number;
+  baseTokens?: number;
+  headroomTokens?: number;
+  mode: "provider_default" | "per_account_override" | "batched_default_per_account";
+};
+
+/**
+ * Compute a safe output-token budget for Grok x_posts calls.
+ *
+ * Why:
+ * - Batched account queries can be truncated when one account posts very long text.
+ * - We add configurable headroom so we preserve more results without forcing users
+ *   to hand-tune every source.
+ */
+function getOutputTokenBudget(config: XPostsSourceConfig, groupSize: number): OutputTokenBudget {
+  if (groupSize <= 0) return { mode: "provider_default" };
+
+  let basePerAccountTokens: number | null = null;
+  let mode: OutputTokenBudget["mode"] = "provider_default";
+
+  if (
+    typeof config.maxOutputTokensPerAccount === "number" &&
+    Number.isFinite(config.maxOutputTokensPerAccount) &&
+    config.maxOutputTokensPerAccount > 0
+  ) {
+    basePerAccountTokens = Math.floor(config.maxOutputTokensPerAccount);
+    mode = "per_account_override";
+  } else if (groupSize > 1) {
+    basePerAccountTokens =
+      parseIntEnv(process.env.X_POSTS_DEFAULT_MAX_OUTPUT_TOKENS_PER_ACCOUNT) ??
+      DEFAULT_BATCHED_MAX_OUTPUT_TOKENS_PER_ACCOUNT;
+    mode = "batched_default_per_account";
+  }
+
+  if (!basePerAccountTokens || basePerAccountTokens <= 0) return { mode };
+
+  const baseTokens = basePerAccountTokens * groupSize;
+  const headroomPctRaw = parseFloatEnv(process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_PCT);
+  const headroomPct = Math.max(0, Math.min(1, headroomPctRaw ?? DEFAULT_OUTPUT_TOKEN_HEADROOM_PCT));
+  const headroomMin = Math.max(
+    0,
+    parseIntEnv(process.env.X_POSTS_OUTPUT_TOKENS_HEADROOM_MIN) ??
+      DEFAULT_OUTPUT_TOKEN_HEADROOM_MIN,
+  );
+  const headroomTokens = Math.max(headroomMin, Math.floor(baseTokens * headroomPct));
+
+  return {
+    maxOutputTokens: baseTokens + headroomTokens,
+    baseTokens,
+    headroomTokens,
+    mode,
+  };
 }
 
 function asStringArray(value: unknown): string[] {
@@ -357,11 +421,10 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
     const scaledLimit = perAccountLimit * job.groupSize;
     const limit = Math.max(1, Math.min(scaledLimit, remainingItems));
 
-    // Calculate max output tokens: maxOutputTokensPerAccount * groupSize if set
-    const maxOutputTokens =
-      config.maxOutputTokensPerAccount && job.groupSize > 0
-        ? config.maxOutputTokensPerAccount * job.groupSize
-        : undefined;
+    // Scale output tokens by account count and add headroom so long-post accounts
+    // don't truncate batched responses.
+    const outputTokenBudget = getOutputTokenBudget(config, job.groupSize);
+    const maxOutputTokens = outputTokenBudget.maxOutputTokens;
 
     // Calculate max text chars based on promptProfile
     const maxTextChars = getMaxTextCharsFromProfile(config.promptProfile);
@@ -435,6 +498,9 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           batch_size: job.groupSize,
           batch_handles_count: job.handles.length,
           max_output_tokens: maxOutputTokens,
+          max_output_tokens_base: outputTokenBudget.baseTokens,
+          max_output_tokens_headroom: outputTokenBudget.headroomTokens,
+          max_output_tokens_mode: outputTokenBudget.mode,
         },
         startedAt,
         endedAt,
@@ -496,6 +562,9 @@ export async function fetchXPosts(params: FetchParams): Promise<FetchResult> {
           batch_size: job.groupSize,
           batch_handles_count: job.handles.length,
           max_output_tokens: maxOutputTokens,
+          max_output_tokens_base: outputTokenBudget.baseTokens,
+          max_output_tokens_headroom: outputTokenBudget.headroomTokens,
+          max_output_tokens_mode: outputTokenBudget.mode,
         },
         startedAt,
         endedAt,
