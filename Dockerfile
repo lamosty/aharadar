@@ -21,6 +21,10 @@ RUN pnpm install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder
+ARG API_URL=http://localhost:3001
+ARG API_PORT=3001
+ENV API_URL=${API_URL}
+ENV API_PORT=${API_PORT}
 COPY --from=deps /root/.local/share/pnpm /root/.local/share/pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/*/node_modules ./packages/
