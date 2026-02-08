@@ -150,6 +150,8 @@ export function FeedItemModal({
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
         setSummaryError(t("itemSummary.insufficientCredits"));
+      } else if (err instanceof ApiError && err.code === "LLM_AUTH_ERROR") {
+        setSummaryError(t("itemSummary.llmAuthError"));
       } else {
         setSummaryError(err.message);
       }

@@ -1,6 +1,7 @@
 import type { BudgetTier } from "@aharadar/shared";
 
 import type { SummarySection } from "./deep_summary";
+import { isLlmAuthError, isLlmAuthLikeMessage } from "./error_classification";
 import type { LlmRouter, ModelRef } from "./types";
 
 const PROMPT_ID = "manual_summary_v3";
@@ -187,6 +188,19 @@ function tryParseJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
+function buildParseFailureError(
+  defaultMessage: string,
+  outputText: string,
+): Error & { code?: string } {
+  const err = new Error(defaultMessage) as Error & { code?: string };
+  if (isLlmAuthLikeMessage(outputText)) {
+    err.code = "LLM_AUTH_ERROR";
+    err.message =
+      "LLM authentication failed. Re-login for the selected provider or switch to an API-key provider.";
+  }
+  return err;
+}
+
 function asString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -330,7 +344,8 @@ async function runManualSummaryOnce(params: {
   });
 
   const parsed = tryParseJsonObject(call.outputText);
-  if (!parsed) throw new Error("Manual summary output is not valid JSON");
+  if (!parsed)
+    throw buildParseFailureError("Manual summary output is not valid JSON", call.outputText);
 
   const normalized = normalizeManualSummaryOutput(parsed, ref);
   if (!normalized) throw new Error("Manual summary output failed schema validation");
@@ -341,6 +356,16 @@ async function runManualSummaryOnce(params: {
     outputTokens: call.outputTokens,
     endpoint: call.endpoint,
   };
+}
+
+function isQuotaError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes("quota exceeded") || msg.includes("rate limit") || msg.includes("too many");
+}
+
+function isNonRetryableManualSummaryError(error: unknown): boolean {
+  return isQuotaError(error) || isLlmAuthError(error);
 }
 
 export async function manualSummarize(params: {
@@ -366,7 +391,11 @@ export async function manualSummarize(params: {
       model: result.output.model,
       endpoint: result.endpoint,
     };
-  } catch {
+  } catch (firstError) {
+    if (isNonRetryableManualSummaryError(firstError)) {
+      throw firstError;
+    }
+
     const retry = await runManualSummaryOnce({
       ...params,
       isRetry: true,

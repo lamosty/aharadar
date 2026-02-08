@@ -48,6 +48,7 @@
     "close": "Close",
     "readNext": "Read Next",
     "insufficientCredits": "You've exhausted your credits for this period. Please try again later.",
+    "llmAuthError": "AI provider authentication failed. Re-login for Claude/Codex subscription or switch to an API-key provider in Settings.",
     "like": "Like",
     "dislike": "Dislike",
     "skip": "Skip"

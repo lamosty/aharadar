@@ -1,5 +1,6 @@
 import type { BudgetTier } from "@aharadar/shared";
 
+import { isLlmAuthError, isLlmAuthLikeMessage } from "./error_classification";
 import type { LlmRouter, ModelRef } from "./types";
 
 const PROMPT_ID = "triage_v1";
@@ -104,23 +105,12 @@ function parseReasoningEffort(value: string | undefined): ReasoningEffort | null
   return null;
 }
 
-function hasAuthFailureText(outputText: string): boolean {
-  const normalized = outputText.toLowerCase();
-  return (
-    normalized.includes("invalid api key") ||
-    normalized.includes("please run /login") ||
-    normalized.includes("unauthorized") ||
-    normalized.includes("authentication failed") ||
-    normalized.includes("not logged in")
-  );
-}
-
 function buildParseFailureError(
   defaultMessage: string,
   outputText: string,
 ): Error & { code?: string } {
   const err = new Error(defaultMessage) as Error & { code?: string };
-  if (hasAuthFailureText(outputText)) {
+  if (isLlmAuthLikeMessage(outputText)) {
     err.code = "LLM_AUTH_ERROR";
     err.message =
       "LLM triage authentication failed. Re-login or switch to a configured API provider.";
@@ -506,6 +496,10 @@ function isQuotaError(error: unknown): boolean {
   return msg.includes("quota exceeded") || msg.includes("rate limit") || msg.includes("too many");
 }
 
+function isNonRetryableTriageError(error: unknown): boolean {
+  return isQuotaError(error) || isLlmAuthError(error);
+}
+
 export async function triageCandidate(params: {
   router: LlmRouter;
   tier: BudgetTier;
@@ -532,8 +526,8 @@ export async function triageCandidate(params: {
       endpoint: result.endpoint,
     };
   } catch (firstError) {
-    // Don't retry quota/rate limit errors - they won't resolve immediately
-    if (isQuotaError(firstError)) {
+    // Don't retry quota/rate limit/auth errors - they won't resolve immediately.
+    if (isNonRetryableTriageError(firstError)) {
       throw firstError;
     }
 
@@ -1016,8 +1010,8 @@ export async function triageBatch(params: {
       successCount: result.outputs.size,
     };
   } catch (firstError) {
-    // Don't retry quota/rate limit errors
-    if (isQuotaError(firstError)) {
+    // Don't retry quota/rate limit/auth errors.
+    if (isNonRetryableTriageError(firstError)) {
       throw firstError;
     }
 

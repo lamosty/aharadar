@@ -38,9 +38,29 @@ function buildLlmRuntimeConfig(settings: LlmSettingsRow): LlmRuntimeConfig {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PASTED_TEXT_LENGTH = 100_000;
+const AUTH_ERROR_PATTERNS: RegExp[] = [
+  /could not resolve authentication method/i,
+  /expected either apikey or authtoken to be set/i,
+  /invalid api key/i,
+  /api key.*required/i,
+  /authentication failed/i,
+  /unauthorized/i,
+  /not logged in/i,
+  /please run .*login/i,
+  /login required/i,
+];
 
 function isValidUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_REGEX.test(value);
+}
+
+function isLlmAuthError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  if (code === "LLM_AUTH_ERROR") return true;
+  const message = (err as { message?: unknown }).message;
+  if (typeof message !== "string") return false;
+  return AUTH_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 }
 
 interface ItemSummaryRequestBody {
@@ -241,6 +261,16 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
           error: {
             code: "LLM_TIMEOUT",
             message: `LLM timed out after ${err.timeoutMs}ms (${err.label}). Try again, or switch providers/models in settings.`,
+          },
+        });
+      }
+      if (isLlmAuthError(err)) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "LLM_AUTH_ERROR",
+            message:
+              "LLM authentication failed. Re-login for the selected provider or switch to an API-key provider in Settings.",
           },
         });
       }

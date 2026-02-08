@@ -6,6 +6,7 @@
  * See docs/claude-integration.md for ToS considerations.
  */
 
+import { classifyLlmProviderError } from "./error_classification";
 import { withTimeout } from "./timeout";
 import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 import { recordUsage } from "./usage_tracker";
@@ -229,7 +230,7 @@ export async function callClaudeSubscription(
     };
   } catch (error) {
     // Enrich error with context
-    const err = error instanceof Error ? error : new Error(String(error));
+    const err = classifyLlmProviderError(error);
     log.warn("Call failed", {
       error: err.message,
       model: ref.model,

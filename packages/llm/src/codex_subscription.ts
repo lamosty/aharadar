@@ -7,6 +7,7 @@
  */
 
 import { recordCodexUsage } from "./codex_usage_tracker";
+import { classifyLlmProviderError } from "./error_classification";
 import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 
 export interface CodexSubscriptionConfig {
@@ -98,7 +99,7 @@ export async function callCodexSubscription(
     };
   } catch (error) {
     // Enrich error with context
-    const err = error instanceof Error ? error : new Error(String(error));
+    const err = classifyLlmProviderError(error);
     log.warn("Call failed", {
       error: err.message,
       model: ref.model,
