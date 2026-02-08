@@ -49,24 +49,115 @@ function buildListingUrl(params: {
   return url.toString();
 }
 
-async function fetchJson(url: string): Promise<unknown> {
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      // Reddit strongly prefers an explicit UA for API-like access.
-      "user-agent": "aharadar/0.x (mvp; connectors/reddit)",
-      accept: "application/json",
-    },
-  });
+const REDDIT_USER_AGENT = "aharadar/0.x (mvp; connectors/reddit)";
+const REDDIT_TIMEOUT_MS = 15_000;
+const REDDIT_MAX_RETRIES = 3;
+const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504, 522, 524]);
 
-  const contentType = res.headers.get("content-type") ?? "";
-  const body = contentType.includes("application/json") ? await res.json() : await res.text();
-  if (!res.ok) {
-    const detail =
-      typeof body === "string" ? body.slice(0, 500) : JSON.stringify(body).slice(0, 500);
-    throw new Error(`Reddit fetch failed (${res.status} ${res.statusText}): ${detail}`);
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+  const asSeconds = Number(value);
+  if (Number.isFinite(asSeconds) && asSeconds > 0) return asSeconds * 1000;
+
+  const asDateMs = Date.parse(value);
+  if (Number.isFinite(asDateMs)) {
+    const delta = asDateMs - Date.now();
+    if (delta > 0) return delta;
   }
-  return body;
+  return null;
+}
+
+function computeBackoffMs(attempt: number, retryAfterMs: number | null): number {
+  if (retryAfterMs !== null) {
+    return Math.max(250, Math.min(30_000, retryAfterMs));
+  }
+  const exponential = 500 * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * 250);
+  return Math.min(8_000, exponential + jitter);
+}
+
+function isRetryableNetworkError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const message = err.message.toLowerCase();
+  return (
+    message.includes("timeout") ||
+    message.includes("aborted") ||
+    message.includes("network") ||
+    message.includes("socket")
+  );
+}
+
+function toOldRedditUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "www.reddit.com") {
+      parsed.hostname = "old.reddit.com";
+      return parsed.toString();
+    }
+  } catch {}
+  return url;
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  let currentUrl = url;
+  let switchedToOldReddit = false;
+
+  for (let attempt = 0; attempt <= REDDIT_MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REDDIT_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(currentUrl, {
+        method: "GET",
+        headers: {
+          // Reddit strongly prefers an explicit UA for API-like access.
+          "user-agent": REDDIT_USER_AGENT,
+          accept: "application/json",
+        },
+        signal: controller.signal,
+      });
+
+      const contentType = res.headers.get("content-type") ?? "";
+      const body = contentType.includes("application/json") ? await res.json() : await res.text();
+      if (res.ok) {
+        return body;
+      }
+
+      const detail =
+        typeof body === "string" ? body.slice(0, 500) : JSON.stringify(body).slice(0, 500);
+      const retryable = RETRYABLE_STATUSES.has(res.status);
+      if (retryable && attempt < REDDIT_MAX_RETRIES) {
+        // Reddit sometimes returns transient 5xx from www; old.reddit can recover.
+        if (!switchedToOldReddit && res.status >= 500 && currentUrl.includes("www.reddit.com")) {
+          currentUrl = toOldRedditUrl(currentUrl);
+          switchedToOldReddit = currentUrl !== url;
+        }
+        const delayMs = computeBackoffMs(
+          attempt,
+          parseRetryAfterMs(res.headers.get("retry-after")),
+        );
+        await sleep(delayMs);
+        continue;
+      }
+
+      throw new Error(`Reddit fetch failed (${res.status} ${res.statusText}): ${detail}`);
+    } catch (err) {
+      if (attempt < REDDIT_MAX_RETRIES && isRetryableNetworkError(err)) {
+        const delayMs = computeBackoffMs(attempt, null);
+        await sleep(delayMs);
+        continue;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error("Reddit fetch failed after retries");
 }
 
 async function fetchTopComments(params: {
