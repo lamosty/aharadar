@@ -92,6 +92,7 @@ function DigestsPageContent() {
       mode: d.mode as DigestSummary["mode"],
       status: d.status,
       creditsUsed: d.creditsUsed,
+      errorMessage: d.errorMessage,
       topScore: d.topScore,
       itemCount: d.itemCount,
       sourceCount: d.sourceCount,

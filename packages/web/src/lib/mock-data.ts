@@ -12,6 +12,7 @@ export interface DigestSummary {
   mode: "low" | "normal" | "high";
   status: "complete" | "failed";
   creditsUsed: number;
+  errorMessage: string | null;
   topScore: number | null;
   itemCount: number;
   sourceCount: {
@@ -168,6 +169,7 @@ const mockDigests: DigestSummary[] = [
     mode: "normal",
     status: "complete",
     creditsUsed: 0.05,
+    errorMessage: null,
     topScore: 0.85,
     itemCount: 12,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
@@ -182,6 +184,7 @@ const mockDigests: DigestSummary[] = [
     mode: "normal",
     status: "complete",
     creditsUsed: 0.04,
+    errorMessage: null,
     topScore: 0.72,
     itemCount: 8,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
@@ -196,6 +199,7 @@ const mockDigests: DigestSummary[] = [
     mode: "high",
     status: "complete",
     creditsUsed: 0.08,
+    errorMessage: null,
     topScore: 0.91,
     itemCount: 15,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
@@ -210,6 +214,7 @@ const mockDigests: DigestSummary[] = [
     mode: "low",
     status: "failed",
     creditsUsed: 0.01,
+    errorMessage: "Budget exhausted: x_posts skipped",
     topScore: null,
     itemCount: 5,
     sourceCount: { total: 4, succeeded: 3, skipped: 1 },
@@ -224,6 +229,7 @@ const mockDigests: DigestSummary[] = [
     mode: "normal",
     status: "complete",
     creditsUsed: 0.06,
+    errorMessage: null,
     topScore: 0.68,
     itemCount: 22,
     sourceCount: { total: 4, succeeded: 4, skipped: 0 },
@@ -624,6 +630,7 @@ function adaptDigestSummary(item: DigestListItem): DigestSummary {
     mode: item.mode as DigestSummary["mode"],
     status: item.status,
     creditsUsed: item.creditsUsed,
+    errorMessage: item.errorMessage,
     topScore: item.topScore,
     itemCount: item.itemCount,
     sourceCount: item.sourceCount,

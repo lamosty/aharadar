@@ -691,6 +691,7 @@
       "empty": "No digests yet",
       "emptyDescription": "Digests will appear here after your first pipeline run.",
       "error": "Failed to load digests",
+      "failureReason": "Failure:",
       "retry": "Try again"
     },
     "detail": {

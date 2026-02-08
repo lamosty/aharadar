@@ -147,6 +147,11 @@ export function DigestsListCondensed({ digests, showTopic = false }: DigestsList
                 >
                   {formatWindowRange(digest.windowStart, digest.windowEnd)}
                 </Link>
+                {digest.status === "failed" && digest.errorMessage && (
+                  <div className={styles.failureReason} title={digest.errorMessage}>
+                    {t("digests.list.failureReason")} {digest.errorMessage}
+                  </div>
+                )}
               </td>
               <td className={styles.tdMode}>
                 <span

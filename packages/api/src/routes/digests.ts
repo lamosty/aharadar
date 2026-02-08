@@ -8,6 +8,7 @@ interface DigestListRow {
   mode: string;
   status: string;
   credits_used: string; // numeric comes as string from pg
+  error_message: string | null;
   window_start: string;
   window_end: string;
   created_at: string;
@@ -140,6 +141,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
          d.mode,
          d.status,
          d.credits_used,
+         d.error_message,
          d.source_results,
          d.window_start::text,
          d.window_end::text,
@@ -176,6 +178,7 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
             mode: row.mode,
             status: row.status,
             creditsUsed: parseFloat(row.credits_used) || 0,
+            errorMessage: row.error_message,
             topScore: row.top_aha_score ? parseFloat(row.top_aha_score) : null,
             windowStart: row.window_start,
             windowEnd: row.window_end,

@@ -117,6 +117,27 @@ function toDigestSourceResults(ingestResults: IngestSourceResult[]): DigestSourc
   }));
 }
 
+function getErrorCode(err: unknown): string | null {
+  if (!err || typeof err !== "object") return null;
+  const code = (err as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+}
+
+function formatDigestFailureMessage(err: unknown): string {
+  const fallback = err instanceof Error ? err.message : String(err);
+  const code = getErrorCode(err);
+  if (code === "LLM_AUTH_ERROR") {
+    return "LLM triage authentication failed. Re-login or switch to a configured API provider.";
+  }
+  if (code === "TRIAGE_UNAVAILABLE") {
+    return fallback || "LLM triage unavailable";
+  }
+  if (!fallback || fallback === "[object Object]") {
+    return "Digest generation failed due to an internal pipeline error.";
+  }
+  return fallback;
+}
+
 export async function runPipelineOnce(
   db: Db,
   params: PipelineRunParams,
@@ -453,24 +474,94 @@ export async function runPipelineOnce(
   // Use plan's digestMaxItems, unless explicitly overridden in params
   const effectiveMaxItems = params.digest?.maxItems ?? finalPlan.digestMaxItems;
 
-  const digest = await persistDigestFromContentItems({
-    db,
-    userId: params.userId,
-    topicId: params.topicId,
-    windowStart: params.windowStart,
-    windowEnd: params.windowEnd,
-    mode: digestMode,
-    limits: {
-      maxItems: effectiveMaxItems,
-      triageMaxCalls: finalPlan.triageMaxCalls,
-      candidatePoolMax: finalPlan.candidatePoolMax,
-      deepSummaryMaxCalls: finalPlan.deepSummaryMaxCalls,
-    },
-    filter: params.ingestFilter,
-    paidCallsAllowed,
-    llmConfig: params.llmConfig,
-    sourceResults,
-  });
+  let digest: DigestRunResult | null = null;
+  try {
+    digest = await persistDigestFromContentItems({
+      db,
+      userId: params.userId,
+      topicId: params.topicId,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      mode: digestMode,
+      limits: {
+        maxItems: effectiveMaxItems,
+        triageMaxCalls: finalPlan.triageMaxCalls,
+        candidatePoolMax: finalPlan.candidatePoolMax,
+        deepSummaryMaxCalls: finalPlan.deepSummaryMaxCalls,
+      },
+      filter: params.ingestFilter,
+      paidCallsAllowed,
+      llmConfig: params.llmConfig,
+      sourceResults,
+    });
+  } catch (err) {
+    const errorMessage = formatDigestFailureMessage(err);
+    const errorCode = getErrorCode(err);
+
+    log.error(
+      {
+        topicId: params.topicId.slice(0, 8),
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+        errorCode,
+        err: errorMessage,
+      },
+      "Digest generation failed; creating failed digest record",
+    );
+
+    const failedDigest = await db.digests.upsert({
+      userId: params.userId,
+      topicId: params.topicId,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      mode: digestMode,
+      status: "failed",
+      creditsUsed: 0,
+      sourceResults,
+      errorMessage,
+    });
+
+    await createNotification({
+      db,
+      userId: params.userId,
+      type: "digest_failed",
+      title: "Digest generation failed",
+      body: errorMessage,
+      severity: "error",
+      data: {
+        digestId: failedDigest.id,
+        topicId: params.topicId,
+        topicName: topic.name,
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+        errorCode,
+      },
+    });
+
+    return {
+      userId: params.userId,
+      topicId: params.topicId,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+      ingest,
+      embed,
+      dedupe,
+      cluster,
+      digest: {
+        digestId: failedDigest.id,
+        mode: digestMode,
+        topicId: params.topicId,
+        windowStart: params.windowStart,
+        windowEnd: params.windowEnd,
+        items: 0,
+        triaged: 0,
+        paidCallsAllowed,
+      },
+      digestPlan,
+      creditsStatus,
+      digestSkippedDueToCredits: !paidCallsAllowed,
+    };
+  }
 
   return {
     userId: params.userId,

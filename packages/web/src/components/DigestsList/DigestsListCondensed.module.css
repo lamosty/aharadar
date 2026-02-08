@@ -90,6 +90,16 @@
   text-decoration: underline;
 }
 
+.failureReason {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tdMode {
   /* Mode badge container */
 }

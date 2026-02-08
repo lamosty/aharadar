@@ -62,6 +62,9 @@ describe("runPipelineOnce", () => {
     notifications: {
       create: vi.fn().mockResolvedValue(undefined),
     },
+    digests: {
+      upsert: vi.fn().mockResolvedValue({ id: "failed-digest-1", inserted: true }),
+    },
   } as unknown as Db;
 
   const baseParams = {
@@ -166,6 +169,37 @@ describe("runPipelineOnce", () => {
             candidatePoolMax: scaled.candidatePoolMax,
             deepSummaryMaxCalls: scaled.deepSummaryMaxCalls,
           }),
+        }),
+      );
+    });
+
+    it("creates failed digest when digest generation throws", async () => {
+      const authError = Object.assign(new Error("invalid api key"), { code: "LLM_AUTH_ERROR" });
+      vi.mocked(persistDigestFromContentItems).mockRejectedValueOnce(authError as never);
+
+      const result = await runPipelineOnce(mockDb, baseParams);
+
+      expect(mockDb.digests.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "user-1",
+          topicId: "topic-1",
+          status: "failed",
+          errorMessage:
+            "LLM triage authentication failed. Re-login or switch to a configured API provider.",
+        }),
+      );
+      expect(mockDb.notifications.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "user-1",
+          type: "digest_failed",
+          severity: "error",
+        }),
+      );
+      expect(result.digest).toEqual(
+        expect.objectContaining({
+          digestId: "failed-digest-1",
+          items: 0,
+          triaged: 0,
         }),
       );
     });

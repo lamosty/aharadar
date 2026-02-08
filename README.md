@@ -64,6 +64,12 @@ Open http://localhost:3000 in your browser.
 
 **LAN access:** Add `:lan` suffix to access from other devices on your network (e.g., `pnpm start:prod:lan` for a home server setup).
 
+### Personal Server + Claude Subscription
+
+If you use `claude-subscription`, run the worker as your user (not in Docker) so it can use your user-scoped Claude login state.
+
+Use this guide: [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md)
+
 ## Configuration
 
 ### Environment Variables
@@ -265,6 +271,7 @@ Detailed documentation is available in the `docs/` folder:
 - [`docs/api.md`](docs/api.md) — API reference
 - [`docs/budgets.md`](docs/budgets.md) — Budget system
 - [`docs/llm.md`](docs/llm.md) — LLM integration
+- [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md) — Personal server deployment with user systemd worker
 
 ## Tech Stack
 

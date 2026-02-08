@@ -108,6 +108,29 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function getErrorCode(err: unknown): string | null {
+  if (!err || typeof err !== "object") return null;
+  const code = (err as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+}
+
+function isFatalTriageError(err: unknown): boolean {
+  return getErrorCode(err) === "LLM_AUTH_ERROR";
+}
+
+function createTriageUnavailableError(message: string): Error & { code: string } {
+  const err = new Error(message) as Error & { code: string };
+  err.code = "TRIAGE_UNAVAILABLE";
+  return err;
+}
+
+function hasPrimaryTriageData(triageJson: Record<string, unknown> | null): boolean {
+  if (!triageJson) return false;
+  const aiScore = triageJson.ai_score;
+  const reason = triageJson.reason;
+  return typeof aiScore === "number" && Number.isFinite(aiScore) && typeof reason === "string";
+}
+
 function parseXPostsFairnessByAccount(config: Record<string, unknown>): boolean {
   const raw = config.fairnessByAccount ?? config.fairness_by_account;
   return raw === true;
@@ -1052,6 +1075,14 @@ async function triageCandidates(params: {
         log.warn({ err: insertErr }, "provider_calls insert failed (triage_batch error)");
       }
 
+      if (isFatalTriageError(err)) {
+        log.error(
+          { batchId, err: err instanceof Error ? err.message : String(err) },
+          "Batch triage failed with fatal auth error",
+        );
+        throw err;
+      }
+
       log.warn(
         { batchId, err: err instanceof Error ? err.message : String(err) },
         "Batch triage failed, falling back to individual",
@@ -1206,6 +1237,10 @@ async function triageCandidatesIndividually(params: {
         },
         "Triage failed for candidate",
       );
+
+      if (isFatalTriageError(err)) {
+        throw err;
+      }
     }
   }
 
@@ -1712,6 +1747,12 @@ export async function persistDigestFromContentItems(params: {
     preferenceSummary,
   });
 
+  if (triageLimit > 0 && orderedForTriage.length > 0 && triageMap.size === 0) {
+    throw createTriageUnavailableError(
+      "LLM triage unavailable: no candidates were triaged. Verify provider auth and configuration.",
+    );
+  }
+
   // Compute novelty for candidates (topic-scoped, embedding-based)
   const noveltyLookbackDays = getNoveltyLookbackDays();
   const noveltyMap = await computeNoveltyForCandidates({
@@ -1805,7 +1846,7 @@ export async function persistDigestFromContentItems(params: {
       author: baseCandidate?.author ?? null,
       // For clusters, member sources would be added here in a future enhancement
       // memberSources: undefined, // TODO: load cluster member sources for better diversity
-      hasTriageData: r.triageJson !== null,
+      hasTriageData: triageMap.has(r.candidateId) && hasPrimaryTriageData(r.triageJson),
     };
   });
 
@@ -2009,7 +2050,7 @@ export async function persistDigestFromContentItems(params: {
     return res;
   });
 
-  const triagedCount = items.filter((i) => i.triageJson !== null).length;
+  const triagedCount = items.filter((i) => hasPrimaryTriageData(i.triageJson)).length;
 
   // Update experiment metrics if there's an active experiment
   try {

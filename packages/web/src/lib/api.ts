@@ -62,6 +62,7 @@ export interface DigestListItem {
   mode: string;
   status: "complete" | "failed";
   creditsUsed: number;
+  errorMessage: string | null;
   topScore: number | null;
   windowStart: string;
   windowEnd: string;

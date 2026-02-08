@@ -74,8 +74,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://aharadar:aharadar_dev_password@postgres:5432/aharadar
       - REDIS_URL=redis://redis:6379
-      - WORKER_HEALTH_URL=http://worker:9091/health
+      - WORKER_HEALTH_URL=${WORKER_HEALTH_URL:-http://worker:9091/health}
       - API_PORT=3001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${API_PORT:-3001}:3001"
     restart: unless-stopped

@@ -104,6 +104,30 @@ function parseReasoningEffort(value: string | undefined): ReasoningEffort | null
   return null;
 }
 
+function hasAuthFailureText(outputText: string): boolean {
+  const normalized = outputText.toLowerCase();
+  return (
+    normalized.includes("invalid api key") ||
+    normalized.includes("please run /login") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("authentication failed") ||
+    normalized.includes("not logged in")
+  );
+}
+
+function buildParseFailureError(
+  defaultMessage: string,
+  outputText: string,
+): Error & { code?: string } {
+  const err = new Error(defaultMessage) as Error & { code?: string };
+  if (hasAuthFailureText(outputText)) {
+    err.code = "LLM_AUTH_ERROR";
+    err.message =
+      "LLM triage authentication failed. Re-login or switch to a configured API provider.";
+  }
+  return err;
+}
+
 /**
  * Calculate max output tokens based on reasoning effort.
  * Reasoning models need more tokens to include both reasoning and output.
@@ -451,7 +475,7 @@ async function runTriageOnce(params: {
     console.error(
       `[triage] Failed to parse JSON from output (${call.outputText.length} chars): ${preview}...`,
     );
-    throw new Error("Triage output is not valid JSON");
+    throw buildParseFailureError("Triage output is not valid JSON", call.outputText);
   }
 
   const normalized = normalizeTriageOutput(parsed, ref);
@@ -924,7 +948,7 @@ async function runBatchTriageOnce(params: {
     console.error(
       `[triage-batch] Failed to parse batch JSON (${call.outputText.length} chars): ${preview}...`,
     );
-    throw new Error("Batch triage output is not valid JSON");
+    throw buildParseFailureError("Batch triage output is not valid JSON", call.outputText);
   }
 
   const outputs = normalizeBatchOutput(parsed, ref, expectedIds);
