@@ -64,9 +64,13 @@ Open http://localhost:3000 in your browser.
 
 **LAN access:** Add `:lan` suffix to access from other devices on your network (e.g., `pnpm start:prod:lan` for a home server setup).
 
-### Personal Server + Claude Subscription
+### Personal Server + Subscription Providers
 
-If you use `claude-subscription`, run the worker as your user (not in Docker) so it can use your user-scoped Claude login state.
+`claude-subscription` and `codex-subscription` are experimental and intended for personal/self-hosted use on your own machine or private server only.
+
+Use at your own risk. For OSS/public/shared deployments, use API-key providers (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`) instead of subscription mode.
+
+If you still use subscription mode, run both API and worker as your user (not in Docker) so digest triage and manual summaries can access your user-scoped login state (`claude login` / `codex login`).
 
 Use this guide: [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md)
 
