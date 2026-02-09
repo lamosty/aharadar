@@ -6,6 +6,7 @@ export * from "./connector";
 export * from "./content";
 export * from "./embedding_retention";
 export * from "./feedback";
+export * from "./integration_boundary";
 export * from "./personalization_tuning";
 export * from "./provider_calls";
 export * from "./theme_tuning";

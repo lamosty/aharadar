@@ -1,5 +1,18 @@
 import type { FeedbackAction } from "@aharadar/shared";
+import type {
+  RelatedContextQueryV1,
+  TextSelectionLookupRequestV1,
+} from "@aharadar/shared/src/types/integration_boundary";
 import type { FastifyInstance } from "fastify";
+import {
+  createDeterministicRequestId,
+  createTraceId,
+  normalizeRelatedContextResponse,
+  normalizeTextSelectionResponse,
+  unavailableRelatedContextResponse,
+  unavailableTextSelectionResponse,
+} from "../integration/contracts.js";
+import { getIntegrationPorts, TimeoutError, withTimeout } from "../integration/ports.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 // Note: Decay is now computed in SQL for correct pagination ordering
@@ -77,6 +90,27 @@ interface ItemsListQuerystring {
   topicId?: string;
   // Views: inbox (no feedback), highlights (liked), all (no filter)
   view?: "inbox" | "highlights" | "all";
+}
+
+interface RelatedContextRequestBody {
+  sessionRef?: string;
+  options?: {
+    includeBadges?: boolean;
+    includeHints?: boolean;
+    maxRelated?: number;
+  };
+}
+
+interface TextSelectionLookupBody {
+  sessionRef?: string;
+  selection?: {
+    text?: string;
+    startOffset?: number;
+    endOffset?: number;
+  };
+  options?: {
+    maxMatches?: number;
+  };
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -630,6 +664,360 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     };
   });
+
+  // POST /items/:id/related-context - fetch generic related context (fail-open)
+  fastify.post<{ Params: { id: string }; Body?: RelatedContextRequestBody }>(
+    "/items/:id/related-context",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "Invalid item id" },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (body !== undefined && (typeof body !== "object" || body === null)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_BODY", message: "Request body must be a JSON object" },
+        });
+      }
+
+      const parsedBody = (body ?? {}) as RelatedContextRequestBody;
+      if (parsedBody.sessionRef !== undefined && typeof parsedBody.sessionRef !== "string") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "sessionRef must be a string when provided" },
+        });
+      }
+
+      if (
+        parsedBody.options !== undefined &&
+        (typeof parsedBody.options !== "object" || parsedBody.options === null)
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "options must be an object when provided" },
+        });
+      }
+
+      const includeBadges = parsedBody.options?.includeBadges;
+      const includeHints = parsedBody.options?.includeHints;
+      const maxRelated = parsedBody.options?.maxRelated;
+
+      if (includeBadges !== undefined && typeof includeBadges !== "boolean") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "options.includeBadges must be boolean" },
+        });
+      }
+
+      if (includeHints !== undefined && typeof includeHints !== "boolean") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "options.includeHints must be boolean" },
+        });
+      }
+
+      if (
+        maxRelated !== undefined &&
+        (!Number.isInteger(maxRelated) || maxRelated < 1 || maxRelated > 20)
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "options.maxRelated must be an integer between 1 and 20",
+          },
+        });
+      }
+
+      const db = getDb();
+      const itemRes = await db.query<{
+        user_id: string;
+        title: string | null;
+        canonical_url: string | null;
+      }>(
+        `select user_id::text as user_id, title, canonical_url
+         from content_items
+         where id = $1::uuid and deleted_at is null
+         limit 1`,
+        [id],
+      );
+
+      const item = itemRes.rows[0];
+      if (!item) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Content item not found" },
+        });
+      }
+
+      if (item.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: { code: "FORBIDDEN", message: "Content item does not belong to current user" },
+        });
+      }
+
+      const traceId = createTraceId(request.headers["x-trace-id"], request.id);
+      const sessionRef =
+        typeof parsedBody.sessionRef === "string" && parsedBody.sessionRef.trim().length > 0
+          ? parsedBody.sessionRef.trim()
+          : request.id;
+
+      const options =
+        includeBadges !== undefined || includeHints !== undefined || maxRelated !== undefined
+          ? {
+              include_badges: includeBadges,
+              include_hints: includeHints,
+              max_related: maxRelated,
+            }
+          : undefined;
+
+      const providerRequest: RelatedContextQueryV1 = {
+        contract_version: "v1",
+        request_id: createDeterministicRequestId(
+          "rel-req",
+          `${ctx.userId}:${id}:${traceId}:${sessionRef}:${includeBadges ?? ""}:${includeHints ?? ""}:${maxRelated ?? ""}`,
+        ),
+        trace_id: traceId,
+        actor: {
+          user_ref: ctx.userId,
+          session_ref: sessionRef,
+        },
+        subject: {
+          kind: "content_item",
+          id,
+          url: item.canonical_url,
+          title: item.title,
+        },
+        options,
+      };
+
+      const { relatedContextProvider, relatedContextTimeoutMs } = getIntegrationPorts();
+
+      try {
+        const response = await withTimeout(
+          relatedContextProvider.getRelatedContext(providerRequest),
+          relatedContextTimeoutMs,
+          "relatedContextProvider.getRelatedContext",
+        );
+        return normalizeRelatedContextResponse(response);
+      } catch (err) {
+        fastify.log.warn(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            trace_id: traceId,
+            request_id: providerRequest.request_id,
+            content_item_id: id,
+            timeout_ms: err instanceof TimeoutError ? err.timeoutMs : undefined,
+          },
+          "Related context provider failed (fail-open)",
+        );
+        return unavailableRelatedContextResponse();
+      }
+    },
+  );
+
+  // POST /items/:id/related-context/text-selection - optional provider lookup (fail-open)
+  fastify.post<{ Params: { id: string }; Body: TextSelectionLookupBody }>(
+    "/items/:id/related-context/text-selection",
+    async (request, reply) => {
+      const ctx = await getSingletonContext();
+      if (!ctx) {
+        return reply.code(503).send({
+          ok: false,
+          error: {
+            code: "NOT_INITIALIZED",
+            message: "Database not initialized: no user or topic found",
+          },
+        });
+      }
+
+      const { id } = request.params;
+      if (!isValidUuid(id)) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "Invalid item id" },
+        });
+      }
+
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_BODY", message: "Request body must be a JSON object" },
+        });
+      }
+
+      const parsedBody = body as TextSelectionLookupBody;
+      if (parsedBody.sessionRef !== undefined && typeof parsedBody.sessionRef !== "string") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "sessionRef must be a string when provided" },
+        });
+      }
+
+      if (!parsedBody.selection || typeof parsedBody.selection !== "object") {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "selection is required" },
+        });
+      }
+
+      const selectedText = parsedBody.selection.text;
+      if (typeof selectedText !== "string" || selectedText.trim().length === 0) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "selection.text must be a non-empty string" },
+        });
+      }
+
+      const startOffset = parsedBody.selection.startOffset ?? 0;
+      const endOffset = parsedBody.selection.endOffset ?? startOffset + selectedText.length;
+      if (!Number.isInteger(startOffset) || startOffset < 0) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "selection.startOffset must be a non-negative integer",
+          },
+        });
+      }
+      if (!Number.isInteger(endOffset) || endOffset < startOffset) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "selection.endOffset must be an integer >= selection.startOffset",
+          },
+        });
+      }
+
+      if (
+        parsedBody.options !== undefined &&
+        (typeof parsedBody.options !== "object" || parsedBody.options === null)
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: { code: "INVALID_PARAM", message: "options must be an object when provided" },
+        });
+      }
+
+      const maxMatches = parsedBody.options?.maxMatches;
+      if (
+        maxMatches !== undefined &&
+        (!Number.isInteger(maxMatches) || maxMatches < 1 || maxMatches > 20)
+      ) {
+        return reply.code(400).send({
+          ok: false,
+          error: {
+            code: "INVALID_PARAM",
+            message: "options.maxMatches must be an integer between 1 and 20",
+          },
+        });
+      }
+
+      const db = getDb();
+      const itemRes = await db.query<{
+        user_id: string;
+        title: string | null;
+        canonical_url: string | null;
+      }>(
+        `select user_id::text as user_id, title, canonical_url
+         from content_items
+         where id = $1::uuid and deleted_at is null
+         limit 1`,
+        [id],
+      );
+
+      const item = itemRes.rows[0];
+      if (!item) {
+        return reply.code(404).send({
+          ok: false,
+          error: { code: "NOT_FOUND", message: "Content item not found" },
+        });
+      }
+
+      if (item.user_id !== ctx.userId) {
+        return reply.code(403).send({
+          ok: false,
+          error: { code: "FORBIDDEN", message: "Content item does not belong to current user" },
+        });
+      }
+
+      const traceId = createTraceId(request.headers["x-trace-id"], request.id);
+      const sessionRef =
+        typeof parsedBody.sessionRef === "string" && parsedBody.sessionRef.trim().length > 0
+          ? parsedBody.sessionRef.trim()
+          : request.id;
+
+      const providerRequest: TextSelectionLookupRequestV1 = {
+        contract_version: "v1",
+        request_id: createDeterministicRequestId(
+          "txt-req",
+          `${ctx.userId}:${id}:${traceId}:${sessionRef}:${selectedText.trim()}:${startOffset}:${endOffset}:${maxMatches ?? ""}`,
+        ),
+        trace_id: traceId,
+        actor: {
+          user_ref: ctx.userId,
+          session_ref: sessionRef,
+        },
+        subject: {
+          kind: "content_item",
+          id,
+          url: item.canonical_url,
+          title: item.title,
+        },
+        selection: {
+          text: selectedText.trim(),
+          start_offset: startOffset,
+          end_offset: endOffset,
+        },
+        options: maxMatches !== undefined ? { max_matches: maxMatches } : undefined,
+      };
+
+      const { relatedContextProvider, relatedContextTimeoutMs } = getIntegrationPorts();
+      if (typeof relatedContextProvider.lookupTextSelection !== "function") {
+        return unavailableTextSelectionResponse();
+      }
+
+      try {
+        const response = await withTimeout(
+          relatedContextProvider.lookupTextSelection(providerRequest),
+          relatedContextTimeoutMs,
+          "relatedContextProvider.lookupTextSelection",
+        );
+        return normalizeTextSelectionResponse(response);
+      } catch (err) {
+        fastify.log.warn(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            trace_id: traceId,
+            request_id: providerRequest.request_id,
+            content_item_id: id,
+            timeout_ms: err instanceof TimeoutError ? err.timeoutMs : undefined,
+          },
+          "Text selection lookup failed (fail-open)",
+        );
+        return unavailableTextSelectionResponse();
+      }
+    },
+  );
 
   // POST /items/:id/read - Mark item as read (no preference impact)
   fastify.post<{ Params: { id: string }; Body?: { packId?: string } }>(

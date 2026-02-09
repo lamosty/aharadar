@@ -15,6 +15,12 @@ import {
 import { computeCreditsStatus } from "@aharadar/pipeline";
 import { type ProviderCallDraft, parseAiGuidance } from "@aharadar/shared";
 import type { FastifyInstance } from "fastify";
+import { buildResearchSavedEvent, createTraceId } from "../integration/contracts.js";
+import {
+  getIntegrationPorts,
+  TimeoutError as IntegrationTimeoutError,
+  withTimeout as withIntegrationTimeout,
+} from "../integration/ports.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 /**
@@ -171,6 +177,7 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
 
     try {
       const startedAt = new Date().toISOString();
+      const normalizedPastedText = pastedText.trim();
 
       // Fetch user's LLM settings and create configured router
       const llmSettings = await db.llmSettings.get();
@@ -201,7 +208,7 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
           router,
           tier: "normal",
           input: {
-            pastedText: pastedText.trim(),
+            pastedText: normalizedPastedText,
             metadata: {
               title: metadata?.title ?? null,
               author: metadata?.author ?? null,
@@ -246,6 +253,40 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
         summaryJson: result.output,
         source: "manual_paste",
       });
+
+      const traceId = createTraceId(request.headers["x-trace-id"], request.id);
+      const researchId = `manual-summary:${ctx.userId}:${contentItemId}`;
+      const savedAt = new Date().toISOString();
+      const researchEvent = buildResearchSavedEvent({
+        traceId,
+        userRef: ctx.userId,
+        sessionRef: request.id,
+        researchId,
+        savedAt,
+        title: metadata?.title ?? null,
+        bodyMd: normalizedPastedText,
+        contentItemIds: [contentItemId],
+      });
+
+      const { eventSink, eventSinkTimeoutMs } = getIntegrationPorts();
+      try {
+        await withIntegrationTimeout(
+          eventSink.publish(researchEvent),
+          eventSinkTimeoutMs,
+          "eventSink.publish(research)",
+        );
+      } catch (err) {
+        fastify.log.warn(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            trace_id: traceId,
+            idempotency_key: researchEvent.idempotency_key,
+            event_type: researchEvent.event_type,
+            timeout_ms: err instanceof IntegrationTimeoutError ? err.timeoutMs : undefined,
+          },
+          "Research event sink publish failed (fail-open)",
+        );
+      }
 
       return {
         ok: true,

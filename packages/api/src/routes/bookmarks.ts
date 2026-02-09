@@ -1,4 +1,10 @@
 import type { FastifyInstance } from "fastify";
+import {
+  buildBookmarkRemovedEvent,
+  buildBookmarkSavedEvent,
+  createTraceId,
+} from "../integration/contracts.js";
+import { getIntegrationPorts, TimeoutError, withTimeout } from "../integration/ports.js";
 import { getDb, getSingletonContext } from "../lib/db.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -9,6 +15,91 @@ function isValidUuid(value: unknown): value is string {
 
 interface ToggleBookmarkBody {
   contentItemId: string;
+}
+
+interface BookmarkContentRow {
+  title: string | null;
+  canonical_url: string | null;
+  source_type: string | null;
+}
+
+async function emitBookmarkToggleEvent(params: {
+  fastify: FastifyInstance;
+  userId: string;
+  sessionRef: string;
+  traceId: string;
+  contentItemId: string;
+  bookmarked: boolean;
+  bookmarkId: string;
+  occurredAt: string;
+}) {
+  const db = getDb();
+
+  let contentTitle: string | null = null;
+  let contentUrl: string | null = null;
+  let sourceType: string | null = null;
+
+  try {
+    const contentRes = await db.query<BookmarkContentRow>(
+      `select title, canonical_url, source_type
+       from content_items
+       where id = $1::uuid
+       limit 1`,
+      [params.contentItemId],
+    );
+    contentTitle = contentRes.rows[0]?.title ?? null;
+    contentUrl = contentRes.rows[0]?.canonical_url ?? null;
+    sourceType = contentRes.rows[0]?.source_type ?? null;
+  } catch (err) {
+    params.fastify.log.warn(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        trace_id: params.traceId,
+        content_item_id: params.contentItemId,
+      },
+      "Failed to load content metadata for bookmark event; emitting without metadata",
+    );
+  }
+
+  const event = params.bookmarked
+    ? buildBookmarkSavedEvent({
+        traceId: params.traceId,
+        userRef: params.userId,
+        sessionRef: params.sessionRef,
+        contentItemId: params.contentItemId,
+        contentTitle,
+        contentUrl,
+        sourceType,
+        bookmarkId: params.bookmarkId,
+        savedAt: params.occurredAt,
+      })
+    : buildBookmarkRemovedEvent({
+        traceId: params.traceId,
+        userRef: params.userId,
+        sessionRef: params.sessionRef,
+        contentItemId: params.contentItemId,
+        contentTitle,
+        contentUrl,
+        bookmarkId: params.bookmarkId,
+        removedAt: params.occurredAt,
+      });
+
+  const { eventSink, eventSinkTimeoutMs } = getIntegrationPorts();
+
+  try {
+    await withTimeout(eventSink.publish(event), eventSinkTimeoutMs, "eventSink.publish(bookmark)");
+  } catch (err) {
+    params.fastify.log.warn(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        trace_id: params.traceId,
+        idempotency_key: event.idempotency_key,
+        event_type: event.event_type,
+        timeout_ms: err instanceof TimeoutError ? err.timeoutMs : undefined,
+      },
+      "Bookmark event sink publish failed (fail-open)",
+    );
+  }
 }
 
 export async function bookmarksRoutes(fastify: FastifyInstance): Promise<void> {
@@ -49,9 +140,48 @@ export async function bookmarksRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const db = getDb();
+
+    let previousBookmarkId: string | null = null;
+    try {
+      const previousBookmark = await db.query<{ id: string }>(
+        `select id::text as id
+         from bookmarks
+         where user_id = $1 and content_item_id = $2::uuid
+         limit 1`,
+        [ctx.userId, contentItemId],
+      );
+      previousBookmarkId = previousBookmark.rows[0]?.id ?? null;
+    } catch (err) {
+      fastify.log.warn(
+        {
+          err: err instanceof Error ? err.message : String(err),
+          content_item_id: contentItemId,
+        },
+        "Failed to load existing bookmark id before toggle",
+      );
+    }
+
     const result = await db.bookmarks.toggle({
       userId: ctx.userId,
       contentItemId,
+    });
+
+    const traceId = createTraceId(request.headers["x-trace-id"], request.id);
+    const eventTime = result.bookmarked
+      ? (result.bookmark?.created_at ?? new Date().toISOString())
+      : new Date().toISOString();
+    const bookmarkId =
+      result.bookmark?.id ?? previousBookmarkId ?? `bookmark:${ctx.userId}:${contentItemId}`;
+
+    await emitBookmarkToggleEvent({
+      fastify,
+      userId: ctx.userId,
+      sessionRef: request.id,
+      traceId,
+      contentItemId,
+      bookmarked: result.bookmarked,
+      bookmarkId,
+      occurredAt: eventTime,
     });
 
     return { ok: true, bookmarked: result.bookmarked };

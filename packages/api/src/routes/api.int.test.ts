@@ -3,7 +3,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import Fastify, { type FastifyInstance } from "fastify";
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Integration tests for API routes.
@@ -26,6 +26,9 @@ describe("API Routes Integration Tests", () => {
   let contentItemId2: string;
   let contentItemId3: string;
   let sourceId: string;
+  let configureIntegrationPortsForTests: (overrides: any) => void;
+  let resetIntegrationPortsForTests: () => void;
+  let createDeterministicEventId: (idempotencyKey: string) => string;
 
   beforeAll(async () => {
     // Start Postgres container with pgvector
@@ -63,19 +66,36 @@ describe("API Routes Integration Tests", () => {
     const { feedbackRoutes } = await import("./feedback.js");
     const { itemsRoutes } = await import("./items.js");
     const { exportsRoutes } = await import("./exports.js");
+    const { bookmarksRoutes } = await import("./bookmarks.js");
+    const portsModule = await import("../integration/ports.js");
+    const contractsModule = await import("../integration/contracts.js");
+    configureIntegrationPortsForTests = portsModule.configureIntegrationPortsForTests;
+    resetIntegrationPortsForTests = portsModule.resetIntegrationPortsForTests;
+    createDeterministicEventId = contractsModule.createDeterministicEventId;
 
     // Build Fastify app with routes
     app = Fastify({ logger: false });
     await app.register(topicsRoutes, { prefix: "/api" });
     await app.register(feedbackRoutes, { prefix: "/api" });
     await app.register(itemsRoutes, { prefix: "/api" });
+    await app.register(bookmarksRoutes, { prefix: "/api" });
     await app.register(exportsRoutes, { prefix: "/api" });
     await app.ready();
   }, 120000); // 2 minute timeout for container startup
 
+  afterEach(() => {
+    resetIntegrationPortsForTests();
+  });
+
   afterAll(async () => {
     if (app) {
       await app.close();
+    }
+    try {
+      const { getDb } = await import("../lib/db.js");
+      await getDb().close();
+    } catch {
+      // Ignore singleton DB close errors in test teardown.
     }
     if (db) {
       await db.close();
@@ -540,6 +560,204 @@ describe("API Routes Integration Tests", () => {
       expect(body.export.stats.skippedNoSummaryCount).toBeGreaterThanOrEqual(1);
       expect(body.export.content).toContain("Summary for item one");
       expect(body.export.content).toContain("Summary for item two");
+    });
+  });
+
+  describe("Integration Ports", () => {
+    it("POST /api/bookmarks emits v1 bookmark events with deterministic IDs", async () => {
+      const publishedEvents: Array<Record<string, unknown>> = [];
+      configureIntegrationPortsForTests({
+        eventSink: {
+          publish: async (event: unknown) => {
+            publishedEvents.push(event as Record<string, unknown>);
+            const eventObj = event as { event_id?: string };
+            return {
+              ok: true,
+              contract_version: "v1",
+              status: "accepted",
+              event_id: eventObj.event_id,
+              received_at: new Date().toISOString(),
+            };
+          },
+        },
+      });
+
+      const saveResponse = await app!.inject({
+        method: "POST",
+        url: "/api/bookmarks",
+        payload: { contentItemId: contentItemId2 },
+      });
+      expect(saveResponse.statusCode).toBe(200);
+      expect(saveResponse.json().ok).toBe(true);
+      expect(saveResponse.json().bookmarked).toBe(true);
+
+      const removeResponse = await app!.inject({
+        method: "POST",
+        url: "/api/bookmarks",
+        payload: { contentItemId: contentItemId2 },
+      });
+      expect(removeResponse.statusCode).toBe(200);
+      expect(removeResponse.json().ok).toBe(true);
+      expect(removeResponse.json().bookmarked).toBe(false);
+
+      expect(publishedEvents).toHaveLength(2);
+
+      const first = publishedEvents[0];
+      const second = publishedEvents[1];
+
+      expect(first.contract_version).toBe("v1");
+      expect(first.event_type).toBe("bookmark.saved");
+      expect(first.idempotency_key).toMatch(
+        new RegExp(`^bookmark\\.saved:${userId}:${contentItemId2}:`),
+      );
+      expect(first.event_id).toBe(createDeterministicEventId(String(first.idempotency_key)));
+
+      expect(second.contract_version).toBe("v1");
+      expect(second.event_type).toBe("bookmark.removed");
+      expect(second.idempotency_key).toMatch(
+        new RegExp(`^bookmark\\.removed:${userId}:${contentItemId2}:`),
+      );
+      expect(second.event_id).toBe(createDeterministicEventId(String(second.idempotency_key)));
+    });
+
+    it("POST /api/bookmarks remains successful when event sink fails (fail-open)", async () => {
+      configureIntegrationPortsForTests({
+        eventSink: {
+          publish: async () => {
+            throw new Error("event sink unavailable");
+          },
+        },
+      });
+
+      const response = await app!.inject({
+        method: "POST",
+        url: "/api/bookmarks",
+        payload: { contentItemId },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(typeof body.bookmarked).toBe("boolean");
+    });
+
+    it("POST /api/items/:id/related-context forwards contract v1 request and response", async () => {
+      let capturedRequest: Record<string, unknown> | null = null;
+      configureIntegrationPortsForTests({
+        relatedContextProvider: {
+          getRelatedContext: async (request: unknown) => {
+            capturedRequest = request as Record<string, unknown>;
+            return {
+              ok: true,
+              contract_version: "v1",
+              provider_status: "fresh",
+              generated_at: "2026-02-09T16:20:30.950Z",
+              badges: [{ code: "in_memory", label: "Seen", level: "info", confidence: 0.8 }],
+              hints: ["Related to your notes"],
+              related_context: [
+                {
+                  context_id: "ctx-1",
+                  kind: "knowledge_unit",
+                  title: "Prior note",
+                  snippet: "Relevant context",
+                  relevance: 0.84,
+                  reason: "entity_overlap",
+                },
+              ],
+            };
+          },
+        },
+      });
+
+      const response = await app!.inject({
+        method: "POST",
+        url: `/api/items/${contentItemId}/related-context`,
+        headers: { "x-trace-id": "trace-int-test" },
+        payload: {
+          sessionRef: "sess-int-test",
+          options: {
+            includeBadges: true,
+            includeHints: true,
+            maxRelated: 3,
+          },
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.ok).toBe(true);
+      expect(body.contract_version).toBe("v1");
+      expect(body.provider_status).toBe("fresh");
+      expect(body.badges).toHaveLength(1);
+      expect(body.hints).toHaveLength(1);
+      expect(body.related_context).toHaveLength(1);
+
+      expect(capturedRequest).not.toBeNull();
+      if (!capturedRequest) {
+        throw new Error("Expected provider request to be captured");
+      }
+
+      const capturedRequestValue = capturedRequest as Record<string, unknown>;
+      expect(capturedRequestValue.contract_version).toBe("v1");
+      expect(capturedRequestValue.trace_id).toBe("trace-int-test");
+      const actor = capturedRequestValue.actor as { user_ref?: string; session_ref?: string };
+      expect(actor.user_ref).toBe(userId);
+      expect(actor.session_ref).toBe("sess-int-test");
+      const subject = capturedRequestValue.subject as { id?: string };
+      expect(subject.id).toBe(contentItemId);
+      const options = capturedRequestValue.options as {
+        include_badges?: boolean;
+        include_hints?: boolean;
+        max_related?: number;
+      };
+      expect(options.include_badges).toBe(true);
+      expect(options.include_hints).toBe(true);
+      expect(options.max_related).toBe(3);
+    });
+
+    it("related-context routes fail open when provider is unavailable", async () => {
+      configureIntegrationPortsForTests({
+        relatedContextProvider: {
+          getRelatedContext: async () => {
+            throw new Error("provider down");
+          },
+        },
+      });
+
+      const relatedResponse = await app!.inject({
+        method: "POST",
+        url: `/api/items/${contentItemId}/related-context`,
+      });
+
+      expect(relatedResponse.statusCode).toBe(200);
+      expect(relatedResponse.json()).toEqual({
+        ok: true,
+        contract_version: "v1",
+        provider_status: "unavailable",
+        badges: [],
+        hints: [],
+        related_context: [],
+      });
+
+      const textSelectionResponse = await app!.inject({
+        method: "POST",
+        url: `/api/items/${contentItemId}/related-context/text-selection`,
+        payload: {
+          selection: {
+            text: "demand acceleration",
+            startOffset: 10,
+            endOffset: 29,
+          },
+        },
+      });
+
+      expect(textSelectionResponse.statusCode).toBe(200);
+      expect(textSelectionResponse.json()).toEqual({
+        ok: true,
+        contract_version: "v1",
+        provider_status: "unavailable",
+        matches: [],
+      });
     });
   });
 });
