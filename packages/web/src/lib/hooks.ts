@@ -106,6 +106,7 @@ import {
   getFeedbackSummary,
   getHealth,
   getItem,
+  getItemRelatedContext,
   getItems,
   getMonthlyUsage,
   getOpsStatus,
@@ -123,6 +124,8 @@ import {
   type HandleHealthResponse,
   type HealthResponse,
   type ItemDetailResponse,
+  type ItemRelatedContextRequest,
+  type ItemRelatedContextResponse,
   type ItemSummaryRequest,
   type ItemSummaryResponse,
   type ItemsListParams,
@@ -227,6 +230,8 @@ export const queryKeys = {
     all: ["items"] as const,
     list: (params?: Omit<ItemsListParams, "offset">) => ["items", "list", params] as const,
     detail: (id: string) => ["items", id] as const,
+    relatedContext: (id: string, request?: ItemRelatedContextRequest) =>
+      ["items", id, "related-context", request] as const,
   },
   catchupPacks: {
     all: ["catchup-packs"] as const,
@@ -365,6 +370,22 @@ export function useItem(
   return useQuery({
     queryKey: queryKeys.items.detail(id),
     queryFn: ({ signal }) => getItem(id, signal),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useItemRelatedContext(
+  id: string,
+  request?: ItemRelatedContextRequest,
+  options?: Omit<
+    UseQueryOptions<ItemRelatedContextResponse, ApiError | NetworkError>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: queryKeys.items.relatedContext(id, request),
+    queryFn: ({ signal }) => getItemRelatedContext(id, request, signal),
     enabled: !!id,
     ...options,
   });

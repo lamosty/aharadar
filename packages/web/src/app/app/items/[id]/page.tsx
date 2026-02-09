@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { JsonViewer } from "@/components";
-import { useItem } from "@/lib/hooks";
+import { useItem, useItemRelatedContext } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
@@ -70,7 +70,15 @@ export default function ItemDetailPage() {
   const id = params.id as string;
   const digestId = searchParams.get("digestId");
   const { data, isLoading, isError, error, refetch } = useItem(id);
+  const { data: relatedContextData } = useItemRelatedContext(id, undefined, {
+    staleTime: 60_000,
+  });
   const item = data?.item ?? null;
+  const relatedBadges = relatedContextData?.badges ?? [];
+  const relatedHints = relatedContextData?.hints ?? [];
+  const relatedEntries = relatedContextData?.related_context ?? [];
+  const showRelatedContext =
+    relatedBadges.length > 0 || relatedHints.length > 0 || relatedEntries.length > 0;
 
   if (isLoading) {
     return (
@@ -169,6 +177,48 @@ export default function ItemDetailPage() {
             {t("item.openOriginal")}
           </a>
         </div>
+      )}
+
+      {showRelatedContext && (
+        <section className={styles.relatedContextSection} aria-label="Related context">
+          {relatedBadges.length > 0 && (
+            <div className={styles.badgesRow}>
+              {relatedBadges.map((badge) => (
+                <span
+                  key={`${badge.code}-${badge.label}`}
+                  className={`${styles.relatedBadge} ${
+                    badge.level === "critical"
+                      ? styles.relatedBadgeCritical
+                      : badge.level === "warn"
+                        ? styles.relatedBadgeWarn
+                        : styles.relatedBadgeInfo
+                  }`}
+                >
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {relatedHints.length > 0 && (
+            <ul className={styles.hintsList}>
+              {relatedHints.map((hint, index) => (
+                <li key={`${hint}-${index}`}>{hint}</li>
+              ))}
+            </ul>
+          )}
+
+          {relatedEntries.length > 0 && (
+            <ul className={styles.relatedEntriesList}>
+              {relatedEntries.map((entry) => (
+                <li key={entry.context_id} className={styles.relatedEntryItem}>
+                  <h3 className={styles.relatedEntryTitle}>{entry.title}</h3>
+                  {entry.snippet && <p className={styles.relatedEntrySnippet}>{entry.snippet}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {/* Metadata viewer */}

@@ -176,6 +176,45 @@ export interface ItemDetailResponse {
   item: ContentItem;
 }
 
+export type RelatedContextProviderStatus = "fresh" | "cached" | "stale" | "unavailable";
+
+export interface RelatedContextBadge {
+  code: string;
+  label: string;
+  level: "info" | "warn" | "critical";
+  confidence?: number;
+}
+
+export interface RelatedContextEntry {
+  context_id: string;
+  kind: string;
+  title: string;
+  snippet?: string;
+  url?: string;
+  relevance?: number;
+  reason?: string;
+}
+
+export interface ItemRelatedContextResponse {
+  ok: true;
+  contract_version: "v1";
+  provider_status: RelatedContextProviderStatus;
+  generated_at?: string;
+  ttl_seconds?: number;
+  badges: RelatedContextBadge[];
+  hints: string[];
+  related_context: RelatedContextEntry[];
+}
+
+export interface ItemRelatedContextRequest {
+  sessionRef?: string;
+  options?: {
+    includeBadges?: boolean;
+    includeHints?: boolean;
+    maxRelated?: number;
+  };
+}
+
 /** Source-specific metadata */
 export interface ItemMetadata {
   // Reddit
@@ -653,6 +692,18 @@ export async function getDigest(id: string, signal?: AbortSignal): Promise<Diges
  */
 export async function getItem(id: string, signal?: AbortSignal): Promise<ItemDetailResponse> {
   return apiFetch<ItemDetailResponse>(`/items/${id}`, { signal });
+}
+
+export async function getItemRelatedContext(
+  id: string,
+  request?: ItemRelatedContextRequest,
+  signal?: AbortSignal,
+): Promise<ItemRelatedContextResponse> {
+  return apiFetch<ItemRelatedContextResponse>(`/items/${id}/related-context`, {
+    method: "POST",
+    body: request ?? {},
+    signal,
+  });
 }
 
 /**

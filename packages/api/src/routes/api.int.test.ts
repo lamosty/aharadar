@@ -759,5 +759,66 @@ describe("API Routes Integration Tests", () => {
         matches: [],
       });
     });
+
+    it("related-context route fails open on provider timeout", async () => {
+      configureIntegrationPortsForTests({
+        relatedContextTimeoutMs: 5,
+        relatedContextProvider: {
+          getRelatedContext: async () =>
+            await new Promise((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    ok: true,
+                    contract_version: "v1",
+                    provider_status: "fresh",
+                    badges: [{ code: "late", label: "Late", level: "info" }],
+                    hints: ["too late"],
+                    related_context: [],
+                  }),
+                50,
+              ),
+            ),
+        },
+      });
+
+      const response = await app!.inject({
+        method: "POST",
+        url: `/api/items/${contentItemId}/related-context`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        ok: true,
+        contract_version: "v1",
+        provider_status: "unavailable",
+        badges: [],
+        hints: [],
+        related_context: [],
+      });
+    });
+
+    it("related-context route falls back when provider response is malformed", async () => {
+      configureIntegrationPortsForTests({
+        relatedContextProvider: {
+          getRelatedContext: async () => "malformed" as never,
+        },
+      });
+
+      const response = await app!.inject({
+        method: "POST",
+        url: `/api/items/${contentItemId}/related-context`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        ok: true,
+        contract_version: "v1",
+        provider_status: "unavailable",
+        badges: [],
+        hints: [],
+        related_context: [],
+      });
+    });
   });
 });

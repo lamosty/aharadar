@@ -12,7 +12,15 @@ import {
   unavailableRelatedContextResponse,
   unavailableTextSelectionResponse,
 } from "./contracts.js";
-import { NoopEventSink, NullRelatedContextProvider, TimeoutError, withTimeout } from "./ports.js";
+import {
+  getIntegrationPorts,
+  HttpRelatedContextProvider,
+  NoopEventSink,
+  NullRelatedContextProvider,
+  resetIntegrationPortsForTests,
+  TimeoutError,
+  withTimeout,
+} from "./ports.js";
 
 describe("integration contracts", () => {
   it("builds bookmark.saved event with deterministic idempotency and event_id", () => {
@@ -100,6 +108,24 @@ describe("integration contracts", () => {
 });
 
 describe("integration ports defaults", () => {
+  it("uses HTTP provider when provider URL env is configured", () => {
+    const originalProviderUrl = process.env.AHARADAR_RELATED_CONTEXT_PROVIDER_BASE_URL;
+    process.env.AHARADAR_RELATED_CONTEXT_PROVIDER_BASE_URL = "http://provider.internal";
+
+    try {
+      resetIntegrationPortsForTests();
+      const ports = getIntegrationPorts();
+      expect(ports.relatedContextProvider).toBeInstanceOf(HttpRelatedContextProvider);
+    } finally {
+      if (originalProviderUrl === undefined) {
+        delete process.env.AHARADAR_RELATED_CONTEXT_PROVIDER_BASE_URL;
+      } else {
+        process.env.AHARADAR_RELATED_CONTEXT_PROVIDER_BASE_URL = originalProviderUrl;
+      }
+      resetIntegrationPortsForTests();
+    }
+  });
+
   it("NoopEventSink accepts events", async () => {
     const sink = new NoopEventSink();
     const event = buildBookmarkSavedEvent({
@@ -157,5 +183,87 @@ describe("integration ports defaults", () => {
         "test-timeout",
       ),
     ).rejects.toBeInstanceOf(TimeoutError);
+  });
+});
+
+describe("HTTP related context provider", () => {
+  const queryRequest = {
+    contract_version: "v1" as const,
+    request_id: "rel-req-1",
+    trace_id: "trace-rel-1",
+    actor: { user_ref: "user-1", session_ref: "sess-1" },
+    subject: { kind: "content_item" as const, id: "item-1", title: "Alpha market shift" },
+    options: { include_badges: true, include_hints: true, max_related: 3 },
+  };
+
+  const textSelectionRequest = {
+    contract_version: "v1" as const,
+    request_id: "txt-req-1",
+    trace_id: "trace-txt-1",
+    actor: { user_ref: "user-1", session_ref: "sess-1" },
+    subject: { kind: "content_item" as const, id: "item-1" },
+    selection: { text: "demand acceleration", start_offset: 10, end_offset: 29 },
+    options: { max_matches: 5 },
+  };
+
+  it("posts query payload and returns provider response", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const provider = new HttpRelatedContextProvider({
+      baseUrl: "http://provider.internal/",
+      authToken: "token-123",
+      fetchImpl: (async (
+        input: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1],
+      ) => {
+        calls.push({ url: String(input), init });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            contract_version: "v1",
+            provider_status: "fresh",
+            badges: [{ code: "in_memory", label: "Seen", level: "info", confidence: 0.8 }],
+            hints: ["Related to your notes"],
+            related_context: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }) as typeof fetch,
+    });
+
+    const response = await provider.getRelatedContext(queryRequest);
+
+    expect(response.ok).toBe(true);
+    expect(response.provider_status).toBe("fresh");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toBe("http://provider.internal/v1/related-context/query");
+    const headers = calls[0]?.init?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer token-123");
+    expect(headers["X-Ingest-Token"]).toBe("token-123");
+    expect(headers["X-Trace-Id"]).toBe("trace-rel-1");
+  });
+
+  it("treats text-selection endpoint as optional on 404", async () => {
+    const provider = new HttpRelatedContextProvider({
+      baseUrl: "http://provider.internal",
+      fetchImpl: (async () => new Response("not found", { status: 404 })) as typeof fetch,
+    });
+
+    const response = await provider.lookupTextSelection(textSelectionRequest);
+    expect(response).toEqual(unavailableTextSelectionResponse());
+  });
+
+  it("throws on malformed non-object JSON payloads", async () => {
+    const provider = new HttpRelatedContextProvider({
+      baseUrl: "http://provider.internal",
+      fetchImpl: (async () =>
+        new Response(JSON.stringify("bad-payload"), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })) as typeof fetch,
+    });
+
+    await expect(provider.getRelatedContext(queryRequest)).rejects.toThrow(
+      "Related context provider returned a non-object JSON payload",
+    );
   });
 });
