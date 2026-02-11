@@ -488,6 +488,31 @@ describe("API Routes Integration Tests", () => {
       expect(itemWithTriage.triageJson.ai_score).toBe(85);
     });
 
+    it("GET /api/items - should filter to items without AI summary", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: `/api/items?topicId=${topicId}&summaryFilter=no_ai_summary`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.items).toHaveLength(1);
+      expect(body.items[0].id).toBe(contentItemId3);
+      expect(body.items[0].manualSummaryJson).toBeUndefined();
+    });
+
+    it("GET /api/items - should reject invalid summaryFilter", async () => {
+      const response = await app!.inject({
+        method: "GET",
+        url: `/api/items?topicId=${topicId}&summaryFilter=not_real`,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json();
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("INVALID_PARAM");
+    });
+
     it("GET /api/items - should return 404 for non-existent topic", async () => {
       const response = await app!.inject({
         method: "GET",

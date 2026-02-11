@@ -10,6 +10,7 @@ import {
   FeedItemSkeleton,
   groupItemsByTheme,
   type SortOption,
+  type SummaryFilter,
   ThemeRow,
 } from "@/components/Feed";
 import { FeedItemModal } from "@/components/Feed/FeedItemModal";
@@ -133,6 +134,7 @@ function FeedPageContent() {
   // Parse URL params
   const sourcesParam = searchParams.get("sources");
   const sortParam = searchParams.get("sort") as SortOption | null;
+  const summaryFilterParam = searchParams.get("summaryFilter");
   const pageParam = searchParams.get("page");
   const topicParam = searchParams.get("topic");
   const viewParam = searchParams.get("view") as FeedView | null;
@@ -141,6 +143,12 @@ function FeedPageContent() {
     sourcesParam ? sourcesParam.split(",").filter(Boolean) : [],
   );
   const [sort, setSort] = useState<SortOption>(sortParam || "best");
+  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>(() => {
+    if (summaryFilterParam === "no_ai_summary" || summaryFilterParam === "has_ai_summary") {
+      return summaryFilterParam;
+    }
+    return "all";
+  });
   const [view, setView] = useState<FeedView>(viewParam || "inbox");
 
   // Pagination state - page size persisted in localStorage
@@ -242,6 +250,7 @@ function FeedPageContent() {
       page: number,
       topic: string | null,
       newView: FeedView,
+      newSummaryFilter: SummaryFilter,
     ) => {
       const params = new URLSearchParams();
       if (topic === null) {
@@ -252,6 +261,7 @@ function FeedPageContent() {
       if (newView !== "inbox") params.set("view", newView);
       if (sources.length > 0) params.set("sources", sources.join(","));
       if (newSort !== "best") params.set("sort", newSort);
+      if (newSummaryFilter !== "all") params.set("summaryFilter", newSummaryFilter);
       if (page > 1) params.set("page", String(page));
       const query = params.toString();
       router.replace(query ? `/app/feed?${query}` : "/app/feed", { scroll: false });
@@ -262,36 +272,44 @@ function FeedPageContent() {
   const handleSourcesChange = useCallback(
     (sources: string[]) => {
       setSelectedSources(sources);
-      updateUrl(sources, sort, 1, currentTopicId, view);
+      updateUrl(sources, sort, 1, currentTopicId, view, summaryFilter);
     },
-    [sort, updateUrl, currentTopicId, view],
+    [sort, updateUrl, currentTopicId, view, summaryFilter],
   );
 
   const handleSortChange = useCallback(
     (newSort: SortOption) => {
       setSort(newSort);
-      updateUrl(selectedSources, newSort, 1, currentTopicId, view);
+      updateUrl(selectedSources, newSort, 1, currentTopicId, view, summaryFilter);
     },
-    [selectedSources, updateUrl, currentTopicId, view],
+    [selectedSources, updateUrl, currentTopicId, view, summaryFilter],
+  );
+
+  const handleSummaryFilterChange = useCallback(
+    (newSummaryFilter: SummaryFilter) => {
+      setSummaryFilter(newSummaryFilter);
+      updateUrl(selectedSources, sort, 1, currentTopicId, view, newSummaryFilter);
+    },
+    [selectedSources, sort, updateUrl, currentTopicId, view],
   );
 
   const handlePageChange = useCallback(
     (page: number) => {
       setCurrentPage(page);
-      updateUrl(selectedSources, sort, page, currentTopicId, view);
+      updateUrl(selectedSources, sort, page, currentTopicId, view, summaryFilter);
       // Scroll to top of feed
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [selectedSources, sort, updateUrl, currentTopicId, view],
+    [selectedSources, sort, updateUrl, currentTopicId, view, summaryFilter],
   );
 
   const handlePageSizeChange = useCallback(
     (size: PageSize) => {
       setPageSize(size);
       setCurrentPage(1);
-      updateUrl(selectedSources, sort, 1, currentTopicId, view);
+      updateUrl(selectedSources, sort, 1, currentTopicId, view, summaryFilter);
     },
-    [selectedSources, sort, updateUrl, setPageSize, currentTopicId, view],
+    [selectedSources, sort, updateUrl, setPageSize, currentTopicId, view, summaryFilter],
   );
 
   // Handle topic change from TopicSwitcher - update URL
@@ -299,9 +317,9 @@ function FeedPageContent() {
     (newTopicId: string | null) => {
       setCurrentTopicId(newTopicId);
       setCurrentPage(1);
-      updateUrl(selectedSources, sort, 1, newTopicId, view);
+      updateUrl(selectedSources, sort, 1, newTopicId, view, summaryFilter);
     },
-    [setCurrentTopicId, updateUrl, selectedSources, sort, view],
+    [setCurrentTopicId, updateUrl, selectedSources, sort, view, summaryFilter],
   );
 
   // Handle view change
@@ -309,9 +327,9 @@ function FeedPageContent() {
     (newView: FeedView) => {
       setView(newView);
       setCurrentPage(1);
-      updateUrl(selectedSources, sort, 1, currentTopicId, newView);
+      updateUrl(selectedSources, sort, 1, currentTopicId, newView, summaryFilter);
     },
-    [updateUrl, selectedSources, sort, currentTopicId],
+    [updateUrl, selectedSources, sort, currentTopicId, summaryFilter],
   );
 
   // Fetch items using paged query
@@ -323,6 +341,7 @@ function FeedPageContent() {
   const { data, isLoading, isError, error, isFetching, refetch } = usePagedItems({
     sourceTypes: selectedSources.length > 0 ? selectedSources : undefined,
     sort,
+    summaryFilter: summaryFilter === "all" ? undefined : summaryFilter,
     page: effectivePage,
     pageSize: effectivePageSize,
     topicId: isAllTopicsMode ? "all" : currentTopicId || undefined,
@@ -846,6 +865,8 @@ function FeedPageContent() {
           onSourcesChange={handleSourcesChange}
           sort={sort}
           onSortChange={handleSortChange}
+          summaryFilter={summaryFilter}
+          onSummaryFilterChange={handleSummaryFilterChange}
           layout={layout}
         />
       )}

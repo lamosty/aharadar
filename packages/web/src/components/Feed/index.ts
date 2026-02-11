@@ -1,4 +1,4 @@
-export { FeedFilterBar, type SortOption } from "./FeedFilterBar";
+export { FeedFilterBar, type SortOption, type SummaryFilter } from "./FeedFilterBar";
 export { FeedItem, FeedItemSkeleton } from "./FeedItem";
 export {
   getItemThemeKey,

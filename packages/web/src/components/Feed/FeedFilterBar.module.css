@@ -160,6 +160,10 @@
   box-shadow: 0 0 0 3px var(--focus-ring-color);
 }
 
+.summarySelect {
+  min-width: 150px;
+}
+
 /* Group by mode toggle button */
 .groupToggle {
   display: flex;

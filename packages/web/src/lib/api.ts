@@ -303,6 +303,7 @@ export interface ItemsListParams {
   since?: string;
   until?: string;
   sort?: "best" | "latest" | "trending" | "comments_desc" | "ai_score" | "has_ai_summary";
+  summaryFilter?: "all" | "no_ai_summary" | "has_ai_summary";
   topicId?: string;
   view?: FeedView;
 }
@@ -723,6 +724,7 @@ export async function getItems(
   if (params?.since) searchParams.set("since", params.since);
   if (params?.until) searchParams.set("until", params.until);
   if (params?.sort) searchParams.set("sort", params.sort);
+  if (params?.summaryFilter) searchParams.set("summaryFilter", params.summaryFilter);
   if (params?.topicId) searchParams.set("topicId", params.topicId);
   if (params?.view) {
     searchParams.set("view", params.view);

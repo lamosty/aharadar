@@ -87,9 +87,19 @@ interface ItemsListQuerystring {
   since?: string;
   until?: string;
   sort?: string;
+  summaryFilter?: string;
   topicId?: string;
   // Views: inbox (no feedback), highlights (liked), all (no filter)
   view?: "inbox" | "highlights" | "all";
+}
+
+function parseSummaryFilterFromRawUrl(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return undefined;
+  const queryIndex = rawUrl.indexOf("?");
+  if (queryIndex === -1) return undefined;
+  const queryString = rawUrl.slice(queryIndex + 1);
+  const value = new URLSearchParams(queryString).get("summaryFilter");
+  return value ?? undefined;
 }
 
 interface RelatedContextRequestBody {
@@ -156,9 +166,14 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       since,
       until,
       sort = "best",
+      summaryFilter: summaryFilterFromQuery,
       topicId: topicIdParam,
       view = "all",
     } = request.query;
+
+    // Use raw URL query as fallback because some production query parsers can drop camelCase keys.
+    const summaryFilter =
+      summaryFilterFromQuery ?? parseSummaryFilterFromRawUrl(request.raw.url) ?? "all";
 
     // Determine topic scope:
     // - "all" = aggregate across all user's topics
@@ -245,6 +260,17 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
+    const validSummaryFilters = ["all", "has_ai_summary", "no_ai_summary"];
+    if (!validSummaryFilters.includes(summaryFilter)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `Invalid 'summaryFilter' parameter: must be one of ${validSummaryFilters.join(", ")}`,
+        },
+      });
+    }
+
     const db = getDb();
 
     // Get decay settings from topic (or defaults for "all topics" mode)
@@ -304,6 +330,12 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       filterConditions.push("fe.action = 'like'");
     }
     // view === 'all' -> no filter
+
+    if (summaryFilter === "has_ai_summary") {
+      filterConditions.push("cis.summary_json IS NOT NULL");
+    } else if (summaryFilter === "no_ai_summary") {
+      filterConditions.push("cis.summary_json IS NULL");
+    }
 
     const filterClause = filterConditions.length > 0 ? filterConditions.join(" AND ") : "true";
 
@@ -498,6 +530,8 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       ) fe ON true
       LEFT JOIN content_item_reads cir
         ON cir.user_id = '${ctx.userId}' AND cir.content_item_id = li.content_item_id
+      LEFT JOIN content_item_summaries cis
+        ON cis.user_id = '${ctx.userId}' AND cis.content_item_id = li.content_item_id
       WHERE ${filterClause}
     `;
 
