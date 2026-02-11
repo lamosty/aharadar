@@ -14,11 +14,15 @@ export type SortOption =
   | "ai_score"
   | "has_ai_summary";
 
+export type SummaryFilter = "all" | "no_ai_summary" | "has_ai_summary";
+
 interface FeedFilterBarProps {
   selectedSources: string[];
   onSourcesChange: (sources: string[]) => void;
   sort: SortOption;
   onSortChange: (sort: SortOption) => void;
+  summaryFilter: SummaryFilter;
+  onSummaryFilterChange: (filter: SummaryFilter) => void;
   /** Layout mode - condensed uses simpler styling */
   layout?: Layout;
   /** Available scoring modes for filtering */
@@ -39,6 +43,11 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "trending", label: "Trending" },
   { value: "comments_desc", label: "Most Comments" },
   { value: "ai_score", label: "AI Score" },
+];
+
+const SUMMARY_FILTER_OPTIONS: Array<{ value: SummaryFilter; label: string }> = [
+  { value: "all", label: "All Items" },
+  { value: "no_ai_summary", label: "No AI Summary" },
   { value: "has_ai_summary", label: "Has AI Summary" },
 ];
 
@@ -62,9 +71,6 @@ function SortHelpContent() {
         <li className={styles.sortHelpItem}>
           <strong>AI Score:</strong> Raw AI-assigned relevance score
         </li>
-        <li className={styles.sortHelpItem}>
-          <strong>Has AI Summary:</strong> Items with AI summary first
-        </li>
       </ul>
     </div>
   );
@@ -75,6 +81,8 @@ export function FeedFilterBar({
   onSourcesChange,
   sort,
   onSortChange,
+  summaryFilter,
+  onSummaryFilterChange,
   layout = "condensed",
   availableModes,
   selectedModeId = "",
@@ -128,6 +136,18 @@ export function FeedFilterBar({
             </button>
           </Tooltip>
         )}
+        <select
+          className={`${styles.modeSelect} ${styles.summarySelect}`}
+          value={summaryFilter}
+          onChange={(e) => onSummaryFilterChange(e.target.value as SummaryFilter)}
+          aria-label="Filter by summary status"
+        >
+          {SUMMARY_FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
 
         <Tooltip content={<SortHelpContent />} position="bottom">
           <button type="button" className={styles.helpButton} aria-label="Sort options help">
