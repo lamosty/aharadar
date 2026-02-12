@@ -18,6 +18,15 @@ const AUTH_ERROR_PATTERNS: RegExp[] = [
   /login required/i,
 ];
 
+const CONFIG_ERROR_PATTERNS: RegExp[] = [
+  /model_not_found/i,
+  /does not exist/i,
+  /not supported when using codex with a chatgpt account/i,
+  /unsupported value/i,
+  /param["'\s.:_-]*model/i,
+  /param["'\s.:_-]*reasoning/i,
+];
+
 function normalizeError(error: unknown): CodedLlmError {
   if (error instanceof Error) {
     return error as CodedLlmError;
@@ -33,7 +42,7 @@ export function isLlmAuthLikeMessage(message: string): boolean {
 export function classifyLlmProviderError(error: unknown): CodedLlmError {
   const err = normalizeError(error);
   const currentCode = typeof err.code === "string" ? err.code : null;
-  if (currentCode === "LLM_AUTH_ERROR") {
+  if (currentCode === "LLM_AUTH_ERROR" || currentCode === "LLM_CONFIG_ERROR") {
     return err;
   }
 
@@ -41,6 +50,12 @@ export function classifyLlmProviderError(error: unknown): CodedLlmError {
     err.code = "LLM_AUTH_ERROR";
     err.message =
       "LLM authentication failed. Re-login for the selected provider or switch to an API-key provider.";
+    return err;
+  }
+
+  const normalized = err.message.toLowerCase();
+  if (CONFIG_ERROR_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    err.code = "LLM_CONFIG_ERROR";
   }
 
   return err;
@@ -53,4 +68,14 @@ export function isLlmAuthError(error: unknown): boolean {
   const message = (error as { message?: unknown }).message;
   if (typeof message !== "string") return false;
   return isLlmAuthLikeMessage(message);
+}
+
+export function isLlmConfigError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  if (code === "LLM_CONFIG_ERROR") return true;
+  const message = (error as { message?: unknown }).message;
+  if (typeof message !== "string") return false;
+  const normalized = message.toLowerCase();
+  return CONFIG_ERROR_PATTERNS.some((pattern) => pattern.test(normalized));
 }

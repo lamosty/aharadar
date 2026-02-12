@@ -8,6 +8,7 @@ import type {
 import {
   createConfiguredLlmRouter,
   estimateLlmCredits,
+  isLlmConfigError,
   type LlmRuntimeConfig,
   type TriageCandidateInput,
   type TriageOutput,
@@ -115,7 +116,7 @@ function getErrorCode(err: unknown): string | null {
 }
 
 function isFatalTriageError(err: unknown): boolean {
-  return getErrorCode(err) === "LLM_AUTH_ERROR";
+  return getErrorCode(err) === "LLM_AUTH_ERROR" || isLlmConfigError(err);
 }
 
 function createTriageUnavailableError(message: string): Error & { code: string } {

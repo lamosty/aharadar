@@ -129,6 +129,11 @@ function formatDigestFailureMessage(err: unknown): string {
   if (code === "LLM_AUTH_ERROR") {
     return "LLM triage authentication failed. Re-login or switch to a configured API provider.";
   }
+  if (code === "LLM_CONFIG_ERROR") {
+    return (
+      fallback || "LLM triage configuration is invalid. Check provider/model/reasoning settings."
+    );
+  }
   if (code === "TRIAGE_UNAVAILABLE") {
     return fallback || "LLM triage unavailable";
   }
@@ -144,7 +149,18 @@ export async function runPipelineOnce(
 ): Promise<PipelineRunResult> {
   if (params.llmConfig) {
     const router = createConfiguredLlmRouter(process.env, params.llmConfig);
-    router.chooseModel("triage", "normal");
+    const ref = router.chooseModel("triage", "normal");
+
+    // Fail fast before ingest for Codex subscription runs so misconfigured
+    // model/auth/reasoning doesn't waste connector/API credits.
+    if (params.llmConfig.provider === "codex-subscription") {
+      await router.call("triage", ref, {
+        system: "Runtime preflight check. Reply with a brief confirmation.",
+        user: "Preflight: confirm model and auth are usable.",
+        maxOutputTokens: 64,
+        reasoningEffort: params.llmConfig.reasoningEffort ?? "none",
+      });
+    }
   }
 
   // Check credits status if budget config is provided

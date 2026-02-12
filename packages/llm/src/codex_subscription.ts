@@ -31,6 +31,58 @@ const log = {
   },
 };
 
+/**
+ * Build an explicit env for Codex CLI so subscription runs cannot be hijacked
+ * by unrelated OpenAI API-key vars in the parent process.
+ */
+function buildCodexCliEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  const copyKey = (key: string) => {
+    const value = env[key];
+    if (typeof value === "string" && value.length > 0) {
+      out[key] = value;
+    }
+  };
+
+  // Core process/runtime vars Codex CLI may need.
+  [
+    "PATH",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "TERM",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "XDG_CONFIG_HOME",
+    "XDG_CACHE_HOME",
+    "XDG_DATA_HOME",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "NODE_EXTRA_CA_CERTS",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+  ].forEach(copyKey);
+
+  // Keep Codex-specific controls, but intentionally exclude OPENAI_* keys.
+  for (const [key, value] of Object.entries(env)) {
+    if (!key.startsWith("CODEX_")) continue;
+    if (typeof value !== "string" || value.length === 0) continue;
+    out[key] = value;
+  }
+
+  return out;
+}
+
 function getCodexReasoningDirective(reasoningEffort: LlmRequest["reasoningEffort"]): string {
   if (!reasoningEffort) return "";
 
@@ -94,7 +146,8 @@ export async function callCodexSubscription(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const CodexClass = mod.Codex as any;
 
-    const codex = new CodexClass();
+    const codexEnv = buildCodexCliEnv(process.env);
+    const codex = new CodexClass({ env: codexEnv });
     const modelReasoningEffort = getCodexModelReasoningEffort(request.reasoningEffort);
     const thread = codex.startThread({
       model: ref.model, // Use the resolved model (e.g., gpt-5.1)

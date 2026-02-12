@@ -1,6 +1,6 @@
 import type { BudgetTier } from "@aharadar/shared";
 
-import { isLlmAuthError, isLlmAuthLikeMessage } from "./error_classification";
+import { isLlmAuthError, isLlmAuthLikeMessage, isLlmConfigError } from "./error_classification";
 import type { LlmRouter, ModelRef } from "./types";
 
 const PROMPT_ID = "triage_v1";
@@ -500,7 +500,7 @@ function isQuotaError(error: unknown): boolean {
 }
 
 function isNonRetryableTriageError(error: unknown): boolean {
-  return isQuotaError(error) || isLlmAuthError(error);
+  return isQuotaError(error) || isLlmAuthError(error) || isLlmConfigError(error);
 }
 
 export async function triageCandidate(params: {
