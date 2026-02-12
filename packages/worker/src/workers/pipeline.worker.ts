@@ -1,5 +1,5 @@
 import { createDb, type Db } from "@aharadar/db";
-import { createConfiguredLlmRouter, type LlmRuntimeConfig } from "@aharadar/llm";
+import { createConfiguredLlmRouter, type LlmRuntimeConfig, type ModelRef } from "@aharadar/llm";
 import { type PipelineRunResult, runAbtestOnce, runPipelineOnce } from "@aharadar/pipeline";
 import { createJobLogger, createLogger, type Logger, loadRuntimeEnv } from "@aharadar/shared";
 import { type Job, Worker } from "bullmq";
@@ -19,11 +19,11 @@ import {
 
 const cursorLog = createLogger({ component: "cursor" });
 
-function validateLlmRuntimeConfig(llmConfig: LlmRuntimeConfig): void {
+function resolveAndValidateLlmRuntimeRef(llmConfig: LlmRuntimeConfig): ModelRef {
   const router = createConfiguredLlmRouter(process.env, llmConfig);
   // Keep this call lightweight; it validates provider enablement and credentials
   // before any ingest stage runs.
-  router.chooseModel("triage", "normal");
+  return router.chooseModel("triage", "normal");
 }
 
 /**
@@ -126,12 +126,12 @@ async function handleRunWindowJob(
       }
     }
 
-    validateLlmRuntimeConfig(llmConfig);
+    const triageRef = resolveAndValidateLlmRuntimeRef(llmConfig);
 
     jobLog.info(
       {
-        provider: llmConfig.provider,
-        model: llmConfig.anthropicModel || llmConfig.openaiModel,
+        provider: triageRef.provider,
+        model: triageRef.model,
       },
       "Using LLM config",
     );
@@ -265,7 +265,7 @@ async function handleRunAggregateSummaryJob(
       triageBatchSize: llmSettings.triage_batch_size,
     };
 
-    validateLlmRuntimeConfig(llmConfig);
+    resolveAndValidateLlmRuntimeRef(llmConfig);
 
     const summary = await generateAggregateSummary({
       db,
@@ -401,7 +401,7 @@ async function handleRunCatchupPackJob(
       triageBatchSize: llmSettings.triage_batch_size,
     };
 
-    validateLlmRuntimeConfig(llmConfig);
+    resolveAndValidateLlmRuntimeRef(llmConfig);
 
     const pack = await generateCatchupPack({
       db,

@@ -6,7 +6,7 @@ import {
   getSchedulableTopics,
   parseSchedulerConfig,
 } from "@aharadar/pipeline";
-import { clearEmergencyStop, createRedisClient, isEmergencyStopActive } from "@aharadar/queues";
+import { createRedisClient, isEmergencyStopActive } from "@aharadar/queues";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger, loadDotEnvIfPresent, loadRuntimeEnv } from "@aharadar/shared";
 
@@ -15,6 +15,7 @@ import { createPipelineQueue } from "./queues";
 import { createPipelineWorker } from "./workers/pipeline.worker";
 
 const METRICS_PORT = parseInt(process.env.WORKER_METRICS_PORT ?? "9091", 10);
+const EMERGENCY_STOP_POLL_MS = 2000;
 
 // Load .env and .env.local files (must happen before reading env vars)
 loadDotEnvIfPresent();
@@ -35,6 +36,27 @@ function getSchedulerIntervalMs(): number {
     }
   }
   return 5 * 60 * 1000; // default 5 min
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForEmergencyStopToClear(
+  redis: ReturnType<typeof createRedisClient>,
+): Promise<void> {
+  let warned = false;
+  while (await isEmergencyStopActive(redis)) {
+    if (!warned) {
+      log.warn("Emergency stop is active; waiting for manual clear before starting worker");
+      warned = true;
+    }
+    await sleep(EMERGENCY_STOP_POLL_MS);
+  }
+
+  if (warned) {
+    log.info("Emergency stop cleared; continuing worker startup");
+  }
 }
 
 async function runSchedulerTick(
@@ -156,12 +178,6 @@ async function main(): Promise<void> {
   // Create DB connection for scheduler
   const schedulerDb = createDb(env.databaseUrl);
 
-  // Create queue for enqueuing jobs
-  const queue = createPipelineQueue(env.redisUrl);
-
-  // Create worker to process jobs
-  const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
-
   // Create Redis client for emergency stop checks and quota tracking
   const emergencyStopRedis = createRedisClient(env.redisUrl);
 
@@ -169,9 +185,14 @@ async function main(): Promise<void> {
   initRedisQuota(emergencyStopRedis);
   log.info("Redis quota tracking initialized");
 
-  // Clear any stale emergency stop flag on startup
-  await clearEmergencyStop(emergencyStopRedis);
-  log.info("Emergency stop flag cleared on startup");
+  // Honor emergency stop across restarts. Do not auto-clear.
+  await waitForEmergencyStopToClear(emergencyStopRedis);
+
+  // Create queue for enqueuing jobs
+  const queue = createPipelineQueue(env.redisUrl);
+
+  // Create worker to process jobs
+  const { worker, db: workerDb } = createPipelineWorker(env.redisUrl);
 
   // Start metrics server (also serves /health)
   const metricsServer = startMetricsServer(METRICS_PORT);
@@ -205,7 +226,10 @@ async function main(): Promise<void> {
 
   // Graceful shutdown
   let isShuttingDown = false;
-  const shutdown = async (signal: string): Promise<void> => {
+  const shutdown = async (
+    signal: string,
+    options?: { forceWorkerClose?: boolean },
+  ): Promise<void> => {
     if (isShuttingDown) return; // Prevent double shutdown
     isShuttingDown = true;
 
@@ -216,7 +240,7 @@ async function main(): Promise<void> {
     clearInterval(emergencyStopInterval);
 
     await metricsServer.close();
-    await worker.close();
+    await worker.close(options?.forceWorkerClose === true);
     await queue.close();
     await emergencyStopRedis.quit();
     await schedulerDb.close();
@@ -232,12 +256,14 @@ async function main(): Promise<void> {
       const shouldStop = await isEmergencyStopActive(emergencyStopRedis);
       if (shouldStop) {
         log.warn("Emergency stop flag detected! Shutting down worker...");
-        await shutdown("EMERGENCY_STOP");
+        // Force-close worker so active job is interrupted quickly and does not
+        // continue spending connector/LLM credits.
+        await shutdown("EMERGENCY_STOP", { forceWorkerClose: true });
       }
     } catch (err) {
       log.warn({ err }, "Failed to check emergency stop flag");
     }
-  }, 2000);
+  }, EMERGENCY_STOP_POLL_MS);
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
