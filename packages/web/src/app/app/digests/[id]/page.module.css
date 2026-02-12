@@ -54,6 +54,10 @@
   flex-wrap: wrap;
 }
 
+.deleteButton {
+  margin-left: auto;
+}
+
 .title {
   display: flex;
   align-items: center;

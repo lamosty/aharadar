@@ -55,12 +55,14 @@ import {
   createTopic,
   type DailyUsageResponse,
   type DeleteCatchupPackResponse,
+  type DeleteDigestResponse,
   type DeleteTopicResponse,
   type DigestDetailResponse,
   type DigestStatsResponse,
   type DigestsListResponse,
   deleteAdminSource,
   deleteCatchupPack,
+  deleteDigest,
   deleteScoringExperiment,
   deleteScoringMode,
   deleteTopic,
@@ -352,6 +354,25 @@ export function useDigest(
     queryKey: queryKeys.digests.detail(id),
     queryFn: ({ signal }) => getDigest(id, signal),
     enabled: !!id,
+    ...options,
+  });
+}
+
+export function useDeleteDigest(
+  options?: Omit<
+    UseMutationOptions<DeleteDigestResponse, ApiError | NetworkError, string>,
+    "mutationFn"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (digestId) => deleteDigest(digestId),
+    onSuccess: (_data, digestId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.digests.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+      queryClient.removeQueries({ queryKey: queryKeys.digests.detail(digestId) });
+    },
     ...options,
   });
 }

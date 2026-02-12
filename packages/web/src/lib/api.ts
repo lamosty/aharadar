@@ -156,6 +156,13 @@ export interface DigestDetailResponse {
   items: DigestItem[];
 }
 
+/** Delete digest response */
+export interface DeleteDigestResponse {
+  ok: true;
+  id: string;
+  message: string;
+}
+
 /** Content item detail */
 export interface ContentItem {
   id: string;
@@ -686,6 +693,19 @@ export async function getDigestStats(
  */
 export async function getDigest(id: string, signal?: AbortSignal): Promise<DigestDetailResponse> {
   return apiFetch<DigestDetailResponse>(`/digests/${id}`, { signal });
+}
+
+/**
+ * Delete a digest by id.
+ */
+export async function deleteDigest(
+  id: string,
+  signal?: AbortSignal,
+): Promise<DeleteDigestResponse> {
+  return apiFetch<DeleteDigestResponse>(`/digests/${id}`, {
+    method: "DELETE",
+    signal,
+  });
 }
 
 /**

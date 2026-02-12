@@ -535,4 +535,66 @@ export async function digestsRoutes(fastify: FastifyInstance): Promise<void> {
         : null,
     };
   });
+
+  // DELETE /digests/:id - Delete a digest and its dependent rows (cascade)
+  fastify.delete<{ Params: { id: string } }>("/digests/:id", async (request, reply) => {
+    const ctx = await getSingletonContext();
+    if (!ctx) {
+      return reply.code(503).send({
+        ok: false,
+        error: {
+          code: "NOT_INITIALIZED",
+          message: "Database not initialized: no user or topic found",
+        },
+      });
+    }
+
+    const { id } = request.params;
+    if (!isValidUuid(id)) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: "Invalid digest id",
+        },
+      });
+    }
+
+    const db = getDb();
+    const digestResult = await db.query<{ id: string; user_id: string }>(
+      `SELECT id, user_id::text
+       FROM digests
+       WHERE id = $1::uuid`,
+      [id],
+    );
+
+    const digest = digestResult.rows[0];
+    if (!digest) {
+      return reply.code(404).send({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Digest not found",
+        },
+      });
+    }
+
+    if (digest.user_id !== ctx.userId) {
+      return reply.code(403).send({
+        ok: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Digest does not belong to current user",
+        },
+      });
+    }
+
+    await db.query("DELETE FROM digests WHERE id = $1::uuid", [id]);
+
+    return {
+      ok: true,
+      id,
+      message: "Digest deleted",
+    };
+  });
 }

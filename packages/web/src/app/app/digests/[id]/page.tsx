@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import { use } from "react";
 import { AggregateSummaryPanel } from "@/components/AggregateSummaryPanel";
@@ -14,7 +15,7 @@ import {
 } from "@/components/DigestDetail";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
-import { useAggregateSummary, useCreateDigestSummary } from "@/lib/hooks";
+import { useAggregateSummary, useCreateDigestSummary, useDeleteDigest } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import {
   type DigestDetail as DigestDetailData,
@@ -30,6 +31,7 @@ interface DigestDetailPageProps {
 
 export default function DigestDetailPage({ params }: DigestDetailPageProps) {
   const { id } = use(params);
+  const router = useRouter();
   const { layout } = useTheme();
   const { addToast } = useToast();
 
@@ -50,9 +52,23 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
 
   const [summaryId, setSummaryId] = React.useState<string | null>(null);
   const { data: summaryData, isLoading: summaryLoading } = useAggregateSummary(summaryId);
+  const deleteDigestMutation = useDeleteDigest({
+    onSuccess: () => {
+      addToast(t("digests.detail.deleteSuccess"), "success");
+      router.push("/app/digests");
+    },
+    onError: (error) => {
+      addToast(`${t("digests.detail.deleteError")}: ${error.message}`, "error");
+    },
+  });
 
   const handleGenerateSummary = () => {
     createSummaryMutation.mutate(id);
+  };
+
+  const handleDeleteDigest = () => {
+    if (!window.confirm(t("digests.detail.deleteConfirm"))) return;
+    deleteDigestMutation.mutate(id);
   };
 
   const handleFeedback = async (contentItemId: string, action: "like" | "dislike" | "skip") => {
@@ -109,6 +125,17 @@ export default function DigestDetailPage({ params }: DigestDetailPageProps) {
               >
                 {t(`digests.modes.${digest.mode}` as Parameters<typeof t>[0])}
               </span>
+
+              <button
+                type="button"
+                className={`btn btn-secondary ${styles.deleteButton}`}
+                onClick={handleDeleteDigest}
+                disabled={deleteDigestMutation.isPending}
+              >
+                {deleteDigestMutation.isPending
+                  ? t("digests.detail.deleting")
+                  : t("digests.detail.delete")}
+              </button>
             </div>
 
             <div className={styles.headerMeta}>
