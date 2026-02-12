@@ -617,15 +617,45 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
       credentials: "include", // Send cookies for session auth
     });
 
-    const data = (await response.json()) as T | ApiErrorResponse;
+    // Parse response body defensively so transient proxy/server HTML responses
+    // (for example during restarts) don't surface as opaque "unexpected" errors.
+    let parsed: unknown = null;
+    const rawBody = await response.text();
+    if (rawBody.length > 0) {
+      try {
+        parsed = JSON.parse(rawBody) as unknown;
+      } catch {
+        if (!response.ok) {
+          throw new ApiError(
+            "HTTP_ERROR",
+            `Request failed with status ${response.status}`,
+            response.status,
+          );
+        }
+        throw new NetworkError("Invalid server response");
+      }
+    }
 
-    // Check for API error response shape
-    if (typeof data === "object" && data !== null && "ok" in data && data.ok === false) {
-      const errorData = data as ApiErrorResponse;
+    // Non-2xx response: prefer structured API error, then fallback to HTTP error.
+    if (!response.ok) {
+      if (typeof parsed === "object" && parsed !== null && "ok" in parsed && parsed.ok === false) {
+        const errorData = parsed as ApiErrorResponse;
+        throw new ApiError(errorData.error.code, errorData.error.message, response.status);
+      }
+      throw new ApiError(
+        "HTTP_ERROR",
+        `Request failed with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    // 2xx with explicit API error shape
+    if (typeof parsed === "object" && parsed !== null && "ok" in parsed && parsed.ok === false) {
+      const errorData = parsed as ApiErrorResponse;
       throw new ApiError(errorData.error.code, errorData.error.message, response.status);
     }
 
-    return data as T;
+    return parsed as T;
   } catch (error) {
     // Re-throw our own errors
     if (error instanceof ApiError) {
