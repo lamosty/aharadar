@@ -1,5 +1,5 @@
 import { createDb, type Db } from "@aharadar/db";
-import type { LlmRuntimeConfig } from "@aharadar/llm";
+import { createConfiguredLlmRouter, type LlmRuntimeConfig } from "@aharadar/llm";
 import { type PipelineRunResult, runAbtestOnce, runPipelineOnce } from "@aharadar/pipeline";
 import { createJobLogger, createLogger, type Logger, loadRuntimeEnv } from "@aharadar/shared";
 import { type Job, Worker } from "bullmq";
@@ -18,6 +18,13 @@ import {
 } from "../queues";
 
 const cursorLog = createLogger({ component: "cursor" });
+
+function validateLlmRuntimeConfig(llmConfig: LlmRuntimeConfig): void {
+  const router = createConfiguredLlmRouter(process.env, llmConfig);
+  // Keep this call lightweight; it validates provider enablement and credentials
+  // before any ingest stage runs.
+  router.chooseModel("triage", "normal");
+}
 
 /**
  * Log a concise summary and record metrics for the pipeline run result.
@@ -94,6 +101,8 @@ async function handleRunWindowJob(
       claudeSubscriptionEnabled: llmSettings.claude_subscription_enabled,
       claudeTriageThinking: llmSettings.claude_triage_thinking,
       claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+      codexSubscriptionEnabled: llmSettings.codex_subscription_enabled,
+      codexCallsPerHour: llmSettings.codex_calls_per_hour,
       reasoningEffort: llmSettings.reasoning_effort,
       triageBatchEnabled: llmSettings.triage_batch_enabled,
       triageBatchSize: llmSettings.triage_batch_size,
@@ -116,6 +125,8 @@ async function handleRunWindowJob(
         llmConfig.openaiModel = providerOverride.model;
       }
     }
+
+    validateLlmRuntimeConfig(llmConfig);
 
     jobLog.info(
       {
@@ -247,10 +258,14 @@ async function handleRunAggregateSummaryJob(
       claudeSubscriptionEnabled: llmSettings.claude_subscription_enabled,
       claudeTriageThinking: llmSettings.claude_triage_thinking,
       claudeCallsPerHour: llmSettings.claude_calls_per_hour,
+      codexSubscriptionEnabled: llmSettings.codex_subscription_enabled,
+      codexCallsPerHour: llmSettings.codex_calls_per_hour,
       reasoningEffort: llmSettings.reasoning_effort,
       triageBatchEnabled: llmSettings.triage_batch_enabled,
       triageBatchSize: llmSettings.triage_batch_size,
     };
+
+    validateLlmRuntimeConfig(llmConfig);
 
     const summary = await generateAggregateSummary({
       db,
@@ -385,6 +400,8 @@ async function handleRunCatchupPackJob(
       triageBatchEnabled: llmSettings.triage_batch_enabled,
       triageBatchSize: llmSettings.triage_batch_size,
     };
+
+    validateLlmRuntimeConfig(llmConfig);
 
     const pack = await generateCatchupPack({
       db,

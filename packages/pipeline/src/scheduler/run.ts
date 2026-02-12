@@ -5,7 +5,7 @@ import {
   type DigestSourceResult,
   type ScoringModeConfig,
 } from "@aharadar/db";
-import type { LlmRuntimeConfig } from "@aharadar/llm";
+import { createConfiguredLlmRouter, type LlmRuntimeConfig } from "@aharadar/llm";
 import type { BudgetTier } from "@aharadar/shared";
 import { createLogger } from "@aharadar/shared";
 import { type CreditsStatus, computeCreditsStatus, printCreditsWarning } from "../budgets/credits";
@@ -142,6 +142,11 @@ export async function runPipelineOnce(
   db: Db,
   params: PipelineRunParams,
 ): Promise<PipelineRunResult> {
+  if (params.llmConfig) {
+    const router = createConfiguredLlmRouter(process.env, params.llmConfig);
+    router.chooseModel("triage", "normal");
+  }
+
   // Check credits status if budget config is provided
   let creditsStatus: CreditsStatus | undefined;
   let paidCallsAllowed = true;

@@ -282,6 +282,7 @@ export default function AdminLlmPage() {
               <option value="low">{t("admin.llm.reasoningEfforts.low")}</option>
               <option value="medium">{t("admin.llm.reasoningEfforts.medium")}</option>
               <option value="high">{t("admin.llm.reasoningEfforts.high")}</option>
+              <option value="xhigh">{t("admin.llm.reasoningEfforts.xhigh")}</option>
             </select>
             <div className={styles.infoBox}>
               <InfoIcon />

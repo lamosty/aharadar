@@ -514,7 +514,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     const resolvedMode: RunMode =
       mode !== undefined && isValidMode(mode) ? mode : (topic.digest_mode as RunMode);
 
-    // Pre-flight quota check for subscription providers
+    // Pre-flight provider check and quota check for subscription providers
     const llmSettings = await db.llmSettings.get();
     const effectiveProvider = resolvedProviderOverride?.provider ?? llmSettings.provider;
 
@@ -1474,7 +1474,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Validate reasoning effort
-    const validReasoningEfforts = ["none", "low", "medium", "high"];
+    const validReasoningEfforts = ["none", "low", "medium", "high", "xhigh"];
     if (
       reasoningEffort !== undefined &&
       !validReasoningEfforts.includes(reasoningEffort as string)
@@ -2101,7 +2101,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       // Validate optional reasoningEffort
-      const validReasoningEfforts = ["none", "low", "medium", "high", null, undefined];
+      const validReasoningEfforts = ["none", "low", "medium", "high", "xhigh", null, undefined];
       if (
         v.reasoningEffort !== undefined &&
         !validReasoningEfforts.includes(v.reasoningEffort as string | null)
@@ -2110,7 +2110,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
           ok: false,
           error: {
             code: "INVALID_PARAM",
-            message: `variants[${i}].reasoningEffort must be one of: none, low, medium, high, or null`,
+            message: `variants[${i}].reasoningEffort must be one of: none, low, medium, high, xhigh, or null`,
           },
         });
       }

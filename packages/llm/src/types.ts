@@ -20,7 +20,7 @@ export interface LlmRequest {
   user: string;
   maxOutputTokens?: number;
   temperature?: number;
-  reasoningEffort?: "none" | "low" | "medium" | "high";
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh";
   /** JSON Schema for structured output (used by Claude Agent SDK) */
   jsonSchema?: Record<string, unknown>;
 }

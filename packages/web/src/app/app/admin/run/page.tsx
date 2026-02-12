@@ -9,7 +9,20 @@ import { useAdminRun, useTopics } from "@/lib/hooks";
 import { t } from "@/lib/i18n";
 import styles from "./page.module.css";
 
-const PROVIDER_OPTIONS: (LlmProvider | "")[] = ["", "openai", "anthropic", "claude-subscription"];
+const PROVIDER_OPTIONS: (LlmProvider | "")[] = [
+  "",
+  "openai",
+  "anthropic",
+  "claude-subscription",
+  "codex-subscription",
+];
+
+function getModelPlaceholder(providerOverride: LlmProvider | ""): string {
+  if (providerOverride === "anthropic" || providerOverride === "claude-subscription") {
+    return "claude-sonnet-4-20250514";
+  }
+  return "gpt-5.1";
+}
 
 function getDefaultWindowStart(): string {
   // Default to 24 hours ago
@@ -255,7 +268,7 @@ export default function AdminRunPage() {
                 value={modelOverride}
                 onChange={(e) => setModelOverride(e.target.value)}
                 className={styles.input}
-                placeholder={providerOverride === "openai" ? "gpt-4o" : "claude-sonnet-4-20250514"}
+                placeholder={getModelPlaceholder(providerOverride)}
                 disabled={isLoading}
               />
               <p className={styles.hint}>{t("admin.run.modelOverrideHint")}</p>

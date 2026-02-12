@@ -27,6 +27,7 @@ const REASONING_OPTIONS: { value: AbtestReasoningEffort; label: string }[] = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
+  { value: "xhigh", label: "XHigh" },
 ];
 
 // Default variants per task spec

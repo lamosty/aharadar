@@ -2,7 +2,7 @@ import type { Queryable } from "../db";
 
 export type LlmProvider = "openai" | "anthropic" | "claude-subscription" | "codex-subscription";
 
-export type ReasoningEffort = "none" | "low" | "medium" | "high";
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 
 export interface LlmSettingsRow {
   id: number;

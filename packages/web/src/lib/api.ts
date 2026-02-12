@@ -1030,7 +1030,7 @@ export async function resetXAccountPolicy(
 // ============================================================================
 
 /** Reasoning effort levels for OpenAI models */
-export type ReasoningEffort = "none" | "low" | "medium" | "high";
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 
 /** LLM settings data */
 export interface LlmSettings {
@@ -1803,7 +1803,7 @@ export async function getEmergencyStopStatus(
 export type AbtestRunStatus = "pending" | "running" | "completed" | "failed";
 
 /** AB test reasoning effort */
-export type AbtestReasoningEffort = "none" | "low" | "medium" | "high" | null;
+export type AbtestReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | null;
 
 /** AB test variant configuration (for creating runs) */
 export interface AbtestVariantConfig {

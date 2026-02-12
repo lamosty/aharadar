@@ -475,7 +475,8 @@
         "none": "None (Disabled) - 350 tokens",
         "low": "Low - 800 tokens",
         "medium": "Medium - 2000 tokens",
-        "high": "High - 4000 tokens"
+        "high": "High - 4000 tokens",
+        "xhigh": "XHigh - 8000 tokens"
       },
       "reasoningTokenNote": "Higher reasoning effort requires more output tokens. Token budget is automatically adjusted based on this setting. Use 'None' for budget-friendly non-reasoning models.",
       "deepSummary": "Deep Summaries",
@@ -590,7 +591,8 @@
         "none": "None",
         "low": "Low",
         "medium": "Medium",
-        "high": "High"
+        "high": "High",
+        "xhigh": "XHigh"
       }
     },
     "tuning": {

@@ -14,7 +14,7 @@ type Provider = "openai" | "anthropic" | "claude-subscription" | "codex-subscrip
  * Runtime configuration for LLM router.
  * These values override environment variables when passed to createConfiguredLlmRouter.
  */
-export type ReasoningEffort = "none" | "low" | "medium" | "high";
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 
 export interface LlmRuntimeConfig {
   provider?: Provider;
@@ -209,11 +209,6 @@ function resolveProvider(
   }
 
   if (globalProvider === "codex-subscription") {
-    if (env.CODEX_USE_SUBSCRIPTION !== "true") {
-      throw new Error(
-        "Provider 'codex-subscription' selected but CODEX_USE_SUBSCRIPTION is not enabled",
-      );
-    }
     const limits = getCodexUsageLimitsFromEnv(env);
     if (!canUseCodexSubscription(limits)) {
       throw new Error(
@@ -258,11 +253,6 @@ function resolveProvider(
     return "claude-subscription";
   }
   if (taskProvider === "codex-subscription") {
-    if (env.CODEX_USE_SUBSCRIPTION !== "true") {
-      throw new Error(
-        `Task provider 'codex-subscription' selected but CODEX_USE_SUBSCRIPTION is not enabled`,
-      );
-    }
     const limits = getCodexUsageLimitsFromEnv(env);
     if (!canUseCodexSubscription(limits)) {
       throw new Error(
@@ -287,13 +277,15 @@ export function createEnvLlmRouter(env: NodeJS.ProcessEnv = process.env): LlmRou
   const claudeSubscriptionEnabled = env.CLAUDE_USE_SUBSCRIPTION === "true";
   const codexSubscriptionEnabled = env.CODEX_USE_SUBSCRIPTION === "true";
   const enableThinking = env.CLAUDE_TRIAGE_THINKING === "true";
+  const explicitProvider = env.LLM_PROVIDER?.toLowerCase();
 
   // Validate at least one provider is configured
   if (
     !openaiApiKey &&
     !anthropicApiKey &&
     !claudeSubscriptionEnabled &&
-    !codexSubscriptionEnabled
+    !codexSubscriptionEnabled &&
+    !explicitProvider
   ) {
     throw new Error(
       "Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY (or enable CLAUDE_USE_SUBSCRIPTION or CODEX_USE_SUBSCRIPTION)",
@@ -438,6 +430,8 @@ export function createConfiguredLlmRouter(
   }
   if (config.codexSubscriptionEnabled !== undefined) {
     effectiveEnv.CODEX_USE_SUBSCRIPTION = config.codexSubscriptionEnabled ? "true" : "false";
+  } else if (config.provider === "codex-subscription") {
+    effectiveEnv.CODEX_USE_SUBSCRIPTION = "true";
   }
   if (config.codexCallsPerHour !== undefined) {
     effectiveEnv.CODEX_CALLS_PER_HOUR = String(config.codexCallsPerHour);

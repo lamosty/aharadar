@@ -96,12 +96,14 @@ function parseIntEnv(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-type ReasoningEffort = "none" | "low" | "medium" | "high";
+type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 
 function parseReasoningEffort(value: string | undefined): ReasoningEffort | null {
   if (!value) return null;
   const raw = value.trim().toLowerCase();
-  if (raw === "none" || raw === "low" || raw === "medium" || raw === "high") return raw;
+  if (raw === "none" || raw === "low" || raw === "medium" || raw === "high" || raw === "xhigh") {
+    return raw;
+  }
   return null;
 }
 
@@ -138,6 +140,7 @@ function getMaxOutputTokensForReasoning(
     low: 800, // Light reasoning
     medium: 2000, // Standard reasoning
     high: 4000, // Deep reasoning
+    xhigh: 8000, // Maximum reasoning depth
   };
 
   return budgets[effort ?? "none"];

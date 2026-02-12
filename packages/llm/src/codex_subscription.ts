@@ -31,6 +31,40 @@ const log = {
   },
 };
 
+function getCodexReasoningDirective(reasoningEffort: LlmRequest["reasoningEffort"]): string {
+  if (!reasoningEffort) return "";
+
+  const normalized = reasoningEffort.toLowerCase();
+
+  const directives: Record<NonNullable<LlmRequest["reasoningEffort"]>, string> = {
+    none: "Use minimal reasoning. Be concise and produce a direct answer.",
+    low: "Use light reasoning before answering. Keep the response concise.",
+    medium: "Reason thoroughly across the provided context, then answer directly.",
+    high: "Use deeper analysis and broader context before answering.",
+    xhigh: "Use maximum depth reasoning and broader context before answering.",
+  };
+
+  const directive = directives[normalized as NonNullable<LlmRequest["reasoningEffort"]>];
+  if (!directive) return "";
+
+  return `Reasoning directive for this request: ${directive}`;
+}
+
+function getCodexModelReasoningEffort(
+  reasoningEffort: LlmRequest["reasoningEffort"],
+): "none" | "low" | "medium" | "high" | "xhigh" | undefined {
+  if (!reasoningEffort) return undefined;
+
+  const normalized = reasoningEffort.toLowerCase();
+  if (normalized === "none") return "none";
+  if (normalized === "low") return "low";
+  if (normalized === "medium") return "medium";
+  if (normalized === "high") return "high";
+  if (normalized === "xhigh") return "xhigh";
+
+  return undefined;
+}
+
 /**
  * Call OpenAI using Codex SDK with ChatGPT subscription credentials.
  * Works without OPENAI_API_KEY when `codex` CLI is logged in.
@@ -61,13 +95,18 @@ export async function callCodexSubscription(
     const CodexClass = mod.Codex as any;
 
     const codex = new CodexClass();
+    const modelReasoningEffort = getCodexModelReasoningEffort(request.reasoningEffort);
     const thread = codex.startThread({
       model: ref.model, // Use the resolved model (e.g., gpt-5.1)
+      ...(modelReasoningEffort ? { modelReasoningEffort } : {}),
       ...(mergedConfig.workingDirectory ? { workingDirectory: mergedConfig.workingDirectory } : {}),
     });
 
     // Build the prompt combining system and user content
-    const fullPrompt = request.system ? `${request.system}\n\n${request.user}` : request.user;
+    const reasoningDirective = getCodexReasoningDirective(request.reasoningEffort);
+    const fullPrompt = request.system
+      ? `${request.system}\n\n${reasoningDirective}\n\n${request.user}`
+      : `${reasoningDirective}\n\n${request.user}`.trim();
 
     log.debug("Running thread", { promptLength: fullPrompt.length });
 
