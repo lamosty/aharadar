@@ -168,7 +168,8 @@ export async function enrichTopCandidates(params: {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
         },
-        reasoningEffortOverride: params.llmConfig?.reasoningEffort,
+        reasoningEffortOverride:
+          params.llmConfig?.summaryReasoningEffort ?? params.llmConfig?.reasoningEffort,
         aiGuidance: params.summaryGuidance,
       });
 

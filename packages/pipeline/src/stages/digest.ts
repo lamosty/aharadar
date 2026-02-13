@@ -967,7 +967,8 @@ async function triageCandidates(params: {
         tier,
         candidates: batchInputs,
         batchId,
-        reasoningEffortOverride: params.llmConfig?.reasoningEffort,
+        reasoningEffortOverride:
+          params.llmConfig?.triageReasoningEffort ?? params.llmConfig?.reasoningEffort,
         aiGuidance: params.triageGuidance,
         preferenceSummary: params.preferenceSummary ?? undefined,
       });
@@ -1160,7 +1161,8 @@ async function triageCandidatesIndividually(params: {
           windowStart: params.windowStart,
           windowEnd: params.windowEnd,
         },
-        reasoningEffortOverride: params.llmConfig?.reasoningEffort,
+        reasoningEffortOverride:
+          params.llmConfig?.triageReasoningEffort ?? params.llmConfig?.reasoningEffort,
         aiGuidance: params.triageGuidance,
         preferenceSummary: params.preferenceSummary,
       });

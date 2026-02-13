@@ -158,7 +158,8 @@ export async function runPipelineOnce(
         system: "Runtime preflight check. Reply with a brief confirmation.",
         user: "Preflight: confirm model and auth are usable.",
         maxOutputTokens: 64,
-        reasoningEffort: params.llmConfig.reasoningEffort ?? "none",
+        reasoningEffort:
+          params.llmConfig.triageReasoningEffort ?? params.llmConfig.reasoningEffort ?? "none",
       });
     }
   }

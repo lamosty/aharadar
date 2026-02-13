@@ -16,6 +16,8 @@ export interface LlmSettingsRow {
   codex_subscription_enabled: boolean;
   codex_calls_per_hour: number;
   reasoning_effort: ReasoningEffort;
+  triage_reasoning_effort: ReasoningEffort;
+  summary_reasoning_effort: ReasoningEffort;
   triage_batch_enabled: boolean;
   triage_batch_size: number;
   updated_at: string;
@@ -32,6 +34,8 @@ export interface LlmSettingsUpdate {
   codex_subscription_enabled?: boolean;
   codex_calls_per_hour?: number;
   reasoning_effort?: ReasoningEffort;
+  triage_reasoning_effort?: ReasoningEffort;
+  summary_reasoning_effort?: ReasoningEffort;
   triage_batch_enabled?: boolean;
   triage_batch_size?: number;
 }
@@ -45,6 +49,7 @@ export function createLlmSettingsRepo(db: Queryable) {
                 claude_subscription_enabled, claude_triage_thinking,
                 claude_calls_per_hour, codex_subscription_enabled,
                 codex_calls_per_hour, reasoning_effort,
+                triage_reasoning_effort, summary_reasoning_effort,
                 triage_batch_enabled, triage_batch_size, updated_at
          FROM llm_settings
          WHERE id = 1`,
@@ -102,6 +107,14 @@ export function createLlmSettingsRepo(db: Queryable) {
         setClauses.push(`reasoning_effort = $${paramIndex++}`);
         values.push(params.reasoning_effort);
       }
+      if (params.triage_reasoning_effort !== undefined) {
+        setClauses.push(`triage_reasoning_effort = $${paramIndex++}`);
+        values.push(params.triage_reasoning_effort);
+      }
+      if (params.summary_reasoning_effort !== undefined) {
+        setClauses.push(`summary_reasoning_effort = $${paramIndex++}`);
+        values.push(params.summary_reasoning_effort);
+      }
       if (params.triage_batch_enabled !== undefined) {
         setClauses.push(`triage_batch_enabled = $${paramIndex++}`);
         values.push(params.triage_batch_enabled);
@@ -125,6 +138,7 @@ export function createLlmSettingsRepo(db: Queryable) {
                    claude_subscription_enabled, claude_triage_thinking,
                    claude_calls_per_hour, codex_subscription_enabled,
                    codex_calls_per_hour, reasoning_effort,
+                   triage_reasoning_effort, summary_reasoning_effort,
                    triage_batch_enabled, triage_batch_size, updated_at`,
         values,
       );

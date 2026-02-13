@@ -39,7 +39,8 @@ export default function AdminLlmPage() {
   const [deepSummaryEnabled, setDeepSummaryEnabled] = useState(true);
   const [claudeCallsPerHour, setClaudeCallsPerHour] = useState(100);
   const [codexCallsPerHour, setCodexCallsPerHour] = useState(25);
-  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("none");
+  const [triageReasoningEffort, setTriageReasoningEffort] = useState<ReasoningEffort>("none");
+  const [summaryReasoningEffort, setSummaryReasoningEffort] = useState<ReasoningEffort>("none");
   const [triageBatchEnabled, setTriageBatchEnabled] = useState(true);
   const [triageBatchSize, setTriageBatchSize] = useState(15);
 
@@ -52,7 +53,12 @@ export default function AdminLlmPage() {
       setDeepSummaryEnabled(settings.deepSummaryEnabled);
       setClaudeCallsPerHour(settings.claudeCallsPerHour);
       setCodexCallsPerHour(settings.codexCallsPerHour);
-      setReasoningEffort(settings.reasoningEffort);
+      setTriageReasoningEffort(
+        settings.triageReasoningEffort ?? settings.reasoningEffort ?? "none",
+      );
+      setSummaryReasoningEffort(
+        settings.summaryReasoningEffort ?? settings.reasoningEffort ?? "none",
+      );
       setTriageBatchEnabled(settings.triageBatchEnabled);
       setTriageBatchSize(settings.triageBatchSize);
     }
@@ -80,7 +86,8 @@ export default function AdminLlmPage() {
       claudeCallsPerHour,
       codexSubscriptionEnabled: provider === "codex-subscription",
       codexCallsPerHour,
-      reasoningEffort,
+      triageReasoningEffort,
+      summaryReasoningEffort,
       triageBatchEnabled,
       triageBatchSize,
     });
@@ -95,7 +102,8 @@ export default function AdminLlmPage() {
       deepSummaryEnabled !== settings.deepSummaryEnabled ||
       claudeCallsPerHour !== settings.claudeCallsPerHour ||
       codexCallsPerHour !== settings.codexCallsPerHour ||
-      reasoningEffort !== settings.reasoningEffort ||
+      triageReasoningEffort !== (settings.triageReasoningEffort ?? settings.reasoningEffort) ||
+      summaryReasoningEffort !== (settings.summaryReasoningEffort ?? settings.reasoningEffort) ||
       triageBatchEnabled !== settings.triageBatchEnabled ||
       triageBatchSize !== settings.triageBatchSize);
 
@@ -272,18 +280,43 @@ export default function AdminLlmPage() {
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("admin.llm.reasoningEffort")}</h2>
             <p className={styles.sectionDescription}>{t("admin.llm.reasoningEffortDescription")}</p>
-            <select
-              value={reasoningEffort}
-              onChange={(e) => setReasoningEffort(e.target.value as ReasoningEffort)}
-              className={styles.select}
-              disabled={isSaving}
-            >
-              <option value="none">{t("admin.llm.reasoningEfforts.none")}</option>
-              <option value="low">{t("admin.llm.reasoningEfforts.low")}</option>
-              <option value="medium">{t("admin.llm.reasoningEfforts.medium")}</option>
-              <option value="high">{t("admin.llm.reasoningEfforts.high")}</option>
-              <option value="xhigh">{t("admin.llm.reasoningEfforts.xhigh")}</option>
-            </select>
+            <p className={styles.hint}>{t("admin.llm.reasoningEffortSplitHint")}</p>
+            <div className={styles.formGroup}>
+              <label htmlFor="triageReasoningEffort" className={styles.label}>
+                {t("admin.llm.reasoningTargetTriage")}
+              </label>
+              <select
+                id="triageReasoningEffort"
+                value={triageReasoningEffort}
+                onChange={(e) => setTriageReasoningEffort(e.target.value as ReasoningEffort)}
+                className={styles.select}
+                disabled={isSaving}
+              >
+                <option value="none">{t("admin.llm.reasoningEfforts.none")}</option>
+                <option value="low">{t("admin.llm.reasoningEfforts.low")}</option>
+                <option value="medium">{t("admin.llm.reasoningEfforts.medium")}</option>
+                <option value="high">{t("admin.llm.reasoningEfforts.high")}</option>
+                <option value="xhigh">{t("admin.llm.reasoningEfforts.xhigh")}</option>
+              </select>
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="summaryReasoningEffort" className={styles.label}>
+                {t("admin.llm.reasoningTargetSummaries")}
+              </label>
+              <select
+                id="summaryReasoningEffort"
+                value={summaryReasoningEffort}
+                onChange={(e) => setSummaryReasoningEffort(e.target.value as ReasoningEffort)}
+                className={styles.select}
+                disabled={isSaving}
+              >
+                <option value="none">{t("admin.llm.reasoningEfforts.none")}</option>
+                <option value="low">{t("admin.llm.reasoningEfforts.low")}</option>
+                <option value="medium">{t("admin.llm.reasoningEfforts.medium")}</option>
+                <option value="high">{t("admin.llm.reasoningEfforts.high")}</option>
+                <option value="xhigh">{t("admin.llm.reasoningEfforts.xhigh")}</option>
+              </select>
+            </div>
             <div className={styles.infoBox}>
               <InfoIcon />
               <div className={styles.infoContent}>

@@ -653,12 +653,16 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
       const limit = 2000;
       const latestItems = await db.query<{
-        digest_item_id: string;
+        digest_id: string;
+        rank: number;
+        digest_item_key: string;
         triage_json: Record<string, unknown> | null;
       }>(
         `WITH latest_items AS (
            SELECT DISTINCT ON (COALESCE(di.content_item_id, c.representative_content_item_id))
-             di.id::text as digest_item_id,
+             di.digest_id::text as digest_id,
+             di.rank,
+             (di.digest_id::text || ':' || di.rank::text) as digest_item_key,
              di.triage_json
            FROM digest_items di
            JOIN digests d ON d.id = di.digest_id
@@ -667,7 +671,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
              AND d.topic_id = $2::uuid
            ORDER BY COALESCE(di.content_item_id, c.representative_content_item_id), d.created_at DESC
          )
-         SELECT digest_item_id, triage_json
+         SELECT digest_id, rank, digest_item_key, triage_json
          FROM latest_items
          WHERE triage_json IS NOT NULL
          LIMIT $3`,
@@ -688,11 +692,17 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         };
       }
 
+      const digestItemKeyMap = new Map<string, { digestId: string; rank: number }>();
+
       const inputs = latestItems.rows.map((row) => {
         const triage = row.triage_json as { theme?: string; topic?: string } | null;
         const topicLabel = triage?.theme ?? triage?.topic ?? "Uncategorized";
+        digestItemKeyMap.set(row.digest_item_key, {
+          digestId: row.digest_id,
+          rank: row.rank,
+        });
         return {
-          candidateId: row.digest_item_id,
+          candidateId: row.digest_item_key,
           topic: topicLabel,
         };
       });
@@ -722,14 +732,19 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       let errors = 0;
       await db.tx(async (tx) => {
         for (const item of clusterResult.items) {
+          const digestItemRef = digestItemKeyMap.get(item.candidateId);
+          if (!digestItemRef) {
+            errors += 1;
+            continue;
+          }
           const vectorLiteral = item.vector.length > 0 ? asVectorLiteral(item.vector) : null;
           try {
             await tx.query(
               `UPDATE digest_items
-               SET triage_theme_vector = $2::vector,
-                   theme_label = $3
-               WHERE id = $1::uuid`,
-              [item.candidateId, vectorLiteral, item.themeLabel],
+               SET triage_theme_vector = $3::vector,
+                   theme_label = $4
+               WHERE digest_id = $1::uuid AND rank = $2`,
+              [digestItemRef.digestId, digestItemRef.rank, vectorLiteral, item.themeLabel],
             );
           } catch (err) {
             errors += 1;
@@ -1245,7 +1260,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         claudeCallsPerHour: settings.claude_calls_per_hour,
         codexSubscriptionEnabled: settings.codex_subscription_enabled,
         codexCallsPerHour: settings.codex_calls_per_hour,
-        reasoningEffort: settings.reasoning_effort,
+        triageReasoningEffort: settings.triage_reasoning_effort,
+        summaryReasoningEffort: settings.summary_reasoning_effort,
+        // Legacy alias for older clients
+        reasoningEffort: settings.triage_reasoning_effort,
         triageBatchEnabled: settings.triage_batch_enabled,
         triageBatchSize: settings.triage_batch_size,
         updatedAt: settings.updated_at,
@@ -1355,6 +1373,9 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       claudeCallsPerHour,
       codexSubscriptionEnabled,
       codexCallsPerHour,
+      triageReasoningEffort,
+      summaryReasoningEffort,
+      // Legacy key: applies to both when explicit split values are omitted
       reasoningEffort,
       triageBatchEnabled,
       triageBatchSize,
@@ -1487,6 +1508,30 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         },
       });
     }
+    if (
+      triageReasoningEffort !== undefined &&
+      !validReasoningEfforts.includes(triageReasoningEffort as string)
+    ) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `triageReasoningEffort must be one of: ${validReasoningEfforts.join(", ")}`,
+        },
+      });
+    }
+    if (
+      summaryReasoningEffort !== undefined &&
+      !validReasoningEfforts.includes(summaryReasoningEffort as string)
+    ) {
+      return reply.code(400).send({
+        ok: false,
+        error: {
+          code: "INVALID_PARAM",
+          message: `summaryReasoningEffort must be one of: ${validReasoningEfforts.join(", ")}`,
+        },
+      });
+    }
 
     // Validate batch triage settings
     if (triageBatchEnabled !== undefined && typeof triageBatchEnabled !== "boolean") {
@@ -1533,8 +1578,23 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       updateParams.codex_subscription_enabled = codexSubscriptionEnabled as boolean;
     if (codexCallsPerHour !== undefined)
       updateParams.codex_calls_per_hour = codexCallsPerHour as number;
-    if (reasoningEffort !== undefined)
+    if (triageReasoningEffort !== undefined)
+      updateParams.triage_reasoning_effort = triageReasoningEffort as ReasoningEffort;
+    if (summaryReasoningEffort !== undefined)
+      updateParams.summary_reasoning_effort = summaryReasoningEffort as ReasoningEffort;
+    if (reasoningEffort !== undefined) {
       updateParams.reasoning_effort = reasoningEffort as ReasoningEffort;
+      if (triageReasoningEffort === undefined) {
+        updateParams.triage_reasoning_effort = reasoningEffort as ReasoningEffort;
+      }
+      if (summaryReasoningEffort === undefined) {
+        updateParams.summary_reasoning_effort = reasoningEffort as ReasoningEffort;
+      }
+    }
+    // Keep legacy column aligned with triage setting when split fields are used.
+    if (reasoningEffort === undefined && triageReasoningEffort !== undefined) {
+      updateParams.reasoning_effort = triageReasoningEffort as ReasoningEffort;
+    }
     if (triageBatchEnabled !== undefined)
       updateParams.triage_batch_enabled = triageBatchEnabled as boolean;
     if (triageBatchSize !== undefined) updateParams.triage_batch_size = triageBatchSize as number;
@@ -1554,7 +1614,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         claudeCallsPerHour: settings.claude_calls_per_hour,
         codexSubscriptionEnabled: settings.codex_subscription_enabled,
         codexCallsPerHour: settings.codex_calls_per_hour,
-        reasoningEffort: settings.reasoning_effort,
+        triageReasoningEffort: settings.triage_reasoning_effort,
+        summaryReasoningEffort: settings.summary_reasoning_effort,
+        // Legacy alias for older clients
+        reasoningEffort: settings.triage_reasoning_effort,
         triageBatchEnabled: settings.triage_batch_enabled,
         triageBatchSize: settings.triage_batch_size,
         updatedAt: settings.updated_at,

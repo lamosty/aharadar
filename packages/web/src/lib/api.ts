@@ -658,7 +658,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
     return parsed as T;
   } catch (error) {
     // Re-throw our own errors
-    if (error instanceof ApiError) {
+    if (error instanceof ApiError || error instanceof NetworkError) {
       throw error;
     }
 
@@ -1093,7 +1093,9 @@ export interface LlmSettings {
   claudeCallsPerHour: number;
   codexSubscriptionEnabled: boolean;
   codexCallsPerHour: number;
-  reasoningEffort: ReasoningEffort;
+  triageReasoningEffort: ReasoningEffort;
+  summaryReasoningEffort: ReasoningEffort;
+  reasoningEffort?: ReasoningEffort;
   triageBatchEnabled: boolean;
   triageBatchSize: number;
   updatedAt: string;
@@ -1116,6 +1118,8 @@ export interface LlmSettingsUpdateRequest {
   claudeCallsPerHour?: number;
   codexSubscriptionEnabled?: boolean;
   codexCallsPerHour?: number;
+  triageReasoningEffort?: ReasoningEffort;
+  summaryReasoningEffort?: ReasoningEffort;
   reasoningEffort?: ReasoningEffort;
   triageBatchEnabled?: boolean;
   triageBatchSize?: number;

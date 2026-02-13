@@ -36,6 +36,8 @@ function buildLlmRuntimeConfig(settings: LlmSettingsRow): LlmRuntimeConfig {
     claudeCallsPerHour: settings.claude_calls_per_hour,
     codexSubscriptionEnabled: settings.codex_subscription_enabled,
     codexCallsPerHour: settings.codex_calls_per_hour,
+    triageReasoningEffort: settings.triage_reasoning_effort ?? settings.reasoning_effort,
+    summaryReasoningEffort: settings.summary_reasoning_effort ?? settings.reasoning_effort,
     reasoningEffort: settings.reasoning_effort,
     triageBatchEnabled: settings.triage_batch_enabled,
     triageBatchSize: settings.triage_batch_size,
@@ -207,6 +209,8 @@ export async function itemSummariesRoutes(fastify: FastifyInstance): Promise<voi
         manualSummarize({
           router,
           tier: "normal",
+          reasoningEffortOverride:
+            llmSettings.summary_reasoning_effort ?? llmSettings.reasoning_effort,
           input: {
             pastedText: normalizedPastedText,
             metadata: {

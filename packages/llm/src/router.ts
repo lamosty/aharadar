@@ -25,6 +25,9 @@ export interface LlmRuntimeConfig {
   claudeCallsPerHour?: number;
   codexSubscriptionEnabled?: boolean;
   codexCallsPerHour?: number;
+  triageReasoningEffort?: ReasoningEffort;
+  summaryReasoningEffort?: ReasoningEffort;
+  /** Legacy alias: applies to both triage and summary when split fields are unset. */
   reasoningEffort?: ReasoningEffort;
   triageBatchEnabled?: boolean;
   triageBatchSize?: number;
@@ -436,10 +439,14 @@ export function createConfiguredLlmRouter(
   if (config.codexCallsPerHour !== undefined) {
     effectiveEnv.CODEX_CALLS_PER_HOUR = String(config.codexCallsPerHour);
   }
-  if (config.reasoningEffort !== undefined) {
-    // Set reasoning effort for all LLM tasks (triage, deep_summary, etc.)
-    effectiveEnv.OPENAI_TRIAGE_REASONING_EFFORT = config.reasoningEffort;
-    effectiveEnv.OPENAI_DEEP_SUMMARY_REASONING_EFFORT = config.reasoningEffort;
+  const triageReasoningEffort = config.triageReasoningEffort ?? config.reasoningEffort;
+  if (triageReasoningEffort !== undefined) {
+    effectiveEnv.OPENAI_TRIAGE_REASONING_EFFORT = triageReasoningEffort;
+  }
+  const summaryReasoningEffort = config.summaryReasoningEffort ?? config.reasoningEffort;
+  if (summaryReasoningEffort !== undefined) {
+    effectiveEnv.OPENAI_DEEP_SUMMARY_REASONING_EFFORT = summaryReasoningEffort;
+    effectiveEnv.MANUAL_SUMMARY_REASONING_EFFORT = summaryReasoningEffort;
   }
   if (config.triageBatchEnabled !== undefined) {
     effectiveEnv.TRIAGE_BATCH_ENABLED = config.triageBatchEnabled ? "true" : "false";

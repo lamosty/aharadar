@@ -471,6 +471,9 @@
       "activeModel": "Active Model",
       "reasoningEffort": "Reasoning Effort",
       "reasoningEffortDescription": "Controls how much the model 'thinks' before responding. Reasoning models like gpt-5-mini need this configured correctly.",
+      "reasoningEffortSplitHint": "Configure triage and summaries separately to balance quality vs cost per stage.",
+      "reasoningTargetTriage": "LLM Triage",
+      "reasoningTargetSummaries": "AI Summaries",
       "reasoningEfforts": {
         "none": "None (Disabled) - 350 tokens",
         "low": "Low - 800 tokens",
