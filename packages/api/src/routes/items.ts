@@ -412,7 +412,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
         LEFT JOIN clusters c ON c.id = di.cluster_id
-        JOIN content_items ci_inner ON ci_inner.id = COALESCE(di.content_item_id, c.representative_content_item_id)
+        JOIN content_items ci_inner
+          ON ci_inner.id = COALESCE(di.content_item_id, c.representative_content_item_id)
+          AND ci_inner.deleted_at IS NULL
+          AND ci_inner.duplicate_of_content_item_id IS NULL
         WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
           ${topicFilterClause}
@@ -460,7 +463,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         li.digest_scoring_mode_id::text as scoring_mode_id,
         sm.name as scoring_mode_name
       FROM latest_items li
-      JOIN content_items ci ON ci.id = li.content_item_id
+      JOIN content_items ci
+        ON ci.id = li.content_item_id
+        AND ci.deleted_at IS NULL
+        AND ci.duplicate_of_content_item_id IS NULL
       JOIN topics t ON t.id = li.digest_topic_id
       LEFT JOIN scoring_modes sm ON sm.id = li.digest_scoring_mode_id
       LEFT JOIN LATERAL (
@@ -514,6 +520,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
         FROM digest_items di
         JOIN digests d ON d.id = di.digest_id
         LEFT JOIN clusters c ON c.id = di.cluster_id
+        JOIN content_items ci_inner
+          ON ci_inner.id = COALESCE(di.content_item_id, c.representative_content_item_id)
+          AND ci_inner.deleted_at IS NULL
+          AND ci_inner.duplicate_of_content_item_id IS NULL
         WHERE (di.content_item_id IS NOT NULL OR c.representative_content_item_id IS NOT NULL)
           AND d.user_id = '${ctx.userId}'
           ${topicFilterClause}
@@ -521,7 +531,10 @@ export async function itemsRoutes(fastify: FastifyInstance): Promise<void> {
       )
       SELECT COUNT(*)::int as total
       FROM latest_items li
-      JOIN content_items ci ON ci.id = li.content_item_id
+      JOIN content_items ci
+        ON ci.id = li.content_item_id
+        AND ci.deleted_at IS NULL
+        AND ci.duplicate_of_content_item_id IS NULL
       LEFT JOIN LATERAL (
         SELECT action FROM feedback_events
         WHERE user_id = '${ctx.userId}' AND content_item_id = li.content_item_id
