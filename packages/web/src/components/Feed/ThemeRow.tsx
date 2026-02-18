@@ -130,18 +130,26 @@ export function ThemeRow({
     await onBulkFeedback(itemIds, "dislike");
   }, [onBulkFeedback, theme.items]);
 
+  const getSkippableItemIds = useCallback((items: FeedItemType[]): string[] => {
+    return items.filter((item) => !item.manualSummaryJson).map((item) => item.id);
+  }, []);
+
   const handleBulkSkip = useCallback(async () => {
     if (!onBulkFeedback) return;
-    const itemIds = theme.items.map((item) => item.id);
+    const itemIds = getSkippableItemIds(theme.items);
+    if (itemIds.length === 0) return;
     await onBulkFeedback(itemIds, "skip");
-  }, [onBulkFeedback, theme.items]);
+  }, [getSkippableItemIds, onBulkFeedback, theme.items]);
 
   const handleSubthemeBulk = useCallback(
-    async (itemIds: string[], action: "like" | "dislike" | "skip") => {
+    async (items: FeedItemType[], action: "like" | "dislike" | "skip") => {
       if (!onBulkFeedback) return;
+      const itemIds =
+        action === "skip" ? getSkippableItemIds(items) : items.map((item) => item.id);
+      if (itemIds.length === 0) return;
       await onBulkFeedback(itemIds, action);
     },
-    [onBulkFeedback],
+    [getSkippableItemIds, onBulkFeedback],
   );
 
   const renderItem = (item: FeedItemType) => (
@@ -251,7 +259,7 @@ export function ThemeRow({
               type="button"
               className={`${styles.bulkActionButton} ${styles.desktopOnly}`}
               onClick={handleBulkSkip}
-              title="Skip all items in this theme"
+              title="Skip all unsummarized items in this theme"
             >
               <svg
                 width="14"
@@ -274,7 +282,6 @@ export function ThemeRow({
         <div className={styles.themeItems}>
           {theme.subthemes && theme.subthemes.length > 0
             ? theme.subthemes.map((subtheme) => {
-                const itemIds = subtheme.items.map((item) => item.id);
                 return (
                   <div key={subtheme.subthemeId} className={styles.subthemeGroup}>
                     <div className={styles.subthemeHeader}>
@@ -290,7 +297,7 @@ export function ThemeRow({
                           <button
                             type="button"
                             className={styles.subthemeActionButton}
-                            onClick={() => handleSubthemeBulk(itemIds, "like")}
+                            onClick={() => handleSubthemeBulk(subtheme.items, "like")}
                             title="Like all items in this subtheme"
                           >
                             <svg
@@ -307,7 +314,7 @@ export function ThemeRow({
                           <button
                             type="button"
                             className={styles.subthemeActionButton}
-                            onClick={() => handleSubthemeBulk(itemIds, "dislike")}
+                            onClick={() => handleSubthemeBulk(subtheme.items, "dislike")}
                             title="Dislike all items in this subtheme"
                           >
                             <svg
@@ -324,8 +331,8 @@ export function ThemeRow({
                           <button
                             type="button"
                             className={`${styles.subthemeActionButton} ${styles.desktopOnly}`}
-                            onClick={() => handleSubthemeBulk(itemIds, "skip")}
-                            title="Skip all items in this subtheme"
+                            onClick={() => handleSubthemeBulk(subtheme.items, "skip")}
+                            title="Skip all unsummarized items in this subtheme"
                           >
                             <svg
                               width="12"
