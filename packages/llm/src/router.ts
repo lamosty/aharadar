@@ -44,6 +44,41 @@ const TASKS: TaskType[] = [
 ];
 const TIERS: BudgetTier[] = ["low", "normal", "high"];
 
+/**
+ * Remove all env-controlled LLM routing/model knobs that are managed by runtime config.
+ * This enforces config-first precedence (DB/admin settings win over process env).
+ */
+function clearManagedLlmEnv(env: NodeJS.ProcessEnv): void {
+  delete env.LLM_PROVIDER;
+  for (const task of TASKS) {
+    delete env[`LLM_${task.toUpperCase()}_PROVIDER`];
+  }
+
+  const modelPrefixes = ["OPENAI", "ANTHROPIC", "CLAUDE", "CODEX"] as const;
+  for (const prefix of modelPrefixes) {
+    delete env[`${prefix}_MODEL`];
+    for (const task of TASKS) {
+      const taskKey = `${prefix}_${task.toUpperCase()}_MODEL`;
+      delete env[taskKey];
+      for (const tier of TIERS) {
+        delete env[`${taskKey}_${tier.toUpperCase()}`];
+      }
+    }
+  }
+
+  delete env.CLAUDE_USE_SUBSCRIPTION;
+  delete env.CLAUDE_TRIAGE_THINKING;
+  delete env.CLAUDE_CALLS_PER_HOUR;
+  delete env.CODEX_USE_SUBSCRIPTION;
+  delete env.CODEX_CALLS_PER_HOUR;
+
+  delete env.OPENAI_TRIAGE_REASONING_EFFORT;
+  delete env.OPENAI_DEEP_SUMMARY_REASONING_EFFORT;
+  delete env.MANUAL_SUMMARY_REASONING_EFFORT;
+  delete env.TRIAGE_BATCH_ENABLED;
+  delete env.TRIAGE_BATCH_SIZE;
+}
+
 function applyTaskModelOverrides(params: {
   env: NodeJS.ProcessEnv;
   prefix: string;
@@ -137,11 +172,11 @@ function resolveAnthropicModel(env: NodeJS.ProcessEnv, task: TaskType, tier: Bud
   const fallback = env.ANTHROPIC_MODEL;
   if (fallback && fallback.trim().length > 0) return fallback.trim();
 
-  // Default by tier - updated 2026-01 to Sonnet 4.5
+  // Default by tier - updated 2026-02 to Sonnet 4.6
   const defaults: Record<BudgetTier, string> = {
     low: "claude-3-5-haiku-latest",
-    normal: "claude-sonnet-4-5",
-    high: "claude-sonnet-4-5",
+    normal: "claude-sonnet-4-6",
+    high: "claude-sonnet-4-6",
   };
   return defaults[tier];
 }
@@ -222,21 +257,37 @@ function resolveProvider(
     return "codex-subscription";
   }
 
-  // If user explicitly selected an API provider, use it
-  if (globalProvider === "anthropic" && anthropicApiKey) {
+  // If user explicitly selected an API provider, require credentials for that provider.
+  if (globalProvider === "anthropic") {
+    if (!anthropicApiKey) {
+      throw new Error("Provider 'anthropic' selected but ANTHROPIC_API_KEY is not configured");
+    }
     return "anthropic";
   }
-  if (globalProvider === "openai" && openaiApiKey) {
+  if (globalProvider === "openai") {
+    if (!openaiApiKey) {
+      throw new Error("Provider 'openai' selected but OPENAI_API_KEY is not configured");
+    }
     return "openai";
   }
 
   // Check for task-specific provider override
   const taskKey = `LLM_${task.toUpperCase()}_PROVIDER`;
   const taskProvider = env[taskKey]?.toLowerCase();
-  if (taskProvider === "anthropic" && anthropicApiKey) {
+  if (taskProvider === "anthropic") {
+    if (!anthropicApiKey) {
+      throw new Error(
+        `Task provider 'anthropic' selected for ${task} but ANTHROPIC_API_KEY is not configured`,
+      );
+    }
     return "anthropic";
   }
-  if (taskProvider === "openai" && openaiApiKey) {
+  if (taskProvider === "openai") {
+    if (!openaiApiKey) {
+      throw new Error(
+        `Task provider 'openai' selected for ${task} but OPENAI_API_KEY is not configured`,
+      );
+    }
     return "openai";
   }
   // Task-specific subscription providers also throw on quota exceeded
@@ -384,8 +435,10 @@ export function createConfiguredLlmRouter(
     return createEnvLlmRouter(env);
   }
 
-  // Build effective env by merging runtime config over actual env
+  // Build effective env in config-first mode:
+  // wipe managed env knobs, then apply runtime config values.
   const effectiveEnv: NodeJS.ProcessEnv = { ...env };
+  clearManagedLlmEnv(effectiveEnv);
 
   if (config.provider !== undefined) {
     effectiveEnv.LLM_PROVIDER = config.provider;

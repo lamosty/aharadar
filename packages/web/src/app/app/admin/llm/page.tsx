@@ -269,7 +269,7 @@ export default function AdminLlmPage() {
               value={anthropicModel}
               onChange={(e) => setAnthropicModel(e.target.value)}
               className={styles.input}
-              placeholder="claude-sonnet-4-5"
+              placeholder="claude-sonnet-4-6"
               disabled={isSaving}
             />
           )}

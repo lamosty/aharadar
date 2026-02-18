@@ -447,7 +447,7 @@
       "openaiModel": "OpenAI Model",
       "openaiModelDescription": "Specify the OpenAI model to use (e.g., gpt-4o, gpt-4-turbo)",
       "claudeModel": "Claude Model",
-      "claudeModelDescription": "Specify the Claude model to use (e.g., claude-sonnet-4-5)",
+      "claudeModelDescription": "Specify the Claude model to use (e.g., claude-sonnet-4-6)",
       "rateLimit": "Rate Limit",
       "rateLimitLabel": "Rate limit (calls/hour)",
       "claudeSubscriptionSettings": "Claude Subscription Settings",

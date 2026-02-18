@@ -19,7 +19,7 @@ const PROVIDER_OPTIONS: (LlmProvider | "")[] = [
 
 function getModelPlaceholder(providerOverride: LlmProvider | ""): string {
   if (providerOverride === "anthropic" || providerOverride === "claude-subscription") {
-    return "claude-sonnet-4-20250514";
+    return "claude-sonnet-4-6";
   }
   return "gpt-5.1";
 }

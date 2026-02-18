@@ -88,7 +88,13 @@ export const MODEL_PRICING: ModelPricing[] = [
     outputPer1MTokens: 0,
   },
 
-  // Anthropic - updated 2026-01
+  // Anthropic - updated 2026-02
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    inputPer1MTokens: 3.0,
+    outputPer1MTokens: 15.0,
+  },
   {
     provider: "anthropic",
     model: "claude-sonnet-4-5",

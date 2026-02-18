@@ -262,7 +262,7 @@ export async function runAbtestOnce(db: Db, params: RunAbtestParams): Promise<Ab
         anthropicModel:
           variant.provider === "anthropic" || variant.provider === "claude-subscription"
             ? variant.model
-            : "claude-sonnet-4-20250514",
+            : "claude-sonnet-4-6",
         openaiModel: variant.provider === "openai" ? variant.model : "gpt-4o",
         claudeSubscriptionEnabled: variant.provider === "claude-subscription",
         claudeTriageThinking: false,
