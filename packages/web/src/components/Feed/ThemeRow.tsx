@@ -51,6 +51,8 @@ interface ThemeRowProps {
   sort?: SortOption;
   onViewSummary?: (item: FeedItemType, summary: ManualSummaryOutput) => void;
   onSummaryGenerated?: () => void;
+  onSummaryRequested?: (contentItemId: string) => void;
+  onSummaryRequestFinished?: (contentItemId: string, status: "success" | "error") => void;
   onMobileClick?: (item: FeedItemType) => void;
   /** Whether fast triage mode is active */
   fastTriageMode?: boolean;
@@ -74,6 +76,8 @@ interface ThemeRowProps {
   onUndo?: () => void;
   /** Whether undo is available */
   canUndo?: boolean;
+  /** Item IDs that are protected from bulk skip while summary is pending */
+  protectedFromBulkSkipIds?: ReadonlySet<string>;
 }
 
 /**
@@ -91,6 +95,8 @@ export function ThemeRow({
   sort,
   onViewSummary,
   onSummaryGenerated,
+  onSummaryRequested,
+  onSummaryRequestFinished,
   onMobileClick,
   fastTriageMode,
   disableHoverExpansion,
@@ -103,6 +109,7 @@ export function ThemeRow({
   onNext,
   onUndo,
   canUndo,
+  protectedFromBulkSkipIds,
 }: ThemeRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -131,8 +138,10 @@ export function ThemeRow({
   }, [onBulkFeedback, theme.items]);
 
   const getSkippableItemIds = useCallback((items: FeedItemType[]): string[] => {
-    return items.filter((item) => !item.manualSummaryJson).map((item) => item.id);
-  }, []);
+    return items
+      .filter((item) => !item.manualSummaryJson && !protectedFromBulkSkipIds?.has(item.id))
+      .map((item) => item.id);
+  }, [protectedFromBulkSkipIds]);
 
   const handleBulkSkip = useCallback(async () => {
     if (!onBulkFeedback) return;
@@ -163,6 +172,8 @@ export function ThemeRow({
       sort={sort}
       onViewSummary={onViewSummary}
       onSummaryGenerated={onSummaryGenerated}
+      onSummaryRequested={onSummaryRequested}
+      onSummaryRequestFinished={onSummaryRequestFinished}
       onMobileClick={onMobileClick ? () => onMobileClick(item) : undefined}
       fastTriageMode={fastTriageMode}
       disableHoverExpansion={disableHoverExpansion}

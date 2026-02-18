@@ -20,6 +20,8 @@ interface FeedItemModalProps {
   sort: SortOption;
   onViewSummary?: (item: FeedItem, summary: ManualSummaryOutput) => void;
   onSummaryGenerated?: () => void;
+  onSummaryRequested?: (contentItemId: string) => void;
+  onSummaryRequestFinished?: (contentItemId: string, status: "success" | "error") => void;
   enableSwipe?: boolean;
 }
 
@@ -110,6 +112,8 @@ export function FeedItemModal({
   sort,
   onViewSummary,
   onSummaryGenerated,
+  onSummaryRequested,
+  onSummaryRequestFinished,
   enableSwipe = true,
 }: FeedItemModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -146,6 +150,9 @@ export function FeedItemModal({
     onSuccess: (data) => {
       setLocalSummary(data.summary);
       onSummaryGenerated?.();
+      if (item?.id) {
+        onSummaryRequestFinished?.(item.id, "success");
+      }
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
@@ -154,6 +161,9 @@ export function FeedItemModal({
         setSummaryError(t("itemSummary.llmAuthError"));
       } else {
         setSummaryError(err.message);
+      }
+      if (item?.id) {
+        onSummaryRequestFinished?.(item.id, "error");
       }
     },
   });
@@ -362,6 +372,9 @@ export function FeedItemModal({
     if (text.length > 100) {
       e.preventDefault();
       setPastedText(text);
+      if (item?.id) {
+        onSummaryRequested?.(item.id);
+      }
       summaryMutation.mutate({
         contentItemId: item.id,
         pastedText: text,

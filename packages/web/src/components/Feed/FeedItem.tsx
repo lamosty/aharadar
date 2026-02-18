@@ -40,6 +40,10 @@ interface FeedItemProps {
   onViewSummary?: (item: FeedItemType, summary: ManualSummaryOutput) => void;
   /** Called after a summary is generated (to refetch) */
   onSummaryGenerated?: () => void;
+  /** Called immediately when summary generation is requested */
+  onSummaryRequested?: (contentItemId: string) => void;
+  /** Called when summary request finishes (success or error) */
+  onSummaryRequestFinished?: (contentItemId: string, status: "success" | "error") => void;
   /** Called when user wants to skip to next item (Highlights fast triage) */
   onNext?: () => void;
   /** Called when user closes the panel (to clear force-expanded state) */
@@ -343,6 +347,8 @@ export function FeedItem({
   sort = "best",
   onViewSummary,
   onSummaryGenerated,
+  onSummaryRequested,
+  onSummaryRequestFinished,
   onNext,
   onClose,
   onMobileClick,
@@ -374,6 +380,7 @@ export function FeedItem({
       setPastedText("");
       addToast(t("feed.summaryGenerated"), "success");
       onSummaryGenerated?.();
+      onSummaryRequestFinished?.(item.id, "success");
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "INSUFFICIENT_CREDITS") {
@@ -383,6 +390,7 @@ export function FeedItem({
       } else {
         setSummaryError(err.message);
       }
+      onSummaryRequestFinished?.(item.id, "error");
     },
   });
 
@@ -442,6 +450,7 @@ export function FeedItem({
     setPastedText(text);
     setSummaryError(null);
     setPendingLargeText(null);
+    onSummaryRequested?.(item.id);
     summaryMutation.mutate({
       contentItemId: item.id,
       pastedText: text,

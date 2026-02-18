@@ -165,6 +165,10 @@ function FeedPageContent() {
 
   // Desktop undo history - tracks items after feedback for undo (with position context)
   const [desktopHistory, setDesktopHistory] = useState<DesktopUndoEntry[]>([]);
+  // Optimistic protection: items being summarized should not be bulk-skipped.
+  const [bulkSkipProtectedItemIds, setBulkSkipProtectedItemIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   // Track if URL sync has been done
   const [urlSynced, setUrlSynced] = useState(false);
@@ -350,6 +354,28 @@ function FeedPageContent() {
 
   const items = data?.items ?? [];
 
+  // Keep optimistic protection set in sync with currently visible items.
+  // Remove IDs once item disappears from the current list or summary is persisted.
+  useEffect(() => {
+    const visibleItemIds = new Set(items.map((item) => item.id));
+    const summarizedIds = new Set(
+      items.filter((item) => item.manualSummaryJson != null).map((item) => item.id),
+    );
+
+    setBulkSkipProtectedItemIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (!visibleItemIds.has(id) || summarizedIds.has(id)) {
+          changed = true;
+          continue;
+        }
+        next.add(id);
+      }
+      return changed ? next : prev;
+    });
+  }, [items]);
+
   const themeGroups = useMemo(() => {
     if (!groupByTheme) return [];
     return groupItemsByTheme(items, {
@@ -434,6 +460,32 @@ function FeedPageContent() {
     },
     [],
   );
+
+  const handleSummaryRequested = useCallback((contentItemId: string) => {
+    setBulkSkipProtectedItemIds((prev) => {
+      if (prev.has(contentItemId)) return prev;
+      const next = new Set(prev);
+      next.add(contentItemId);
+      return next;
+    });
+  }, []);
+
+  const handleSummaryRequestFinished = useCallback(
+    (contentItemId: string, status: "success" | "error") => {
+      if (status !== "error") return;
+      setBulkSkipProtectedItemIds((prev) => {
+        if (!prev.has(contentItemId)) return prev;
+        const next = new Set(prev);
+        next.delete(contentItemId);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleSummaryGenerated = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   // Find items with existing summaries for "Read Next" navigation in modal
   const itemsWithSummary = (data?.items ?? []).filter((item) => item.manualSummaryJson != null);
@@ -949,10 +1001,13 @@ function FeedPageContent() {
                     showTopicBadge={isAllTopicsMode}
                     sort={sort}
                     onViewSummary={handleOpenReaderModal}
-                    onSummaryGenerated={() => refetch()}
+                    onSummaryGenerated={handleSummaryGenerated}
+                    onSummaryRequested={handleSummaryRequested}
+                    onSummaryRequestFinished={handleSummaryRequestFinished}
                     onMobileClick={isMobile ? handleMobileItemClick : undefined}
                     fastTriageMode={fastTriageMode}
                     disableHoverExpansion={fastTriageMode && forceExpandedId !== null}
+                    protectedFromBulkSkipIds={bulkSkipProtectedItemIds}
                     forceExpandedId={!isSummaryModalOpen ? forceExpandedId : null}
                     onHover={(itemId) => {
                       // In fast triage mode, don't clear force-expanded on hover
@@ -995,7 +1050,9 @@ function FeedPageContent() {
                     fastTriageMode={fastTriageMode}
                     disableHoverExpansion={fastTriageMode && forceExpandedId !== null}
                     onViewSummary={handleOpenReaderModal}
-                    onSummaryGenerated={() => refetch()}
+                    onSummaryGenerated={handleSummaryGenerated}
+                    onSummaryRequested={handleSummaryRequested}
+                    onSummaryRequestFinished={handleSummaryRequestFinished}
                     onNext={() => handleNextItem(item.id)}
                     onClose={() => setForceExpandedId(null)}
                     sort={sort}
@@ -1114,7 +1171,9 @@ function FeedPageContent() {
           setMobileModalHistory([]);
           handleOpenReaderModal(item, summary);
         }}
-        onSummaryGenerated={() => refetch()}
+        onSummaryGenerated={handleSummaryGenerated}
+        onSummaryRequested={handleSummaryRequested}
+        onSummaryRequestFinished={handleSummaryRequestFinished}
       />
     </div>
   );
