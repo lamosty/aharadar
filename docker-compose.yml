@@ -5,9 +5,9 @@ services:
     environment:
       POSTGRES_DB: aharadar
       POSTGRES_USER: aharadar
-      POSTGRES_PASSWORD: aharadar_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_change_me_postgres}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -22,7 +22,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
@@ -35,7 +35,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.47.0
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -48,13 +48,13 @@ services:
   grafana:
     image: grafana/grafana:10.2.0
     ports:
-      - "${GRAFANA_PORT:-3002}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3002}:3000"
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-local_dev_change_me_grafana}
       - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - prometheus
@@ -74,14 +74,14 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql://aharadar:aharadar_dev_password@postgres:5432/aharadar
+      - DATABASE_URL=postgresql://aharadar:${POSTGRES_PASSWORD:-local_dev_change_me_postgres}@postgres:5432/aharadar
       - REDIS_URL=redis://redis:6379
       - WORKER_HEALTH_URL=${WORKER_HEALTH_URL:-http://worker:9091/health}
       - API_PORT=3001
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${API_PORT:-3001}:3001"
+      - "127.0.0.1:${API_PORT:-3001}:3001"
     restart: unless-stopped
 
   web:
@@ -100,7 +100,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     restart: unless-stopped
 
   worker:
@@ -116,7 +116,7 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql://aharadar:aharadar_dev_password@postgres:5432/aharadar
+      - DATABASE_URL=postgresql://aharadar:${POSTGRES_PASSWORD:-local_dev_change_me_postgres}@postgres:5432/aharadar
       - REDIS_URL=redis://redis:6379
       - SCHEDULER_TICK_MINUTES=5
     restart: unless-stopped
@@ -135,7 +135,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - QUEUE_UI_PORT=3101
     ports:
-      - "${QUEUE_UI_PORT:-3101}:3101"
+      - "127.0.0.1:${QUEUE_UI_PORT:-3101}:3101"
     restart: unless-stopped
 
 volumes:

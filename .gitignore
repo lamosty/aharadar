@@ -55,6 +55,7 @@ docker-data/
 
 # Backups
 backups/
+docker-compose.yml.bak.*
 
 # PM2
 .pm2/
