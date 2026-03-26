@@ -112,8 +112,24 @@ function asQueryable(client: PoolClient): Queryable {
   };
 }
 
+/** Rewrite localhost in database URLs when PG_HOST is set (Docker networking). */
+function rewriteDbHost(url: string): string {
+  const host = process.env.PG_HOST;
+  const port = process.env.PG_PORT;
+  if (!host || !url) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      parsed.hostname = host;
+      if (port) parsed.port = port;
+      return parsed.toString();
+    }
+  } catch {}
+  return url;
+}
+
 export function createDb(databaseUrl: string): Db {
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool({ connectionString: rewriteDbHost(databaseUrl) });
   const base: Queryable = {
     query: pool.query.bind(pool),
   };
