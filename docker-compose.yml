@@ -158,6 +158,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - SCHEDULER_TICK_MINUTES=5
       - WORKER_METRICS_PORT=9091
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
       test:

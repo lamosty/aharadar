@@ -98,6 +98,15 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/codex-host:
+    dependencies:
+      '@aharadar/llm':
+        specifier: workspace:*
+        version: link:../llm
+      '@aharadar/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/connectors:
     dependencies:
       '@aharadar/shared':

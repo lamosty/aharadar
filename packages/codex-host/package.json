@@ -1,0 +1,19 @@
+{
+  "name": "@aharadar/codex-host",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "dependencies": {
+    "@aharadar/llm": "workspace:*",
+    "@aharadar/shared": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "pnpm build && node dist/main.js",
+    "start": "node dist/main.js",
+    "test": "echo \"codex-host: no tests yet\"",
+    "lint": "echo \"codex-host: no lint yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

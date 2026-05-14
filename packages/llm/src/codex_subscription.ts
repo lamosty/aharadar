@@ -6,6 +6,7 @@
  * Works with ChatGPT Plus ($20/mo), Pro ($200/mo), Business, Edu, Enterprise.
  */
 
+import { callCodexLocalBridge } from "./codex_local_bridge";
 import { recordCodexUsage } from "./codex_usage_tracker";
 import { classifyLlmProviderError } from "./error_classification";
 import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
@@ -121,7 +122,7 @@ function getCodexModelReasoningEffort(
  * Call OpenAI using Codex SDK with ChatGPT subscription credentials.
  * Works without OPENAI_API_KEY when `codex` CLI is logged in.
  */
-export async function callCodexSubscription(
+export async function callCodexSubscriptionDirect(
   ref: ModelRef,
   request: LlmRequest,
   config: CodexSubscriptionConfig = {},
@@ -164,7 +165,10 @@ export async function callCodexSubscription(
     log.debug("Running thread", { promptLength: fullPrompt.length });
 
     // Use run() for simple request/response pattern
-    const turn = await thread.run(fullPrompt);
+    const turn = await thread.run(
+      fullPrompt,
+      request.jsonSchema ? { outputSchema: request.jsonSchema } : undefined,
+    );
 
     const finalResponse = typeof turn.finalResponse === "string" ? turn.finalResponse.trim() : "";
 
@@ -205,10 +209,51 @@ export async function callCodexSubscription(
 }
 
 /**
+ * Call Codex subscription mode either directly in-process or via a local host
+ * bridge. The bridge path lets Dockerized API/worker containers keep using the
+ * existing `codex-subscription` provider while the actual Codex SDK runs as the
+ * logged-in host user who owns the subscription auth state.
+ */
+export async function callCodexSubscription(
+  ref: ModelRef,
+  request: LlmRequest,
+  config: CodexSubscriptionConfig = {},
+): Promise<LlmCallResult> {
+  const localUrl = process.env.CODEX_LOCAL_URL?.trim();
+  if (!localUrl) {
+    return callCodexSubscriptionDirect(ref, request, config);
+  }
+
+  try {
+    const result = await callCodexLocalBridge({
+      url: localUrl,
+      token: process.env.CODEX_LOCAL_TOKEN?.trim() || undefined,
+      ref,
+      request,
+    });
+    recordCodexUsage({ calls: 1 });
+    return result;
+  } catch (error) {
+    const err = classifyLlmProviderError(error);
+    log.warn("Local bridge call failed", {
+      error: err.message,
+      model: ref.model,
+    });
+    const enrichedError = Object.assign(err, {
+      provider: "codex-subscription",
+      model: ref.model,
+      endpoint: localUrl,
+    });
+    throw enrichedError;
+  }
+}
+
+/**
  * Check if Codex subscription auth is likely available.
  * This checks for the absence of API key (which would take priority).
  */
 export function isCodexSubscriptionAuthLikely(): boolean {
+  if (process.env.CODEX_LOCAL_URL?.trim()) return true;
   // If API key is set, SDK will use that instead of subscription
   return !process.env.OPENAI_API_KEY;
 }

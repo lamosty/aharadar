@@ -84,6 +84,14 @@ Subscription login state is user-scoped. Direct SDK mode works when the Aha Rada
 
 Read: [`docs/local-codex.md`](docs/local-codex.md). The older user-systemd split remains documented only as a legacy/manual option: [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md).
 
+For Dockerized API/worker plus your own local Codex login, run the host bridge as your OS user:
+
+```bash
+pnpm codex-host
+```
+
+Then set `CODEX_LOCAL_URL` for the Docker containers. See [`docs/local-codex.md`](docs/local-codex.md).
+
 ## Configuration
 
 ### Environment Variables

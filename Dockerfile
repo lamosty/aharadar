@@ -14,6 +14,7 @@ COPY packages/pipeline/package.json ./packages/pipeline/
 COPY packages/queues/package.json ./packages/queues/
 COPY packages/queue-ui/package.json ./packages/queue-ui/
 COPY packages/worker/package.json ./packages/worker/
+COPY packages/codex-host/package.json ./packages/codex-host/
 COPY packages/api/package.json ./packages/api/
 COPY packages/cli/package.json ./packages/cli/
 COPY packages/web/package.json ./packages/web/

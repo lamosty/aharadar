@@ -49,11 +49,11 @@ CODEX_CALLS_PER_HOUR=50
 
 Keep `.env` local and uncommitted.
 
-## Docker and local login state
+## Docker plus local login state
 
 Dockerized API/worker containers usually do not have access to the logged-in user's Codex auth state. That is intentional: auth files are personal and should not be mounted into containers by default.
 
-If you need Dockerized API/worker plus personal Codex subscription mode, prefer adding a tiny host-side bridge later:
+If you need Dockerized API/worker plus personal Codex subscription mode, run the local host bridge:
 
 ```text
 api/worker container
@@ -62,7 +62,52 @@ api/worker container
       -> @openai/codex-sdk
 ```
 
-The bridge should bind locally only, avoid prompt logging by default, and keep subscription auth in the user's session.
+The bridge keeps the public provider value as `codex-subscription`; it only changes where the SDK call executes.
+
+### 1. Start the host bridge as your OS user
+
+```bash
+pnpm install
+pnpm --filter @aharadar/codex-host build
+pnpm codex-host
+```
+
+Useful host-side env:
+
+```bash
+CODEX_HOST_BIND=127.0.0.1
+CODEX_HOST_PORT=43117
+CODEX_LOCAL_TOKEN=<random-local-token>
+CODEX_MODEL=gpt-5.5
+```
+
+On Linux Docker hosts, containers may not be able to reach a service bound only to `127.0.0.1` through `host.docker.internal`. If needed, bind the bridge to a host-only interface or `0.0.0.0`, keep firewall rules tight, and always use `CODEX_LOCAL_TOKEN`.
+
+Health check:
+
+```bash
+curl -fsS http://127.0.0.1:43117/healthz
+```
+
+### 2. Point Docker API/worker at the host bridge
+
+In `.env` used by Docker Compose:
+
+```bash
+CODEX_USE_SUBSCRIPTION=true
+CODEX_LOCAL_URL=http://host.docker.internal:43117/v1/llm
+CODEX_LOCAL_TOKEN=<same-random-local-token>
+CODEX_MODEL=gpt-5.5
+CODEX_CALLS_PER_HOUR=50
+```
+
+Then start/recreate the Docker stack:
+
+```bash
+docker compose --profile apps up -d --build
+```
+
+In the app, choose **Codex Subscription** in Admin → LLM settings. The API/worker containers will call `CODEX_LOCAL_URL`; the host bridge will call `@openai/codex-sdk` as your logged-in user.
 
 ## Safety rules
 
@@ -70,3 +115,4 @@ The bridge should bind locally only, avoid prompt logging by default, and keep s
 - Do not share subscription mode in hosted/team/public deployments.
 - Do not silently fall back from subscription mode to API-key mode; provider failures should be explicit.
 - Keep API-key providers as the default Docker path.
+- Do not expose the host bridge to the public internet.
