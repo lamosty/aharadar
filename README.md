@@ -87,7 +87,7 @@ Read: [`docs/local-codex.md`](docs/local-codex.md). The older user-systemd split
 For Dockerized API/worker plus your own local Codex login, run the host bridge as your OS user:
 
 ```bash
-pnpm codex-host
+bun run codex-host
 ```
 
 Then set `CODEX_LOCAL_URL` for the Docker containers. See [`docs/local-codex.md`](docs/local-codex.md).

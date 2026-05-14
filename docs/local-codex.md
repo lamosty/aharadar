@@ -67,9 +67,9 @@ The bridge keeps the public provider value as `codex-subscription`; it only chan
 ### 1. Start the host bridge as your OS user
 
 ```bash
-pnpm install
-pnpm --filter @aharadar/codex-host build
-pnpm codex-host
+pnpm install --frozen-lockfile
+bun run --cwd packages/codex-host build
+bun run codex-host
 ```
 
 Useful host-side env:
@@ -88,6 +88,20 @@ Health check:
 ```bash
 curl -fsS http://127.0.0.1:43117/healthz
 ```
+
+### Optional: run the host bridge with user systemd
+
+The repo includes a user-service example for keeping the bridge alive across reboots:
+
+```bash
+mkdir -p ~/.config/aharadar ~/.config/systemd/user
+install -m 600 .env ~/.config/aharadar/codex-host.env
+cp infra/systemd/aharadar-codex-host.service.example ~/.config/systemd/user/aharadar-codex-host.service
+systemctl --user daemon-reload
+systemctl --user enable --now aharadar-codex-host.service
+```
+
+Make sure `~/.config/aharadar/codex-host.env` contains the same `CODEX_LOCAL_TOKEN` that Docker uses.
 
 ### 2. Point Docker API/worker at the host bridge
 
