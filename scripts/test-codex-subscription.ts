@@ -130,11 +130,18 @@ function makeRouterConfig(
   }
 
   process.env.CODEX_USE_SUBSCRIPTION = "true";
-  process.env.CODEX_MODEL = options.model || process.env.CODEX_MODEL || "gpt-5.1";
+  const codexModel = options.model || process.env.CODEX_MODEL || "gpt-5.5";
+  process.env.CODEX_MODEL = codexModel;
 
   const config: LlmRuntimeConfig & { provider?: "codex-subscription" } = {
     provider: "codex-subscription",
     codexSubscriptionEnabled: true,
+    // @why createConfiguredLlmRouter intentionally clears managed env knobs
+    // before applying runtime config. Without carrying the requested model
+    // through config.openaiModel, the codex-subscription smoke accidentally
+    // falls back into OpenAI task model resolution and fails with
+    // "set OPENAI_TRIAGE_MODEL" even though CODEX_MODEL was set above.
+    openaiModel: codexModel,
   };
 
   if (options.reasoningEffort) {

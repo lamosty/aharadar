@@ -16,8 +16,8 @@ importers:
         specifier: 2.3.11
         version: 2.3.11
       '@openai/codex-sdk':
-        specifier: ^0.101.0
-        version: 0.101.0
+        specifier: ^0.130.0
+        version: 0.130.0
       '@testcontainers/postgresql':
         specifier: ^10.18.0
         version: 10.28.0
@@ -132,8 +132,8 @@ importers:
         specifier: ^0.71.2
         version: 0.71.2(zod@4.3.5)
       '@openai/codex-sdk':
-        specifier: ^0.101.0
-        version: 0.101.0
+        specifier: ^0.130.0
+        version: 0.130.0
       ioredis:
         specifier: ^5.6.0
         version: 5.9.1
@@ -899,47 +899,47 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@openai/codex-sdk@0.101.0':
-    resolution: {integrity: sha512-Lrar2pDvGUX64itSbMNKuNBzxh72UwKokY4TPuXJRURwGX0qyDi80n7DiVivC40BwFsQWNs6behSo/9Mr6PoLw==}
+  '@openai/codex-sdk@0.130.0':
+    resolution: {integrity: sha512-ICKaZ5zrIDg71AiQcsUToVoe5Icmrc3LwSM5+2z7Cf8F1x6nOaY7/ucpFlr4aH8oDe7t3dangc+MsWZTkdvDFw==}
     engines: {node: '>=18'}
 
-  '@openai/codex@0.101.0':
-    resolution: {integrity: sha512-H874q5K5I3chrT588BaddMr7GNvRYypc8C1MKWytNUF2PgxWMko2g/2DgKbt5OdajZKMsWdbsPywu34KQGf5Qw==}
+  '@openai/codex@0.130.0':
+    resolution: {integrity: sha512-WGDj+RZ3TXWC/7MlwprgLWOqzpwatPIINPhP3IRzHA0ni+o3QZ4i4xrS2uWwGmHUJ395J5JHwoZAAZYyfJyz6w==}
     engines: {node: '>=16'}
     hasBin: true
 
-  '@openai/codex@0.101.0-darwin-arm64':
-    resolution: {integrity: sha512-unk4rTRQQ9o0w2Upu35IsJHpoZHJ+tU/myn6LNhUjcP9FrjLnEcAQJ6WIMtdTYVPja1PGhFSO0DNxV79GMvehw==}
+  '@openai/codex@0.130.0-darwin-arm64':
+    resolution: {integrity: sha512-R9pkGC7kwC8yQ8el5hvBlmugQlcsG/pHMEFgZluu03X9fD2TezGxdq3KqRDRCZuMYl07ILamVEoqknuJ0cq7MA==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [darwin]
 
-  '@openai/codex@0.101.0-darwin-x64':
-    resolution: {integrity: sha512-+KFi1IapCQGd3vLQp2lI4xI3hu2QffDZYt7Fhfw6NxEFOKhHnTamRtQ5yI8jYQcYF+pQfYF2fyiuXLM1lITLQw==}
+  '@openai/codex@0.130.0-darwin-x64':
+    resolution: {integrity: sha512-gJ+7J8djevgtdra+NgDAiQQPW+O3KTsgGfE3E5dpDfww3zS5OCeV0V2dhxqnJdlOjOSDw99o0P2LqBv19mhpRw==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [darwin]
 
-  '@openai/codex@0.101.0-linux-arm64':
-    resolution: {integrity: sha512-RkDnQeq7M6ZBtD+8i+I5ewjjOf02BcJq6r1kN4RBewfAQBsz6B73Ns3OrI2bHVRsuPtAf8Cf1S4xg/eFZT2Omg==}
+  '@openai/codex@0.130.0-linux-arm64':
+    resolution: {integrity: sha512-tFtH0V9/hEI3d9y7zP92BXI9FM4Z3+STNQaOR52Czv18TRtCFUp7CbIUYaToopuq6UBfnE1VKr8RLhwT5FcbmA==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [linux]
 
-  '@openai/codex@0.101.0-linux-x64':
-    resolution: {integrity: sha512-SJeEdQ4ReEU3nvtceZ1uY3me6oWoB3djr3GnZmAUCEUuYEWD1kRGprAyJB1N0B+8zhSv0SU2e9sX5t3aCV4AwQ==}
+  '@openai/codex@0.130.0-linux-x64':
+    resolution: {integrity: sha512-3VcNlez99xdnEf+kB1IOpWv9fICYV9PiGj4sLCO4TCcShLnyxe+YBGa3poknkvXLnMG0qiN9SMnYS2FGrMxQcA==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [linux]
 
-  '@openai/codex@0.101.0-win32-arm64':
-    resolution: {integrity: sha512-WQ8QsychjHyvlr+vCSTMbd2/yrBIZre5tRuM79eZi973BJz0CSEiFsNSGg5fvpnJuiHHawZ/8HWeir7nlatamQ==}
+  '@openai/codex@0.130.0-win32-arm64':
+    resolution: {integrity: sha512-vdpmiNp57L/arZabltLXn8TyEtNa7W1meOEkr+3R6W/8ZyBt++wuqz1Orv134OT2grrcFJsIVCAIPiqUxCvBkA==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [win32]
 
-  '@openai/codex@0.101.0-win32-x64':
-    resolution: {integrity: sha512-H+7h9x0fYrJRUZZHCA62Dzb/CS5Scl1sUw1aamfmHJzzorX+uTFOgGsibzqFpHTd6nRM4q8//fCdSxe5wUpOQQ==}
+  '@openai/codex@0.130.0-win32-x64':
+    resolution: {integrity: sha512-FzMznm7fr5/nbjZgOujZ9Y9AbdGm7ji1FOoWiY3U+srqauvZaTgn6o6aCheSL7kuymu7nTLOO/cAyWV6NuesqQ==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
@@ -2016,11 +2016,12 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -2934,7 +2935,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
-    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   tdigest@0.1.2:
     resolution: {integrity: sha512-+G0LLgjjo9BZX2MfdvPfH+MKLCrxlXSYec5DaPYP1fe6Iyhf0/fSmJ0bFiZ1F8BT6cGXl2LpltQptzjXKWEkKA==}
@@ -3044,6 +3045,7 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@11.1.0:
@@ -3678,35 +3680,35 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.1.1':
     optional: true
 
-  '@openai/codex-sdk@0.101.0':
+  '@openai/codex-sdk@0.130.0':
     dependencies:
-      '@openai/codex': 0.101.0
+      '@openai/codex': 0.130.0
 
-  '@openai/codex@0.101.0':
+  '@openai/codex@0.130.0':
     optionalDependencies:
-      '@openai/codex-darwin-arm64': '@openai/codex@0.101.0-darwin-arm64'
-      '@openai/codex-darwin-x64': '@openai/codex@0.101.0-darwin-x64'
-      '@openai/codex-linux-arm64': '@openai/codex@0.101.0-linux-arm64'
-      '@openai/codex-linux-x64': '@openai/codex@0.101.0-linux-x64'
-      '@openai/codex-win32-arm64': '@openai/codex@0.101.0-win32-arm64'
-      '@openai/codex-win32-x64': '@openai/codex@0.101.0-win32-x64'
+      '@openai/codex-darwin-arm64': '@openai/codex@0.130.0-darwin-arm64'
+      '@openai/codex-darwin-x64': '@openai/codex@0.130.0-darwin-x64'
+      '@openai/codex-linux-arm64': '@openai/codex@0.130.0-linux-arm64'
+      '@openai/codex-linux-x64': '@openai/codex@0.130.0-linux-x64'
+      '@openai/codex-win32-arm64': '@openai/codex@0.130.0-win32-arm64'
+      '@openai/codex-win32-x64': '@openai/codex@0.130.0-win32-x64'
 
-  '@openai/codex@0.101.0-darwin-arm64':
+  '@openai/codex@0.130.0-darwin-arm64':
     optional: true
 
-  '@openai/codex@0.101.0-darwin-x64':
+  '@openai/codex@0.130.0-darwin-x64':
     optional: true
 
-  '@openai/codex@0.101.0-linux-arm64':
+  '@openai/codex@0.130.0-linux-arm64':
     optional: true
 
-  '@openai/codex@0.101.0-linux-x64':
+  '@openai/codex@0.130.0-linux-x64':
     optional: true
 
-  '@openai/codex@0.101.0-win32-arm64':
+  '@openai/codex@0.130.0-win32-arm64':
     optional: true
 
-  '@openai/codex@0.101.0-win32-x64':
+  '@openai/codex@0.130.0-win32-x64':
     optional: true
 
   '@opentelemetry/api@1.9.0': {}
