@@ -1,0 +1,50 @@
+# Keep Docker build contexts reproducible and public-safe.
+.git
+.gitignore
+.DS_Store
+
+# Never copy local secrets or machine-specific env files into app images.
+.env*
+!.env.example
+
+# Dependencies and generated outputs are built inside the image.
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+out
+**/out
+.next
+**/.next
+*.tsbuildinfo
+
+# Test/coverage artifacts.
+coverage
+**/coverage
+.nyc_output
+playwright-report
+**/playwright-report
+test-results
+**/test-results
+
+# Runtime logs, local backups, and database dumps do not belong in images.
+logs
+**/logs
+*.log
+backups
+**/backups
+*.bak
+*.dump
+*.sql.gz
+docker-data
+
+# Local tool caches.
+.turbo
+.nx
+.cache
+.parcel-cache
+.playwright-mcp
+.eslintcache
+.stylelintcache

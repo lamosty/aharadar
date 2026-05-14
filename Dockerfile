@@ -39,6 +39,13 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 CMD ["node", "packages/api/dist/main.js"]
 
+# Migration target
+FROM base AS migrate
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+CMD ["node", "packages/db/dist/migrate.js"]
+
 # Web target
 FROM base AS web
 WORKDIR /app

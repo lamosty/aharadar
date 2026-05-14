@@ -1,5 +1,6 @@
 export * from "./db";
 export * from "./helpers/create_notification";
+export * from "./migrations";
 export * from "./repos/abtests";
 export * from "./repos/aggregate_summaries";
 export * from "./repos/catchup_packs";
