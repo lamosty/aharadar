@@ -1,6 +1,14 @@
-# Personal Server Setup (Docker Infra + User Systemd API/Worker)
+# Legacy/manual: Personal Server User-Systemd Split
 
-This setup is recommended when using `claude-subscription` or `codex-subscription` on a personal server.
+This page is kept as a legacy/manual option for advanced personal setups.
+
+The recommended self-hosted runtime is now Docker Compose for Postgres, Redis, API, web, worker, queue UI, and migrations:
+
+```bash
+docker compose --profile apps up -d --build
+```
+
+For Codex subscription guidance, read [`local-codex.md`](local-codex.md) first.
 
 ## Important Disclaimer
 
@@ -19,11 +27,13 @@ Both must run as the same OS user that performed the login.
 
 If API/worker run in Docker (often as `root`), subscription auth may fail and return login/auth errors.
 
-## Recommended split
+## Manual split
 
 1. Run infrastructure in Docker: Postgres + Redis (+ optional Grafana/Prometheus/API/Web/Queue UI).
 2. Run `@aharadar/api` and `@aharadar/worker` as **user-level systemd services**.
 3. Stop Docker API/worker to avoid duplicate processes.
+
+Do this only if direct SDK subscription mode must run under your logged-in OS user and the default API-key Docker path is not sufficient.
 
 ## Setup
 
@@ -81,10 +91,11 @@ If you run web on host too (`pnpm start:prod:lan`), keep:
 API_URL=http://localhost:43801
 ```
 
-## Alternative: keep API in Docker (not recommended for subscription mode)
+## Keeping API/worker in Docker
 
-You can mount user Claude credentials into the API container, but this is fragile and easy to misconfigure.
-For personal setups, user-level systemd API + worker is simpler and more reliable.
+For the standard Docker path, keep API/worker in Docker and use API-key providers.
+
+Mounting personal provider auth directories into app containers is fragile and not recommended as public documentation. If subscription mode must be reachable from Docker, prefer a future local bridge that keeps auth state on the host user session.
 
 ## Optional: API container probing host worker health
 

@@ -24,11 +24,10 @@ Aha Radar is a self-hosted content aggregation and ranking system that helps you
 
 ### Prerequisites
 
-- Node.js 22+ (see `.nvmrc`)
-- pnpm 9+
-- Docker Desktop
+- Docker Desktop or another Docker Compose v2 runtime
+- Node.js 22+ and pnpm 9+ only if you want to run the app in development mode
 
-### Installation
+### Docker Compose server runtime
 
 ```bash
 # Clone the repository
@@ -38,31 +37,42 @@ cd aharadar
 # Copy environment template
 cp .env.example .env
 
-# Start infrastructure (Postgres + Redis)
-./scripts/dev.sh
+# Edit .env:
+# - set POSTGRES_PASSWORD to a local strong value
+# - set OPENAI_API_KEY or ANTHROPIC_API_KEY for hosted/shared deployments
 
-# Apply database migrations
-./scripts/migrate.sh
-
-# Install dependencies
-pnpm install
-
-# Start the application
-pnpm start
+# Start Postgres, Redis, API, web, worker, queue UI, and one-shot migrations
+docker compose --profile apps up -d --build
 ```
 
 Open http://localhost:3000 in your browser.
 
+The Compose stack includes a `migrate` one-shot service. To run migrations again after pulling new code:
+
+```bash
+docker compose --profile apps run --rm --build migrate
+```
+
+If you have pnpm installed, the same commands are available as:
+
+```bash
+pnpm docker:up
+pnpm docker:migrate
+pnpm docker:logs
+pnpm docker:down
+```
+
 ### Running Modes
 
 | Command | Description |
-|---------|-------------|
-| `pnpm start` | Development mode with hot reload |
-| `pnpm start:prod` | Production mode (faster, recommended for daily use) |
+| --- | --- |
+| `docker compose --profile apps up -d --build` | Canonical self-hosted/server runtime |
+| `pnpm start` | Local development mode with host-run API/web/worker |
+| `pnpm start:prod` | Host-run production-ish mode for local testing |
 
-**Production mode** builds the Next.js frontend first, resulting in much faster page loads. Use this when you're not actively developing.
+Docker Compose is the recommended path for daily self-hosting because the API, web, worker, Postgres, Redis, and migrations run together with one restart/log/health model.
 
-**LAN access:** Add `:lan` suffix to access from other devices on your network (e.g., `pnpm start:prod:lan` for a home server setup).
+Host-run `pnpm start` is intended for development and fast iteration. It still uses Docker for local Postgres/Redis unless you point `DATABASE_URL` and `REDIS_URL` elsewhere.
 
 ### Personal Server + Subscription Providers
 
@@ -70,9 +80,9 @@ Open http://localhost:3000 in your browser.
 
 Use at your own risk. For OSS/public/shared deployments, use API-key providers (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`) instead of subscription mode.
 
-If you still use subscription mode, run both API and worker as your user (not in Docker) so digest triage and manual summaries can access your user-scoped login state (`claude login` / `codex login`).
+Subscription login state is user-scoped. Direct SDK mode works when the Aha Radar process runs as the same OS user that performed the provider login. Dockerized API/worker should use API keys unless you add an explicit local bridge.
 
-Use this guide: [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md)
+Read: [`docs/local-codex.md`](docs/local-codex.md). The older user-systemd split remains documented only as a legacy/manual option: [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md).
 
 ## Configuration
 
@@ -126,9 +136,8 @@ WEB_PORT=3010
 API_PORT=3011
 API_URL=http://localhost:3011
 
-# Then export before running
-export WEB_PORT=3010 API_PORT=3011 API_URL=http://localhost:3011
-pnpm start:lan
+# Then recreate the Compose services
+docker compose --profile apps up -d --build
 ```
 
 ## Architecture
@@ -220,7 +229,17 @@ aharadar/
 ### Useful Commands
 
 ```bash
-# Development
+# Docker Compose runtime
+pnpm docker:up        # Build and start app stack with migrations
+pnpm docker:migrate   # Run pending migrations in a one-shot container
+pnpm docker:logs      # Follow Compose logs
+pnpm docker:down      # Stop the Compose stack
+
+# Host-run development
+pnpm install
+pnpm dev:services     # Start local Postgres + Redis only
+pnpm migrate          # Apply migrations using the local Docker Postgres service
+pnpm start            # Run API, web, worker, and queue UI on the host
 pnpm dev:api          # Run API server only
 pnpm dev:web          # Run Next.js frontend only
 pnpm dev:worker       # Run background worker only
@@ -236,7 +255,7 @@ pnpm test             # Run tests
 
 # Infrastructure
 ./scripts/dev.sh      # Start Postgres + Redis
-./scripts/down.sh     # Stop services
+./scripts/stop-services.sh # Stop Postgres + Redis
 ./scripts/logs.sh     # View logs
 ```
 
@@ -275,7 +294,8 @@ Detailed documentation is available in the `docs/` folder:
 - [`docs/api.md`](docs/api.md) — API reference
 - [`docs/budgets.md`](docs/budgets.md) — Budget system
 - [`docs/llm.md`](docs/llm.md) — LLM integration
-- [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md) — Personal server deployment with user systemd worker
+- [`docs/local-codex.md`](docs/local-codex.md) — Personal Codex subscription mode
+- [`docs/personal-server-systemd.md`](docs/personal-server-systemd.md) — Legacy/manual user-systemd split
 
 ## Tech Stack
 
