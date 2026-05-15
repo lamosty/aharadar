@@ -1,4 +1,7 @@
+import { mkdirSync } from "node:fs";
 import http from "node:http";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import {
   type CodexLocalBridgeRequest,
   type CodexLocalBridgeResponse,
@@ -16,6 +19,15 @@ const HOST = process.env.CODEX_HOST_BIND ?? "127.0.0.1";
 const PORT = Number.parseInt(process.env.CODEX_HOST_PORT ?? "43117", 10);
 const TOKEN = process.env.CODEX_HOST_TOKEN ?? process.env.CODEX_LOCAL_TOKEN;
 const MAX_BODY_BYTES = Number.parseInt(process.env.CODEX_HOST_MAX_BODY_BYTES ?? "2000000", 10);
+const DEFAULT_WORKING_DIRECTORY = resolve(tmpdir(), "aharadar-codex-host");
+
+function resolveWorkingDirectory(): string {
+  const configured = process.env.CODEX_HOST_WORKDIR?.trim();
+  return configured && configured.length > 0 ? configured : DEFAULT_WORKING_DIRECTORY;
+}
+
+const WORKING_DIRECTORY = resolveWorkingDirectory();
+mkdirSync(WORKING_DIRECTORY, { recursive: true, mode: 0o700 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -149,7 +161,7 @@ async function handleLlm(req: http.IncomingMessage, res: http.ServerResponse): P
 
   try {
     const result = await callCodexSubscriptionDirect(normalized.ref, normalized.request, {
-      workingDirectory: process.env.CODEX_HOST_WORKDIR,
+      workingDirectory: WORKING_DIRECTORY,
     });
 
     sendJson(res, 200, {
@@ -190,6 +202,7 @@ server.listen(PORT, HOST, () => {
       host: HOST,
       port: PORT,
       tokenAuth: !!TOKEN,
+      isolatedWorkdir: true,
     },
     "Codex host bridge listening",
   );

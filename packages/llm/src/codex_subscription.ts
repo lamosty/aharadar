@@ -12,7 +12,7 @@ import { classifyLlmProviderError } from "./error_classification";
 import type { LlmCallResult, LlmRequest, ModelRef } from "./types";
 
 export interface CodexSubscriptionConfig {
-  /** Working directory for Codex thread (default: process.cwd()) */
+  /** Working directory for Codex thread. Prefer an empty, dedicated directory. */
   workingDirectory?: string;
 }
 
@@ -152,6 +152,15 @@ export async function callCodexSubscriptionDirect(
     const modelReasoningEffort = getCodexModelReasoningEffort(request.reasoningEffort);
     const thread = codex.startThread({
       model: ref.model, // Use the resolved model (e.g., gpt-5.1)
+      // @constraint Aha Radar uses Codex as an LLM provider, not as a coding
+      // agent. Keep tool execution locked down so untrusted source content in
+      // prompts cannot approve actions, write files, or browse the network.
+      approvalPolicy: "never",
+      sandboxMode: "read-only",
+      networkAccessEnabled: false,
+      webSearchEnabled: false,
+      webSearchMode: "disabled",
+      skipGitRepoCheck: true,
       ...(modelReasoningEffort ? { modelReasoningEffort } : {}),
       ...(mergedConfig.workingDirectory ? { workingDirectory: mergedConfig.workingDirectory } : {}),
     });

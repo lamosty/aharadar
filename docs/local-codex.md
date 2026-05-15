@@ -78,10 +78,13 @@ Useful host-side env:
 CODEX_HOST_BIND=127.0.0.1
 CODEX_HOST_PORT=43117
 CODEX_LOCAL_TOKEN=<random-local-token>
+CODEX_HOST_WORKDIR=/tmp/aharadar-codex-host
 CODEX_MODEL=gpt-5.5
 ```
 
 On Linux Docker hosts, containers may not be able to reach a service bound only to `127.0.0.1` through `host.docker.internal`. If needed, bind the bridge to a host-only interface or `0.0.0.0`, keep firewall rules tight, and always use `CODEX_LOCAL_TOKEN`.
+
+The bridge runs Codex as a constrained LLM provider: no prompt logging, `approvalPolicy=never`, `sandboxMode=read-only`, web/network tools disabled, and a dedicated working directory by default.
 
 Health check:
 
