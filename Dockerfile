@@ -28,10 +28,19 @@ ENV API_URL=${API_URL}
 ENV API_PORT=${API_PORT}
 COPY --from=deps /root/.local/share/pnpm /root/.local/share/pnpm
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/*/node_modules ./packages/
+# @why Keep package-level pnpm workspace links from the deps stage. Copying
+# only `packages/*/node_modules` into `./packages/` flattens the destination
+# and can leave final images with root deps but without a valid package tree.
+COPY --from=deps /app/packages ./packages
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
 RUN pnpm build
+# @why Aharadar's production containers boot directly from these compiled
+# entrypoints. Fail the image build if Docker caching or workspace layout ever
+# produces an image that would restart-loop with MODULE_NOT_FOUND.
+RUN test -f packages/api/dist/main.js \
+  && test -f packages/worker/dist/main.js \
+  && test -f packages/web/.next/BUILD_ID
 
 # API target
 FROM base AS api
