@@ -34,13 +34,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
-RUN pnpm build
+RUN pnpm clean && pnpm build
 # @why Aharadar's production containers boot directly from these compiled
 # entrypoints. Fail the image build if Docker caching or workspace layout ever
 # produces an image that would restart-loop with MODULE_NOT_FOUND.
-RUN test -f packages/api/dist/main.js \
-  && test -f packages/worker/dist/main.js \
-  && test -f packages/web/.next/BUILD_ID
+RUN for artifact in \
+    packages/api/dist/main.js \
+    packages/worker/dist/main.js \
+    packages/web/.next/BUILD_ID; do \
+      if [ ! -f "$artifact" ]; then \
+        echo "missing build artifact: $artifact"; \
+        find packages -maxdepth 3 \( -path '*/dist/main.js' -o -path '*/.next/BUILD_ID' \) -print; \
+        exit 1; \
+      fi; \
+    done
 
 # API target
 FROM base AS api
